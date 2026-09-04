@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app_assets.dart';
+import 'data/firebase/firebase_bootstrap.dart';
 import 'router/app_router.dart';
 import 'state/providers.dart';
 import 'state/session.dart';
@@ -27,6 +28,12 @@ Future<void> main() async {
     LbmAssets.welcomeStill,
   ).timeout(const Duration(seconds: 5), onTimeout: () {});
   binding.allowFirstFrame();
+
+  // Firebase comes up only for a live build, so a fixture build needs no
+  // configuration and pays no start-up cost.
+  if (const String.fromEnvironment('LBM_BACKEND') == 'live') {
+    await initializeFirebase(useEmulators: useFirebaseEmulators);
+  }
 
   runApp(
     ProviderScope(

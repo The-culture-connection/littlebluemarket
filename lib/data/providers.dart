@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth/auth_service.dart';
+import 'firebase/firebase_auth_service.dart';
+import 'firebase/firebase_bootstrap.dart';
 import 'fixtures/fixture_repositories.dart';
 import 'fixtures/fixture_store.dart';
 import 'repositories/repositories.dart';
@@ -121,6 +123,6 @@ final authServiceProvider = Provider<AuthService>((ref) {
       ref.onDispose(service.dispose);
       return service;
     }(),
-    Backend.live => throw _notWired('AuthService'),
+    Backend.live => FirebaseAuthService(ref.watch(firebaseAuthProvider)),
   };
 });

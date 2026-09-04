@@ -1,0 +1,44 @@
+rules_version = '2';
+
+// Avatars and post photos.
+//
+// Uploads are capped and type-checked here rather than trusted from the
+// client, because a storage bucket is the cheapest thing in a project to abuse.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function underSize(megabytes) {
+      return request.resource.size < megabytes * 1024 * 1024;
+    }
+
+    // Your own avatar. Public to read, because every post shows one.
+    match /avatars/{uid}/{file} {
+      allow read: if true;
+      allow write: if signedIn()
+        && request.auth.uid == uid
+        && isImage()
+        && underSize(5);
+    }
+
+    // Photos attached to a post you are writing.
+    match /posts/{uid}/{file} {
+      allow read: if true;
+      allow write: if signedIn()
+        && request.auth.uid == uid
+        && isImage()
+        && underSize(10);
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

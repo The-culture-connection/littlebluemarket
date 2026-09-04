@@ -13,6 +13,11 @@ dependencies:
   flutter_riverpod: ^3.0.3
   flutter_svg: ^2.3.0
   cupertino_icons: ^1.0.9
+  firebase_core: ^4.14.0
+  firebase_auth: ^6.6.1
+  cloud_firestore: ^6.9.0
+  firebase_storage: ^13.5.0
+  cloud_functions: ^6.4.0
 
 dev_dependencies:
   flutter_test:

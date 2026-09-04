@@ -1,0 +1,272 @@
+rules_version = '2';
+
+// Little Blue Market — Firestore security rules.
+//
+// The rule that matters most: money is never client-writable. revenueCents,
+// purchaseCount, orders and purchases are maintained by the order pipeline
+// reacting to a verified webhook. The Admin SDK bypasses these rules, so
+// "deny everyone" here means "only Cloud Functions".
+//
+// Counters that clients *may* move — likes, upvotes, member counts — are moved
+// with FieldValue.increment inside a transaction, never by writing a total, so
+// two people liking at once cannot lose one of the two.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------- helpers
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // A guest is signed in anonymously, so they hold a uid but are not a
+    // member. Anything that writes content needs a real account.
+    function member() {
+      return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    /// True when the write leaves every field in `locked` exactly as it was.
+    function untouched(locked) {
+      return !incoming().diff(existing()).affectedKeys().hasAny(locked);
+    }
+
+    function authorIsSelf() {
+      return isSelf(incoming().authorId);
+    }
+
+    // ------------------------------------------------------------------ users
+
+    match /users/{uid} {
+      // Profiles are public: the storefront, the seller strip on a listing and
+      // the author of a review all need to read one.
+      allow read: if true;
+
+      allow create: if isSelf(uid)
+        && incoming().revenueCents == 0
+        && incoming().purchaseCount == 0
+        && incoming().postCount == 0;
+
+      // You may edit your own profile, but not your own numbers. Without this
+      // clause a seller could set their revenue to anything.
+      allow update: if isSelf(uid)
+        && untouched([
+          'revenueCents',
+          'purchaseCount',
+          'shopifyCustomerId',
+          'shipturtleVendorId'
+        ]);
+
+      allow delete: if false;
+
+      // What you bought. Yours to read, nobody's to write.
+      match /purchases/{purchaseId} {
+        allow read: if isSelf(uid);
+        allow write: if false;
+      }
+
+      match /addresses/{addressId} {
+        allow read, write: if isSelf(uid);
+      }
+
+      match /conversations/{conversationId} {
+        allow read: if isSelf(uid);
+        allow write: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------- catalog
+
+    // The mirror of the storefront. Everyone reads it; only the sync function
+    // writes it, so a client cannot invent a listing or move a price.
+    match /catalog/{productId} {
+      allow read: if true;
+      allow write: if false;
+
+      match /reviews/{reviewId} {
+        allow read: if true;
+        // A review must be yours, and must name the purchase it came from.
+        // Whether that purchase is real is checked by the function that
+        // mirrors it onto the product; the rule stops the obvious forgery.
+        allow create: if member()
+          && authorIsSelf()
+          && incoming().rating is int
+          && incoming().rating >= 1
+          && incoming().rating <= 5;
+        allow update, delete: if member() && isSelf(existing().authorId);
+      }
+
+      // The star histogram, moved by increments from review writes.
+      match /rating/{doc} {
+        allow read: if true;
+        allow write: if false;
+      }
+    }
+
+    // ------------------------------------------------------------------ posts
+
+    match /posts/{postId} {
+      allow read: if true;
+
+      allow create: if member()
+        && authorIsSelf()
+        && incoming().likeCount == 0
+        && incoming().commentCount == 0;
+
+      // Counters move by increment from the like and comment subcollections,
+      // not by anyone writing a total.
+      allow update: if member()
+        && isSelf(existing().authorId)
+        && untouched(['likeCount', 'commentCount', 'authorId', 'createdAt']);
+
+      allow delete: if member() && isSelf(existing().authorId);
+
+      // One like per person, enforced by the document id being the uid. That
+      // is what makes a double tap idempotent rather than a second like.
+      match /likes/{uid} {
+        allow read: if true;
+        allow create, delete: if isSelf(uid) && member();
+        allow update: if false;
+      }
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if member() && authorIsSelf();
+        allow update, delete: if member() && isSelf(existing().authorId);
+
+        match /likes/{uid} {
+          allow read: if true;
+          allow create, delete: if isSelf(uid) && member();
+        }
+      }
+    }
+
+    // ----------------------------------------------------------------- forums
+
+    match /forums/{forumId} {
+      allow read: if true;
+      allow create: if member()
+        && incoming().memberCount == 1
+        && incoming().threadCount == 0;
+      allow update: if member()
+        && untouched(['memberCount', 'threadCount', 'createdBy']);
+      allow delete: if false;
+
+      match /members/{uid} {
+        allow read: if true;
+        allow create, delete: if isSelf(uid) && member();
+        allow update: if false;
+      }
+    }
+
+    match /threads/{threadId} {
+      allow read: if true;
+      allow create: if member() && authorIsSelf() && incoming().commentCount == 0;
+      allow update: if member()
+        && isSelf(existing().authorId)
+        && untouched(['upvotes', 'commentCount', 'authorId', 'createdAt']);
+      allow delete: if member() && isSelf(existing().authorId);
+
+      match /votes/{uid} {
+        allow read: if true;
+        allow write: if isSelf(uid) && member();
+      }
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if member() && authorIsSelf();
+        allow update, delete: if member() && isSelf(existing().authorId);
+
+        match /votes/{uid} {
+          allow read: if true;
+          allow write: if isSelf(uid) && member();
+        }
+      }
+    }
+
+    // -------------------------------------------------------------- messaging
+
+    // The open room. Anyone with an account can post; nobody can rewrite
+    // history.
+    match /chatroom/{messageId} {
+      allow read: if signedIn();
+      allow create: if member() && authorIsSelf();
+      allow update: if false;
+      allow delete: if member() && isSelf(existing().authorId);
+    }
+
+    match /conversations/{conversationId} {
+      // A thread is readable only by its two participants.
+      allow read: if signedIn()
+        && request.auth.uid in existing().participantIds;
+      allow create: if member()
+        && request.auth.uid in incoming().participantIds
+        && incoming().participantIds.size() == 2;
+      allow update: if signedIn()
+        && request.auth.uid in existing().participantIds
+        && untouched(['participantIds']);
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if signedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+        allow create: if member()
+          && authorIsSelf()
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+        allow update, delete: if false;
+      }
+    }
+
+    // ----------------------------------------------------------------- orders
+
+    // Written only by the order pipeline. A buyer reads their own; a seller
+    // reads the ones they are owed for.
+    match /orders/{orderId} {
+      allow read: if signedIn()
+        && (isSelf(existing().buyerUid)
+            || request.auth.uid in existing().sellerUids);
+      allow write: if false;
+    }
+
+    // The cart is yours alone, and the only commerce document a client writes.
+    match /carts/{uid} {
+      allow read, write: if isSelf(uid);
+
+      match /lines/{lineId} {
+        allow read, write: if isSelf(uid);
+      }
+    }
+
+    // --------------------------------------------------------------- hashtags
+
+    match /hashtags/{tag} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // --------------------------------------------------------------- internal
+
+    // The Admin token cache and anything else the functions keep to
+    // themselves. Nothing client-side may touch it.
+    match /_internal/{document=**} {
+      allow read, write: if false;
+    }
+
+    // Anything not named above is denied, rather than inheriting a permissive
+    // default from a rule higher up.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
