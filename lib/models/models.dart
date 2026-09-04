@@ -2,6 +2,19 @@ import 'package:flutter/foundation.dart';
 
 import 'formatting.dart';
 
+// Re-exported so a screen can keep importing one models file and get the whole
+// domain vocabulary. The types live in their own files because they group into
+// genuinely separate concerns; this just spares 30 call sites the churn.
+export 'address.dart';
+export 'cart.dart';
+export 'comment.dart';
+export 'formatting.dart';
+export 'message.dart';
+export 'order.dart';
+export 'page.dart';
+export 'post.dart';
+export 'search.dart';
+
 /// A person — seller, buyer, or both. The prototype's `U`.
 ///
 /// The stat row is remapped from Instagram: Followers becomes [revenueCents],

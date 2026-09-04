@@ -83,7 +83,7 @@ zero Firebase dependency until PR 11. Do not start Track B early.
       and `_PostActionRow` into one public `PostActionBar`, remove points entirely, remove the (i)
       icon, remove Hot/New/Top from `forum_screen.dart`.
 - [x] **PR 2** — Typed models + `lib/models/formatting.dart`. Display strings become real types.
-- [ ] **PR 3** — New models: sealed `Post`, `Cart`/`CartLine`, `Order`, `Comment`, `Message`,
+- [x] **PR 3** — New models: sealed `Post`, `Cart`/`CartLine`, `Order`, `Comment`, `Message`,
       `Address`, `SearchFilters`/`SearchResults`.
 - [ ] **PR 4** — Repository seam + mutable `FixtureStore` + `Backend` flag.
 - [ ] **PR 5** — `LbmAsync` + skeletons.

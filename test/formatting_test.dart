@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:little_blue_market/models/formatting.dart';
 import 'package:little_blue_market/models/models.dart';
 
 /// Every display string in the app comes out of `Fmt`, so these are the tests
