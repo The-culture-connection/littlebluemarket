@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/fixtures/fixture_data.dart';
 import '../../models/models.dart';
 import '../../router/nav.dart';
+import '../../state/providers.dart';
+import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
+import '../../widgets/skeleton.dart';
 
-/// One room, everyone in it.
-///
-/// The grip at the very top pulls down to Forums — the same gesture as the
-/// prototype's, wired to an overscroll rather than a tap alone.
-class ChatroomScreen extends StatefulWidget {
+/// The single open chatroom anyone can post into.
+class ChatroomScreen extends ConsumerStatefulWidget {
   const ChatroomScreen({super.key});
 
   @override
-  State<ChatroomScreen> createState() => _ChatroomScreenState();
+  ConsumerState<ChatroomScreen> createState() => _ChatroomScreenState();
 }
 
-class _ChatroomScreenState extends State<ChatroomScreen> {
-  final _messages = List<ChatMessage>.of(Fx.chatroom);
+class _ChatroomScreenState extends ConsumerState<ChatroomScreen> {
   bool _navigating = false;
 
   void _openForums() {
@@ -41,24 +41,18 @@ class _ChatroomScreenState extends State<ChatroomScreen> {
     return false;
   }
 
-  void _send(String text) {
-    setState(() {
-      _messages.add(
-        ChatMessage(
-          authorId: Fx.meId,
-          createdAt: DateTime.now(),
-          text: text,
-        ),
-      );
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = context.c;
+    final messages = ref.watch(chatroomProvider);
 
     return LbmScreen(
-      bottom: Composer(hintText: 'Message the room…', onSend: _send),
+      bottom: Composer(
+        hintText: 'Message the room…',
+        // Reaches the repository, so it is there when you come back.
+        onSend: (text) =>
+            ref.read(messagingRepositoryProvider).sendToChatroom(text),
+      ),
       child: Column(
         children: [
           _PullTab(onTap: _openForums),
@@ -73,16 +67,15 @@ class _ChatroomScreenState extends State<ChatroomScreen> {
                     'Open chat',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: LbmText.display.copyWith(
-                      fontSize: 20,
-                      color: c.ink,
-                    ),
+                    style: LbmText.display.copyWith(fontSize: 20, color: c.ink),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
-                    '· 1,284 here now',
+                    // The prototype claimed "1,284 here now", which was
+                    // invented. A real presence count needs presence.
+                    'Everyone in the market',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: LbmText.xtiny.copyWith(color: c.ink2),
@@ -94,12 +87,20 @@ class _ChatroomScreenState extends State<ChatroomScreen> {
           Expanded(
             child: NotificationListener<ScrollNotification>(
               onNotification: _onOverscroll,
-              child: ListView.separated(
-                padding: const EdgeInsets.all(14),
-                itemCount: _messages.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 14),
-                itemBuilder: (context, i) =>
-                    _ChatBubble(message: _messages[i]),
+              child: LbmAsync<List<Message>>(
+                messages,
+                skeleton: const ListRowSkeleton(rows: 4),
+                isEmpty: (messages) => messages.isEmpty,
+                empty: const LbmEmpty(
+                  title: 'Quiet in here',
+                  body: 'Say the first thing.',
+                ),
+                data: (messages) => ListView.separated(
+                  padding: const EdgeInsets.all(14),
+                  itemCount: messages.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 14),
+                  itemBuilder: (context, i) => _ChatBubble(message: messages[i]),
+                ),
               ),
             ),
           ),
@@ -162,17 +163,17 @@ class _PullTab extends StatelessWidget {
   }
 }
 
-class _ChatBubble extends StatelessWidget {
+class _ChatBubble extends ConsumerWidget {
   const _ChatBubble({required this.message});
 
-  final ChatMessage message;
+  final Message message;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
-    final author = Fx.person(message.authorId);
+    final author = ref.watch(personProvider(message.authorId));
     // Whether a message is yours is a fact about the viewer, not the message.
-    final mine = message.authorId == Fx.meId;
+    final mine = message.authorId == ref.watch(currentUidProvider);
 
     final bubble = Container(
       constraints: BoxConstraints(
@@ -196,6 +197,7 @@ class _ChatBubble extends StatelessWidget {
           height: 1.5,
           color: mine ? c.accentInk : c.ink,
         ),
+        onTagTap: (tag) => context.goToResults(tag),
       ),
     );
 
@@ -203,10 +205,16 @@ class _ChatBubble extends StatelessWidget {
       textDirection: mine ? TextDirection.rtl : TextDirection.ltr,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Avatar(
+        LbmAsync<Person>(
           author,
-          size: AvatarSize.sm,
-          onTap: mine ? null : () => context.goToSeller(author.id),
+          skeleton: const LbmSkeleton(width: 34, height: 34, radius: 17),
+          errorBuilder: (_, _) =>
+              const LbmSkeleton(width: 34, height: 34, radius: 17),
+          data: (person) => Avatar(
+            person,
+            size: AvatarSize.sm,
+            onTap: mine ? null : () => context.goToSeller(person.id),
+          ),
         ),
         const SizedBox(width: 9),
         Flexible(
@@ -216,23 +224,28 @@ class _ChatBubble extends StatelessWidget {
               if (!mine)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 3),
-                  child: Text.rich(
-                    TextSpan(
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: c.ink2,
-                      ),
-                      children: [
-                        TextSpan(text: '${author.name} '),
-                        TextSpan(
-                          text: message.time,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w500,
-                            fontFeatures: kTabularFigures,
-                          ),
+                  child: LbmAsync<Person>(
+                    author,
+                    skeleton: const LbmSkeleton(width: 110, height: 11),
+                    errorBuilder: (_, _) => const SizedBox.shrink(),
+                    data: (person) => Text.rich(
+                      TextSpan(
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: c.ink2,
                         ),
-                      ],
+                        children: [
+                          TextSpan(text: '${person.name} '),
+                          TextSpan(
+                            text: message.time,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontFeatures: kTabularFigures,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

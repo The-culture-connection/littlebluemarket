@@ -1,21 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/fixtures/fixture_data.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../models/models.dart';
+import '../../state/providers.dart';
+import '../../widgets/async.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
+import '../../widgets/skeleton.dart';
 
 /// The list of user-created forums, revealed by pulling the chatroom down.
 /// Anyone can start one.
-class ForumsScreen extends StatelessWidget {
+class ForumsScreen extends ConsumerWidget {
   const ForumsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
+    final forums = ref.watch(forumsProvider);
 
     return LbmScreen(
       appBar: LbmAppBar(
@@ -46,11 +51,25 @@ class ForumsScreen extends StatelessWidget {
               style: LbmText.xtiny.copyWith(color: c.ink2),
             ),
           ),
-          for (final forum in Fx.forums)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-              child: _ForumCard(forum: forum),
+          LbmAsync<List<Forum>>(
+            forums,
+            skeleton: const ListRowSkeleton(rows: 3),
+            onRetry: () => ref.invalidate(forumsProvider),
+            isEmpty: (forums) => forums.isEmpty,
+            empty: const LbmEmpty(
+              title: 'No forums yet',
+              body: 'Start the first one.',
             ),
+            data: (forums) => Column(
+              children: [
+                for (final forum in forums)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                    child: _ForumCard(forum: forum),
+                  ),
+              ],
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 26),
             child: PillButton(
