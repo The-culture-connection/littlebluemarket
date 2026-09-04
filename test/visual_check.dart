@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/data/fixtures/fixture_data.dart';
 import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/router/app_router.dart';
+import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 import 'package:little_blue_market/screens/onboarding/welcome_screen.dart';
 
@@ -105,7 +106,7 @@ void main() {
       tester.platformDispatcher.clearPlatformBrightnessTestValue();
     });
 
-    final container = ProviderContainer();
+    final container = ProviderContainer(retry: lbmRetry);
     addTearDown(container.dispose);
     container.read(sessionProvider.notifier).signIn();
 

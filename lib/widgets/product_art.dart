@@ -225,3 +225,95 @@ class _PuffPainter extends CustomPainter {
   @override
   bool shouldRepaint(_PuffPainter old) => old.color != color;
 }
+
+/// A swipeable gallery of a listing's photographs.
+///
+/// Falls back to the single [ProductArt] when there is one image or none, so a
+/// service listing with only its illustrated tile does not grow a page
+/// indicator it cannot use.
+class ProductGallery extends StatefulWidget {
+  const ProductGallery({super.key, required this.product, this.borderRadius});
+
+  final Product product;
+  final BorderRadius? borderRadius;
+
+  @override
+  State<ProductGallery> createState() => _ProductGalleryState();
+}
+
+class _ProductGalleryState extends State<ProductGallery> {
+  final _controller = PageController();
+  int _page = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final images = widget.product.imageUrls;
+    if (images.length < 2) {
+      return ProductArt(widget.product, borderRadius: widget.borderRadius);
+    }
+
+    final radius = widget.borderRadius ?? LbmRadius.imageR;
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: radius,
+          child: AspectRatio(
+            aspectRatio: 4 / 3,
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: images.length,
+              onPageChanged: (page) => setState(() => _page = page),
+              itemBuilder: (context, i) => ColoredBox(
+                color: context.c.skyWash,
+                child: ProductPhoto(
+                  url: images[i],
+                  fallback: ProductArt(widget.product),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _Dots(count: images.length, active: _page),
+      ],
+    );
+  }
+}
+
+class _Dots extends StatelessWidget {
+  const _Dots({required this.count, required this.active});
+
+  final int count;
+  final int active;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Semantics(
+      label: 'Photo ${active + 1} of $count',
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (var i = 0; i < count; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: Container(
+                width: i == active ? 18 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: i == active ? c.accent : c.ink3.withValues(alpha: 0.4),
+                  borderRadius: LbmRadius.pillR,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

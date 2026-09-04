@@ -69,9 +69,11 @@ abstract interface class SearchRepository {
 abstract interface class CommerceRepository {
   Stream<Cart> watchCart();
 
+  /// [variantId] null means the default (first) variant, which is what the
+  /// feed's add-to-cart has: a product, and no variant picker in sight.
   Future<Cart> addLine({
     required String productId,
-    required String variantId,
+    String? variantId,
     int quantity = 1,
   });
 

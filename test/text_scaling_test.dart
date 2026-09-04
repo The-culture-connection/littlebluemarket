@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/router/app_router.dart';
+import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 
 /// The app clamps text scaling to 1.35, so anything that survives 2.0 here has
@@ -14,8 +15,8 @@ const _routes = <String, String>{
   'marketplace feed': '/market',
   'search': '/market/search',
   'search results': '/market/results?q=%23PlasticFree',
-  'post detail': '/market/post/p1',
-  'post detail (service)': '/market/post/p6',
+  'post detail': '/market/post/post_p3',
+  'post detail (review)': '/market/post/post_review_1',
   'product details': '/market/product/p3',
   'product details (service)': '/market/product/p6',
   'all reviews': '/market/reviews/p1',
@@ -43,7 +44,7 @@ void main() {
         tester.platformDispatcher.clearTextScaleFactorTestValue();
       });
 
-      final container = ProviderContainer();
+      final container = ProviderContainer(retry: lbmRetry);
       addTearDown(container.dispose);
       container.read(sessionProvider.notifier).signIn();
 

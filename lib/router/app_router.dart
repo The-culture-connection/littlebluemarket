@@ -36,7 +36,7 @@ List<RouteBase> _sharedRoutes() => [
   GoRoute(
     path: 'post/:id',
     builder: (context, state) =>
-        PostScreen(productId: state.pathParameters['id']!),
+        PostScreen(postId: state.pathParameters['id']!),
   ),
   GoRoute(
     path: 'product/:id',

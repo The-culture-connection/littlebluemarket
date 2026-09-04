@@ -147,14 +147,26 @@ bool requireProfile(BuildContext context, WidgetRef ref, VoidCallback action) {
 // ------------------------------------------------------------------- the buy
 
 /// The buy sheet. Confirm quantity, address and total.
-Future<void> showBuySheet(BuildContext context, Product product) {
-  return _show(context, (sheetContext) => _BuySheet(product: product));
+///
+/// [variant] is what the person actually selected. Without it the sheet prices
+/// the product, which is a different number the moment a listing has more than
+/// one option -- the prototype's sheet did exactly that.
+Future<void> showBuySheet(
+  BuildContext context,
+  Product product, {
+  Variant? variant,
+}) {
+  return _show(
+    context,
+    (sheetContext) => _BuySheet(product: product, variant: variant),
+  );
 }
 
 class _BuySheet extends StatefulWidget {
-  const _BuySheet({required this.product});
+  const _BuySheet({required this.product, this.variant});
 
   final Product product;
+  final Variant? variant;
 
   @override
   State<_BuySheet> createState() => _BuySheetState();
@@ -168,7 +180,8 @@ class _BuySheetState extends State<_BuySheet> {
     final c = context.c;
     final p = widget.product;
     final seller = Fx.person(p.sellerId);
-    final total = p.priceCents * _quantity + Fx.shippingCents;
+    final unitPriceCents = widget.variant?.priceCents ?? p.priceCents;
+    final total = unitPriceCents * _quantity + Fx.shippingCents;
 
     return _Sheet(
       children: [
@@ -215,7 +228,7 @@ class _BuySheetState extends State<_BuySheet> {
             ),
             const SizedBox(width: 10),
             Text(
-              p.price,
+              Fmt.money(unitPriceCents),
               style: LbmText.display.copyWith(fontSize: 20, color: c.ink),
             ),
           ],

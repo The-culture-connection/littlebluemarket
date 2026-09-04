@@ -1,133 +1,388 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/fixtures/fixture_data.dart';
+import '../data/repositories/repositories.dart';
 import '../models/models.dart';
 import '../router/nav.dart';
+import '../state/providers.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
+import 'async.dart';
 import 'primitives.dart';
 import 'product_art.dart';
 import 'sheets.dart';
+import 'skeleton.dart';
 
-/// A listing in the feed.
+/// An entry in the feed.
+///
+/// Switches over the sealed [Post], so the three kinds share the header, the
+/// action bar and the tag row and differ only in their body. Adding a fourth
+/// kind is a compile error here rather than a silently blank card.
 class PostCard extends ConsumerWidget {
-  const PostCard(this.product, {super.key});
+  const PostCard(this.post, {super.key});
 
-  final Product product;
+  final Post post;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.c;
-    final seller = Fx.person(product.sellerId);
+    final author = ref.watch(personProvider(post.authorId));
 
     return LbmCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _PostHead(product: product, seller: seller),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: GestureDetector(
-              onTap: () => context.goToPost(product.id),
-              child: ProductArt(product, borderRadius: LbmRadius.imageR),
-            ),
+          LbmAsync<Person>(
+            author,
+            skeleton: const _HeadSkeleton(),
+            errorBuilder: (_, _) => const _HeadSkeleton(),
+            data: (person) => _PostHead(post: post, author: person),
           ),
-          PostActionBar(onComment: () => context.goToPost(product.id)),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _LikeLine(product: product),
-                const SizedBox(height: 8),
-                Text.rich(
-                  TextSpan(
-                    style: TextStyle(fontSize: 14, height: 1.5, color: c.ink),
-                    children: [
-                      TextSpan(
-                        text: seller.handle,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      TextSpan(
-                        text:
-                            ' ${product.title} — ${product.shortDescription}.',
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TagChips(
-                  product.tags,
-                  onTap: (tag) => context.goToResults(tag),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        product.price,
-                        style: LbmText.display.copyWith(
-                          fontSize: 22,
-                          color: c.ink,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: _RatingLine(product: product),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                PillButton(
-                  'Buy',
-                  small: true,
-                  expand: false,
-                  onPressed: () => requireProfile(
-                    context,
-                    ref,
-                    () => showBuySheet(context, product),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          switch (post) {
+            final ListingPost listing => _ListingBody(post: listing),
+            final ReviewPost review => _ReviewBody(post: review),
+            final ShoutoutPost shoutout => _ShoutoutBody(post: shoutout),
+          },
         ],
       ),
     );
   }
 }
 
-class _PostHead extends StatelessWidget {
-  const _PostHead({required this.product, required this.seller});
+/// Like, comment, and add-to-cart, shared by the feed card and the post screen.
+///
+/// One widget rather than two look-alikes: the row appeared verbatim in both
+/// places, and the copies had already drifted apart in their callbacks.
+class PostActionBar extends StatelessWidget {
+  const PostActionBar({
+    super.key,
+    this.liked = false,
+    this.onLike,
+    this.onComment,
+    this.onAddToCart,
+  });
 
-  final Product product;
-  final Person seller;
+  final bool liked;
+  final VoidCallback? onLike;
+  final VoidCallback? onComment;
+  final VoidCallback? onAddToCart;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 11, 16, 4),
+      child: Row(
+        children: [
+          _ActionIcon(
+            icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            label: liked ? 'Unlike' : 'Like',
+            tint: liked ? context.c.accentDeep : null,
+            onTap: onLike,
+          ),
+          const SizedBox(width: 16),
+          _ActionIcon(
+            icon: Icons.chat_bubble_outline_rounded,
+            label: 'Comments',
+            onTap: onComment,
+          ),
+          if (onAddToCart != null) ...[
+            const Spacer(),
+            _ActionIcon(
+              icon: Icons.add_shopping_cart_rounded,
+              label: 'Add to cart',
+              onTap: onAddToCart,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Adds a listing to the cart and says so, or says why it could not.
+Future<void> addToCart(
+  BuildContext context,
+  WidgetRef ref,
+  String productId, {
+  String? variantId,
+}) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    await ref
+        .read(commerceRepositoryProvider)
+        .addLine(productId: productId, variantId: variantId);
+    messenger.showSnackBar(const SnackBar(content: Text('Added to your cart')));
+  } on RepositoryException catch (error) {
+    messenger.showSnackBar(SnackBar(content: Text(describeError(error).body)));
+  }
+}
+
+class _ListingBody extends ConsumerWidget {
+  const _ListingBody({required this.post});
+
+  final ListingPost post;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final product = post.product;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: GestureDetector(
+            onTap: () => context.goToProduct(product.id),
+            child: ProductArt(product, borderRadius: LbmRadius.imageR),
+          ),
+        ),
+        _Actions(post: post, productId: product.id),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _CountLine(post: post),
+              const SizedBox(height: 8),
+              Text(
+                post.body,
+                style: TextStyle(fontSize: 14, height: 1.5, color: c.ink),
+              ),
+              const SizedBox(height: 8),
+              TagChips(post.tags, onTap: (tag) => context.goToResults(tag)),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      product.price,
+                      style: LbmText.display.copyWith(
+                        fontSize: 22,
+                        color: c.ink,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(child: _RatingLine(product: product)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              PillButton(
+                'Buy',
+                small: true,
+                expand: false,
+                onPressed: () => requireProfile(
+                  context,
+                  ref,
+                  () => showBuySheet(context, product),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A buyer's review, in the feed.
+class _ReviewBody extends ConsumerWidget {
+  const _ReviewBody({required this.post});
+
+  final ReviewPost post;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final product = ref.watch(productProvider(post.productId));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stars(post.rating.toDouble(), size: 13),
+              const SizedBox(height: 8),
+              Text(
+                post.text,
+                style: TextStyle(fontSize: 14, height: 1.55, color: c.ink),
+              ),
+            ],
+          ),
+        ),
+        // The listing being reviewed, so a review is a way into the product
+        // rather than a dead end.
+        LbmAsync<Product>(
+          product,
+          skeleton: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14),
+            child: LbmSkeleton(height: 62, radius: LbmRadius.image),
+          ),
+          errorBuilder: (_, _) => const SizedBox.shrink(),
+          data: (product) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: LbmCard(
+              color: c.skyWash,
+              padding: EdgeInsets.zero,
+              onTap: () => context.goToProduct(product.id),
+              child: ListRow(
+                leading: SizedBox(
+                  width: 44,
+                  child: ProductArt(
+                    product,
+                    square: true,
+                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+                  ),
+                ),
+                title: Text(product.title),
+                subtitle: Text(product.price),
+                trailing: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 22,
+                  color: c.ink3,
+                ),
+              ),
+            ),
+          ),
+        ),
+        _Actions(post: post, productId: post.productId),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _CountLine(post: post),
+              if (post.tags.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                TagChips(post.tags, onTap: (tag) => context.goToResults(tag)),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A shoutout: someone naming a seller they want other people to find.
+class _ShoutoutBody extends ConsumerWidget {
+  const _ShoutoutBody({required this.post});
+
+  final ShoutoutPost post;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
+          child: HashtagText(
+            post.text,
+            style: TextStyle(fontSize: 14.5, height: 1.55, color: c.ink),
+            onTagTap: (tag) => context.goToResults(tag),
+          ),
+        ),
+        if (post.aboutSellerId != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: PillButton(
+                'Visit the storefront',
+                style: PillStyle.quiet,
+                small: true,
+                expand: false,
+                onPressed: () => context.goToSeller(post.aboutSellerId!),
+              ),
+            ),
+          ),
+        _Actions(post: post),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _CountLine(post: post),
+              if (post.tags.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                TagChips(post.tags, onTap: (tag) => context.goToResults(tag)),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The action bar, wired to the repository.
+class _Actions extends ConsumerWidget {
+  const _Actions({required this.post, this.productId});
+
+  final Post post;
+  final String? productId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final id = productId;
+    return PostActionBar(
+      liked: post.likedByMe,
+      onLike: () => requireProfile(context, ref, () {
+        // The state wanted, not a toggle, so a double tap cannot double count.
+        ref.read(socialRepositoryProvider).setLike(post.id, !post.likedByMe);
+      }),
+      onComment: () => context.goToPost(post.id),
+      onAddToCart: id == null
+          ? null
+          : () => requireProfile(
+              context,
+              ref,
+              () => addToCart(context, ref, id),
+            ),
+    );
+  }
+}
+
+class _PostHead extends StatelessWidget {
+  const _PostHead({required this.post, required this.author});
+
+  final Post post;
+  final Person author;
 
   @override
   Widget build(BuildContext context) {
     final c = context.c;
+    final isListing = post is ListingPost;
+    final where = post is ListingPost
+        ? (post as ListingPost).product.locationLabel()
+        : post.age;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       child: Row(
         children: [
-          Avatar(seller, onTap: () => context.goToSeller(seller.id)),
+          Avatar(author, onTap: () => context.goToSeller(author.id)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  seller.name,
+                  author.name,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
@@ -137,11 +392,17 @@ class _PostHead extends StatelessWidget {
                 ),
                 Row(
                   children: [
-                    Icon(Icons.place_outlined, size: 13, color: c.ink3),
+                    Icon(
+                      isListing
+                          ? Icons.place_outlined
+                          : Icons.schedule_rounded,
+                      size: 13,
+                      color: c.ink3,
+                    ),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
-                        product.locationLabel(),
+                        where,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -168,44 +429,24 @@ class _PostHead extends StatelessWidget {
   }
 }
 
-/// Like, comment, and add-to-cart, shared by the feed card and the post screen.
-///
-/// One widget rather than two look-alikes: the row appeared verbatim in both
-/// places, and the copies had already drifted apart in their callbacks.
-class PostActionBar extends StatelessWidget {
-  const PostActionBar({
-    super.key,
-    this.onLike,
-    this.onComment,
-    this.onAddToCart,
-  });
-
-  final VoidCallback? onLike;
-  final VoidCallback? onComment;
-  final VoidCallback? onAddToCart;
+class _HeadSkeleton extends StatelessWidget {
+  const _HeadSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 11, 16, 4),
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(14, 12, 14, 10),
       child: Row(
         children: [
-          _ActionIcon(
-            icon: Icons.favorite_border_rounded,
-            label: 'Like',
-            onTap: onLike,
-          ),
-          const SizedBox(width: 16),
-          _ActionIcon(
-            icon: Icons.chat_bubble_outline_rounded,
-            label: 'Comments',
-            onTap: onComment,
-          ),
-          const Spacer(),
-          _ActionIcon(
-            icon: Icons.add_shopping_cart_rounded,
-            label: 'Add to cart',
-            onTap: onAddToCart,
+          LbmSkeleton(width: 38, height: 38, radius: 19),
+          SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              LbmSkeleton(width: 120, height: 12),
+              SizedBox(height: 6),
+              LbmSkeleton(width: 80, height: 10),
+            ],
           ),
         ],
       ),
@@ -214,11 +455,17 @@ class PostActionBar extends StatelessWidget {
 }
 
 class _ActionIcon extends StatelessWidget {
-  const _ActionIcon({required this.icon, required this.label, this.onTap});
+  const _ActionIcon({
+    required this.icon,
+    required this.label,
+    this.onTap,
+    this.tint,
+  });
 
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
+  final Color? tint;
 
   @override
   Widget build(BuildContext context) {
@@ -228,16 +475,16 @@ class _ActionIcon extends StatelessWidget {
       child: InkResponse(
         onTap: onTap ?? () {},
         radius: 22,
-        child: Icon(icon, size: 23, color: context.c.ink),
+        child: Icon(icon, size: 23, color: tint ?? context.c.ink),
       ),
     );
   }
 }
 
-class _LikeLine extends StatelessWidget {
-  const _LikeLine({required this.product});
+class _CountLine extends StatelessWidget {
+  const _CountLine({required this.post});
 
-  final Product product;
+  final Post post;
 
   @override
   Widget build(BuildContext context) {
@@ -247,10 +494,10 @@ class _LikeLine extends StatelessWidget {
         style: LbmText.tiny.copyWith(color: c.ink2),
         children: [
           TextSpan(
-            text: '${product.likes} likes',
+            text: '${Fmt.count(post.likeCount)} likes',
             style: TextStyle(fontWeight: FontWeight.w700, color: c.ink),
           ),
-          TextSpan(text: ' · ${product.commentCount} comments'),
+          TextSpan(text: ' · ${Fmt.count(post.commentCount)} comments'),
         ],
       ),
     );
@@ -289,25 +536,31 @@ class _RatingLine extends StatelessWidget {
 }
 
 /// One review, as it appears on a post and on the reviews screen.
-class ReviewRow extends StatelessWidget {
+class ReviewRow extends ConsumerWidget {
   const ReviewRow(this.review, {super.key});
 
   final Review review;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
-    final author = Fx.person(review.authorId);
+    final author = ref.watch(personProvider(review.authorId));
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Avatar(
+          LbmAsync<Person>(
             author,
-            size: AvatarSize.sm,
-            onTap: () => context.goToSeller(author.id),
+            skeleton: const LbmSkeleton(width: 34, height: 34, radius: 17),
+            errorBuilder: (_, _) =>
+                const LbmSkeleton(width: 34, height: 34, radius: 17),
+            data: (person) => Avatar(
+              person,
+              size: AvatarSize.sm,
+              onTap: () => context.goToSeller(person.id),
+            ),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -317,13 +570,18 @@ class ReviewRow extends StatelessWidget {
                 Row(
                   children: [
                     Flexible(
-                      child: Text(
-                        author.name,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color: c.ink,
+                      child: LbmAsync<Person>(
+                        author,
+                        skeleton: const LbmSkeleton(width: 90, height: 12),
+                        errorBuilder: (_, _) => const SizedBox.shrink(),
+                        data: (person) => Text(
+                          person.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: c.ink,
+                          ),
                         ),
                       ),
                     ),

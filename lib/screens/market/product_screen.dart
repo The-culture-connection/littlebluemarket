@@ -1,55 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/fixtures/fixture_data.dart';
 import '../../models/models.dart';
 import '../../router/nav.dart';
+import '../../state/providers.dart';
 import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/async.dart';
+import '../../widgets/post_card.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/sheets.dart';
+import '../../widgets/skeleton.dart';
 
 /// The full record behind a post: options and stock, the spec table, the
 /// rating breakdown, shipping and pickup, returns, and the seller strip.
-class ProductScreen extends ConsumerStatefulWidget {
+class ProductScreen extends ConsumerWidget {
   const ProductScreen({super.key, required this.productId});
 
   final String productId;
 
   @override
-  ConsumerState<ProductScreen> createState() => _ProductScreenState();
-}
-
-class _ProductScreenState extends ConsumerState<ProductScreen> {
-  int? _selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    final product = Fx.product(widget.productId);
-    final seller = Fx.person(product.sellerId);
-    final spec = Fx.spec(widget.productId);
-    final isGuest = ref.watch(isGuestProvider);
-
-    final selected =
-        _selected ??
-        0; // the first variant is the default until one is picked
+  Widget build(BuildContext context, WidgetRef ref) {
+    final detail = ref.watch(productDetailProvider(productId));
 
     return LbmScreen(
-      appBar: LbmAppBar(
-        title: 'Product details',
-        actions: [
-          CircleIconButton(
-            icon: Icons.send_outlined,
-            tooltip: 'Share',
-            onPressed: () {},
-          ),
-        ],
+      appBar: const LbmAppBar(title: 'Product details'),
+      child: LbmAsync<ProductDetail>(
+        detail,
+        skeleton: const ProductDetailSkeleton(),
+        onRetry: () => ref.invalidate(productDetailProvider(productId)),
+        data: (detail) =>
+            _Body(productId: productId, detail: detail),
       ),
-      child: ListView(
+    );
+  }
+}
+
+class _Body extends ConsumerWidget {
+  const _Body({required this.productId, required this.detail});
+
+  final String productId;
+  final ProductDetail detail;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final product = detail.product;
+    final seller = detail.seller;
+    final spec = detail.spec;
+    final isGuest = ref.watch(isGuestProvider);
+    final selected = ref
+        .watch(selectedVariantProvider(productId))
+        .clamp(0, spec.variants.isEmpty ? 0 : spec.variants.length - 1);
+    // Carried into both the cart and the buy sheet. The prototype kept the
+    // selection in the screen's own state, so the sheet never saw it and
+    // charged the product's price rather than the variant's.
+    final variant = spec.variants.isEmpty ? null : spec.variants[selected];
+
+    return ListView(
         padding: EdgeInsets.zero,
         children: [
           LbmCard(
@@ -59,7 +70,10 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                  child: ProductArt(product, borderRadius: LbmRadius.imageR),
+                  child: ProductGallery(
+                    product: product,
+                    borderRadius: LbmRadius.imageR,
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -114,7 +128,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                           InlineLink(
                             '${product.ratingCount} reviews',
                             fontSize: 11.5,
-                            onTap: () => context.goToReviews(widget.productId),
+                            onTap: () => context.goToReviews(productId),
                           ),
                         ],
                       ),
@@ -149,7 +163,9 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                   _VariantRow(
                     variant: spec.variants[i],
                     selected: i == selected,
-                    onTap: () => setState(() => _selected = i),
+                    onTap: () => ref
+                        .read(selectedVariantsProvider.notifier)
+                        .select(productId, i),
                   ),
               ],
             ),
@@ -166,7 +182,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
           ),
 
           const SectionHead('What buyers rated it'),
-          _RatingBreakdown(product: product, rating: Fx.rating(widget.productId)),
+          _RatingBreakdown(product: product, rating: detail.rating),
 
           const SectionHead('Shipping & pickup'),
           LbmCard(
@@ -283,14 +299,29 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
+                CircleIconButton(
+                  icon: Icons.add_shopping_cart_rounded,
+                  tooltip: 'Add to cart',
+                  onPressed: () => requireProfile(
+                    context,
+                    ref,
+                    () => addToCart(
+                      context,
+                      ref,
+                      productId,
+                      variantId: variant?.name,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: PillButton(
                     isGuest ? 'Buy · sign up' : 'Buy',
                     onPressed: () => requireProfile(
                       context,
                       ref,
-                      () => showBuySheet(context, product),
+                      () => showBuySheet(context, product, variant: variant),
                     ),
                   ),
                 ),
@@ -298,7 +329,6 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
             ),
           ),
         ],
-      ),
     );
   }
 }

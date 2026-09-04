@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/router/app_router.dart';
+import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 
 /// Every screen in the app, by route.
@@ -16,8 +17,10 @@ const _routes = <String, String>{
   'search': '/market/search',
   'search results': '/market/results?q=%23PlasticFree',
   'search results (keyword)': '/market/results?q=lip%20balm',
-  'post detail': '/market/post/p1',
-  'post detail (service)': '/market/post/p6',
+  'search results (empty)': '/market/results?q=zzzzzz',
+  'post detail': '/market/post/post_p3',
+  'post detail (review)': '/market/post/post_review_1',
+  'post detail (shoutout)': '/market/post/post_shoutout_1',
   'product details': '/market/product/p3',
   'product details (service)': '/market/product/p6',
   'all reviews': '/market/reviews/p1',
@@ -50,7 +53,7 @@ Future<void> _pumpAt(
     tester.platformDispatcher.clearPlatformBrightnessTestValue();
   });
 
-  final container = ProviderContainer();
+  final container = ProviderContainer(retry: lbmRetry);
   addTearDown(container.dispose);
   container.read(sessionProvider.notifier).signIn();
 

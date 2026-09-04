@@ -227,34 +227,43 @@ class FixtureCommerceRepository implements CommerceRepository {
   @override
   Future<Cart> addLine({
     required String productId,
-    required String variantId,
+    String? variantId,
     int quantity = 1,
   }) async {
     final product = Fx.products[productId];
     if (product == null) throw NotFoundException('product', productId);
 
-    final variant = Fx.specs[productId]?.variants.firstWhere(
-      (v) => v.name == variantId,
-      orElse: () => Variant(product.title, product.priceCents),
-    );
-    if (variant != null && !variant.availableForSale) {
+    final variants = Fx.specs[productId]?.variants ?? const <Variant>[];
+    // A null variant means the default, which is what the feed's add-to-cart
+    // has to work with — there is no variant picker on a feed card.
+    final variant = variantId == null
+        ? (variants.isEmpty
+              ? Variant(product.title, product.priceCents)
+              : variants.first)
+        : variants.firstWhere(
+            (v) => v.name == variantId,
+            orElse: () => Variant(product.title, product.priceCents),
+          );
+
+    if (!variant.availableForSale) {
       throw ValidationException('${variant.name} is sold out');
     }
 
+    final resolvedVariantId = variant.name;
     final cart = _store.cart.value;
-    final existing = cart.lineFor(variantId);
+    final existing = cart.lineFor(resolvedVariantId);
     final lines = [...cart.lines];
     if (existing == null) {
       lines.add(
         CartLine(
           id: _store.newId('line_'),
           productId: productId,
-          variantId: variantId,
+          variantId: resolvedVariantId,
           title: product.title,
-          variantTitle: variant?.name ?? product.title,
+          variantTitle: variant.name,
           // The variant's price, not the product's — the prototype's buy sheet
           // ignored the selected variant and would have shipped wrong totals.
-          unitPriceCents: variant?.priceCents ?? product.priceCents,
+          unitPriceCents: variant.priceCents,
           quantity: quantity,
           sellerId: product.sellerId,
           imageUrl: product.imageUrls.isEmpty ? null : product.imageUrls.first,

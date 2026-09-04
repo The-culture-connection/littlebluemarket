@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/fixtures/fixture_data.dart';
 import 'router/app_router.dart';
+import 'state/providers.dart';
 import 'state/session.dart';
 import 'theme/app_theme.dart';
 
@@ -27,7 +28,12 @@ Future<void> main() async {
   ).timeout(const Duration(seconds: 5), onTimeout: () {});
   binding.allowFirstFrame();
 
-  runApp(const ProviderScope(child: LittleBlueMarketApp()));
+  runApp(
+    ProviderScope(
+      retry: lbmRetry,
+      child: const LittleBlueMarketApp(),
+    ),
+  );
 }
 
 /// Resolves an asset image and completes once its first frame is available.

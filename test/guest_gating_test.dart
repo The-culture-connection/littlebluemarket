@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/data/fixtures/fixture_data.dart';
 import 'package:little_blue_market/main.dart';
+import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 
 /// Boots the real app straight into the market, so the tab bar and the gate
@@ -14,7 +15,7 @@ Future<void> _pumpApp(WidgetTester tester, {required bool guest}) async {
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
-  final container = ProviderContainer();
+  final container = ProviderContainer(retry: lbmRetry);
   addTearDown(container.dispose);
 
   await tester.pumpWidget(
