@@ -9,6 +9,7 @@ import {
   SHOPIFY_CLIENT_SECRET,
   SHOPIFY_STOREFRONT_PRIVATE_TOKEN,
   SHOPIFY_WEBHOOK_SECRET,
+  SHIPTURTLE_WEBHOOK_SECRET,
 } from './config.ts';
 import { mirrorProduct, removeMirroredProduct } from './catalog.ts';
 import {
@@ -23,6 +24,10 @@ import { normalizeOrder, recordFulfillment, recordPaidOrder } from './orders.ts'
 import { addTracking } from './fulfillment.ts';
 import { linkStoreAccounts } from './linking.ts';
 import { verifyShopifyHmac, webhookHmacHeader, webhookTopic } from './webhooks.ts';
+import {
+  handleShipTurtleWebhook,
+  verifyShipTurtleSignature,
+} from './shipturtle.ts';
 
 initializeApp();
 
@@ -248,5 +253,44 @@ export const onPostWritten = require('firebase-functions/v2/firestore').onDocume
       );
     }
     await batch.commit();
+  },
+);
+
+/**
+ * ShipTurtle's fulfilment webhook.
+ *
+ * A vendor who ships from their own ShipTurtle dashboard never touches this
+ * app, so this is how the buyer's Receiving tab learns their parcel moved.
+ */
+export const shipturtleWebhook = onRequest(
+  { secrets: [SHIPTURTLE_WEBHOOK_SECRET] },
+  async (request, response) => {
+    const raw = request.rawBody;
+    const signature = request.get('x-shipturtle-signature');
+
+    let secret: string | undefined;
+    try {
+      secret = SHIPTURTLE_WEBHOOK_SECRET.value();
+    } catch {
+      secret = undefined;
+    }
+
+    if (!verifyShipTurtleSignature(raw, signature, secret)) {
+      // Same reasoning as the Shopify endpoint: a public URL that writes to
+      // order documents cannot take an unverified request.
+      logger.warn('Rejected a ShipTurtle webhook with a bad signature');
+      response.status(401).send('bad signature');
+      return;
+    }
+
+    try {
+      const payload = JSON.parse(raw.toString('utf8')) as Record<string, any>;
+      const outcome = await handleShipTurtleWebhook(payload);
+      logger.info('Handled a ShipTurtle webhook', { outcome });
+      response.status(200).send('ok');
+    } catch (error) {
+      logger.error('A ShipTurtle webhook handler threw', { error });
+      response.status(500).send('retry');
+    }
   },
 );

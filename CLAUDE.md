@@ -95,7 +95,7 @@ zero Firebase dependency until PR 11. Do not start Track B early.
 - [ ] **PR 11** — Firebase bootstrap.
 - [x] **PR 12** — Live social/profile/messaging + emulator seed script.
 - [x] **PR 13** — Shopify proxy, catalog mirror, order attribution. **← Milestone 1 ends here.**
-- [ ] **PR 14** — ShipTurtle fulfilment.
+- [x] **PR 14** — ShipTurtle fulfilment.
 - [ ] **PR 15** — Cleanup, rules hardening, offline persistence.
 
 **Do not skip ahead.** Each PR assumes the previous one's seam exists.

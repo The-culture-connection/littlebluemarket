@@ -67,3 +67,8 @@ export const ALL_SECRETS = [
   SHOPIFY_WEBHOOK_SECRET,
   SHIPTURTLE_API_KEY,
 ];
+
+/** Signs ShipTurtle's webhooks. Shape to be confirmed against their docs. */
+export const SHIPTURTLE_WEBHOOK_SECRET = defineSecret(
+  'SHIPTURTLE_WEBHOOK_SECRET',
+);

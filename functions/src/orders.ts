@@ -1,7 +1,7 @@
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 
-import { resolveSellerUid } from './vendors.ts';
+import { resolveSellerUid, type VendorHints } from './vendors.ts';
 
 /**
  * The order pipeline.
@@ -81,6 +81,10 @@ export function attribute(
  */
 export async function normalizeOrder(
   payload: Record<string, any>,
+  // Injectable so this can be tested against real payloads without a network
+  // or an emulator. This is the function whose bugs corrupt money data, so it
+  // must be testable in isolation.
+  resolve: (hints: VendorHints) => Promise<string> = resolveSellerUid,
 ): Promise<NormalizedOrder> {
   const noteAttributes = payload.note_attributes as
     | Array<{ name?: string; value?: string }>
@@ -90,7 +94,7 @@ export async function normalizeOrder(
   for (const item of (payload.line_items ?? []) as Array<Record<string, any>>) {
     // Per-line, because a multi-vendor order credits each seller only for
     // their own lines.
-    const sellerUid = await resolveSellerUid({
+    const sellerUid = await resolve({
       vendor: item.vendor,
       productId: item.product_id ? String(item.product_id) : undefined,
       lineAttribute: attribute(item.properties, 'app_seller_uid'),
