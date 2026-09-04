@@ -11,8 +11,8 @@ import 'primitives.dart';
 import 'product_art.dart';
 
 /// The shared bottom-sheet body: the grip, the soft top radius, and padding.
-class _Sheet extends StatelessWidget {
-  const _Sheet({required this.children});
+class LbmSheet extends StatelessWidget {
+  const LbmSheet({super.key, required this.children});
 
   final List<Widget> children;
 
@@ -53,7 +53,8 @@ class _Sheet extends StatelessWidget {
   }
 }
 
-Future<T?> _show<T>(BuildContext context, WidgetBuilder builder) {
+/// Presents [builder] as the app's bottom sheet, keyboard-aware.
+Future<T?> showLbmSheet<T>(BuildContext context, WidgetBuilder builder) {
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
@@ -74,9 +75,9 @@ Future<T?> _show<T>(BuildContext context, WidgetBuilder builder) {
 
 /// The sheet a guest gets when they reach for something that needs a profile.
 Future<void> showGateSheet(BuildContext context) {
-  return _show(context, (sheetContext) {
+  return showLbmSheet(context, (sheetContext) {
     final c = sheetContext.c;
-    return _Sheet(
+    return LbmSheet(
       children: [
         Column(
           children: [
@@ -156,7 +157,7 @@ Future<void> showBuySheet(
   Product product, {
   Variant? variant,
 }) {
-  return _show(
+  return showLbmSheet(
     context,
     (sheetContext) => _BuySheet(product: product, variant: variant),
   );
@@ -183,7 +184,7 @@ class _BuySheetState extends State<_BuySheet> {
     final unitPriceCents = widget.variant?.priceCents ?? p.priceCents;
     final total = unitPriceCents * _quantity + Fx.shippingCents;
 
-    return _Sheet(
+    return LbmSheet(
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,52 +381,6 @@ class _StepperButton extends StatelessWidget {
       ),
     );
   }
-}
-
-// ------------------------------------------------------------- the new post
-
-/// The sheet behind the + on your own profile.
-Future<void> showNewPostSheet(BuildContext context) {
-  const options = [
-    ('A good', 'Something physical you make or resell'),
-    ('A service', 'Time, skill, or a booking'),
-    ('A review', 'Attached to something you bought'),
-  ];
-
-  return _show(context, (sheetContext) {
-    final c = sheetContext.c;
-    return _Sheet(
-      children: [
-        Text(
-          'What are you posting?',
-          style: LbmText.display.copyWith(fontSize: 21, color: c.ink),
-        ),
-        const SizedBox(height: 14),
-        for (final (title, subtitle) in options)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: ListRow(
-              background: c.skyWash,
-              borderRadius: const BorderRadius.all(Radius.circular(18)),
-              title: Text(title),
-              subtitle: Text(subtitle),
-              trailing: Icon(
-                Icons.chevron_right_rounded,
-                color: c.ink3,
-                size: 22,
-              ),
-              onTap: () => Navigator.of(sheetContext).pop(),
-            ),
-          ),
-        const SizedBox(height: 4),
-        Text(
-          'Every post can carry initiative hashtags. Reviews stay attached to '
-          'the product they came from.',
-          style: LbmText.xtiny.copyWith(color: c.ink3, height: 1.55),
-        ),
-      ],
-    );
-  });
 }
 
 /// Runs [action] only if the current user is a seller.

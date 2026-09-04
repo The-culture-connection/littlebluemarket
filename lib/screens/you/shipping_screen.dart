@@ -1,66 +1,77 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/fixtures/fixture_data.dart';
+import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
+import '../../state/providers.dart';
+import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
+import '../../widgets/skeleton.dart';
 
-/// Two segments: packages you sent as a seller, and packages coming to you as
-/// a buyer.
-class ShippingScreen extends StatefulWidget {
+/// Packages, in both directions — plus, for a seller, the tab where an order
+/// becomes a shipment.
+class ShippingScreen extends ConsumerStatefulWidget {
   const ShippingScreen({super.key});
 
   @override
-  State<ShippingScreen> createState() => _ShippingScreenState();
+  ConsumerState<ShippingScreen> createState() => _ShippingScreenState();
 }
 
-class _ShippingScreenState extends State<ShippingScreen> {
+class _ShippingScreenState extends ConsumerState<ShippingScreen> {
   int _tab = 0;
 
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final sending = _tab == 0;
-    final shipments = sending ? Fx.sending : Fx.receiving;
+    final isSeller = ref.watch(isSellerProvider);
+    final receiving = ref.watch(receivingProvider);
+    final sending = ref.watch(sendingProvider);
+
+    // A buyer has nothing to send, so they get one tab rather than an empty one.
+    final labels = isSeller
+        ? const ['Receiving', 'Sending', 'Manage sales']
+        : const ['Receiving'];
+    final tab = _tab.clamp(0, labels.length - 1);
 
     return LbmScreen(
-      appBar: const LbmAppBar(title: 'Shipping'),
+      appBar: const LbmAppBar(title: 'Packages'),
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          SegmentedTabs(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-            labels: [
-              'Sending (${Fx.sending.length})',
-              'Receiving (${Fx.receiving.length})',
-            ],
-            selected: _tab,
-            onChanged: (i) => setState(() => _tab = i),
-          ),
-          for (final shipment in shipments)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-              child: _ShipmentCard(shipment: shipment),
+          if (labels.length > 1)
+            SegmentedTabs(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+              labels: labels,
+              selected: tab,
+              onChanged: (i) => setState(() => _tab = i),
             ),
-          if (sending)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 2, 14, 0),
-              child: PillButton(
-                'Buy a label',
-                icon: Icons.add_rounded,
-                style: PillStyle.ghost,
-                onPressed: () {},
-              ),
+          switch (tab) {
+            0 => _Shipments(
+              shipments: receiving,
+              emptyTitle: 'Nothing on its way',
+              emptyBody: 'What you buy shows up here with its tracking.',
             ),
+            1 => _Shipments(
+              shipments: sending,
+              emptyTitle: 'Nothing to send',
+              emptyBody: 'Orders you need to ship appear here.',
+            ),
+            _ => const _ManageSales(),
+          },
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
             child: Text(
-              'Opened from the ··· on your profile. Sending shows packages you '
-              'shipped as a seller; Receiving shows what’s coming to you as a '
-              'buyer.',
+              isSeller
+                  ? 'Receiving is what is coming to you as a buyer. Sending is '
+                        'what you shipped as a seller. Manage sales is where an '
+                        'order gets its tracking number.'
+                  : 'Everything on its way to you, with the tracking the seller '
+                        'entered.',
               style: LbmText.xtiny.copyWith(color: c.ink2, height: 1.6),
             ),
           ),
@@ -70,15 +81,160 @@ class _ShippingScreenState extends State<ShippingScreen> {
   }
 }
 
-class _ShipmentCard extends StatelessWidget {
+class _Shipments extends StatelessWidget {
+  const _Shipments({
+    required this.shipments,
+    required this.emptyTitle,
+    required this.emptyBody,
+  });
+
+  final AsyncValue<List<Shipment>> shipments;
+  final String emptyTitle;
+  final String emptyBody;
+
+  @override
+  Widget build(BuildContext context) {
+    return LbmAsync<List<Shipment>>(
+      shipments,
+      skeleton: const ListRowSkeleton(rows: 2, withAvatar: false),
+      isEmpty: (shipments) => shipments.isEmpty,
+      empty: LbmEmpty(title: emptyTitle, body: emptyBody),
+      data: (shipments) => Column(
+        children: [
+          for (final shipment in shipments)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              child: _ShipmentCard(shipment: shipment),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Where a seller turns an order into a shipment.
+///
+/// This is the write that reaches the fulfilment provider, so the buyer's
+/// Receiving tab and the courier both learn the same tracking number.
+class _ManageSales extends ConsumerStatefulWidget {
+  const _ManageSales();
+
+  @override
+  ConsumerState<_ManageSales> createState() => _ManageSalesState();
+}
+
+class _ManageSalesState extends ConsumerState<_ManageSales> {
+  final _orderId = TextEditingController();
+  final _tracking = TextEditingController();
+  String _carrier = _carriers.first;
+  bool _saving = false;
+  String? _error;
+
+  static const _carriers = ['USPS', 'UPS', 'FedEx', 'DHL', 'Local pickup'];
+
+  @override
+  void dispose() {
+    _orderId.dispose();
+    _tracking.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(fulfillmentRepositoryProvider).addTracking(
+        orderId: _orderId.text.trim(),
+        trackingNumber: _tracking.text.trim(),
+        carrier: _carrier,
+      );
+      if (!mounted) return;
+      _orderId.clear();
+      _tracking.clear();
+      setState(() => _saving = false);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Tracking added. The buyer can see it.')),
+      );
+    } on RepositoryException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = describeError(error).body;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: LbmCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Mark an order shipped',
+              style: LbmText.display.copyWith(fontSize: 17, color: c.ink),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'The number goes to the courier and to the buyer.',
+              style: LbmText.tiny.copyWith(color: c.ink2),
+            ),
+            const SizedBox(height: 16),
+            LbmField(label: 'Order number', controller: _orderId),
+            const SizedBox(height: 14),
+            LbmField(label: 'Tracking number', controller: _tracking),
+            const SizedBox(height: 14),
+            Text('Courier', style: LbmText.fieldLabel.copyWith(color: c.ink2)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: [
+                for (final carrier in _carriers)
+                  LbmChip(
+                    carrier,
+                    style: carrier == _carrier
+                        ? ChipStyle.on
+                        : ChipStyle.quiet,
+                    onTap: () => setState(() => _carrier = carrier),
+                  ),
+              ],
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: LbmText.tiny.copyWith(color: c.clay)),
+            ],
+            const SizedBox(height: 18),
+            PillButton(
+              _saving ? 'Saving…' : 'Add tracking',
+              onPressed: _saving ? null : _submit,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ShipmentCard extends ConsumerWidget {
   const _ShipmentCard({required this.shipment});
 
   final Shipment shipment;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
-    final product = Fx.product(shipment.productId);
+    final product = ref.watch(productProvider(shipment.productId));
     final delivered = shipment.state.isDelivered;
 
     return LbmCard(
@@ -91,10 +247,16 @@ class _ShipmentCard extends StatelessWidget {
             children: [
               SizedBox(
                 width: 54,
-                child: ProductArt(
+                child: LbmAsync<Product>(
                   product,
-                  square: true,
-                  borderRadius: const BorderRadius.all(Radius.circular(13)),
+                  skeleton: const LbmSkeleton(height: 54, radius: 13),
+                  errorBuilder: (_, _) =>
+                      const LbmSkeleton(height: 54, radius: 13),
+                  data: (product) => ProductArt(
+                    product,
+                    square: true,
+                    borderRadius: const BorderRadius.all(Radius.circular(13)),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -102,13 +264,18 @@ class _ShipmentCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      product.title,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w800,
-                        height: 1.3,
-                        color: c.ink,
+                    LbmAsync<Product>(
+                      product,
+                      skeleton: const LbmSkeleton(width: 140, height: 13),
+                      errorBuilder: (_, _) => const SizedBox.shrink(),
+                      data: (product) => Text(
+                        product.title,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          height: 1.3,
+                          color: c.ink,
+                        ),
                       ),
                     ),
                     Text(
@@ -119,36 +286,37 @@ class _ShipmentCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _StateBadge(state: shipment.state),
+              LbmChip(
+                shipment.state.label,
+                fontSize: 10.5,
+                style: delivered ? ChipStyle.on : ChipStyle.quiet,
+              ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           _TrackBar(step: shipment.step),
           const SizedBox(height: 10),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(
+              Icon(Icons.local_shipping_outlined, size: 14, color: c.ink3),
+              const SizedBox(width: 6),
+              Expanded(
                 child: Text(
                   shipment.tracking,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: LbmText.xtiny.copyWith(
                     color: c.ink2,
-                    // Tracking numbers line up because the figures are tabular,
-                    // not because anything here is monospaced.
                     fontFeatures: kTabularFigures,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Text(
-                shipment.carrierNote,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w800,
-                  color: delivered ? c.sage : c.skyDeep,
-                ),
-              ),
             ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            shipment.carrierNote,
+            style: LbmText.xtiny.copyWith(color: c.ink3),
           ),
         ],
       ),
@@ -156,37 +324,7 @@ class _ShipmentCard extends StatelessWidget {
   }
 }
 
-class _StateBadge extends StatelessWidget {
-  const _StateBadge({required this.state});
-
-  final ShipmentState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    final (Color bg, Color fg) = switch (state) {
-      ShipmentState.delivered => (c.sageMist, c.sage),
-      ShipmentState.labelCreated => (c.accentMist, c.accentText),
-      _ => (c.skyMist, c.ink),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: LbmRadius.pillR),
-      child: Text(
-        state.label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: fg,
-        ),
-      ),
-    );
-  }
-}
-
-/// The four-step progress bar. Filled segments use the pure accent — no label
-/// sits on them, so they do not need the deeper shade.
+/// Four segments filling as the package moves.
 class _TrackBar extends StatelessWidget {
   const _TrackBar({required this.step});
 
@@ -198,12 +336,12 @@ class _TrackBar extends StatelessWidget {
     return Row(
       children: [
         for (var i = 1; i <= 4; i++) ...[
-          if (i > 1) const SizedBox(width: 4),
+          if (i > 1) const SizedBox(width: 5),
           Expanded(
             child: Container(
               height: 5,
               decoration: BoxDecoration(
-                color: i <= step ? c.accent : c.skyWash,
+                color: i <= step ? c.sage : c.skyWash,
                 borderRadius: LbmRadius.pillR,
               ),
             ),

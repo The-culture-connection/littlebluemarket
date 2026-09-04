@@ -40,18 +40,27 @@ class ProfileIdentity extends StatelessWidget {
               Expanded(
                 child: Row(
                   children: [
-                    // Equal thirds. Revenue can be a wide figure, so each cell
+                    // Equal shares. Revenue can be a wide figure, so each cell
                     // takes a fixed share and shrinks its own value to fit
                     // rather than pushing its neighbours off the row.
                     Expanded(
-                      child: _Stat(value: '${person.posts}', label: 'Posts'),
+                      child: _Stat(
+                        value: Fmt.count(person.posts),
+                        label: 'Posts',
+                      ),
                     ),
-                    Expanded(
-                      child: _Stat(value: person.revenueLabel, label: 'Revenue'),
-                    ),
+                    // Buyers have no revenue, and a "$0" next to their name
+                    // reads as a judgement rather than a fact.
+                    if (person.isSeller)
+                      Expanded(
+                        child: _Stat(
+                          value: person.revenueLabel,
+                          label: 'Revenue',
+                        ),
+                      ),
                     Expanded(
                       child: _Stat(
-                        value: '${person.purchases}',
+                        value: Fmt.count(person.purchases),
                         label: 'Purchases',
                       ),
                     ),

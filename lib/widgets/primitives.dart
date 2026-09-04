@@ -4,6 +4,7 @@ import '../data/fixtures/fixture_data.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
+import 'product_art.dart';
 
 // ---------------------------------------------------------------- surfaces
 
@@ -513,7 +514,7 @@ class Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final circle = Container(
+    final initials = Container(
       width: size.diameter,
       height: size.diameter,
       alignment: Alignment.center,
@@ -532,6 +533,19 @@ class Avatar extends StatelessWidget {
         ),
       ),
     );
+
+    // A real photograph when there is one; the tinted initials are the fallback
+    // and also what shows while the photo loads or if it fails.
+    final photo = person.avatarUrl;
+    final circle = photo == null
+        ? initials
+        : ClipOval(
+            child: SizedBox(
+              width: size.diameter,
+              height: size.diameter,
+              child: ProductPhoto(url: photo, fallback: initials),
+            ),
+          );
     if (onTap == null) return circle;
     return Semantics(
       button: true,

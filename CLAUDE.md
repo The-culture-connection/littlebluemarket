@@ -89,7 +89,7 @@ zero Firebase dependency until PR 11. Do not start Track B early.
 - [x] **PR 5** — `LbmAsync` + skeletons.
 - [x] **PR 6** — Real session (sealed `Session`, anonymous-auth guests, `themeMode` split out).
 - [x] **PR 7** — Market screens async.
-- [ ] **PR 8** — Profile / seller feed / edit profile (seller vs buyer split) / shipping.
+- [x] **PR 8** — Profile / seller feed / edit profile (seller vs buyer split) / shipping.
 - [ ] **PR 9** — Community: chatroom, forums, threads.
 - [ ] **PR 10** — Messaging + commerce cart. Un-skip the fixture-import guard.
 - [ ] **PR 11** — Firebase bootstrap.

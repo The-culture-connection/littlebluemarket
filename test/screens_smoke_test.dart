@@ -27,6 +27,7 @@ const _routes = <String, String>{
   'all reviews (single)': '/market/reviews/p5',
   'seller feed': '/market/seller/kali',
   'seller feed (buyer)': '/market/seller/dee',
+  'shipping (buyer)': '/you/shipping',
   'open chatroom': '/community',
   'forums': '/community/forums',
   'forum threads': '/community/forums/f1',

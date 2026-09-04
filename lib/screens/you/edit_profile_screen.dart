@@ -1,49 +1,118 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/fixtures/fixture_data.dart';
+import '../../data/repositories/repositories.dart';
+import '../../models/models.dart';
+import '../../state/providers.dart';
+import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
+import '../../widgets/skeleton.dart';
 
-/// Photo, name, handle, bio, and the initiative hashtags that appear on your
-/// storefront.
-class EditProfileScreen extends StatefulWidget {
+/// Photo, name, handle, bio, and the initiative hashtags on your storefront.
+///
+/// Two versions of this screen, chosen by whether you sell. The prototype had
+/// one, which is why it offered every buyer a payouts-and-bank row.
+class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
   @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
+  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
-  late final _name = TextEditingController(text: Fx.me.name);
-  late final _handle = TextEditingController(text: Fx.me.handle);
-  late final _bio = TextEditingController(text: Fx.me.bio);
-  late final _tags = List<String>.of(Fx.me.tags);
+class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
+  final _name = TextEditingController();
+  final _handle = TextEditingController();
+  final _bio = TextEditingController();
+  final _newTag = TextEditingController();
+  List<String>? _tags;
+  bool _saving = false;
+  String? _error;
 
   @override
   void dispose() {
     _name.dispose();
     _handle.dispose();
     _bio.dispose();
+    _newTag.dispose();
     super.dispose();
+  }
+
+  /// Seeds the fields once the profile arrives, without clobbering an edit in
+  /// progress if the profile stream emits again.
+  void _seed(Person me) {
+    if (_tags != null) return;
+    _name.text = me.name;
+    _handle.text = me.handle;
+    _bio.text = me.bio;
+    _tags = List.of(me.tags);
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+
+    try {
+      // Actually persisted. The prototype's Save just popped.
+      await ref.read(profileRepositoryProvider).updateProfile(
+        ProfileEdit(
+          name: _name.text.trim(),
+          handle: _handle.text.trim(),
+          bio: _bio.text.trim(),
+          tags: _tags,
+        ),
+      );
+      if (!mounted) return;
+      context.canPop() ? context.pop() : context.go('/you');
+    } on RepositoryException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = describeError(error).body;
+      });
+    }
+  }
+
+  void _addTag() {
+    final raw = _newTag.text.trim();
+    if (raw.isEmpty) return;
+    final tag = raw.startsWith('#') ? raw : '#$raw';
+    setState(() {
+      final current = _tags ?? <String>[];
+      _tags = [...current, if (!current.contains(tag)) tag];
+      _newTag.clear();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.c;
+    final me = ref.watch(meProvider);
+
+    if (me == null) {
+      return const LbmScreen(
+        appBar: LbmAppBar(title: 'Edit profile'),
+        child: IdentitySkeleton(),
+      );
+    }
+    _seed(me);
 
     return LbmScreen(
       appBar: LbmAppBar(
         title: 'Edit profile',
         actions: [
           PillButton(
-            'Save',
+            _saving ? 'Saving…' : 'Save',
             small: true,
             expand: false,
-            onPressed: () =>
-                context.canPop() ? context.pop() : context.go('/you'),
+            onPressed: _saving ? null : _save,
           ),
         ],
       ),
@@ -53,10 +122,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Center(
             child: Column(
               children: [
-                Avatar(Fx.me, size: AvatarSize.lg),
+                Avatar(me, size: AvatarSize.lg),
                 const SizedBox(height: 9),
                 TextButton(
-                  onPressed: () {},
+                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Photo upload arrives with storage.'),
+                    ),
+                  ),
                   child: Text(
                     'Change photo',
                     style: TextStyle(
@@ -74,7 +147,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           LbmField(label: 'Name', controller: _name),
           const SizedBox(height: 16),
           LbmField(
-            label: 'Handle · also your storefront',
+            label: me.isSeller ? 'Handle · also your storefront' : 'Handle',
             controller: _handle,
           ),
           const SizedBox(height: 16),
@@ -89,51 +162,172 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             spacing: 7,
             runSpacing: 7,
             children: [
-              for (final tag in _tags)
+              for (final tag in _tags ?? const <String>[])
                 LbmChip(
                   tag,
                   style: ChipStyle.initiative,
                   trailingIcon: Icons.close_rounded,
-                  onTap: () => setState(() => _tags.remove(tag)),
+                  onTap: () => setState(
+                    () => _tags = [...?_tags]..remove(tag),
+                  ),
                 ),
-              const LbmChip('+ add', style: ChipStyle.quiet),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                // The prototype's "+ add" chip was inert.
+                child: LbmField(
+                  controller: _newTag,
+                  hintText: 'Add a hashtag',
+                  pill: true,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _addTag(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              PillButton(
+                'Add',
+                small: true,
+                expand: false,
+                style: PillStyle.quiet,
+                onPressed: _addTag,
+              ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            'These show on your storefront and pull your posts into initiative '
-            'shelves.',
+            me.isSeller
+                ? 'These show on your storefront and pull your posts into '
+                      'initiative shelves.'
+                : 'These pull your reviews and shoutouts into initiative '
+                      'shelves.',
             style: LbmText.xtiny.copyWith(color: c.ink2, height: 1.55),
           ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: LbmText.tiny.copyWith(color: c.clay)),
+          ],
           const SizedBox(height: 16),
-          LbmCard(
-            child: RowStack(
-              children: [
-                ListRow(
-                  title: const Text('Payouts & bank'),
-                  subtitle: const Text('Ends in 4471'),
-                  trailing: Icon(
-                    Icons.chevron_right_rounded,
-                    size: 22,
-                    color: c.ink3,
-                  ),
-                  onTap: () {},
-                ),
-                ListRow(
-                  title: const Text('Shipping addresses'),
-                  subtitle: const Text('2 saved'),
-                  trailing: Icon(
-                    Icons.chevron_right_rounded,
-                    size: 22,
-                    color: c.ink3,
-                  ),
-                  onTap: () => context.push('/you/shipping'),
-                ),
-              ],
+          if (me.isSeller) const _SellerRows() else const _BuyerRows(),
+        ],
+      ),
+    );
+  }
+}
+
+/// What a seller gets on top: payouts, and the sales side of shipping.
+class _SellerRows extends StatelessWidget {
+  const _SellerRows();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final chevron = Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3);
+
+    return LbmCard(
+      child: RowStack(
+        children: [
+          ListRow(
+            title: const Text('Payouts & bank'),
+            subtitle: const Text('Managed in your store'),
+            trailing: chevron,
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Payouts are handled by your store account.'),
+              ),
             ),
+          ),
+          ListRow(
+            title: const Text('Sales & shipping'),
+            subtitle: const Text('Add tracking, see what is waiting to go out'),
+            trailing: chevron,
+            onTap: () => context.push('/you/shipping'),
+          ),
+          const _AddressesRow(),
+        ],
+      ),
+    );
+  }
+}
+
+/// A buyer sees no payouts row, and gets a way into selling.
+class _BuyerRows extends ConsumerStatefulWidget {
+  const _BuyerRows();
+
+  @override
+  ConsumerState<_BuyerRows> createState() => _BuyerRowsState();
+}
+
+class _BuyerRowsState extends ConsumerState<_BuyerRows> {
+  bool _working = false;
+
+  Future<void> _startSelling() async {
+    setState(() => _working = true);
+    final messenger = ScaffoldMessenger.of(context);
+    await ref.read(profileRepositoryProvider).becomeSeller();
+    if (!mounted) return;
+    setState(() => _working = false);
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Selling is on. Your storefront is live.')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return LbmCard(
+      child: RowStack(
+        children: [
+          ListRow(
+            title: const Text('Packages & tracking'),
+            subtitle: const Text('What is on its way to you'),
+            trailing: Icon(
+              Icons.chevron_right_rounded,
+              size: 22,
+              color: c.ink3,
+            ),
+            onTap: () => context.push('/you/shipping'),
+          ),
+          const _AddressesRow(),
+          ListRow(
+            title: const Text('Start selling'),
+            subtitle: const Text('Turn your profile into a storefront'),
+            trailing: _working
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
+            onTap: _working ? null : _startSelling,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AddressesRow extends ConsumerWidget {
+  const _AddressesRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final addresses = ref.watch(addressesProvider);
+
+    return ListRow(
+      title: const Text('Shipping addresses'),
+      // A real count, not the hardcoded "2 saved" the prototype showed.
+      subtitle: Text(switch (addresses) {
+        AsyncData(:final value) when value.isEmpty => 'None saved yet',
+        AsyncData(:final value) => '${value.length} saved',
+        AsyncError() => 'Could not load',
+        _ => 'Loading…',
+      }),
+      trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
+      onTap: () => context.push('/you/shipping'),
     );
   }
 }

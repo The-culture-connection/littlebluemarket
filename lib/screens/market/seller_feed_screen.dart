@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/fixtures/fixture_data.dart';
+import '../../models/models.dart';
 import '../../router/nav.dart';
-import '../../theme/app_theme.dart';
-import '../../theme/tokens.dart';
+import '../../state/providers.dart';
+import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/profile_identity.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/sheets.dart';
+import '../../widgets/skeleton.dart';
 import 'results_screen.dart';
 
 /// The public view of a profile.
 ///
-/// Same layout as your own, minus the add-post button and shipping. One
-/// Message button, and no Follow — there is no follow relationship in the
-/// product at all.
+/// Same layout as your own, minus the add-post button and shipping. One Message
+/// button, and no Follow — there is no follow relationship in the product at
+/// all.
 class SellerFeedScreen extends ConsumerStatefulWidget {
   const SellerFeedScreen({super.key, required this.personId});
 
@@ -30,21 +31,11 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.c;
-    final person = Fx.person(widget.personId);
-
-    final own = Fx.products.values
-        .where((p) => p.sellerId == widget.personId)
-        .map((p) => p.id)
-        .toList();
-    final source = own.isEmpty ? const ['p1', 'p4', 'p5'] : own;
-    // Pad out to a full grid the way the prototype does, so the layout reads
-    // as a real storefront rather than a stub.
-    final grid = [...source, ...source].take(9).toList();
+    final person = ref.watch(personProvider(widget.personId));
 
     return LbmScreen(
       appBar: LbmAppBar(
-        title: person.handle,
+        title: person.value?.handle ?? '',
         actions: [
           CircleIconButton(
             icon: Icons.more_horiz_rounded,
@@ -53,59 +44,132 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
           ),
         ],
       ),
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          ProfileIdentity(
-            person: person,
-            actions: [
-              PillButton(
-                'Message',
-                onPressed: () => requireProfile(
-                  context,
-                  ref,
-                  () => context.goToDm(person.id),
+      child: LbmAsync<Person>(
+        person,
+        skeleton: const IdentitySkeleton(),
+        onRetry: () => ref.invalidate(personProvider(widget.personId)),
+        data: (person) => ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            ProfileIdentity(
+              person: person,
+              actions: [
+                PillButton(
+                  'Message',
+                  onPressed: () => requireProfile(
+                    context,
+                    ref,
+                    () => context.goToDm(person.id),
+                  ),
+                ),
+              ],
+            ),
+            // A buyer has no storefront, so they get one tab rather than an
+            // empty "Posted" one.
+            if (person.isSeller)
+              SegmentedTabs(
+                labels: const ['Posted', 'Reviews written'],
+                selected: _tab,
+                onChanged: (i) => setState(() => _tab = i),
+              ),
+            if (person.isSeller && _tab == 0)
+              _StorefrontGrid(sellerId: person.id)
+            else
+              _ReviewsWritten(personId: person.id),
+            const SizedBox(height: 26),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StorefrontGrid extends ConsumerWidget {
+  const _StorefrontGrid({required this.sellerId});
+
+  final String sellerId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final products = ref.watch(sellerProductsProvider(sellerId));
+
+    return LbmAsync<List<Product>>(
+      products,
+      skeleton: const GridSkeleton(count: 6),
+      onRetry: () => ref.invalidate(sellerProductsProvider(sellerId)),
+      isEmpty: (products) => products.isEmpty,
+      // No padding and no borrowed listings. The prototype filled an empty
+      // storefront with another seller's products, then duplicated the list to
+      // fill out the grid.
+      empty: const LbmEmpty(
+        title: 'Nothing listed yet',
+        body: 'This storefront is still being set up.',
+      ),
+      data: (products) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 7,
+            crossAxisSpacing: 7,
+          ),
+          itemCount: products.length,
+          itemBuilder: (context, i) => GridCell(
+            product: products[i],
+            badge: products[i].price,
+            onTap: () => context.goToProduct(products[i].id),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReviewsWritten extends ConsumerWidget {
+  const _ReviewsWritten({required this.personId});
+
+  final String personId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final posts = ref.watch(postsByProvider(personId));
+
+    return LbmAsync<List<Post>>(
+      posts,
+      skeleton: const ListRowSkeleton(rows: 2),
+      data: (all) {
+        final reviews = all.whereType<ReviewPost>().toList();
+        if (reviews.isEmpty) {
+          return const LbmEmpty(
+            title: 'No reviews written yet',
+            compact: true,
+          );
+        }
+        return Column(
+          children: [
+            for (final post in reviews)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                child: LbmCard(
+                  padding: EdgeInsets.zero,
+                  onTap: () => context.goToPost(post.id),
+                  child: ListRow(
+                    leading: Stars(post.rating.toDouble(), size: 12),
+                    title: Text(
+                      post.text,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(post.age),
+                  ),
                 ),
               ),
-            ],
-          ),
-          SegmentedTabs(
-            labels: const ['Posted', 'Bought & reviewed'],
-            selected: _tab,
-            onChanged: (i) => setState(() => _tab = i),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.zero,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 7,
-                crossAxisSpacing: 7,
-              ),
-              itemCount: grid.length,
-              itemBuilder: (context, i) {
-                final product = Fx.product(grid[i]);
-                return GridCell(
-                  product: product,
-                  badge: i % 3 == 1 ? 'Review' : null,
-                  onTap: () => context.goToPost(product.id),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'Public view — no add-post button, no shipping',
-              textAlign: TextAlign.center,
-              style: LbmText.xtiny.copyWith(color: c.ink2),
-            ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }

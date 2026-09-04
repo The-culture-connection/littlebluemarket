@@ -287,3 +287,7 @@ Duration? lbmRetry(int retryCount, Object error) {
       return Duration(milliseconds: 400 * (retryCount + 1));
   }
 }
+
+final addressesProvider = FutureProvider<List<Address>>((ref) {
+  return ref.watch(profileRepositoryProvider).addresses();
+});
