@@ -86,7 +86,7 @@ zero Firebase dependency until PR 11. Do not start Track B early.
 - [x] **PR 3** — New models: sealed `Post`, `Cart`/`CartLine`, `Order`, `Comment`, `Message`,
       `Address`, `SearchFilters`/`SearchResults`.
 - [x] **PR 4** — Repository seam + mutable `FixtureStore` + `Backend` flag.
-- [ ] **PR 5** — `LbmAsync` + skeletons.
+- [x] **PR 5** — `LbmAsync` + skeletons.
 - [ ] **PR 6** — Real session (sealed `Session`, anonymous-auth guests, `themeMode` split out).
 - [ ] **PR 7** — Market screens async.
 - [ ] **PR 8** — Profile / seller feed / edit profile (seller vs buyer split) / shipping.
