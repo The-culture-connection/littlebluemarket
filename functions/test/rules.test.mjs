@@ -1,0 +1,225 @@
+/**
+ * Security rules, tested against the emulator.
+ *
+ * These assert the promise the whole revenue design rests on: **a client cannot
+ * write its own money.** Everything else in the app can be re-derived; a seller
+ * who can set their own revenue cannot.
+ *
+ * Not part of `npm test`, because they need a running emulator:
+ *
+ *   firebase emulators:exec --only firestore \
+ *     "node --test functions/test/rules.test.mjs"
+ */
+import { strict as assert } from 'node:assert';
+import { after, before, describe, test } from 'node:test';
+import { readFileSync } from 'node:fs';
+
+import {
+  assertFails,
+  assertSucceeds,
+  initializeTestEnvironment,
+} from '@firebase/rules-unit-testing';
+
+let env;
+
+before(async () => {
+  env = await initializeTestEnvironment({
+    projectId: 'little-blue-cart-rules-test',
+    firestore: {
+      rules: readFileSync('firebase/firestore.rules', 'utf8'),
+      host: '127.0.0.1',
+      port: 8080,
+    },
+  });
+});
+
+after(async () => {
+  await env?.cleanup();
+});
+
+/** A signed-in member. */
+const member = (uid = 'maya') =>
+  env.authenticatedContext(uid, {
+    firebase: { sign_in_provider: 'password' },
+  }).firestore();
+
+/** A guest: signed in anonymously, so they hold a uid but are not a member. */
+const guest = () =>
+  env.authenticatedContext('anon', {
+    firebase: { sign_in_provider: 'anonymous' },
+  }).firestore();
+
+describe('money is never client-writable', () => {
+  test('a seller cannot set their own revenue', async () => {
+    const db = member('maya');
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('users/maya').set({
+        name: 'Maya',
+        revenueCents: 100,
+        purchaseCount: 1,
+        postCount: 0,
+      });
+    });
+
+    // The single most important assertion in this file.
+    await assertFails(
+      db.doc('users/maya').update({ revenueCents: 999999 }),
+    );
+    await assertFails(db.doc('users/maya').update({ purchaseCount: 999 }));
+  });
+
+  test('but can still edit their profile', async () => {
+    const db = member('maya');
+    await assertSucceeds(
+      db.doc('users/maya').update({ bio: 'New bio.', name: 'Maya E.' }),
+    );
+  });
+
+  test('nobody can write an order', async () => {
+    await assertFails(
+      member().doc('orders/o1').set({ totalCents: 1 }),
+    );
+  });
+
+  test('nobody can write a purchase record', async () => {
+    await assertFails(
+      member('maya').doc('users/maya/purchases/p1').set({ reviewed: true }),
+    );
+  });
+
+  test('nobody can touch the internal token cache', async () => {
+    await assertFails(member().doc('_internal/shopifyAdminToken').get());
+    await assertFails(
+      member().doc('_internal/shopifyAdminToken').set({ token: 'stolen' }),
+    );
+  });
+
+  test('nobody can write the catalog', async () => {
+    await assertFails(
+      member().doc('catalog/p1').set({ priceCents: 1 }),
+    );
+  });
+});
+
+describe('you can only act as yourself', () => {
+  test('you cannot edit someone else\'s profile', async () => {
+    await assertFails(member('maya').doc('users/kali').update({ bio: 'hi' }));
+  });
+
+  test('you cannot post as someone else', async () => {
+    await assertFails(
+      member('maya').collection('posts').add({
+        kind: 'shoutout',
+        authorId: 'kali',
+        text: 'not mine',
+        likeCount: 0,
+        commentCount: 0,
+      }),
+    );
+  });
+
+  test('you cannot like on someone else\'s behalf', async () => {
+    // The like document is keyed by uid, so this is what stops it.
+    await assertFails(
+      member('maya').doc('posts/p1/likes/kali').set({ uid: 'kali' }),
+    );
+  });
+
+  test('you cannot create a post already carrying likes', async () => {
+    await assertFails(
+      member('maya').collection('posts').add({
+        kind: 'shoutout',
+        authorId: 'maya',
+        text: 'hi',
+        likeCount: 500,
+        commentCount: 0,
+      }),
+    );
+  });
+});
+
+describe('guests browse but do not write', () => {
+  test('a guest can read the catalog and profiles', async () => {
+    await assertSucceeds(guest().doc('catalog/p1').get());
+    await assertSucceeds(guest().doc('users/maya').get());
+  });
+
+  test('a guest cannot post, like or message', async () => {
+    const db = guest();
+    await assertFails(
+      db.collection('posts').add({
+        kind: 'shoutout',
+        authorId: 'anon',
+        text: 'hi',
+        likeCount: 0,
+        commentCount: 0,
+      }),
+    );
+    await assertFails(db.doc('posts/p1/likes/anon').set({ uid: 'anon' }));
+    await assertFails(
+      db.collection('chatroom').add({ authorId: 'anon', text: 'hi' }),
+    );
+  });
+
+  test('a guest still owns their own cart', async () => {
+    // They hold a uid, which is what lets a cart built before signing up
+    // survive the upgrade.
+    await assertSucceeds(guest().doc('carts/anon').set({ lines: [] }));
+  });
+});
+
+describe('conversations are private to their two participants', () => {
+  before(async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('conversations/kali_maya').set({
+        participantIds: ['kali', 'maya'],
+        preview: 'hi',
+      });
+    });
+  });
+
+  test('a participant can read it', async () => {
+    await assertSucceeds(member('maya').doc('conversations/kali_maya').get());
+  });
+
+  test('a third party cannot', async () => {
+    await assertFails(member('rae').doc('conversations/kali_maya').get());
+  });
+
+  test('nobody can change who is in it', async () => {
+    await assertFails(
+      member('maya')
+        .doc('conversations/kali_maya')
+        .update({ participantIds: ['maya', 'rae'] }),
+    );
+  });
+});
+
+describe('forums', () => {
+  test('a new forum starts with one member and no threads', async () => {
+    await assertSucceeds(
+      member('maya').doc('forums/new1').set({
+        title: 'Refills',
+        description: 'x',
+        createdBy: 'maya',
+        memberCount: 1,
+        threadCount: 0,
+      }),
+    );
+    await assertFails(
+      member('maya').doc('forums/new2').set({
+        title: 'Inflated',
+        description: 'x',
+        createdBy: 'maya',
+        memberCount: 9999,
+        threadCount: 0,
+      }),
+    );
+  });
+
+  test('member and thread counts are not client-writable', async () => {
+    await assertFails(
+      member('maya').doc('forums/new1').update({ memberCount: 5000 }),
+    );
+  });
+});

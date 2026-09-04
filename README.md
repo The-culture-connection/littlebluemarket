@@ -1,17 +1,83 @@
 # Little Blue Market — Flutter app
 
-The Flutter port of the clickable prototype in `../lbm-prototype`. All 23 screens,
-three tabs, light and dark, guest and signed-in.
+A marketplace app: goods, services, reviews and shoutouts in one feed, with a
+community and forums alongside. Originally a port of the clickable prototype in
+`../lbm-prototype`; now backed by Firebase for identity and everything social,
+and by Shopify for commerce, behind an interface designed so Shopify can be
+replaced without a screen changing.
 
 ```bash
 flutter pub get
-flutter run                 # a connected phone or emulator
-flutter test                # 138 tests
+flutter run                 # the demo backend — no configuration needed
+flutter test                # 291 tests
 flutter build apk --release --split-per-abi
 flutter build ipa           # macOS only
 ```
 
 Bundle id `com.littlebluemarket.app` on both platforms. Portrait only.
+
+## Two backends, one flag
+
+The app runs on either of two backends, chosen at build time. Both render the
+same screens; that equivalence is the test strategy.
+
+```bash
+flutter run                                        # fixtures (the default)
+flutter run --dart-define=LBM_BACKEND=live         # Firebase + the commerce proxy
+flutter run --dart-define=LBM_BACKEND=live \
+            --dart-define=LBM_EMULATORS=true       # ...against local emulators
+```
+
+The fixture backend is not a stub. It honours writes, returns real empty
+states, and throws when something is missing — so screen code written against
+it needs no changes when Firestore arrives. It is also what the whole test
+suite runs on.
+
+### Bringing the live backend up
+
+```bash
+# 1. Firebase client config. Needs the account that owns the project; this is
+#    the one step that cannot be scripted here.
+flutterfire configure --project=little-blue-cart-dev
+
+# 2. Secrets. Prompts for each value, so nothing lands in shell history.
+firebase functions:secrets:set SHOPIFY_CLIENT_SECRET
+firebase functions:secrets:set SHOPIFY_STOREFRONT_PRIVATE_TOKEN
+firebase functions:secrets:set SHOPIFY_WEBHOOK_SECRET
+
+# 3. Non-secret config, in functions/.env.little-blue-cart-dev
+#    SHOPIFY_STORE_DOMAIN, SHOPIFY_API_VERSION, SHOPIFY_CLIENT_ID
+
+# 4. Rules, indexes and functions.
+firebase deploy --only firestore:rules,firestore:indexes,storage,functions
+```
+
+### Working against emulators
+
+```bash
+firebase emulators:start --only firestore,auth,functions
+node functions/scripts/seed.mjs      # the fixture content, in Firestore
+cd little_blue_market && flutter run \
+  --dart-define=LBM_BACKEND=live --dart-define=LBM_EMULATORS=true
+```
+
+## Where things live
+
+```
+lib/
+  models/           the domain, plus one file that formats it
+  data/
+    repositories/   the seam: plain Dart interfaces, no backend types
+    fixtures/       the demo backend
+    firebase/       Firestore, Auth, Storage
+    shopify/        the commerce proxy client
+  state/            session and providers
+functions/          the commerce proxy, catalog mirror and order pipeline
+firebase/           security rules and indexes
+```
+
+The rule that keeps the seam real: **screens never import an implementation.**
+`test/no_fixture_imports_test.dart` enforces it.
 
 ---
 
@@ -137,11 +203,18 @@ API.
 
 ## Still to do
 
-- **Checkout.** The buy sheet is UI only. Shopify ships a Checkout Sheet Kit for
-  Swift and Kotlin but **not for Flutter**, so this needs a platform channel
-  around the native kit, or an in-app web view on the cart's `checkoutUrl`.
-  Worth deciding early — it affects the plugin list.
-- **Backend.** Everything reads from `data/fixtures.dart`.
+- **The checkout web view.** The cart, the handoff and the order pipeline are
+  built; what is missing is the last hop that opens the returned `checkoutUrl`.
+  Shopify ships a Checkout Sheet Kit for Swift and Kotlin but **not for
+  Flutter**, so this needs a platform channel around the native kit or an
+  in-app web view. Either way the `orders/paid` webhook stays the only proof
+  that a purchase happened.
+- **ShipTurtle credentials, and the rule that maps one of its vendors to an app
+  account.** Both outstanding. Revenue attribution is built and unit-tested but
+  cannot be *verified* against real vendors until they exist — see
+  `Planning/i-have-a-prototype-vivid-dongarra.md`.
+- **`flutterfire configure`.** Needs the Firebase account that owns the
+  project, so the live backend cannot start until it has been run once.
 - **App icon and splash.** Still Flutter's defaults.
 - **iOS build.** Unverified — this was built and tested on Windows, so Android is
   confirmed and the iOS project is configured but never compiled. No dependency

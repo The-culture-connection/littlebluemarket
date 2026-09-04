@@ -15,7 +15,7 @@ Read first, in this order:
 ```bash
 flutter pub get
 flutter analyze                 # must be clean — zero issues, not "only warnings"
-flutter test                    # 138 tests at baseline; the count only goes up
+flutter test                    # 291 Flutter tests; 30 more in functions/
 flutter run                     # fixtures backend (default)
 flutter run --dart-define=LBM_BACKEND=live             # once Track B lands
 flutter test test/visual_check.dart --update-goldens   # regenerate test/shots/ after intentional UI changes
@@ -96,7 +96,7 @@ zero Firebase dependency until PR 11. Do not start Track B early.
 - [x] **PR 12** — Live social/profile/messaging + emulator seed script.
 - [x] **PR 13** — Shopify proxy, catalog mirror, order attribution. **← Milestone 1 ends here.**
 - [x] **PR 14** — ShipTurtle fulfilment.
-- [ ] **PR 15** — Cleanup, rules hardening, offline persistence.
+- [x] **PR 15** — Cleanup, rules hardening, offline persistence.
 
 **Do not skip ahead.** Each PR assumes the previous one's seam exists.
 
@@ -154,3 +154,20 @@ post-checkout screen says "we'll confirm shortly" rather than asserting success.
 - **The ShipTurtle vendor → app-user mapping rule.** Launch blocker: without it no existing seller
   can log in as a seller, and revenue cannot be attributed. If you reach PR 13 and this is still
   open, stop and ask.
+
+---
+
+## Functions
+
+```bash
+cd functions
+npm install
+npm test              # HMAC, money parsing, order normalisation, ShipTurtle
+npm run test:rules    # security rules, needs the Firestore emulator
+npx tsc --noEmit      # typecheck
+npm run seed          # fixture content into a running emulator
+```
+
+The three places a bug there costs real money, and so the three with the most
+tests: webhook signature verification, order normalisation and the per-seller
+revenue split, and the Admin token broker.
