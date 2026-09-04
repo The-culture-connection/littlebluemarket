@@ -112,7 +112,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       const SizedBox(height: 2),
                       Flexible(
                         child: Text(
-                          tag.count,
+                          tag.countLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: LbmText.xtiny.copyWith(

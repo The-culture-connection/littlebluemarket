@@ -21,11 +21,13 @@ class DmScreen extends StatefulWidget {
 }
 
 class _DmScreenState extends State<DmScreen> {
-  final _messages = List<DmMessage>.of(Fx.dmThread);
+  late final _messages = List<DmMessage>.of(Fx.dmThreadWith(widget.personId));
 
   void _send(String text) {
     setState(() {
-      _messages.add(DmMessage(mine: true, time: 'now', text: text));
+      _messages.add(
+        DmMessage(authorId: Fx.meId, createdAt: DateTime.now(), text: text),
+      );
     });
   }
 
@@ -78,7 +80,7 @@ class _DmBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final mine = message.mine;
+    final mine = message.authorId == Fx.meId;
     final author = mine ? Fx.me : person;
 
     return Row(

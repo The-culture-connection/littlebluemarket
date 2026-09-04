@@ -82,7 +82,7 @@ zero Firebase dependency until PR 11. Do not start Track B early.
 - [x] **PR 1** — UI removals: drop the share/arrow icon, Save → Add to cart, unify `_PostActions`
       and `_PostActionRow` into one public `PostActionBar`, remove points entirely, remove the (i)
       icon, remove Hot/New/Top from `forum_screen.dart`.
-- [ ] **PR 2** — Typed models + `lib/models/formatting.dart`. Display strings become real types.
+- [x] **PR 2** — Typed models + `lib/models/formatting.dart`. Display strings become real types.
 - [ ] **PR 3** — New models: sealed `Post`, `Cart`/`CartLine`, `Order`, `Comment`, `Message`,
       `Address`, `SearchFilters`/`SearchResults`.
 - [ ] **PR 4** — Repository seam + mutable `FixtureStore` + `Backend` flag.

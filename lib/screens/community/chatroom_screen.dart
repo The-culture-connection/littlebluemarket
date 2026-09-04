@@ -44,7 +44,11 @@ class _ChatroomScreenState extends State<ChatroomScreen> {
   void _send(String text) {
     setState(() {
       _messages.add(
-        ChatMessage(authorId: Fx.meId, time: 'now', text: text, mine: true),
+        ChatMessage(
+          authorId: Fx.meId,
+          createdAt: DateTime.now(),
+          text: text,
+        ),
       );
     });
   }
@@ -167,7 +171,8 @@ class _ChatBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.c;
     final author = Fx.person(message.authorId);
-    final mine = message.mine;
+    // Whether a message is yours is a fact about the viewer, not the message.
+    final mine = message.authorId == Fx.meId;
 
     final bubble = Container(
       constraints: BoxConstraints(

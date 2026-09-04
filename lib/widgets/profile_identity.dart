@@ -47,7 +47,7 @@ class ProfileIdentity extends StatelessWidget {
                       child: _Stat(value: '${person.posts}', label: 'Posts'),
                     ),
                     Expanded(
-                      child: _Stat(value: person.revenue, label: 'Revenue'),
+                      child: _Stat(value: person.revenueLabel, label: 'Revenue'),
                     ),
                     Expanded(
                       child: _Stat(

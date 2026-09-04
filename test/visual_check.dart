@@ -121,7 +121,7 @@ void main() {
 
     // Let the bundled photographs decode.
     await tester.runAsync(() async {
-      for (final asset in Fx.photos.values) {
+      for (final asset in Fx.demoPhotoAssets) {
         await precacheImage(AssetImage(asset), tester.element(find.byType(MaterialApp)));
       }
       await precacheImage(

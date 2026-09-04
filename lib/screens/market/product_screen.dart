@@ -36,7 +36,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
 
     final selected =
         _selected ??
-        spec.variants.indexWhere((v) => v.selected).clamp(0, 1 << 30);
+        0; // the first variant is the default until one is picked
 
     return LbmScreen(
       appBar: LbmAppBar(
@@ -166,7 +166,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
           ),
 
           const SectionHead('What buyers rated it'),
-          _RatingBreakdown(product: product, spec: spec),
+          _RatingBreakdown(product: product, rating: Fx.rating(widget.productId)),
 
           const SectionHead('Shipping & pickup'),
           LbmCard(
@@ -232,7 +232,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      '${product.location} · ${seller.posts} posts',
+                      '${product.locationLabel()} · ${seller.posts} posts',
                       style: LbmText.xtiny.copyWith(
                         color: c.ink2,
                         fontFeatures: kTabularFigures,
@@ -370,7 +370,7 @@ class _VariantRow extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        variant.stock,
+                        variant.stockLabel,
                         style: LbmText.xtiny.copyWith(color: c.ink2),
                       ),
                     ],
@@ -472,15 +472,15 @@ class _ShippingRowTile extends StatelessWidget {
 }
 
 class _RatingBreakdown extends StatelessWidget {
-  const _RatingBreakdown({required this.product, required this.spec});
+  const _RatingBreakdown({required this.product, required this.rating});
 
   final Product product;
-  final ProductSpec spec;
+  final RatingSummary rating;
 
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final total = spec.ratingTotal;
+    final total = rating.total;
 
     return LbmCard(
       margin: const EdgeInsets.symmetric(horizontal: 14),
@@ -502,7 +502,7 @@ class _RatingBreakdown extends StatelessWidget {
               Stars(product.rating, size: 10),
               const SizedBox(height: 2),
               Text(
-                '$total rated',
+                total == 0 ? 'No ratings yet' : '$total rated',
                 style: LbmText.xtiny.copyWith(
                   color: c.ink2,
                   fontFeatures: kTabularFigures,
@@ -514,7 +514,7 @@ class _RatingBreakdown extends StatelessWidget {
           Expanded(
             child: Column(
               children: [
-                for (final bar in spec.histogram)
+                for (final bar in rating.bars)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: Row(
@@ -534,7 +534,7 @@ class _RatingBreakdown extends StatelessWidget {
                           child: ClipRRect(
                             borderRadius: LbmRadius.pillR,
                             child: LinearProgressIndicator(
-                              value: bar.count / total,
+                              value: total == 0 ? 0 : bar.count / total,
                               minHeight: 8,
                               backgroundColor: c.skyWash,
                               valueColor: AlwaysStoppedAnimation(c.accent),

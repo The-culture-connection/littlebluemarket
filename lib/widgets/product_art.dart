@@ -71,6 +71,50 @@ class ProductArt extends StatelessWidget {
   }
 }
 
+/// One listing photograph, from the bundle or the network.
+///
+/// Demo fixtures carry an `asset://` URL so the app stays correct offline;
+/// live listings carry ordinary URLs. Everything above this widget just holds a
+/// list of strings and never has to know which is which.
+class ProductPhoto extends StatelessWidget {
+  const ProductPhoto({
+    super.key,
+    required this.url,
+    required this.fallback,
+    this.fit = BoxFit.cover,
+  });
+
+  final String url;
+
+  /// Shown when the image cannot be loaded — a packaging mistake for a bundled
+  /// asset, a network blip for a URL. Either way the layout must not collapse.
+  final Widget fallback;
+  final BoxFit fit;
+
+  static const _assetScheme = 'asset://';
+
+  /// The bundle path behind an `asset://` URL, or null for a network URL.
+  static String? bundlePath(String url) =>
+      url.startsWith(_assetScheme) ? url.substring(_assetScheme.length) : null;
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = bundlePath(url);
+    if (asset != null) {
+      return Image.asset(
+        asset,
+        fit: fit,
+        errorBuilder: (context, _, _) => fallback,
+      );
+    }
+    return Image.network(
+      url,
+      fit: fit,
+      errorBuilder: (context, _, _) => fallback,
+    );
+  }
+}
+
 class _Photo extends StatelessWidget {
   const _Photo({required this.product});
 
@@ -80,13 +124,9 @@ class _Photo extends StatelessWidget {
   Widget build(BuildContext context) {
     return ColoredBox(
       color: context.c.skyWash,
-      child: Image.asset(
-        Fx.photos[product.photo]!,
-        fit: BoxFit.cover,
-        // Photos are bundled, so a failure here means a packaging mistake
-        // rather than a network blip. Fall back to the illustrated tile so the
-        // layout never collapses.
-        errorBuilder: (context, _, _) => _Tile(product: product),
+      child: ProductPhoto(
+        url: product.imageUrls.first,
+        fallback: _Tile(product: product),
       ),
     );
   }

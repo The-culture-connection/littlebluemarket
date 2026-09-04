@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 
+import 'formatting.dart';
+
 /// A person — seller, buyer, or both. The prototype's `U`.
 ///
-/// The stat row is remapped from Instagram: Followers becomes [revenue],
+/// The stat row is remapped from Instagram: Followers becomes [revenueCents],
 /// Following becomes [purchases]. There is no follow relationship anywhere in
 /// the product; discovery runs on hashtags and search.
 @immutable
@@ -14,9 +16,11 @@ class Person {
     required this.tint,
     required this.bio,
     required this.tags,
-    required this.revenue,
+    required this.revenueCents,
     required this.purchases,
     required this.posts,
+    this.isSeller = true,
+    this.avatarUrl,
   });
 
   final String id;
@@ -25,16 +29,29 @@ class Person {
   /// Also the storefront address, which is why signup asks for it first.
   final String handle;
 
-  /// Avatar background, unique per person.
+  /// Avatar background, unique per person. Kept as an `int` so it survives a
+  /// round trip through JSON; derived from the uid when a profile has none.
   final int tint;
   final String bio;
 
   /// Initiative hashtags shown on the storefront.
   final List<String> tags;
 
-  final String revenue;
+  /// Lifetime seller revenue. Maintained by the order pipeline, never by the
+  /// client — see the Firestore rules.
+  final int revenueCents;
   final int purchases;
   final int posts;
+
+  /// Sellers get the storefront, the revenue stat, and the seller half of Edit
+  /// Profile. Buyers get none of it.
+  final bool isSeller;
+
+  /// A real photograph, once one is uploaded. Falls back to [initials] on
+  /// [tint].
+  final String? avatarUrl;
+
+  String get revenueLabel => Fmt.money(revenueCents);
 
   /// Up to two initials, for the avatar.
   String get initials => name
@@ -43,6 +60,30 @@ class Person {
       .map((w) => w.isEmpty ? '' : w[0])
       .join()
       .toUpperCase();
+
+  Person copyWith({
+    String? name,
+    String? handle,
+    String? bio,
+    List<String>? tags,
+    int? revenueCents,
+    int? purchases,
+    int? posts,
+    bool? isSeller,
+    String? avatarUrl,
+  }) => Person(
+    id: id,
+    name: name ?? this.name,
+    handle: handle ?? this.handle,
+    tint: tint,
+    bio: bio ?? this.bio,
+    tags: tags ?? this.tags,
+    revenueCents: revenueCents ?? this.revenueCents,
+    purchases: purchases ?? this.purchases,
+    posts: posts ?? this.posts,
+    isSeller: isSeller ?? this.isSeller,
+    avatarUrl: avatarUrl ?? this.avatarUrl,
+  );
 }
 
 /// The illustrated line-art tiles used when a listing has no photograph.
@@ -64,10 +105,13 @@ class Product {
     required this.ratingCount,
     required this.type,
     required this.description,
-    required this.location,
+    required this.cityState,
     required this.likes,
     required this.commentCount,
-    this.photo,
+    this.imageUrls = const [],
+    this.lat,
+    this.lng,
+    this.freeShipping = false,
     this.glyph,
     this.tileFrom,
     this.tileTo,
@@ -84,12 +128,22 @@ class Product {
   /// The product-type taxonomy, e.g. "Bath, Beauty & Wellness".
   final String type;
   final String description;
-  final String location;
+
+  /// Where the seller ships from, e.g. "Detroit, MI". Distance is *not* baked
+  /// in — it depends on who is looking, so it is applied at render time.
+  final String cityState;
+
+  /// Set once the listing is geocoded; drives the radius search.
+  final double? lat;
+  final double? lng;
+  final bool freeShipping;
+
   final int likes;
   final int commentCount;
 
-  /// Asset key for a real photograph, when there is one.
-  final String? photo;
+  /// Photographs, in the order they appear in the detail slideshow. An
+  /// `asset://` scheme means a bundled demo image; anything else is a URL.
+  final List<String> imageUrls;
 
   /// Line art, for listings without a photograph.
   final ProductGlyph? glyph;
@@ -98,24 +152,53 @@ class Product {
   final int? tileFrom;
   final int? tileTo;
 
-  bool get hasPhoto => photo != null;
+  bool get hasPhoto => imageUrls.isNotEmpty;
 
   /// "$8", "$450" — whole dollars stay whole, as in the prototype.
-  String get price => formatCents(priceCents);
+  String get price => Fmt.money(priceCents);
+
+  /// "Detroit, MI · 4 mi" once we know where the viewer is, "Nashville, TN ·
+  /// ships free" when the listing ships anywhere, "Detroit, MI" otherwise.
+  String locationLabel({double? distanceMiles}) {
+    if (distanceMiles != null) {
+      return '$cityState · ${Fmt.distanceMiles(distanceMiles)}';
+    }
+    if (freeShipping) return '$cityState · ships free';
+    return cityState;
+  }
 
   /// The first sentence of [description], used as the feed caption.
   String get shortDescription {
     final stop = description.indexOf('.');
     return stop == -1 ? description : description.substring(0, stop);
   }
-}
 
-/// `$8` for whole dollars, `$13.60` otherwise.
-String formatCents(int cents) {
-  final dollars = cents ~/ 100;
-  final remainder = cents % 100;
-  if (remainder == 0) return '\$$dollars';
-  return '\$$dollars.${remainder.toString().padLeft(2, '0')}';
+  Product copyWith({
+    int? likes,
+    int? commentCount,
+    double? rating,
+    int? ratingCount,
+  }) => Product(
+    id: id,
+    title: title,
+    priceCents: priceCents,
+    sellerId: sellerId,
+    tags: tags,
+    rating: rating ?? this.rating,
+    ratingCount: ratingCount ?? this.ratingCount,
+    type: type,
+    description: description,
+    cityState: cityState,
+    likes: likes ?? this.likes,
+    commentCount: commentCount ?? this.commentCount,
+    imageUrls: imageUrls,
+    lat: lat,
+    lng: lng,
+    freeShipping: freeShipping,
+    glyph: glyph,
+    tileFrom: tileFrom,
+    tileTo: tileTo,
+  );
 }
 
 /// A review. Reviews belong to the **product**, not to the seller — a seller
@@ -126,31 +209,55 @@ class Review {
   const Review({
     required this.authorId,
     required this.rating,
-    required this.age,
+    required this.createdAt,
     required this.text,
     required this.tags,
   });
 
   final String authorId;
   final int rating;
-
-  /// Relative age as written, e.g. "3d", "1w".
-  final String age;
+  final DateTime createdAt;
   final String text;
   final List<String> tags;
+
+  String get age => Fmt.relative(createdAt);
 }
 
 /// One selectable option on a product.
+///
+/// Availability is three fields rather than the prototype's single free-text
+/// string, because "22 in stock", "3 left" and "Back Oct 4" are three different
+/// states and only the last is genuinely prose.
 @immutable
 class Variant {
-  const Variant(this.name, this.price, this.stock, {this.selected = false});
+  const Variant(
+    this.name,
+    this.priceCents, {
+    this.availableForSale = true,
+    this.quantityAvailable,
+    this.availabilityNote,
+  });
 
   final String name;
-  final String price;
+  final int priceCents;
+  final bool availableForSale;
+  final int? quantityAvailable;
 
-  /// Free text: "22 in stock", "3 left", "Back Oct 4", "Sept 18, 24 open".
-  final String stock;
-  final bool selected;
+  /// Free text for the cases a count cannot express: "Back Oct 4", "Sept 18,
+  /// 24 open". Services genuinely need this.
+  final String? availabilityNote;
+
+  String get price => Fmt.money(priceCents);
+
+  String get stockLabel {
+    final note = availabilityNote;
+    if (note != null) return note;
+    if (!availableForSale) return 'Sold out';
+    final quantity = quantityAvailable;
+    if (quantity == null) return 'In stock';
+    if (quantity <= 6) return '$quantity left';
+    return '$quantity in stock';
+  }
 }
 
 /// A label/value pair in a spec or shipping table.
@@ -159,6 +266,24 @@ class SpecRow {
   const SpecRow(this.label, this.value);
   final String label;
   final String value;
+}
+
+/// How a product's ratings are distributed.
+///
+/// Split out of [ProductSpec] because it is social data maintained by review
+/// writes, not commerce data owned by the storefront.
+@immutable
+class RatingSummary {
+  const RatingSummary({required this.average, required this.bars});
+
+  final double average;
+
+  /// Star counts from 5 down to 1.
+  final List<({int stars, int count})> bars;
+
+  int get total => bars.fold(0, (sum, bar) => sum + bar.count);
+
+  bool get isEmpty => total == 0;
 }
 
 /// The full record behind a listing. The prototype's `SPECS`.
@@ -171,7 +296,6 @@ class ProductSpec {
     required this.variants,
     required this.shipping,
     required this.returns,
-    required this.histogram,
   });
 
   final String subtitle;
@@ -182,12 +306,6 @@ class ProductSpec {
   final List<Variant> variants;
   final List<SpecRow> shipping;
   final String returns;
-
-  /// Star counts from 5 down to 1.
-  final List<({int stars, int count})> histogram;
-
-  int get ratingTotal =>
-      histogram.fold(0, (sum, bar) => sum + bar.count).clamp(1, 1 << 30);
 }
 
 /// An initiative hashtag with its post count.
@@ -196,9 +314,11 @@ class ProductSpec {
 /// services, reviews and forums alike.
 @immutable
 class TagCount {
-  const TagCount(this.tag, this.count);
+  const TagCount(this.tag, this.postCount);
   final String tag;
-  final String count;
+  final int postCount;
+
+  String get countLabel => '${Fmt.count(postCount)} posts';
 }
 
 @immutable
@@ -207,7 +327,7 @@ class Forum {
     required this.id,
     required this.title,
     required this.description,
-    required this.members,
+    required this.memberCount,
     required this.threadCount,
     required this.tint,
   });
@@ -215,9 +335,11 @@ class Forum {
   final String id;
   final String title;
   final String description;
-  final String members;
+  final int memberCount;
   final int threadCount;
   final int tint;
+
+  String get membersLabel => '${Fmt.count(memberCount)} members';
 }
 
 @immutable
@@ -230,7 +352,7 @@ class ForumThread {
     required this.body,
     required this.upvotes,
     required this.commentCount,
-    required this.age,
+    required this.createdAt,
   });
 
   final String id;
@@ -240,7 +362,9 @@ class ForumThread {
   final String body;
   final int upvotes;
   final int commentCount;
-  final String age;
+  final DateTime createdAt;
+
+  String get age => Fmt.relative(createdAt);
 }
 
 @immutable
@@ -248,34 +372,40 @@ class ThreadComment {
   const ThreadComment({
     required this.authorId,
     required this.upvotes,
-    required this.age,
+    required this.createdAt,
     required this.text,
     required this.depth,
   });
 
   final String authorId;
   final int upvotes;
-  final String age;
+  final DateTime createdAt;
   final String text;
 
   /// One level of nesting only.
   final int depth;
+
+  String get age => Fmt.relative(createdAt);
 }
 
 /// A message in the single open chatroom.
+///
+/// There is no `mine` flag: whether a message is yours is a fact about the
+/// viewer, not about the message, and baking it in is what tied the prototype
+/// to one hardcoded user.
 @immutable
 class ChatMessage {
   const ChatMessage({
     required this.authorId,
-    required this.time,
+    required this.createdAt,
     required this.text,
-    this.mine = false,
   });
 
   final String authorId;
-  final String time;
+  final DateTime createdAt;
   final String text;
-  final bool mine;
+
+  String get time => Fmt.clock(createdAt);
 }
 
 /// A row in the direct-message inbox.
@@ -283,32 +413,37 @@ class ChatMessage {
 class DmSummary {
   const DmSummary({
     required this.personId,
-    required this.age,
+    required this.lastMessageAt,
     required this.preview,
     required this.unread,
   });
 
   final String personId;
-  final String age;
+  final DateTime lastMessageAt;
   final String preview;
   final int unread;
+
+  String get age => Fmt.inboxAge(lastMessageAt);
 }
 
 /// A message in a one-to-one thread.
 @immutable
 class DmMessage {
   const DmMessage({
-    required this.mine,
-    required this.time,
+    required this.authorId,
+    required this.createdAt,
     required this.text,
   });
 
-  final bool mine;
-  final String time;
+  final String authorId;
+  final DateTime createdAt;
   final String text;
+
+  String get time => Fmt.clock(createdAt);
 }
 
-/// Where a package is. Drives both the badge colour and the progress bar.
+/// Where a package is. Drives the badge colour, the progress bar, and the step
+/// count — a separate `step` field could disagree with the state.
 enum ShipmentState {
   labelCreated('Label created'),
   inTransit('In transit'),
@@ -319,29 +454,31 @@ enum ShipmentState {
   final String label;
 
   bool get isDelivered => this == ShipmentState.delivered;
+
+  /// 1-4, filling the four-step bar.
+  int get step => index + 1;
 }
 
 @immutable
 class Shipment {
   const Shipment({
     required this.productId,
-    required this.party,
+    required this.counterpartyName,
     required this.state,
     required this.tracking,
-    required this.step,
-    required this.note,
+    required this.carrierNote,
   });
 
   final String productId;
 
   /// "J. Alvarez · Chicago, IL" when sending, "from Rae Ortiz" when receiving.
-  final String party;
+  final String counterpartyName;
   final ShipmentState state;
 
   /// Displayed with tabular figures so the groups line up.
   final String tracking;
 
-  /// 1-4, filling the four-step bar.
-  final int step;
-  final String note;
+  final String carrierNote;
+
+  int get step => state.step;
 }

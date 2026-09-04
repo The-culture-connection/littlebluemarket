@@ -90,7 +90,7 @@ class PostScreen extends ConsumerWidget {
                                   const SizedBox(width: 4),
                                   Flexible(
                                     child: Text(
-                                      '${product.location} · tap for their feed',
+                                      '${product.locationLabel()} · tap for their feed',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(

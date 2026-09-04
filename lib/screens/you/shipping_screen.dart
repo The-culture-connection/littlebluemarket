@@ -112,7 +112,7 @@ class _ShipmentCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      shipment.party,
+                      shipment.counterpartyName,
                       style: LbmText.tiny.copyWith(color: c.ink2),
                     ),
                   ],
@@ -141,7 +141,7 @@ class _ShipmentCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                shipment.note,
+                shipment.carrierNote,
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,

@@ -123,7 +123,7 @@ class _ForumCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    '${forum.members} · ${forum.threadCount} threads',
+                    '${forum.membersLabel} · ${forum.threadCount} threads',
                     style: LbmText.xtiny.copyWith(
                       color: c.ink2,
                       fontFeatures: kTabularFigures,

@@ -5,6 +5,11 @@ import '../models/models.dart';
 /// The copy is deliberate and reads as a real marketplace, so it is kept
 /// verbatim. Swap this file for a repository backed by the real API; nothing
 /// outside it knows where the data came from.
+///
+/// Times are expressed as offsets from [_now], captured once per session, so a
+/// review that read "3d" when this file was written still reads "3d" a year
+/// later. Collections holding a `DateTime` are `static final` rather than
+/// `static const` for that reason.
 abstract final class Fx {
   // ---------------------------------------------------------------- images
 
@@ -12,15 +17,36 @@ abstract final class Fx {
   static const still = 'assets/images/welcome-still.png';
   static const cart = 'assets/images/logo-cart.png';
 
-  static const photos = <String, String>{
-    'stickers': 'assets/images/product-stickers.jpg',
-    'hat': 'assets/images/product-hat.jpg',
-    'balm': 'assets/images/product-lipbalm.jpg',
-  };
+  /// Bundled demo photographs. The `asset://` scheme is what tells the image
+  /// widgets to load from the bundle rather than the network; live listings
+  /// carry ordinary URLs.
+  static const _balm = 'asset://assets/images/product-lipbalm.jpg';
+  static const _stickers = 'asset://assets/images/product-stickers.jpg';
+  static const _hat = 'asset://assets/images/product-hat.jpg';
+
+  /// The bundled photographs by plain asset path, for precaching in tests.
+  static const demoPhotoAssets = <String>[
+    'assets/images/product-lipbalm.jpg',
+    'assets/images/product-stickers.jpg',
+    'assets/images/product-hat.jpg',
+  ];
 
   /// The signed-in user.
   static const meId = 'maya';
   static Person get me => people[meId]!;
+
+  // ------------------------------------------------------------------ time
+
+  /// Captured once so every fixture age stays consistent within a session.
+  static final DateTime _now = DateTime.now();
+
+  static DateTime _ago({int days = 0, int hours = 0, int minutes = 0}) =>
+      _now.subtract(Duration(days: days, hours: hours, minutes: minutes));
+
+  /// A wall-clock time today, for chat bubbles that should read "9:02"
+  /// regardless of when the demo is run.
+  static DateTime _at(int hour, int minute) =>
+      DateTime(_now.year, _now.month, _now.day, hour, minute);
 
   // ---------------------------------------------------------------- people
 
@@ -34,7 +60,7 @@ abstract final class Fx {
           'Small-batch skincare · Detroit. Every tube hand-filled, every label '
           'recycled.',
       tags: ['#WomanOwned', '#BIPOCOwned'],
-      revenue: '\$4,820',
+      revenueCents: 482000,
       purchases: 37,
       posts: 24,
     ),
@@ -47,7 +73,7 @@ abstract final class Fx {
           'Lip balms and salves in compostable paper tubes. Slow made, small '
           'batch.',
       tags: ['#WomanOwned', '#BIPOCOwned', '#PlasticFree'],
-      revenue: '\$11,405',
+      revenueCents: 1140500,
       purchases: 52,
       posts: 61,
     ),
@@ -60,7 +86,7 @@ abstract final class Fx {
           'One-line botanical stickers and prints. Drawn on an iPad, cut at my '
           'kitchen table.',
       tags: ['#LGBTQOwned', '#DisabledOwned'],
-      revenue: '\$3,910',
+      revenueCents: 391000,
       purchases: 63,
       posts: 44,
     ),
@@ -73,7 +99,7 @@ abstract final class Fx {
           'Embroidered caps and tees for people who love a legend. Nashville, '
           'TN.',
       tags: ['#WomanOwned', '#VoteCollection'],
-      revenue: '\$14,260',
+      revenueCents: 1426000,
       purchases: 21,
       posts: 33,
     ),
@@ -84,7 +110,7 @@ abstract final class Fx {
       tint: 0xFF6FB5A6,
       bio: 'Brand photography for small makers. Half-days and full-days.',
       tags: ['#BIPOCOwned', '#WomanOwned', '#Services'],
-      revenue: '\$16,200',
+      revenueCents: 1620000,
       purchases: 9,
       posts: 27,
     ),
@@ -95,7 +121,7 @@ abstract final class Fx {
       tint: 0xFFD69B62,
       bio: 'Hand-turned bowls and boards. Veteran owned, Michigan hardwood.',
       tags: ['#VeteranOwned', '#MadeToOrder'],
-      revenue: '\$8,960',
+      revenueCents: 896000,
       purchases: 14,
       posts: 38,
     ),
@@ -106,10 +132,12 @@ abstract final class Fx {
       tint: 0xFF86B98C,
       bio: 'Soy candles poured in Ypsilanti. Queer owned, refill program.',
       tags: ['#LGBTQOwned', '#PlasticFree'],
-      revenue: '\$6,340',
+      revenueCents: 634000,
       purchases: 41,
       posts: 52,
     ),
+    // The only buyer in the fixture set, and the reason the buyer-vs-seller
+    // split in Edit Profile is testable offline.
     'dee': Person(
       id: 'dee',
       name: 'Dee Wells',
@@ -117,9 +145,10 @@ abstract final class Fx {
       tint: 0xFF93A9C4,
       bio: 'Buyer. Mostly stickers.',
       tags: [],
-      revenue: '\$0',
+      revenueCents: 0,
       purchases: 88,
       posts: 3,
+      isSeller: false,
     ),
   };
 
@@ -133,7 +162,7 @@ abstract final class Fx {
       title: 'Cocoa Mint Lip Balm',
       priceCents: 800,
       sellerId: 'kali',
-      photo: 'balm',
+      imageUrls: [_balm],
       tags: ['#WomanOwned', '#BIPOCOwned', '#PlasticFree'],
       rating: 4.9,
       ratingCount: 38,
@@ -141,7 +170,9 @@ abstract final class Fx {
       description:
           'Cocoa butter and peppermint in a compostable paper tube. No plastic '
           'anywhere in the package, including the seal.',
-      location: 'Detroit, MI · 4 mi',
+      cityState: 'Detroit, MI',
+      lat: 42.3314,
+      lng: -83.0458,
       likes: 214,
       commentCount: 18,
     ),
@@ -150,7 +181,7 @@ abstract final class Fx {
       title: 'Wildflower Sticker Pack — 5 designs',
       priceCents: 1200,
       sellerId: 'rae',
-      photo: 'stickers',
+      imageUrls: [_stickers],
       tags: ['#LGBTQOwned', '#DisabledOwned'],
       rating: 5.0,
       ratingCount: 26,
@@ -159,7 +190,9 @@ abstract final class Fx {
           'Five one-line botanicals — foxglove, daisy, delphinium, black-eyed '
           'susan, and the rainbow bouquet on black. Vinyl, waterproof, '
           'dishwasher safe.',
-      location: 'Hamtramck, MI · 7 mi',
+      cityState: 'Hamtramck, MI',
+      lat: 42.3928,
+      lng: -83.0496,
       likes: 341,
       commentCount: 29,
     ),
@@ -168,7 +201,7 @@ abstract final class Fx {
       title: '“What Would Dolly Do?” Dad Hat',
       priceCents: 2800,
       sellerId: 'holler',
-      photo: 'hat',
+      imageUrls: [_hat],
       tags: ['#WomanOwned', '#VoteCollection'],
       rating: 4.8,
       ratingCount: 52,
@@ -176,7 +209,10 @@ abstract final class Fx {
       description:
           'Unstructured six-panel in blush, embroidered in raspberry. Brass '
           'slide buckle, one size, soft from the first wear.',
-      location: 'Nashville, TN · ships free',
+      cityState: 'Nashville, TN',
+      lat: 36.1627,
+      lng: -86.7816,
+      freeShipping: true,
       likes: 508,
       commentCount: 61,
     ),
@@ -185,7 +221,7 @@ abstract final class Fx {
       title: 'Lip Balm Flight — all five flavors',
       priceCents: 3400,
       sellerId: 'kali',
-      photo: 'balm',
+      imageUrls: [_balm],
       tags: ['#WomanOwned', '#BIPOCOwned', '#PlasticFree'],
       rating: 4.9,
       ratingCount: 19,
@@ -193,7 +229,9 @@ abstract final class Fx {
       description:
           'Plain, Cocoa Mint, Vanilla Latte, Strawberry Sorbet, Cocoa Orange. '
           'The whole lineup, boxed, \$6 off buying them apart.',
-      location: 'Detroit, MI · 4 mi',
+      cityState: 'Detroit, MI',
+      lat: 42.3314,
+      lng: -83.0458,
       likes: 187,
       commentCount: 22,
     ),
@@ -202,7 +240,7 @@ abstract final class Fx {
       title: 'Rainbow Bouquet Sticker — single',
       priceCents: 500,
       sellerId: 'rae',
-      photo: 'stickers',
+      imageUrls: [_stickers],
       tags: ['#LGBTQOwned', '#VoteCollection'],
       rating: 5.0,
       ratingCount: 14,
@@ -210,7 +248,9 @@ abstract final class Fx {
       description:
           'The rainbow-on-black one, on its own. \$1 from every sticker goes to '
           'the Ruth Ellis Center.',
-      location: 'Hamtramck, MI · 7 mi',
+      cityState: 'Hamtramck, MI',
+      lat: 42.3928,
+      lng: -83.0496,
       likes: 296,
       commentCount: 33,
     ),
@@ -230,7 +270,9 @@ abstract final class Fx {
       description:
           'Four hours, one location, 40 edited images licensed for web and '
           'social. Built for makers who need a real catalog.',
-      location: 'Detroit, MI · 2 mi',
+      cityState: 'Detroit, MI',
+      lat: 42.3314,
+      lng: -83.0458,
       likes: 141,
       commentCount: 22,
     ),
@@ -243,113 +285,181 @@ abstract final class Fx {
 
   // --------------------------------------------------------------- reviews
 
-  static const reviews = <String, List<Review>>{
+  static final reviews = <String, List<Review>>{
     'p1': [
       Review(
         authorId: 'dee',
         rating: 5,
-        age: '3d',
+        createdAt: _ago(days: 3),
         text:
             "Fourth tube. It's the only balm that survives a Michigan February, "
             'and the paper tube composts with my coffee grounds.',
-        tags: ['#PlasticFree'],
+        tags: const ['#PlasticFree'],
       ),
       Review(
         authorId: 'juniper',
         rating: 5,
-        age: '1w',
+        createdAt: _ago(days: 7),
         text:
             'Bought one at the Eastern Market pop-up and immediately ordered '
             'four more for gifts.',
-        tags: [],
+        tags: const [],
       ),
       Review(
         authorId: 'rae',
         rating: 4,
-        age: '2w',
+        createdAt: _ago(days: 14),
         text:
             'Lovely balm, my tube arrived with the label a bit crooked. Kali '
             'sent a replacement the same week, no argument.',
-        tags: [],
+        tags: const [],
       ),
     ],
     'p2': [
       Review(
         authorId: 'maya',
         rating: 5,
-        age: '5d',
+        createdAt: _ago(days: 5),
         text:
             "Put the delphinium on my water bottle in March, it's been through "
             "the dishwasher maybe forty times and hasn't lifted a corner.",
-        tags: [],
+        tags: const [],
       ),
       Review(
         authorId: 'dee',
         rating: 5,
-        age: '3w',
+        createdAt: _ago(days: 21),
         text:
             'The rainbow one is the reason I bought the pack, but the foxglove '
             'is quietly the best drawing of the five.',
-        tags: ['#DisabledOwned'],
+        tags: const ['#DisabledOwned'],
       ),
     ],
     'p3': [
       Review(
         authorId: 'maya',
         rating: 5,
-        age: '1w',
+        createdAt: _ago(days: 7),
         text:
             'Wore it to the farmers market and got stopped three times. The '
             'blush is softer in person than the photo.',
-        tags: ['#VoteCollection'],
+        tags: const ['#VoteCollection'],
       ),
       Review(
         authorId: 'kali',
         rating: 4,
-        age: '2w',
+        createdAt: _ago(days: 14),
         text:
             'Runs a touch big — I ran the buckle almost all the way in. Still '
             'wearing it every day.',
-        tags: [],
+        tags: const [],
       ),
     ],
     'p4': [
       Review(
         authorId: 'dee',
         rating: 5,
-        age: '6d',
+        createdAt: _ago(days: 6),
         text:
             'Bought the flight so I could stop guessing. Vanilla Latte won, '
             'Cocoa Orange was the surprise.',
-        tags: ['#PlasticFree'],
+        tags: const ['#PlasticFree'],
       ),
     ],
     'p5': [
       Review(
         authorId: 'juniper',
         rating: 5,
-        age: '4d',
+        createdAt: _ago(days: 4),
         text:
-            "On my laptop, on my case, on the shop window. Also: the donation "
+            'On my laptop, on my case, on the shop window. Also: the donation '
             "isn't a marketing line, Rae posts the receipts.",
-        tags: ['#VoteCollection'],
+        tags: const ['#VoteCollection'],
       ),
     ],
     'p6': [
       Review(
         authorId: 'kali',
         rating: 5,
-        age: '2w',
+        createdAt: _ago(days: 14),
         text:
             'Ama shot my whole spring line in an afternoon. My conversion rate '
             'went up 30% on the new photos.',
-        tags: [],
+        tags: const [],
       ),
     ],
   };
 
   static List<Review> reviewsFor(String productId) =>
       reviews[productId] ?? const [];
+
+  // --------------------------------------------------------------- ratings
+
+  /// Star distributions. Social data, so it lives apart from [specs].
+  static const ratings = <String, RatingSummary>{
+    'p1': RatingSummary(
+      average: 4.9,
+      bars: [
+        (stars: 5, count: 33),
+        (stars: 4, count: 4),
+        (stars: 3, count: 1),
+        (stars: 2, count: 0),
+        (stars: 1, count: 0),
+      ],
+    ),
+    'p2': RatingSummary(
+      average: 5.0,
+      bars: [
+        (stars: 5, count: 25),
+        (stars: 4, count: 1),
+        (stars: 3, count: 0),
+        (stars: 2, count: 0),
+        (stars: 1, count: 0),
+      ],
+    ),
+    'p3': RatingSummary(
+      average: 4.8,
+      bars: [
+        (stars: 5, count: 44),
+        (stars: 4, count: 6),
+        (stars: 3, count: 2),
+        (stars: 2, count: 0),
+        (stars: 1, count: 0),
+      ],
+    ),
+    'p4': RatingSummary(
+      average: 4.9,
+      bars: [
+        (stars: 5, count: 17),
+        (stars: 4, count: 2),
+        (stars: 3, count: 0),
+        (stars: 2, count: 0),
+        (stars: 1, count: 0),
+      ],
+    ),
+    'p5': RatingSummary(
+      average: 5.0,
+      bars: [
+        (stars: 5, count: 14),
+        (stars: 4, count: 0),
+        (stars: 3, count: 0),
+        (stars: 2, count: 0),
+        (stars: 1, count: 0),
+      ],
+    ),
+    'p6': RatingSummary(
+      average: 4.9,
+      bars: [
+        (stars: 5, count: 7),
+        (stars: 4, count: 1),
+        (stars: 3, count: 0),
+        (stars: 2, count: 0),
+        (stars: 1, count: 0),
+      ],
+    ),
+  };
+
+  static RatingSummary rating(String id) => ratings[id] ?? ratings['p1']!;
 
   // ----------------------------------------------------------------- specs
 
@@ -372,10 +482,10 @@ abstract final class Fx {
         SpecRow('Shelf life', '12 months from purchase'),
       ],
       variants: [
-        Variant('Cocoa Mint', '\$8', '22 in stock', selected: true),
-        Variant('Vanilla Latte', '\$8', '9 in stock'),
-        Variant('Strawberry Sorbet', '\$8', '3 left'),
-        Variant('Plain (unflavoured)', '\$7', 'In stock'),
+        Variant('Cocoa Mint', 800, quantityAvailable: 22),
+        Variant('Vanilla Latte', 800, quantityAvailable: 9),
+        Variant('Strawberry Sorbet', 800, quantityAvailable: 3),
+        Variant('Plain (unflavoured)', 700),
       ],
       shipping: [
         SpecRow('Processing', '1–2 business days'),
@@ -387,13 +497,6 @@ abstract final class Fx {
           '30-day returns on unopened tubes. If it arrives melted — it happens '
           'in July — message a photo and a fresh one goes out, no need to send '
           'anything back.',
-      histogram: [
-        (stars: 5, count: 33),
-        (stars: 4, count: 4),
-        (stars: 3, count: 1),
-        (stars: 2, count: 0),
-        (stars: 1, count: 0),
-      ],
     ),
     'p2': ProductSpec(
       subtitle: 'Sticker pack · 5 designs',
@@ -410,9 +513,9 @@ abstract final class Fx {
         SpecRow('Cut', 'Kiss-cut with a white border'),
       ],
       variants: [
-        Variant('Pack of 5', '\$12', 'In stock', selected: true),
-        Variant('Pack of 5 — matte black set', '\$12', '6 left'),
-        Variant('Two packs', '\$20', 'In stock'),
+        Variant('Pack of 5', 1200),
+        Variant('Pack of 5 — matte black set', 1200, quantityAvailable: 6),
+        Variant('Two packs', 2000),
       ],
       shipping: [
         SpecRow('Processing', '2–3 business days'),
@@ -423,13 +526,6 @@ abstract final class Fx {
       returns:
           'Returns accepted unopened within 30 days. Bent in the mail? Send a '
           'photo — replacements go out same day and you keep the bent one.',
-      histogram: [
-        (stars: 5, count: 25),
-        (stars: 4, count: 1),
-        (stars: 3, count: 0),
-        (stars: 2, count: 0),
-        (stars: 1, count: 0),
-      ],
     ),
     'p3': ProductSpec(
       subtitle: 'Dad hat · one size',
@@ -443,9 +539,14 @@ abstract final class Fx {
         SpecRow('Care', 'Spot clean, air dry — the embroidery hates a dryer'),
       ],
       variants: [
-        Variant('Blush', '\$28', 'In stock', selected: true),
-        Variant('Butter yellow', '\$28', '11 in stock'),
-        Variant('Denim', '\$28', 'Back Oct 4'),
+        Variant('Blush', 2800),
+        Variant('Butter yellow', 2800, quantityAvailable: 11),
+        Variant(
+          'Denim',
+          2800,
+          availableForSale: false,
+          availabilityNote: 'Back Oct 4',
+        ),
       ],
       shipping: [
         SpecRow('Processing', '2–4 business days'),
@@ -456,13 +557,6 @@ abstract final class Fx {
       returns:
           '30-day returns, worn or not — hats are hard to judge on a screen. '
           'Return shipping is on us within the US.',
-      histogram: [
-        (stars: 5, count: 44),
-        (stars: 4, count: 6),
-        (stars: 3, count: 2),
-        (stars: 2, count: 0),
-        (stars: 1, count: 0),
-      ],
     ),
     'p4': ProductSpec(
       subtitle: 'Gift box · 5 tubes',
@@ -479,9 +573,9 @@ abstract final class Fx {
         SpecRow('Shelf life', '12 months from purchase'),
       ],
       variants: [
-        Variant('Full flight (5)', '\$34', 'In stock', selected: true),
-        Variant('Sampler (3, your pick)', '\$21', 'In stock'),
-        Variant('Flight + tin', '\$39', '4 left'),
+        Variant('Full flight (5)', 3400),
+        Variant('Sampler (3, your pick)', 2100),
+        Variant('Flight + tin', 3900, quantityAvailable: 4),
       ],
       shipping: [
         SpecRow('Processing', '2–3 business days'),
@@ -492,13 +586,6 @@ abstract final class Fx {
       returns:
           '30-day returns if the box is unopened. Opened one flavour and hated '
           "it? Message me — I'll swap that tube.",
-      histogram: [
-        (stars: 5, count: 17),
-        (stars: 4, count: 2),
-        (stars: 3, count: 0),
-        (stars: 2, count: 0),
-        (stars: 1, count: 0),
-      ],
     ),
     'p5': ProductSpec(
       subtitle: 'Sticker · single',
@@ -512,9 +599,9 @@ abstract final class Fx {
         SpecRow('Cut', 'Kiss-cut with a white border'),
       ],
       variants: [
-        Variant('Rainbow on black', '\$5', 'In stock', selected: true),
-        Variant('Rainbow on white', '\$5', 'In stock'),
-        Variant('Ten-pack for your shop', '\$38', 'For stockists'),
+        Variant('Rainbow on black', 500),
+        Variant('Rainbow on white', 500),
+        Variant('Ten-pack for your shop', 3800, availabilityNote: 'For stockists'),
       ],
       shipping: [
         SpecRow('Processing', '2–3 business days'),
@@ -525,13 +612,6 @@ abstract final class Fx {
       returns:
           'Returns accepted unopened within 30 days. Bent in the mail? Send a '
           'photo, keep the bent one, a new one goes out.',
-      histogram: [
-        (stars: 5, count: 14),
-        (stars: 4, count: 0),
-        (stars: 3, count: 0),
-        (stars: 2, count: 0),
-        (stars: 1, count: 0),
-      ],
     ),
     'p6': ProductSpec(
       subtitle: 'Service · half day',
@@ -545,9 +625,9 @@ abstract final class Fx {
         SpecRow('Add-ons', 'Extra hour \$95 · rush edit \$150'),
       ],
       variants: [
-        Variant('Half day (4 hr)', '\$450', 'Sept 18, 24 open', selected: true),
-        Variant('Full day (8 hr)', '\$820', 'Oct 2 open'),
-        Variant('Studio add-on', '\$120', 'Any date'),
+        Variant('Half day (4 hr)', 45000, availabilityNote: 'Sept 18, 24 open'),
+        Variant('Full day (8 hr)', 82000, availabilityNote: 'Oct 2 open'),
+        Variant('Studio add-on', 12000, availabilityNote: 'Any date'),
       ],
       shipping: [
         SpecRow('Scheduling', 'Confirmed by message within 24 hr'),
@@ -558,13 +638,6 @@ abstract final class Fx {
       returns:
           'Services are booked, not shipped. Buy opens a message with your '
           'requested dates — nothing is charged until Ama confirms.',
-      histogram: [
-        (stars: 5, count: 7),
-        (stars: 4, count: 1),
-        (stars: 3, count: 0),
-        (stars: 2, count: 0),
-        (stars: 1, count: 0),
-      ],
     ),
   };
 
@@ -573,14 +646,14 @@ abstract final class Fx {
   // ------------------------------------------------------------ search etc.
 
   static const tags = <TagCount>[
-    TagCount('#WomanOwned', '2,412 posts'),
-    TagCount('#BIPOCOwned', '1,908 posts'),
-    TagCount('#LGBTQOwned', '1,341 posts'),
-    TagCount('#VoteCollection', '1,102 posts'),
-    TagCount('#PlasticFree', '984 posts'),
-    TagCount('#VeteranOwned', '761 posts'),
-    TagCount('#DisabledOwned', '613 posts'),
-    TagCount('#MadeInDetroit', '542 posts'),
+    TagCount('#WomanOwned', 2412),
+    TagCount('#BIPOCOwned', 1908),
+    TagCount('#LGBTQOwned', 1341),
+    TagCount('#VoteCollection', 1102),
+    TagCount('#PlasticFree', 984),
+    TagCount('#VeteranOwned', 761),
+    TagCount('#DisabledOwned', 613),
+    TagCount('#MadeInDetroit', 542),
   ];
 
   static const recentSearches = <String>[
@@ -598,7 +671,7 @@ abstract final class Fx {
       id: 'f1',
       title: 'Vendor Corner',
       description: 'The catch-all for people who sell here.',
-      members: '312 members',
+      memberCount: 312,
       threadCount: 48,
       tint: 0xFF5C8FCB,
     ),
@@ -606,7 +679,7 @@ abstract final class Fx {
       id: 'f2',
       title: 'Pricing Your Work',
       description: 'Cost of goods, margins, and saying the number out loud.',
-      members: '244 members',
+      memberCount: 244,
       threadCount: 33,
       tint: 0xFFD69B62,
     ),
@@ -614,7 +687,7 @@ abstract final class Fx {
       id: 'f3',
       title: 'Packaging & Shipping Hacks',
       description: 'Plastic-free mailers, label printers, dim weight.',
-      members: '189 members',
+      memberCount: 189,
       threadCount: 27,
       tint: 0xFF86B98C,
     ),
@@ -622,7 +695,7 @@ abstract final class Fx {
       id: 'f4',
       title: 'Wholesale 101',
       description: 'Line sheets, terms, and your first stockist.',
-      members: '140 members',
+      memberCount: 140,
       threadCount: 19,
       tint: 0xFFA78BC9,
     ),
@@ -630,7 +703,7 @@ abstract final class Fx {
       id: 'f5',
       title: 'Detroit Pickup Swaps',
       description: 'Local handoffs, market days, table shares.',
-      members: '96 members',
+      memberCount: 96,
       threadCount: 12,
       tint: 0xFFDB93A8,
     ),
@@ -639,7 +712,7 @@ abstract final class Fx {
   static Forum forum(String id) =>
       forums.firstWhere((f) => f.id == id, orElse: () => forums.first);
 
-  static const threads = <ForumThread>[
+  static final threads = <ForumThread>[
     ForumThread(
       id: 't1',
       forumId: 'f1',
@@ -652,7 +725,7 @@ abstract final class Fx {
           'quietly change the number, or bundle it into a bigger relaunch?',
       upvotes: 128,
       commentCount: 47,
-      age: '6h',
+      createdAt: _ago(hours: 6),
     ),
     ForumThread(
       id: 't2',
@@ -664,7 +737,7 @@ abstract final class Fx {
           'Considering a flat local pickup option through #DetroitPickupSwaps.',
       upvotes: 64,
       commentCount: 22,
-      age: '1d',
+      createdAt: _ago(days: 1),
     ),
     ForumThread(
       id: 't3',
@@ -675,7 +748,7 @@ abstract final class Fx {
           'Currently hand-writing 40 labels a week and my wrist has opinions.',
       upvotes: 41,
       commentCount: 31,
-      age: '2d',
+      createdAt: _ago(days: 2),
     ),
   ];
 
@@ -685,11 +758,11 @@ abstract final class Fx {
   static List<ForumThread> threadsIn(String forumId) =>
       threads.where((t) => t.forumId == forumId).toList();
 
-  static const comments = <ThreadComment>[
+  static final comments = <ThreadComment>[
     ThreadComment(
       authorId: 'torres',
       upvotes: 34,
-      age: '5h',
+      createdAt: _ago(hours: 5),
       text:
           'Posted about it. One paragraph, no apology, named the actual input '
           'cost. Lost two customers, kept ninety.',
@@ -698,7 +771,7 @@ abstract final class Fx {
     ThreadComment(
       authorId: 'juniper',
       upvotes: 22,
-      age: '4h',
+      createdAt: _ago(hours: 4),
       text:
           'Bundled mine into a relaunch with new labels so it read as a new '
           'product, not a price hike. Felt sneakier than it was.',
@@ -707,7 +780,7 @@ abstract final class Fx {
     ThreadComment(
       authorId: 'kali',
       upvotes: 11,
-      age: '3h',
+      createdAt: _ago(hours: 3),
       text:
           "That's the version I keep circling. Did anyone push back on the new "
           'labels?',
@@ -716,7 +789,7 @@ abstract final class Fx {
     ThreadComment(
       authorId: 'rae',
       upvotes: 18,
-      age: '2h',
+      createdAt: _ago(hours: 2),
       text:
           'Wrote a whole zine page on this. Short version: people forgive a '
           'raise they understand and resent one they discover.',
@@ -725,7 +798,7 @@ abstract final class Fx {
     ThreadComment(
       authorId: 'ama',
       upvotes: 9,
-      age: '1h',
+      createdAt: _ago(hours: 1),
       text:
           'If you reshoot before you raise, the new price lands on new photos '
           'and nobody does the side-by-side.',
@@ -733,45 +806,44 @@ abstract final class Fx {
     ),
   ];
 
-  static const chatroom = <ChatMessage>[
+  static final chatroom = <ChatMessage>[
     ChatMessage(
       authorId: 'rae',
-      time: '9:02',
+      createdAt: _at(9, 2),
       text:
           'Anyone tabling at Eastern Market Sunday? I have a half table and too '
           'much space.',
     ),
     ChatMessage(
       authorId: 'torres',
-      time: '9:06',
+      createdAt: _at(9, 6),
       text:
           "I'm in for Sunday. Bringing the seconds bin, everything under \$40.",
     ),
     ChatMessage(
       authorId: 'juniper',
-      time: '9:11',
+      createdAt: _at(9, 11),
       text:
           'Reminder that the #VoteCollection deadline for October is Friday — '
           "tag your posts or they won't pull into the shelf.",
     ),
     ChatMessage(
       authorId: 'kali',
-      time: '9:14',
+      createdAt: _at(9, 14),
       text:
           'Cocoa Mint restock is live. First 20 tubes have the old hand-stamped '
           'label, which apparently people collect now?',
     ),
     ChatMessage(
       authorId: 'maya',
-      time: '9:15',
+      createdAt: _at(9, 15),
       text:
           "Claiming one. Also Rae — yes to the half table, I'll bring the "
           'second folding chair.',
-      mine: true,
     ),
     ChatMessage(
       authorId: 'ama',
-      time: '9:19',
+      createdAt: _at(9, 19),
       text:
           'If anyone needs product shots before the holiday push, I have two '
           'half-days left in September.',
@@ -780,53 +852,62 @@ abstract final class Fx {
 
   // --------------------------------------------------------------- messages
 
-  static const dms = <DmSummary>[
+  static final dms = <DmSummary>[
     DmSummary(
       personId: 'kali',
-      age: '2m',
+      lastMessageAt: _ago(minutes: 2),
       preview: 'Tubes ship today — I tucked in a Cocoa Orange to try',
       unread: 2,
     ),
     DmSummary(
       personId: 'ama',
-      age: '1h',
+      lastMessageAt: _ago(hours: 1),
       preview: 'Sept 18 works. Want the studio or your kitchen?',
       unread: 0,
     ),
     DmSummary(
       personId: 'juniper',
-      age: 'Yesterday',
+      lastMessageAt: _ago(days: 1),
       preview: "Got the vessel back, credit's on your account",
       unread: 0,
     ),
     DmSummary(
       personId: 'rae',
-      age: 'Mon',
-      preview: 'New delphinium design is cut. Want a stockist price for the table?',
+      lastMessageAt: _ago(days: 4),
+      preview:
+          'New delphinium design is cut. Want a stockist price for the table?',
       unread: 0,
     ),
   ];
 
-  static const dmThread = <DmMessage>[
+  /// One scripted conversation, re-authored for whoever you opened. Still a
+  /// single thread for every contact — real per-conversation history arrives
+  /// with the messaging repository.
+  static List<DmMessage> dmThreadWith(String personId) => [
     DmMessage(
-      mine: false,
-      time: '9:41 AM',
+      authorId: personId,
+      createdAt: _at(9, 41),
       text: 'Hey! Saw your order come through — the Cocoa Mint.',
     ),
     DmMessage(
-      mine: true,
-      time: '9:44 AM',
-      text: 'Yes! Fourth one. Any chance you still have the hand-stamped labels?',
+      authorId: meId,
+      createdAt: _at(9, 44),
+      text:
+          'Yes! Fourth one. Any chance you still have the hand-stamped labels?',
     ),
-    DmMessage(mine: false, time: '9:46 AM', text: 'I have four left. Saving you one.'),
     DmMessage(
-      mine: false,
-      time: '9:46 AM',
+      authorId: personId,
+      createdAt: _at(9, 46),
+      text: 'I have four left. Saving you one.',
+    ),
+    DmMessage(
+      authorId: personId,
+      createdAt: _at(9, 46),
       text: 'Tubes ship today — I tucked in a Cocoa Orange to try.',
     ),
     DmMessage(
-      mine: true,
-      time: '9:48 AM',
+      authorId: meId,
+      createdAt: _at(9, 48),
       text: "You're the best. I'll leave a review once it lands.",
     ),
   ];
@@ -836,46 +917,41 @@ abstract final class Fx {
   static const sending = <Shipment>[
     Shipment(
       productId: 'p1',
-      party: 'J. Alvarez · Chicago, IL',
+      counterpartyName: 'J. Alvarez · Chicago, IL',
       state: ShipmentState.inTransit,
       tracking: '9405 5118 9956 2231 4408 71',
-      step: 2,
-      note: 'Arriving Thursday',
+      carrierNote: 'Arriving Thursday',
     ),
     Shipment(
       productId: 'p5',
-      party: 'M. Nguyen · Portland, OR',
+      counterpartyName: 'M. Nguyen · Portland, OR',
       state: ShipmentState.labelCreated,
       tracking: '9405 5118 9956 2231 5107 03',
-      step: 1,
-      note: 'Drop off by Wed',
+      carrierNote: 'Drop off by Wed',
     ),
     Shipment(
       productId: 'p4',
-      party: 'D. Wells · Ferndale, MI',
+      counterpartyName: 'D. Wells · Ferndale, MI',
       state: ShipmentState.delivered,
       tracking: '9405 5118 9956 2230 8842 19',
-      step: 4,
-      note: 'Left at front door',
+      carrierNote: 'Left at front door',
     ),
   ];
 
   static const receiving = <Shipment>[
     Shipment(
       productId: 'p3',
-      party: 'from Holler Goods',
+      counterpartyName: 'from Holler Goods',
       state: ShipmentState.outForDelivery,
       tracking: '9261 2902 4536 1177 3320 96',
-      step: 3,
-      note: 'By 8:00 PM today',
+      carrierNote: 'By 8:00 PM today',
     ),
     Shipment(
       productId: 'p2',
-      party: 'from Rae Ortiz',
+      counterpartyName: 'from Rae Ortiz',
       state: ShipmentState.inTransit,
       tracking: '9261 2902 4536 1177 2214 55',
-      step: 2,
-      note: 'Arriving Sep 6',
+      carrierNote: 'Arriving Sep 6',
     ),
   ];
 
@@ -890,6 +966,9 @@ abstract final class Fx {
   // ----------------------------------------------------------------- search
 
   /// Products matching a query by hashtag, title, or product type.
+  //
+  // The empty-result fallback below is a prototype behaviour that hides the
+  // fact that no screen has an empty state. It goes when the repositories land.
   static List<String> search(String query) {
     final q = query.toLowerCase();
     final hits = products.values
