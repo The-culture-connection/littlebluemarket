@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/fixtures/fixture_data.dart';
+import '../../app_assets.dart';
 import '../../state/session.dart';
 import '../../theme/tokens.dart';
 
@@ -167,7 +167,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                     children: [
                       // The resting frame, underneath and always present.
                       Image.asset(
-                        Fx.still,
+                        LbmAssets.welcomeStill,
                         fit: BoxFit.fill,
                         semanticLabel:
                             'little blue market — sign in, create a profile, '
@@ -177,7 +177,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                       // The animation, on top, removed when it finishes.
                       if (_showIntro)
                         Image.asset(
-                          Fx.gif,
+                          LbmAssets.welcomeIntro,
                           fit: BoxFit.fill,
                           excludeFromSemantics: true,
                           frameBuilder: (context, child, frame, _) {

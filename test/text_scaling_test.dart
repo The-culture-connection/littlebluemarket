@@ -30,7 +30,7 @@ const _routes = <String, String>{
   'edit profile': '/you/edit',
   'shipping': '/you/shipping',
   'messages': '/you/messages',
-  'direct message': '/you/dm/kali',
+  'direct message': '/you/dm/kali?to=1',
 };
 
 void main() {

@@ -53,6 +53,13 @@ class FeedScreen extends ConsumerWidget {
                   onTap: () =>
                       ref.read(searchFiltersProvider.notifier).toggleNearMe(),
                 ),
+                const SizedBox(width: 8),
+                CircleIconButton(
+                  icon: Icons.shopping_bag_outlined,
+                  tooltip: 'Your cart',
+                  badge: ref.watch(cartCountProvider) > 0,
+                  onPressed: () => context.goToCart(),
+                ),
               ],
             ),
             const SizedBox(height: 11),

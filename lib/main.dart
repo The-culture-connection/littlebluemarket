@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'data/fixtures/fixture_data.dart';
+import 'app_assets.dart';
 import 'router/app_router.dart';
 import 'state/providers.dart';
 import 'state/session.dart';
@@ -24,7 +24,7 @@ Future<void> main() async {
   // native splash covers the wait.
   binding.deferFirstFrame();
   await _decode(
-    Fx.still,
+    LbmAssets.welcomeStill,
   ).timeout(const Duration(seconds: 5), onTimeout: () {});
   binding.allowFirstFrame();
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../data/fixtures/fixture_data.dart';
 import '../models/models.dart';
 import '../theme/tokens.dart';
 
@@ -73,7 +72,7 @@ class ProductArt extends StatelessWidget {
 
 /// One listing photograph, from the bundle or the network.
 ///
-/// Demo fixtures carry an `asset://` URL so the app stays correct offline;
+/// The demo backend serves an `asset://` URL so the app stays correct offline;
 /// live listings carry ordinary URLs. Everything above this widget just holds a
 /// list of strings and never has to know which is which.
 class ProductPhoto extends StatelessWidget {

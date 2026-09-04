@@ -7,6 +7,7 @@ import '../screens/community/forum_screen.dart';
 import '../screens/community/forums_screen.dart';
 import '../screens/community/new_forum_screen.dart';
 import '../screens/community/thread_screen.dart';
+import '../screens/market/cart_screen.dart';
 import '../screens/market/feed_screen.dart';
 import '../screens/market/post_screen.dart';
 import '../screens/market/product_screen.dart';
@@ -55,8 +56,16 @@ List<RouteBase> _sharedRoutes() => [
   ),
   GoRoute(
     path: 'dm/:id',
-    builder: (context, state) =>
-        DmScreen(personId: state.pathParameters['id']!),
+    builder: (context, state) => DmScreen(
+      // From the inbox the id is a conversation; from a storefront it is a
+      // person and the thread may not exist yet.
+      conversationId: state.uri.queryParameters['to'] == null
+          ? state.pathParameters['id']
+          : null,
+      personId: state.uri.queryParameters['to'] == null
+          ? null
+          : state.pathParameters['id'],
+    ),
   ),
   GoRoute(
     path: 'results',
@@ -65,6 +74,7 @@ List<RouteBase> _sharedRoutes() => [
     ),
   ),
   GoRoute(path: 'search', builder: (context, state) => const SearchScreen()),
+  GoRoute(path: 'cart', builder: (context, state) => const CartScreen()),
 ];
 
 GoRouter buildRouter(Ref ref) {

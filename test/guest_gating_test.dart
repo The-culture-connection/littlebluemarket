@@ -73,14 +73,12 @@ void main() {
     expect(find.text('Create a profile'), findsOneWidget);
   });
 
-  testWidgets('a guest gets the gate instead of the buy sheet', (
-    tester,
-  ) async {
+  testWidgets('a guest gets the gate instead of the cart', (tester) async {
     await _pumpApp(tester, guest: true);
     await _tapFirstBuy(tester);
 
     expect(find.text('Make a profile to do that'), findsOneWidget);
-    expect(find.text('Place order'), findsNothing);
+    expect(find.text('Your cart'), findsNothing);
   });
 
   testWidgets('a guest sees the browsing banner', (tester) async {
@@ -101,26 +99,27 @@ void main() {
     expect(find.textContaining('Looking around as a guest'), findsNothing);
   });
 
-  testWidgets('a signed-in buyer gets the buy sheet, not the gate', (
+  testWidgets('a signed-in buyer reaches the cart, not the gate', (
     tester,
   ) async {
     await _pumpApp(tester, guest: false);
     await _tapFirstBuy(tester);
 
-    expect(find.text('Place order'), findsOneWidget);
+    // Buy adds to the cart and opens it. The prototype's sheet confirmed an
+    // order against a hardcoded address and an invented flat shipping rate,
+    // then navigated as though an order had been placed.
+    expect(find.text('Your cart'), findsOneWidget);
     expect(find.text('Make a profile to do that'), findsNothing);
   });
 
-  testWidgets('the buy sheet totals the price plus flat shipping', (
+  testWidgets('the cart does not invent a total it cannot know', (
     tester,
   ) async {
     await _pumpApp(tester, guest: false);
     await _tapFirstBuy(tester);
 
-    final first = Fx.product(Fx.feedOrder.first);
-    final expected =
-        '\$${((first.priceCents + Fx.shippingCents) / 100).toStringAsFixed(2)}';
-    expect(find.text(expected), findsOneWidget);
+    expect(find.text('Calculated at checkout'), findsOneWidget);
+    expect(find.text('Total so far'), findsOneWidget);
   });
 
   testWidgets('the community tab is reachable once signed in', (tester) async {

@@ -91,7 +91,7 @@ zero Firebase dependency until PR 11. Do not start Track B early.
 - [x] **PR 7** — Market screens async.
 - [x] **PR 8** — Profile / seller feed / edit profile (seller vs buyer split) / shipping.
 - [x] **PR 9** — Community: chatroom, forums, threads.
-- [ ] **PR 10** — Messaging + commerce cart. Un-skip the fixture-import guard.
+- [x] **PR 10** — Messaging + commerce cart. Un-skip the fixture-import guard.
 - [ ] **PR 11** — Firebase bootstrap.
 - [ ] **PR 12** — Live social/profile/messaging + emulator seed script.
 - [ ] **PR 13** — Shopify proxy, catalog mirror, order attribution. **← Milestone 1 ends here.**

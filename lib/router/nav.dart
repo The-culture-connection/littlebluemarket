@@ -28,8 +28,11 @@ extension LbmNavigation on BuildContext {
   /// Someone's public feed. Every avatar in the app leads here.
   void goToSeller(String personId) => _pushInBranch('/seller/$personId');
 
-  /// A one-to-one thread.
-  void goToDm(String personId) => _pushInBranch('/dm/$personId');
+  /// From a storefront: the conversation may not exist yet, so the screen
+  /// resolves it. The inbox pushes a conversation id directly.
+  void goToDm(String personId) => _pushInBranch('/dm/$personId?to=1');
+
+  void goToCart() => _pushInBranch('/cart');
 
   /// Search results for a query, usually a hashtag.
   void goToResults(String query) =>

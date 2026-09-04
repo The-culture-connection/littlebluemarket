@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/fixtures/fixture_data.dart';
+import '../../app_assets.dart';
 import '../../data/repositories/repositories.dart';
 import '../../widgets/async.dart';
 import '../../state/session.dart';
@@ -70,7 +70,7 @@ class _OnboardingScaffold extends StatelessWidget {
                       children: [
                         Column(
                           children: [
-                            Image.asset(Fx.cart, width: 74),
+                            Image.asset(LbmAssets.cartMark, width: 74),
                             const SizedBox(height: 10),
                             Text(
                               title,

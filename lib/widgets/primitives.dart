@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/fixtures/fixture_data.dart';
+import '../app_assets.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
@@ -998,7 +998,7 @@ class GuestBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Image.asset(Fx.cart, width: 32),
+          Image.asset(LbmAssets.cartMark, width: 32),
           const SizedBox(width: 9),
           Expanded(
             child: Text(

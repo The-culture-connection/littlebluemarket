@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../data/fixtures/fixture_data.dart';
+import '../app_assets.dart';
+import '../data/repositories/repositories.dart';
 import '../models/models.dart';
+import '../router/nav.dart';
+import '../state/providers.dart';
 import '../state/session.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
+import 'async.dart';
 import 'primitives.dart';
 import 'product_art.dart';
 
@@ -81,7 +85,7 @@ Future<void> showGateSheet(BuildContext context) {
       children: [
         Column(
           children: [
-            Image.asset(Fx.cart, width: 80),
+            Image.asset(LbmAssets.cartMark, width: 80),
             const SizedBox(height: 8),
             Text(
               'Make a profile to do that',
@@ -145,244 +149,6 @@ bool requireProfile(BuildContext context, WidgetRef ref, VoidCallback action) {
   return true;
 }
 
-// ------------------------------------------------------------------- the buy
-
-/// The buy sheet. Confirm quantity, address and total.
-///
-/// [variant] is what the person actually selected. Without it the sheet prices
-/// the product, which is a different number the moment a listing has more than
-/// one option -- the prototype's sheet did exactly that.
-Future<void> showBuySheet(
-  BuildContext context,
-  Product product, {
-  Variant? variant,
-}) {
-  return showLbmSheet(
-    context,
-    (sheetContext) => _BuySheet(product: product, variant: variant),
-  );
-}
-
-class _BuySheet extends StatefulWidget {
-  const _BuySheet({required this.product, this.variant});
-
-  final Product product;
-  final Variant? variant;
-
-  @override
-  State<_BuySheet> createState() => _BuySheetState();
-}
-
-class _BuySheetState extends State<_BuySheet> {
-  int _quantity = 1;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    final p = widget.product;
-    final seller = Fx.person(p.sellerId);
-    final unitPriceCents = widget.variant?.priceCents ?? p.priceCents;
-    final total = unitPriceCents * _quantity + Fx.shippingCents;
-
-    return LbmSheet(
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 60,
-              child: ProductArt(
-                p,
-                square: true,
-                borderRadius: const BorderRadius.all(Radius.circular(14)),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    p.title,
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w800,
-                      height: 1.3,
-                      color: c.ink,
-                    ),
-                  ),
-                  Text(
-                    '${seller.name} · ${p.type}',
-                    style: LbmText.tiny.copyWith(color: c.ink2),
-                  ),
-                  const SizedBox(height: 3),
-                  InlineLink(
-                    'See full details',
-                    fontSize: 11.5,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      context.push('/market/product/${p.id}');
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              Fmt.money(unitPriceCents),
-              style: LbmText.display.copyWith(fontSize: 20, color: c.ink),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: c.skyWash,
-            borderRadius: const BorderRadius.all(Radius.circular(18)),
-          ),
-          child: Column(
-            children: [
-              _SummaryRow(
-                label: 'Quantity',
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _StepperButton(
-                      icon: Icons.remove_rounded,
-                      onTap: _quantity > 1
-                          ? () => setState(() => _quantity--)
-                          : null,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(
-                        '$_quantity',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: c.ink,
-                          fontFeatures: kTabularFigures,
-                        ),
-                      ),
-                    ),
-                    _StepperButton(
-                      icon: Icons.add_rounded,
-                      onTap: () => setState(() => _quantity++),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              _SummaryRow(label: 'Ship to', value: 'Maya E. · Detroit, MI'),
-              const SizedBox(height: 10),
-              _SummaryRow(label: 'Shipping', value: '\$5.60 · USPS Ground'),
-              const SizedBox(height: 14),
-              _SummaryRow(
-                label: 'Total',
-                value: Fmt.money(total),
-                strong: true,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        PillButton(
-          'Place order',
-          onPressed: () {
-            Navigator.of(context).pop();
-            context.go('/you/shipping');
-          },
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Lands in Purchases on your profile and in Receiving under Shipping.',
-          textAlign: TextAlign.center,
-          style: LbmText.xtiny.copyWith(color: c.ink3, height: 1.55),
-        ),
-      ],
-    );
-  }
-}
-
-class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({
-    required this.label,
-    this.value,
-    this.trailing,
-    this.strong = false,
-  });
-
-  final String label;
-  final String? value;
-  final Widget? trailing;
-  final bool strong;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: strong ? 15 : 13.5,
-              fontWeight: strong ? FontWeight.w800 : FontWeight.w400,
-              color: strong ? c.ink : c.ink2,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        if (trailing != null)
-          trailing!
-        else
-          Flexible(
-            child: Text(
-              value ?? '',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: strong ? 15 : 13.5,
-                fontWeight: FontWeight.w800,
-                color: c.ink,
-                fontFeatures: kTabularFigures,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _StepperButton extends StatelessWidget {
-  const _StepperButton({required this.icon, this.onTap});
-
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    return InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: Icon(
-          icon,
-          size: 19,
-          color: onTap == null ? c.ink3 : c.ink,
-        ),
-      ),
-    );
-  }
-}
-
 /// Runs [action] only if the current user is a seller.
 ///
 /// The seller-only affordances — posting a listing, the sales tab, revenue — go
@@ -404,4 +170,87 @@ bool requireSeller(BuildContext context, WidgetRef ref, VoidCallback action) {
   }
   action();
   return true;
+}
+
+// ------------------------------------------------------------------- the buy
+
+/// "Buy" adds to the cart and opens it.
+///
+/// The prototype's buy sheet confirmed an order against invented numbers — a
+/// hardcoded ship-to address, a flat "$5.60 · USPS Ground", and a total that
+/// ignored the selected variant — and then navigated as though an order had
+/// been placed. None of that was true, and the parts that are true are only
+/// knowable at checkout.
+Future<void> showBuySheet(
+  BuildContext context,
+  Product product, {
+  Variant? variant,
+}) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final container = ProviderScope.containerOf(context);
+  try {
+    await container
+        .read(commerceRepositoryProvider)
+        .addLine(productId: product.id, variantId: variant?.name);
+    if (!context.mounted) return;
+    context.push('${branchPrefix(context)}/cart');
+  } on RepositoryException catch (error) {
+    messenger.showSnackBar(SnackBar(content: Text(describeError(error).body)));
+  }
+}
+
+// -------------------------------------------------------------- the checkout
+
+/// Hands the cart over to whoever takes the money.
+///
+/// Deliberately does not claim the purchase succeeded. The app cannot observe
+/// a hosted checkout completing -- the sheet closing means the person dismissed
+/// it, not that they paid -- so the copy says what is actually true and the
+/// order arrives through the paid webhook.
+Future<void> showCheckoutSheet(BuildContext context, CheckoutHandoff handoff) {
+  return showLbmSheet(context, (sheetContext) {
+    final c = sheetContext.c;
+    return LbmSheet(
+      children: [
+        Image.asset(LbmAssets.cartMark, width: 64),
+        const SizedBox(height: 10),
+        Text(
+          'Finish in checkout',
+          textAlign: TextAlign.center,
+          style: LbmText.display.copyWith(fontSize: 21, color: c.ink),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Payment, shipping and tax are handled by the store. Your order shows '
+          'up under Packages once it is confirmed.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13.5, height: 1.55, color: c.ink2),
+        ),
+        const SizedBox(height: 18),
+        PillButton(
+          'Open checkout',
+          onPressed: () {
+            Navigator.of(sheetContext).pop();
+            // The web handoff itself lands with the commerce proxy.
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Checkout: ${handoff.webUrl}')),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => Navigator.of(sheetContext).pop(),
+          child: Text(
+            'Keep shopping',
+            style: TextStyle(
+              fontFamily: kBodyFont,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: c.ink3,
+            ),
+          ),
+        ),
+      ],
+    );
+  });
 }

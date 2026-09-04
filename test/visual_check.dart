@@ -83,7 +83,7 @@ const _shots = <String, String>{
   'profile': '/you',
   'shipping': '/you/shipping',
   'messages': '/you/messages',
-  'dm': '/you/dm/kali',
+  'dm': '/you/dm/kali?to=1',
 };
 
 void main() {

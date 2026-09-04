@@ -1,5 +1,3 @@
-@Skip('Enabled in PR 10, once every screen reads through a repository.')
-library;
 
 import 'dart:io';
 
