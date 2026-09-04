@@ -17,7 +17,6 @@ class Person {
     required this.revenue,
     required this.purchases,
     required this.posts,
-    required this.points,
   });
 
   final String id;
@@ -36,7 +35,6 @@ class Person {
   final String revenue;
   final int purchases;
   final int posts;
-  final String points;
 
   /// Up to two initials, for the avatar.
   String get initials => name

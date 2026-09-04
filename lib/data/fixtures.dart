@@ -37,7 +37,6 @@ abstract final class Fx {
       revenue: '\$4,820',
       purchases: 37,
       posts: 24,
-      points: '1,240',
     ),
     'kali': Person(
       id: 'kali',
@@ -51,7 +50,6 @@ abstract final class Fx {
       revenue: '\$11,405',
       purchases: 52,
       posts: 61,
-      points: '3,180',
     ),
     'rae': Person(
       id: 'rae',
@@ -65,7 +63,6 @@ abstract final class Fx {
       revenue: '\$3,910',
       purchases: 63,
       posts: 44,
-      points: '1,780',
     ),
     'holler': Person(
       id: 'holler',
@@ -79,7 +76,6 @@ abstract final class Fx {
       revenue: '\$14,260',
       purchases: 21,
       posts: 33,
-      points: '2,640',
     ),
     'ama': Person(
       id: 'ama',
@@ -91,7 +87,6 @@ abstract final class Fx {
       revenue: '\$16,200',
       purchases: 9,
       posts: 27,
-      points: '2,745',
     ),
     'torres': Person(
       id: 'torres',
@@ -103,7 +98,6 @@ abstract final class Fx {
       revenue: '\$8,960',
       purchases: 14,
       posts: 38,
-      points: '2,010',
     ),
     'juniper': Person(
       id: 'juniper',
@@ -115,7 +109,6 @@ abstract final class Fx {
       revenue: '\$6,340',
       purchases: 41,
       posts: 52,
-      points: '1,905',
     ),
     'dee': Person(
       id: 'dee',
@@ -127,7 +120,6 @@ abstract final class Fx {
       revenue: '\$0',
       purchases: 88,
       posts: 3,
-      points: '2,410',
     ),
   };
 

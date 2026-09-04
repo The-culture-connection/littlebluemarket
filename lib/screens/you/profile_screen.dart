@@ -12,8 +12,7 @@ import '../market/results_screen.dart';
 
 /// Your own profile: the Instagram layout, remapped.
 ///
-/// (i) explains points, the envelope opens messages, and the overflow button
-/// opens shipping.
+/// The envelope opens messages and the overflow button opens shipping.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -35,11 +34,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         centerTitle: true,
         titleSize: 17,
         title: me.handle,
-        leading: CircleIconButton(
-          icon: Icons.info_outline_rounded,
-          tooltip: 'About points',
-          onPressed: () => showPointsSheet(context),
-        ),
         actions: [
           CircleIconButton(
             icon: Icons.mail_outline_rounded,
@@ -59,7 +53,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           ProfileIdentity(
             person: me,
-            onPointsTap: () => showPointsSheet(context),
             actions: [
               Row(
                 children: [

@@ -33,7 +33,7 @@ class PostCard extends ConsumerWidget {
               child: ProductArt(product, borderRadius: LbmRadius.imageR),
             ),
           ),
-          _PostActions(onComment: () => context.goToPost(product.id)),
+          PostActionBar(onComment: () => context.goToPost(product.id)),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
             child: Column(
@@ -168,10 +168,21 @@ class _PostHead extends StatelessWidget {
   }
 }
 
-class _PostActions extends StatelessWidget {
-  const _PostActions({this.onComment});
+/// Like, comment, and add-to-cart, shared by the feed card and the post screen.
+///
+/// One widget rather than two look-alikes: the row appeared verbatim in both
+/// places, and the copies had already drifted apart in their callbacks.
+class PostActionBar extends StatelessWidget {
+  const PostActionBar({
+    super.key,
+    this.onLike,
+    this.onComment,
+    this.onAddToCart,
+  });
 
+  final VoidCallback? onLike;
   final VoidCallback? onComment;
+  final VoidCallback? onAddToCart;
 
   @override
   Widget build(BuildContext context) {
@@ -179,17 +190,23 @@ class _PostActions extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 11, 16, 4),
       child: Row(
         children: [
-          _ActionIcon(icon: Icons.favorite_border_rounded, label: 'Like'),
+          _ActionIcon(
+            icon: Icons.favorite_border_rounded,
+            label: 'Like',
+            onTap: onLike,
+          ),
           const SizedBox(width: 16),
           _ActionIcon(
             icon: Icons.chat_bubble_outline_rounded,
             label: 'Comments',
             onTap: onComment,
           ),
-          const SizedBox(width: 16),
-          const _ActionIcon(icon: Icons.send_outlined, label: 'Share'),
           const Spacer(),
-          const _ActionIcon(icon: Icons.bookmark_border_rounded, label: 'Save'),
+          _ActionIcon(
+            icon: Icons.add_shopping_cart_rounded,
+            label: 'Add to cart',
+            onTap: onAddToCart,
+          ),
         ],
       ),
     );

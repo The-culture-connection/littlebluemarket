@@ -79,7 +79,7 @@ These exist so Shopify stays removable. Breaking one is a design regression even
 Track A refactors the client on fixtures; the app stays runnable and demoable at every step, with
 zero Firebase dependency until PR 11. Do not start Track B early.
 
-- [ ] **PR 1** — UI removals: drop the share/arrow icon, Save → Add to cart, unify `_PostActions`
+- [x] **PR 1** — UI removals: drop the share/arrow icon, Save → Add to cart, unify `_PostActions`
       and `_PostActionRow` into one public `PostActionBar`, remove points entirely, remove the (i)
       icon, remove Hot/New/Top from `forum_screen.dart`.
 - [ ] **PR 2** — Typed models + `lib/models/formatting.dart`. Display strings become real types.

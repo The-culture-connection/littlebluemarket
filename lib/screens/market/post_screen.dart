@@ -113,7 +113,7 @@ class PostScreen extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: ProductArt(product, borderRadius: LbmRadius.imageR),
                 ),
-                const _PostActionRow(),
+                const PostActionBar(),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
                   child: Column(
@@ -266,39 +266,6 @@ class PostScreen extends ConsumerWidget {
               onPressed: () => context.goToReviews(productId),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PostActionRow extends StatelessWidget {
-  const _PostActionRow();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    Widget icon(IconData data, String label) => Semantics(
-      button: true,
-      label: label,
-      child: InkResponse(
-        onTap: () {},
-        radius: 22,
-        child: Icon(data, size: 23, color: c.ink),
-      ),
-    );
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 11, 16, 4),
-      child: Row(
-        children: [
-          icon(Icons.favorite_border_rounded, 'Like'),
-          const SizedBox(width: 16),
-          icon(Icons.chat_bubble_outline_rounded, 'Comment'),
-          const SizedBox(width: 16),
-          icon(Icons.send_outlined, 'Share'),
-          const Spacer(),
-          icon(Icons.bookmark_border_rounded, 'Save'),
         ],
       ),
     );

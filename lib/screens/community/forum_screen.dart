@@ -8,25 +8,17 @@ import '../../theme/tokens.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 
-/// Threads inside one forum, sorted hot: a vote column, the title, the author
-/// and a comment count.
-class ForumScreen extends StatefulWidget {
+/// Threads inside one forum: a vote column, the title, the author and a
+/// comment count.
+class ForumScreen extends StatelessWidget {
   const ForumScreen({super.key, required this.forumId});
 
   final String forumId;
 
   @override
-  State<ForumScreen> createState() => _ForumScreenState();
-}
-
-class _ForumScreenState extends State<ForumScreen> {
-  int _sort = 0;
-  static const _sorts = ['Hot', 'New', 'Top'];
-
-  @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final forum = Fx.forum(widget.forumId);
+    final forum = Fx.forum(forumId);
     final threads = Fx.threadsIn(forum.id);
 
     return LbmScreen(
@@ -62,21 +54,6 @@ class _ForumScreenState extends State<ForumScreen> {
                     fontFeatures: kTabularFigures,
                   ),
                 ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 6),
-            child: Wrap(
-              spacing: 7,
-              children: [
-                for (var i = 0; i < _sorts.length; i++)
-                  LbmChip(
-                    _sorts[i],
-                    fontSize: 11.5,
-                    style: i == _sort ? ChipStyle.on : ChipStyle.quiet,
-                    onTap: () => setState(() => _sort = i),
-                  ),
               ],
             ),
           ),

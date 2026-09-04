@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -186,21 +184,4 @@ class _PuffPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_PuffPainter old) => old.color != color;
-}
-
-/// The `◆` that marks a points total. Drawn rather than typeset so it does not
-/// depend on the font carrying the glyph.
-class PointsDiamond extends StatelessWidget {
-  const PointsDiamond({super.key, required this.color, this.size = 9});
-
-  final Color color;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Transform.rotate(
-      angle: math.pi / 4,
-      child: Container(width: size, height: size, color: color),
-    );
-  }
 }

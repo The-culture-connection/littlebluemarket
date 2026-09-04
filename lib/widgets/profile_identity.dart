@@ -5,7 +5,6 @@ import '../router/nav.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'primitives.dart';
-import 'product_art.dart';
 
 /// The identity block shared by your own profile and any seller's feed.
 ///
@@ -17,15 +16,13 @@ class ProfileIdentity extends StatelessWidget {
     super.key,
     required this.person,
     required this.actions,
-    this.onPointsTap,
   });
 
   final Person person;
 
-  /// What sits under the points pill: Message on someone else's feed, Edit
-  /// profile and Post on your own.
+  /// What sits below the bio: Message on someone else's feed, Edit profile and
+  /// Post on your own.
   final List<Widget> actions;
-  final VoidCallback? onPointsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -78,8 +75,6 @@ class ProfileIdentity extends StatelessWidget {
             TagChips(person.tags, onTap: (tag) => context.goToResults(tag)),
           ],
           const SizedBox(height: 14),
-          _PointsPill(points: person.points, onTap: onPointsTap),
-          const SizedBox(height: 14),
           ...actions,
         ],
       ),
@@ -127,64 +122,6 @@ class _Stat extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PointsPill extends StatelessWidget {
-  const _PointsPill({required this.points, this.onTap});
-
-  final String points;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: c.accentMist,
-          borderRadius: LbmRadius.pillR,
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: LbmRadius.pillR,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 13,
-                vertical: 7,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  PointsDiamond(color: c.accentText, size: 9),
-                  const SizedBox(width: 7),
-                  Text(
-                    '$points points',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                      color: c.accentText,
-                      fontFeatures: kTabularFigures,
-                    ),
-                  ),
-                  if (onTap != null) ...[
-                    const SizedBox(width: 6),
-                    Icon(
-                      Icons.info_outline_rounded,
-                      size: 14,
-                      color: c.accentText.withValues(alpha: 0.7),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
