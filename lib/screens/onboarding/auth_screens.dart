@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/fixtures/fixture_data.dart';
+import '../../data/repositories/repositories.dart';
+import '../../widgets/async.dart';
 import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
@@ -313,15 +315,38 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
     super.dispose();
   }
 
-  void _confirm() {
-    if (_code.text.length < 6) return;
-    // A returning buyer goes straight in; a first-time account still needs a
-    // handle, a photo and a bio before it has a storefront.
-    if (widget.creating) {
-      context.push('/setup');
-    } else {
-      ref.read(sessionProvider.notifier).signIn();
-      context.go('/market');
+  String? _codeError;
+  bool _confirming = false;
+
+  Future<void> _confirm() async {
+    if (_code.text.length < 6 || _confirming) return;
+    setState(() {
+      _confirming = true;
+      _codeError = null;
+    });
+
+    try {
+      // The code is verified before anything else happens. Signing in is what
+      // links an existing customer or vendor record, and that link must rest on
+      // a proven email — otherwise anyone could type a stranger's address and
+      // inherit their order history.
+      await ref
+          .read(sessionProvider.notifier)
+          .confirmCode(email: widget.email, code: _code.text);
+      if (!mounted) return;
+
+      // A returning buyer goes straight in; a first-time account still needs a
+      // handle and a bio before it has a storefront.
+      if (widget.creating) {
+        context.push('/setup');
+      } else {
+        context.go('/market');
+      }
+    } on RepositoryException catch (error) {
+      if (!mounted) return;
+      setState(() => _codeError = describeError(error).body);
+    } finally {
+      if (mounted) setState(() => _confirming = false);
     }
   }
 
@@ -336,6 +361,18 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
           focusNode: _focus,
           onCompleted: _confirm,
         ),
+        if (_codeError != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            _codeError!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: LbmConst.onWelcome,
+            ),
+          ),
+        ],
         const SizedBox(height: 18),
         Center(
           child: _resendIn > 0
@@ -352,8 +389,8 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
       ],
       actions: [
         _SlateButton(
-          label: 'Confirm',
-          onPressed: _code.text.length == 6 ? _confirm : null,
+          label: _confirming ? 'Checking…' : 'Confirm',
+          onPressed: _code.text.length == 6 && !_confirming ? _confirm : null,
         ),
         _QuietAction(
           'Use a different email',
@@ -462,8 +499,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     super.dispose();
   }
 
-  void _finish() {
-    ref.read(sessionProvider.notifier).signIn();
+  Future<void> _finish() async {
+    // The handle and bio are written, not discarded. The prototype collected
+    // both and threw them away.
+    await ref.read(sessionProvider.notifier).createProfile(
+      ProfileEdit(
+        handle: _handle.text.trim().isEmpty ? null : _handle.text.trim(),
+        bio: _bio.text.trim().isEmpty ? null : _bio.text.trim(),
+      ),
+    );
+    if (!mounted) return;
     context.go('/market');
   }
 

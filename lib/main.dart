@@ -51,7 +51,7 @@ class LittleBlueMarketApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    final override = ref.watch(sessionProvider).themeMode;
+    final override = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       title: 'Little Blue Market',

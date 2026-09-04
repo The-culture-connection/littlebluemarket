@@ -136,7 +136,7 @@ Future<void> showGateSheet(BuildContext context) {
 /// Every gated affordance — Buy, Message, post, review, the Community and You
 /// tabs — goes through here, so the rule lives in one place.
 bool requireProfile(BuildContext context, WidgetRef ref, VoidCallback action) {
-  if (ref.read(sessionProvider).isGuest) {
+  if (ref.read(isGuestProvider)) {
     showGateSheet(context);
     return false;
   }
@@ -413,4 +413,27 @@ Future<void> showNewPostSheet(BuildContext context) {
       ],
     );
   });
+}
+
+/// Runs [action] only if the current user is a seller.
+///
+/// The seller-only affordances — posting a listing, the sales tab, revenue — go
+/// through here, the same way every profile-gated one goes through
+/// [requireProfile]. Note the order: both gates are checked *before* the action
+/// runs, so a buyer never reaches a seller-only screen.
+bool requireSeller(BuildContext context, WidgetRef ref, VoidCallback action) {
+  if (ref.read(isGuestProvider)) {
+    showGateSheet(context);
+    return false;
+  }
+  if (!ref.read(isSellerProvider)) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Turn on selling in Edit profile to list your work.'),
+      ),
+    );
+    return false;
+  }
+  action();
+  return true;
 }

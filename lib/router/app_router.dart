@@ -73,11 +73,29 @@ GoRouter buildRouter(Ref ref) {
     initialLocation: '/',
     refreshListenable: _SessionListenable(ref),
     redirect: (context, state) {
-      final isGuest = ref.read(sessionProvider).isGuest;
+      final async = ref.read(sessionProvider);
+      // Do not bounce anyone while the session is still resolving, or a cold
+      // start flashes guest before it settles on member.
+      if (!async.hasValue) return null;
+
+      final session = async.value!;
       final path = state.uri.path;
+
+      // The onboarding routes decide their own next step.
+      if (path == '/' ||
+          path.startsWith('/welcome') ||
+          path.startsWith('/signin') ||
+          path.startsWith('/verify') ||
+          path.startsWith('/setup')) {
+        return null;
+      }
+
+      // Authenticated with no profile yet: setup is the only way forward.
+      if (session is OnboardingSession) return '/setup';
+
       // Community and You are not in a guest's tab bar at all; this is the
       // backstop for a deep link or a sign-out while inside one of them.
-      if (isGuest &&
+      if (session is! MemberSession &&
           (path.startsWith('/community') || path.startsWith('/you'))) {
         return '/market';
       }
@@ -188,11 +206,20 @@ GoRouter buildRouter(Ref ref) {
   );
 }
 
-/// Re-runs the redirect when the session changes, so signing out of a gated tab
-/// bounces back to the market.
+/// Re-runs the redirect when the session changes *kind*, so signing out of a
+/// gated tab bounces back to the market.
+///
+/// Deliberately not on every session emission. The session carries the current
+/// profile, and the order pipeline increments counters on that document — so
+/// listening to every change would re-run the router's redirect each time
+/// someone likes a post or a sale lands.
 class _SessionListenable extends ChangeNotifier {
   _SessionListenable(Ref ref) {
-    ref.listen(sessionProvider, (_, _) => notifyListeners());
+    ref.listen(sessionProvider, (previous, next) {
+      if (previous?.value.runtimeType != next.value.runtimeType) {
+        notifyListeners();
+      }
+    });
   }
 }
 

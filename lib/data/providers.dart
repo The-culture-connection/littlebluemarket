@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'auth/auth_service.dart';
 import 'fixtures/fixture_repositories.dart';
 import 'fixtures/fixture_store.dart';
 import 'repositories/repositories.dart';
@@ -108,3 +109,18 @@ BackendException _notWired(String name) => BackendException(
   'Run without --dart-define=LBM_BACKEND=live, or wire it up.',
   code: 'not-wired',
 );
+
+/// Identity.
+///
+/// Separate from the repositories because it is not a repository: it is the
+/// thing that tells them who is asking.
+final authServiceProvider = Provider<AuthService>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => () {
+      final service = FixtureAuthService();
+      ref.onDispose(service.dispose);
+      return service;
+    }(),
+    Backend.live => throw _notWired('AuthService'),
+  };
+});
