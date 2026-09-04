@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../data/fixtures.dart';
+import '../data/fixtures/fixture_data.dart';
 import '../models/models.dart';
 import '../theme/tokens.dart';
 

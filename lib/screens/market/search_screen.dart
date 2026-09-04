@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../data/fixtures.dart';
+import '../../data/fixtures/fixture_data.dart';
 import '../../router/nav.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';

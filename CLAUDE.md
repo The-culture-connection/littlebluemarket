@@ -85,7 +85,7 @@ zero Firebase dependency until PR 11. Do not start Track B early.
 - [x] **PR 2** — Typed models + `lib/models/formatting.dart`. Display strings become real types.
 - [x] **PR 3** — New models: sealed `Post`, `Cart`/`CartLine`, `Order`, `Comment`, `Message`,
       `Address`, `SearchFilters`/`SearchResults`.
-- [ ] **PR 4** — Repository seam + mutable `FixtureStore` + `Backend` flag.
+- [x] **PR 4** — Repository seam + mutable `FixtureStore` + `Backend` flag.
 - [ ] **PR 5** — `LbmAsync` + skeletons.
 - [ ] **PR 6** — Real session (sealed `Session`, anonymous-auth guests, `themeMode` split out).
 - [ ] **PR 7** — Market screens async.

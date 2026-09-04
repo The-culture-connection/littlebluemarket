@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/fixtures.dart';
+import '../../data/fixtures/fixture_data.dart';
 import '../../models/models.dart';
 import '../../router/nav.dart';
 import '../../state/session.dart';

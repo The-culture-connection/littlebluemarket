@@ -1,4 +1,4 @@
-import '../models/models.dart';
+import '../../models/models.dart';
 
 /// Mock content for the demo build, ported from the prototype's JS consts.
 ///

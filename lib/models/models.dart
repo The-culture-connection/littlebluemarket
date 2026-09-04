@@ -9,6 +9,7 @@ export 'address.dart';
 export 'cart.dart';
 export 'comment.dart';
 export 'formatting.dart';
+export 'geo.dart';
 export 'message.dart';
 export 'order.dart';
 export 'page.dart';

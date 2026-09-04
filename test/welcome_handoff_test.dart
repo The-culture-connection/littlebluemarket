@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:little_blue_market/data/fixtures.dart';
+import 'package:little_blue_market/data/fixtures/fixture_data.dart';
 import 'package:little_blue_market/screens/onboarding/welcome_screen.dart';
 import 'package:little_blue_market/theme/app_theme.dart';
 

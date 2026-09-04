@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/fixtures.dart';
+import '../../data/fixtures/fixture_data.dart';
 import '../../models/models.dart';
 import '../../router/nav.dart';
 import '../../theme/app_theme.dart';
