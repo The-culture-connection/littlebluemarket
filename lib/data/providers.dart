@@ -4,6 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth/auth_service.dart';
 import 'firebase/firebase_auth_service.dart';
 import 'firebase/firebase_bootstrap.dart';
+import 'firebase/firestore_catalog_repository.dart';
+import 'firebase/firestore_messaging_repository.dart';
+import 'firebase/firestore_profile_repository.dart';
+import 'firebase/firestore_search_repository.dart';
+import 'firebase/firestore_social_repository.dart';
+import 'shopify/commerce_proxy_repository.dart';
+import 'shopify/fulfillment_proxy_repository.dart';
 import 'fixtures/fixture_repositories.dart';
 import 'fixtures/fixture_store.dart';
 import 'repositories/repositories.dart';
@@ -59,42 +66,62 @@ final fixtureBackendProvider = Provider<FixtureBackend>((ref) {
 final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
     Backend.fixtures => FixtureCatalogRepository(ref.watch(fixtureBackendProvider)),
-    Backend.live => throw _notWired('CatalogRepository'),
+    Backend.live => FirestoreCatalogRepository(
+      firestore: ref.watch(firestoreProvider),
+      functions: ref.watch(firebaseFunctionsProvider),
+    ),
   };
 });
 
 final searchRepositoryProvider = Provider<SearchRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
     Backend.fixtures => FixtureSearchRepository(ref.watch(fixtureBackendProvider)),
-    Backend.live => throw _notWired('SearchRepository'),
+    Backend.live => FirestoreSearchRepository(
+      firestore: ref.watch(firestoreProvider),
+      uid: ref.watch(_uidProvider),
+    ),
   };
 });
 
 final commerceRepositoryProvider = Provider<CommerceRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
     Backend.fixtures => FixtureCommerceRepository(ref.watch(fixtureBackendProvider)),
-    Backend.live => throw _notWired('CommerceRepository'),
+    Backend.live => CommerceProxyRepository(
+      functions: ref.watch(firebaseFunctionsProvider),
+      firestore: ref.watch(firestoreProvider),
+      uid: ref.watch(_uidProvider),
+    ),
   };
 });
 
 final socialRepositoryProvider = Provider<SocialRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
     Backend.fixtures => FixtureSocialRepository(ref.watch(fixtureBackendProvider)),
-    Backend.live => throw _notWired('SocialRepository'),
+    Backend.live => FirestoreSocialRepository(
+      firestore: ref.watch(firestoreProvider),
+      uid: ref.watch(_uidProvider),
+    ),
   };
 });
 
 final messagingRepositoryProvider = Provider<MessagingRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
     Backend.fixtures => FixtureMessagingRepository(ref.watch(fixtureBackendProvider)),
-    Backend.live => throw _notWired('MessagingRepository'),
+    Backend.live => FirestoreMessagingRepository(
+      firestore: ref.watch(firestoreProvider),
+      uid: ref.watch(_uidProvider),
+    ),
   };
 });
 
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
     Backend.fixtures => FixtureProfileRepository(ref.watch(fixtureBackendProvider)),
-    Backend.live => throw _notWired('ProfileRepository'),
+    Backend.live => FirestoreProfileRepository(
+      firestore: ref.watch(firestoreProvider),
+      storage: ref.watch(firebaseStorageProvider),
+      uid: ref.watch(_uidProvider),
+    ),
   };
 });
 
@@ -102,7 +129,11 @@ final fulfillmentRepositoryProvider = Provider<FulfillmentRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
     Backend.fixtures =>
       FixtureFulfillmentRepository(ref.watch(fixtureBackendProvider)),
-    Backend.live => throw _notWired('FulfillmentRepository'),
+    Backend.live => FulfillmentProxyRepository(
+      firestore: ref.watch(firestoreProvider),
+      functions: ref.watch(firebaseFunctionsProvider),
+      uid: ref.watch(_uidProvider),
+    ),
   };
 });
 
@@ -125,4 +156,18 @@ final authServiceProvider = Provider<AuthService>((ref) {
     }(),
     Backend.live => FirebaseAuthService(ref.watch(firebaseAuthProvider)),
   };
+});
+
+/// The signed-in uid, straight from the identity provider.
+///
+/// Deliberately not `currentUidProvider` from the session: the session is built
+/// *out of* the repositories, so reading it here would be a cycle. This is the
+/// raw auth state, which is all a repository needs to know.
+final _uidProvider = Provider<String?>((ref) {
+  final auth = ref.watch(authServiceProvider);
+  return ref.watch(_authUserProvider).value?.uid ?? auth.currentUser?.uid;
+});
+
+final _authUserProvider = StreamProvider<AuthUser?>((ref) {
+  return ref.watch(authServiceProvider).authStateChanges();
 });

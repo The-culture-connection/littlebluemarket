@@ -161,8 +161,8 @@ abstract final class FirestoreMappers {
       for (var stars = 5; stars >= 1; stars--)
         (stars: stars, count: integer(data['stars$stars'])),
     ];
-    final total = bars.fold(0, (sum, bar) => sum + bar.count);
-    final weighted = bars.fold(0, (sum, bar) => sum + bar.stars * bar.count);
+    final total = bars.fold(0, (acc, bar) => acc + bar.count);
+    final weighted = bars.fold(0, (acc, bar) => acc + bar.stars * bar.count);
     return RatingSummary(
       // Recomputed rather than read, so it can never disagree with the bars
       // underneath it.
