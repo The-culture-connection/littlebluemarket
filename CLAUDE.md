@@ -94,7 +94,7 @@ zero Firebase dependency until PR 11. Do not start Track B early.
 - [x] **PR 10** — Messaging + commerce cart. Un-skip the fixture-import guard.
 - [ ] **PR 11** — Firebase bootstrap.
 - [x] **PR 12** — Live social/profile/messaging + emulator seed script.
-- [ ] **PR 13** — Shopify proxy, catalog mirror, order attribution. **← Milestone 1 ends here.**
+- [x] **PR 13** — Shopify proxy, catalog mirror, order attribution. **← Milestone 1 ends here.**
 - [ ] **PR 14** — ShipTurtle fulfilment.
 - [ ] **PR 15** — Cleanup, rules hardening, offline persistence.
 
