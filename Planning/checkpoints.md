@@ -22,8 +22,8 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | Stage 5 — A seller adds a product | ✅ Done, passed by Grace (2026-09-05) |
 | Stage 6 — Approval, edits, "Total sales" | ✅ Done, passed by Grace (2026-09-05) |
 | Stage 7 — Cart replaces like, cart posts, reviews | ✅ Done, passed by Grace (2026-09-05) |
-| Stage 8 — Shipturtle: payouts, approval status, fulfilment push | ⬜ Not started |
-| Stage 9 — The gaps: seller application flow, Near me, @-tags, better search, live walkthroughs of messages/community/posting, shipping | ⬜ Not started (added 2026-09-05) |
+| Stage 8 — Shipturtle: roster auto-grant, tracking and settlement pulled, store fulfilment, prod gate | 🟡 Built and deployed 2026-09-05, ready for Grace to test |
+| Stage 9 — The gaps: seller application flow, Near me, @-tags, better search, live walkthroughs, shipping | 🟡 Built and deployed 2026-09-05; see Planning/manual-test.md |
 | Cutover to the real shop | ⬜ Not started |
 
 Extras done along the way: a Sign out row, the app opens on the Market when you are already signed in, search matches any word of a title, product pages open for shops that have not joined yet, the catalog's spec subdocument rule, the first-save profile fix, Git Bash launchers.
@@ -392,38 +392,33 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 ### Stage 8 — Shipturtle, the rest (Phase 8)
 
-Depends on CP-A5's verdict. Roster auto-grant in `sellerClaimVendor` + scheduled `sellerSyncVendorRoster`; payout figures from Shipturtle as separate fields, never computed locally; approval status with merchant remarks; the real fulfilment push replacing the placeholder in `fulfillment.ts` (`/v1/fulfillments` is a guess); the `TODO(prod)` gate so unverified Shipturtle webhooks are accepted only on `little-blue-610e5`. **Grace:** ship an order from the vendor panel. **Pass:** the buyer's Receiving tab shows the tracking number.
+**Built and deployed to `little-blue-610e5` on 2026-09-05. Ready for Grace to test.** The full tap-through for every journey is in `Planning/manual-test.md`.
+
+**What Shipturtle's API turned out to offer (probed 2026-09-05):** the vendor user roster (`/api/v1/users`), the product list with each company's vendor string (`/api/v3/fetch-product-data/parent`), and every per-vendor sub-order with the courier's tracking and the vendor's settlement state (`/api/v1/orders`). No fulfilment push and no payout endpoint exist. Everything below is built on what exists.
+
+**Claude built:**
+
+- **Selling without a code (roster auto-grant).** `functions/src/roster_grant.ts`: a verified email on exactly one Shipturtle company, whose products carry exactly one vendor string that nobody else holds, is granted seller status as that string, at link time (`linkAccounts`) and in a six-hourly sweep (`sellerSyncVendorRoster`). Every ambiguous case refuses and says why; a claim code or an application still works for those.
+- **Tracking and settlement, pulled.** `functions/src/shipturtle_orders.ts`: `shipturtleSyncOrders` every 15 minutes and `sellerRefreshShipments` on demand ("Check with Shipturtle" on the Sending tab). Tracked sub-orders become shipments on the buyer's Receiving tab; each sub-order's settlement state is stored on the order in Shipturtle's own words and shown to the seller as "Shipturtle: payout pending / credited". No payout figure is ever computed in the app.
+- **Mark shipped creates the fulfilment on the store.** `fulfillment.ts` now uses Shopify's fulfilment orders (Shipturtle mirrors Shopify). Needs `read_merchant_managed_fulfillment_orders` and `write_merchant_managed_fulfillment_orders` (the doctor warns until granted); without them the tracking is recorded in the app only and the seller is told nothing went wrong.
+- **The prod gate.** An unverified Shipturtle webhook is accepted on `little-blue-610e5` only; anywhere else it is refused.
+
+- [ ] **CP-T1 Auto-grant from the roster.** **Grace does:** in Shipturtle, add a vendor user with the email `grace-s+seller2@…` on a company whose products carry one vendor string. In the app, Create a Profile with that email, confirm it, finish setup. **Pass:** within a minute the Products tab appears with no code (the link runs on its own after confirmation; Diagnostics → "Link my store account now" forces it and reports "granted as <vendor>"). If the company has no products yet the link reports why, and Apply to sell (Stage 9) is the way in.
+- [ ] **CP-T2 Ship from the Shipturtle dashboard.** **Grace does:** as the vendor in Shipturtle, add a tracking number to one of the app orders. Wait up to 15 minutes, or open You → Packages → Sending → **Check with Shipturtle**. **Pass:** the buyer's Receiving tab shows the tracking; the seller's Sending card shows "Shipturtle: payout pending".
+- [ ] **CP-T3 Ship from the app.** **Grace does:** grant the two fulfilment-order scopes (Shopify admin → the app's Configuration → Admin API scopes) → in the app, You → Packages → Manage sales → order number + tracking → Add tracking. **Pass:** Shopify admin shows the order Fulfilled with that tracking; the buyer's Receiving tab shows it. Without the scopes the tracking still shows to the buyer and the doctor says what is missing.
 
 ### Stage 9 — The gaps Grace listed (added 2026-09-05)
 
-Everything on Grace's list of 2026-09-05 that the plan did not already cover, plus live walkthroughs for the parts that were built but never tapped through on the real backend. Sequenced after Stage 8 because CP-S1 depends on the roster from CP-A5 and the approval flow in Stage 6.
+**Built and deployed on 2026-09-05. Ready for Grace to test.** The tap-through for each is in `Planning/manual-test.md`.
 
-- [ ] **CP-S1 Seller application → approval → code, without a console visit.**
-  **Claude builds:** an **Apply to sell** screen (reached from Edit profile → Start selling → "I don't have a code") that collects shop name, website or Shopify store, Shipturtle vendor email, and a note; writes `sellerApplications/{uid}` (rules: create/read own, no update after submit); a status chip on Edit profile (Submitted · Under review · Approved · Declined). An **Applications** list on the Diagnostics-style admin screen (admin claim only) with Approve / Decline; approving runs the same grant as `sellerClaimVendor` when the email matches a Shipturtle roster entry, otherwise mints a claim code, stores its hash in `vendorClaims`, and emails the code to the applicant through Firebase's email trigger (the Trigger Email extension or a small `onDocumentCreated` on `mail/`). Declining stores the reason and shows it in the chip.
-  **Grace does:** as `+seller2`: Start selling → I don't have a code → fill the form → Submit. As admin: Applications → Approve. Back as `+seller2`: open the email, type the code (or, with a roster match, watch the Products tab appear with no code at all).
-  **Pass:** the chip walks Submitted → Approved; the seller surfaces appear; the console was never opened.
-  **Tests:** rules (only the applicant reads their application; nobody edits after submit), `applications.test.ts` (approve with roster match grants directly; without, mints one code; decline never grants).
+- [x] **CP-S1 Seller application → approval, without a console visit.** Edit profile → **Apply to sell** (shop name, link, Shipturtle email, note) writes `sellerApplications/{uid}` once; the admin's Edit profile gains **Seller applications**, where Approve asks for the vendor string and makes the same grant a claim code would, and Decline asks for a reason the applicant reads on their status card. *(The emailed-code variant in the original plan is not needed: the admin approving a verified app account is the identity check.)*
+- [x] **CP-S2 Near me, for real.** The Near me toggle asks the phone for its location (plain-language permission prompt); failing that it measures from the city on the profile, which the backend geocodes on save (`onUserWritten` → OpenStreetMap Nominatim) and copies onto the seller's listings so the radius query finds them; failing both it stays off and says what to do. Edit profile gains **City, State**.
+- [x] **CP-S3 Tag any member in any post.** `@handle` in a shoutout, review, listing caption or cart caption is resolved to the member on post; they get a notification; the handle is tappable in the feed. The **bell** on the profile lists mentions and comments on your posts and clears on open.
+- [x] **CP-S4 Better search.** Every word must match ("balm mint" finds the mint lip balm); when nothing matches, **Did you mean** chips offer hashtags and collections that share a word.
+- [ ] **CP-S5 Messages, community and posting, walked through live.** No new code; the manual test covers it.
+- [ ] **CP-S6 Shipping, from the buyer's side.** Covered by CP-T2 and CP-T3.
 
-- [ ] **CP-S2 Near me, for real.**
-  **Claude builds:** the phone asks for location once (`geolocator`, with a plain-language prompt and a "Use my city instead" fallback that geocodes the city typed on the profile); `SearchFilters.origin` is set from it, so the existing radius query finally has a centre. Seller side: saving a profile with a city geocodes it once on the backend (`onDocumentWritten users/{uid}` → lat/lng/geohash), and the catalog mirror already copies those onto listings. The results screen shows "· 4 mi" on each card, which the model already supports.
-  **Grace does:** Edit profile as the seller → set the city → Save. As a buyer on the emulator, set the emulator's location (Extended controls → Location) to a point 5 miles away → Market → Near me.
-  **Pass:** only that seller's products show, each with a mile count; move the emulator 200 miles away and the list empties with the "nothing within 25 miles" copy.
-  **Tests:** geocode trigger writes lat/lng/geohash; `search_filters_test` (no origin → Near me is a no-op with a visible reason, never a silent empty).
-
-- [ ] **CP-S3 Tag any member in any post.**
-  **Claude builds:** the composer's @-mention resolver (today: sellers, shoutouts only) becomes a member search for every post type; the post stores `mentionedUids`; `HashtagText` renders @handles as links to the profile; `onPostWritten` writes a `notifications/{uid}/items` document for each mentioned member, and the You tab gets a bell with a count (rules: read own, function-written). Posts referencing a member who later changes handle still resolve, because the uid is stored, not the handle.
-  **Grace does:** as `+buyer1` post "loved this @\<seller handle\>" → as the seller, open the app.
-  **Pass:** the handle in the post is tappable and opens the seller; the seller sees a bell with 1 and the post inside it.
-  **Tests:** mention parsing (handles with dots/underscores, two mentions, no false positives on emails), notification fan-out once per mention, rules.
-
-- [ ] **CP-S4 Better search.**
-  **Claude builds:** multi-word and prefix search on the phone against the mirror (every word must match, not only the first), a "Did you mean" from the store's collections and tags when nothing matches, and the seam for Typesense or Algolia documented with a one-file adapter so it can be switched on later without touching screens. Not a full-text engine yet: that is a cost decision for Grace once the catalog is real.
-  **Grace does:** search "complete snowboard", "snow", "balm mint" (out of order), "zzzz".
-  **Pass:** the first three find the right product; the last shows suggestions instead of a blank.
-
-- [ ] **CP-S5 Messages, community and posting, walked through live.** No new code unless a step fails. **Grace does:** as `+buyer1` send a DM to the seller from their storefront; as the seller, reply. Post a message in the open chatroom. Create a forum, start a thread, comment on it from the other account. Post a product (as the seller) and a review of a bought item (as the buyer) from the composer. **Pass:** each shows up on the other account within a few seconds, without a restart; nothing red.
-
-- [ ] **CP-S6 Shipping, from the buyer's side.** Depends on Stage 8. **Grace does:** add an address on the You tab; buy; ship from the Shipturtle vendor panel. **Pass:** the Receiving tab shows the carrier and tracking number, and the order flips to Delivered when Claude replays a delivered webhook.
+**Also fixed 2026-09-05:** the onboarding bug where the confirm-email step was skipped on a cold start and an unconfirmed member had no way forward. A cold start mid-onboarding now lands on the confirm screen; an unconfirmed sign-in gets it back; and an unconfirmed member sees a banner on the feed with **Resend** and **I've confirmed it**. Shoutouts can carry a photo.
 
 ### Cutover (later, its own checklist)
 

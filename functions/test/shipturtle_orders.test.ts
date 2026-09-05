@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import {
   settlementFromOrder,
   shipmentFromOrder,
+  shopifyOrderId,
   vendorFromUniqueName,
   type ShipturtleOrder,
 } from '../src/shipturtle_orders.ts';
@@ -16,7 +17,8 @@ import {
 
 const untracked: ShipturtleOrder = {
   id: 16911442,
-  order_id: 7886521106592,
+  order_id: 1925040802455,
+  admin_graphql_api_id: 'gid://shopify/Order/7886521106592',
   name: '#1001',
   company_id: 1092566,
   unique_name: '#1001_Hydrogen Vendor_physical',
@@ -63,4 +65,9 @@ test('a tracked sub-order becomes a shipment with the courier state flattened', 
     credited: true,
   });
   assert.equal(shipmentFromOrder({ ...shipped, tracking_status: 'Delivered' })!.state, 'delivered');
+});
+
+test('the order id is the Shopify one, not Shipturtle\'s own number', () => {
+  assert.equal(shopifyOrderId(untracked), '7886521106592');
+  assert.equal(shopifyOrderId({ ...untracked, admin_graphql_api_id: null }), '1925040802455');
 });

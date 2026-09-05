@@ -5,7 +5,7 @@ The backend is hybrid: **Firebase** owns identity and social data, **Shopify + S
 and fulfilment, behind an interface designed so Shopify can be removed later without touching a screen.
 
 Read first, in this order:
-1. **`Planning/checkpoints.md` — the order of work.** Stages 0–8, each cut into checkpoints Grace verifies by tapping through the app. Find the first unticked box; do only that.
+1. **`Planning/checkpoints.md` — the order of work.** Stages 0–9, each cut into checkpoints Grace verifies by tapping through the app. Find the first unticked box; do only that. **`Planning/manual-test.md`** is the tap-through of every user journey (J1–J11) against the live dev backend; when Grace reports "J5 step 2", that is where it lives.
 2. `README.md` — the design system, the welcome handoff, the accent contrast split, the glyph rules. Still accurate; do not contradict it.
 3. `Planning/i-have-a-prototype-vivid-dongarra.md` — the approved implementation plan for PRs 1–15 (all done). Source of truth for the architecture.
 4. `Planning/identity-and-catalog.md` — how buyers and sellers actually authenticate, verified against the live systems, and how products map to sellers. Read before touching `linking.ts`, `vendors.ts` or `catalog.ts`.
@@ -42,7 +42,7 @@ scripts\deploy-dev.ps1          # test-all -> deploy functions+rules+indexes+sto
 # In Git Bash (MINGW64) backslashes do not work: use the .sh twins, e.g. scripts/doctor.sh, scripts/run-live.sh
 
 flutter analyze                 # must be clean — zero issues, not "only warnings"
-flutter test                    # 311 Flutter tests; 39 more in functions/
+flutter test                    # 401 Flutter tests; 100 more in functions/, 41 rules tests
 flutter test test/visual_check.dart --update-goldens   # regenerate test/shots/ after intentional UI changes
 ```
 
@@ -208,6 +208,14 @@ npm test              # HMAC, money parsing, order normalisation, ShipTurtle
 npm run test:rules    # security rules, needs the Firestore emulator
 npx tsc --noEmit      # typecheck
 npm run seed          # fixture content into a running emulator
+npm run doctor        # preflight against the dev project (never prints a secret)
+npm run verify:security                 # S1-S8 + money rules, under the emulator
+npm run touch-products [-- --vendor X]  # re-mirror every product through the real webhook path
+npm run replay-order -- --order 1002 [--deliver|--ship]   # replay a paid order, or mark it shipped/delivered
+npm run peek -- --reviews | --doc <path> | --collection <path>   # read public docs as the phone would
+npm run inspect:product -- --id <id>    # one product's store record (vendor, status, channels, stock)
+npm run shipturtle:vendors              # Shipturtle users + the vendor string each company's products carry
+npm run move-stock -- --vendor cc --to <locationId>   # move a vendor's stock to the online-fulfilment location
 ```
 
 The three places a bug there costs real money, and so the three with the most

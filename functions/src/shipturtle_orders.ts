@@ -34,7 +34,19 @@ export interface ShipturtleOrder {
   payment_reconciliation_status?: string | null;
   credited?: number | string | null;
   total_amount_including_taxes?: number | string | null;
+  /** The Shopify order, as a GID. `order_id` is Shipturtle's own number. */
+  admin_graphql_api_id?: string | null;
   updated_at?: string;
+}
+
+/**
+ * Our orders are keyed by the Shopify order id. Shipturtle's `order_id` is
+ * its own number; the Shopify id is the tail of `admin_graphql_api_id`.
+ */
+export function shopifyOrderId(order: ShipturtleOrder): string {
+  const gid = String(order.admin_graphql_api_id ?? '');
+  const tail = gid.split('/').pop() ?? '';
+  return /^\d+$/.test(tail) ? tail : String(order.order_id ?? '');
 }
 
 export interface VendorShipment {
@@ -60,7 +72,7 @@ export function vendorFromUniqueName(uniqueName: string | undefined): string {
 
 /** Pure: one Shipturtle sub-order → what the app records, or null without tracking. */
 export function shipmentFromOrder(order: ShipturtleOrder): VendorShipment | null {
-  const orderId = String(order.order_id ?? '');
+  const orderId = shopifyOrderId(order);
   const tracking = String(order.tracking_code ?? '').trim();
   if (!orderId || !tracking) return null;
   return {
@@ -87,7 +99,7 @@ export function settlementFromOrder(order: ShipturtleOrder): {
   credited: boolean;
   amount: string | null;
 } | null {
-  const orderId = String(order.order_id ?? '');
+  const orderId = shopifyOrderId(order);
   const companyId = String(order.company_id ?? '');
   if (!orderId || !companyId) return null;
   return {
