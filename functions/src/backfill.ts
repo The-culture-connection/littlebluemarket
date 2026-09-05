@@ -33,7 +33,7 @@ const QUERY = `
     products(first: $first, after: $after, sortKey: ID) {
       pageInfo { hasNextPage endCursor }
       nodes {
-        id title descriptionHtml vendor productType tags status createdAt
+        id title descriptionHtml vendor productType tags status createdAt publishedAt
         images(first: 20) { nodes { url } }
         variants(first: 100) { nodes { id title price availableForSale inventoryQuantity } }
         collections(first: 50) { nodes { handle } }

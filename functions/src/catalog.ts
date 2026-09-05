@@ -1,7 +1,7 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 
-import { productCollectionHandles } from './collections.ts';
+import { productCollectionHandles, publishToAllChannels } from './collections.ts';
 import { geohash } from './geohash.ts';
 import { toCents } from './orders.ts';
 import { normalizeVendorName } from './sellers.ts';
@@ -34,6 +34,8 @@ export interface RestProduct {
   tags?: string;
   status?: string;
   created_at?: string;
+  /** Null until the product is on at least one sales channel. */
+  published_at?: string | null;
   images?: Array<{ src: string }>;
   variants?: Array<{
     id: string | number;
@@ -56,6 +58,7 @@ export interface GraphQLProduct {
   tags: string[];
   status: string;
   createdAt: string;
+  publishedAt?: string | null;
   images: { nodes: Array<{ url: string }> };
   variants: {
     nodes: Array<{
@@ -91,6 +94,7 @@ export function productFromGraphQL(node: GraphQLProduct): RestProduct {
     tags: node.tags.join(', '),
     status: node.status.toLowerCase(),
     created_at: node.createdAt,
+    published_at: node.publishedAt ?? null,
     images: node.images.nodes.map((i) => ({ src: i.url })),
     variants: node.variants.nodes.map((v) => ({
       id: tail(v.id),
@@ -279,6 +283,19 @@ export async function mirrorProduct(payload: RestProduct): Promise<void> {
     const listing = (await listingRef.get()).data();
     if (listing) {
       const active = payload.status === 'active';
+      // Approval is the merchant setting it Active. That alone leaves it on
+      // no sales channel, and the storefront cannot sell what is on no
+      // channel; so an approved app product is published everywhere here.
+      if (active && payload.published_at == null) {
+        try {
+          await publishToAllChannels(id);
+        } catch (error) {
+          logger.warn('Could not publish an approved product to the channels', {
+            id,
+            error: String(error),
+          });
+        }
+      }
       const wasLive = listing.status === 'live';
       if (active && !wasLive) {
         await listingRef.set(

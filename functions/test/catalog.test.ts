@@ -38,6 +38,7 @@ const rest: RestProduct = {
   tags: 'feminist gift, #WomanOwned, New',
   status: 'active',
   created_at: '2026-01-02T03:04:05Z',
+  published_at: null,
   images: [{ src: 'https://cdn/1.jpg' }, { src: 'https://cdn/2.jpg' }],
   variants: [
     { id: 1, title: 'Ice', price: '699.95', available: true, inventory_quantity: 3 },
@@ -54,6 +55,7 @@ const graphql: GraphQLProduct = {
   tags: ['feminist gift', '#WomanOwned', 'New'],
   status: 'ACTIVE',
   createdAt: '2026-01-02T03:04:05Z',
+  publishedAt: null,
   images: { nodes: [{ url: 'https://cdn/1.jpg' }, { url: 'https://cdn/2.jpg' }] },
   variants: {
     nodes: [

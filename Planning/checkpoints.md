@@ -21,7 +21,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | Stage 4 — The real catalog: admin claim, collections, backfill, browse an initiative | ✅ Done, passed by Grace (2026-09-05) |
 | Stage 5 — A seller adds a product | ✅ Done, passed by Grace (2026-09-05) |
 | Stage 6 — Approval, edits, "Total sales" | ✅ Done, passed by Grace (2026-09-05) |
-| Stage 7 — Cart replaces like, cart posts, reviews | 🟡 Built and deployed 2026-09-05, ready for Grace to test |
+| Stage 7 — Cart replaces like, cart posts, reviews | ✅ Done, passed by Grace (2026-09-05) |
 | Stage 8 — Shipturtle: payouts, approval status, fulfilment push | ⬜ Not started |
 | Stage 9 — The gaps: seller application flow, Near me, @-tags, better search, live walkthroughs of messages/community/posting, shipping | ⬜ Not started (added 2026-09-05) |
 | Cutover to the real shop | ⬜ Not started |
@@ -315,6 +315,8 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
   **Grace does:** as `+seller1` (the claimed seller) → You → Products tab → **Add a product** → Add photos (pick one from the emulator's gallery; if it is empty, open the emulator's Camera app once and take a picture, or drag a JPG onto the emulator window) → title, price (e.g. 12.50), quantity → Category: type "sweat" and pick **Sweatshirts** (Shopify's own product taxonomy, searched live) → tap a collection chip → **Add to my shop**.
   **Pass:** the button walks through Uploading photos → Saving the draft → Sending it to the store, then the **Under review** modal appears; Got it lands on the Products tab where the draft shows with an **Under review** chip. In the Shopify admin → Products, the product exists as **Draft** with **Vendor** = your vendor string, the photo attached, and a tag `lbm:…`. In Shipturtle → Products it appears under that vendor's company (Shipturtle mirrors it from Shopify on its next sync; there is no separate "pending approval" entry for products the app creates).
 
+  **Approval also publishes (learned 2026-09-05):** setting a product Active puts it on no sales channel, and the storefront cannot sell what is on no channel ("the merchandise does not exist" at checkout). The mirror now publishes an approved app-made product to every channel the moment it sees it Active and unpublished.
+
   **How approval works, learned on the first live run (2026-09-05):** Shipturtle's approval queue is only for products a vendor submits through Shipturtle's own vendor panel. A product the app creates goes straight into Shipturtle's product list, as a Shopify **Draft**. *Approving it means setting it to Active in the Shopify admin* (Products → the product → Status → Active → Save). The `products/update` webhook then flips the seller's chip from Under review to **Live** within seconds. That is the push half of Stage 6 CP-R1, already wired.
 
   **Also learned:** the vendor string is the join key with Shipturtle. The claim code for `+seller1` was issued against "Snowboard Vendor" (a sample-data vendor), but Shipturtle's company for that email uses the string **"cc"**, so the app's first product landed under the wrong vendor. Fix, once: Diagnostics (as admin) → **Set seller vendor** with the seller's uid and `cc`. From now on, issue claim codes with the string `npm run shipturtle:vendors` prints for the seller's company, never a guess. The product already created ("Fall Crewneck") needs its Vendor changed to `cc` by hand in the Shopify admin.
@@ -362,7 +364,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 ### Stage 7 — The journey changes (Phase 7)
 
-**Built and deployed to `little-blue-610e5` on 2026-09-05. Ready for Grace to test.** Quit the app and run `scripts/run-live.sh` again first (or use the build Claude installed).
+**Built, deployed and passed by Grace on 2026-09-05.**
 
 **What changed, in plain words.** There is no heart any more. Adding something to your cart is how you show a maker you love their work, and every listing now says "**N added** · M comments" where N is how many people have ever added it. A one-time card at the top of the feed explains this ("♡ is now 🛒"), and the same tip appears once as a dialog the first time a cart button on a card is tapped. Your cart can be **posted**: a snapshot of up to 24 things, with an **Add all to my cart** button for everyone else. When something you bought is delivered and not yet reviewed, a **How was it?** card appears at the top of the feed and opens the review composer with that purchase picked; every review now also lands in the feed and keeps the product's star rating true.
 
@@ -376,13 +378,13 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 **Two deviations from the plan, on purpose.** (1) No separate **Cart** tab on the profile: a fourth tab does not survive 2.0 text scale, so cart posts show under **Posted** as "🛒 N things" cells. (2) No **Repost** action yet: the plan named it without saying what it does; it can be added once that is decided.
 
-- [ ] **CP-J1 The heart becomes the cart.**
+- [x] **CP-J1 The heart becomes the cart.**
   **Grace does:** Market feed → the "♡ is now 🛒" card is at the top; tap **Got it**. Every product with a known seller is already in the feed. On a listing card tap the **cart** icon → the tip dialog appears once → Got it → "Added to your cart". Open the product's page and note the count; go back to the feed.
   **Pass:** the listing's line reads **1 added · 0 comments** (pull to refresh). Firestore → `catalog/<product>` shows `saveCount: 1`, `inCartsCount: 1`, and a `carted/<your uid>` document. Remove it from the cart → `inCartsCount` drops to 0 and `saveCount` stays 1. Add it again → `inCartsCount` 1, `saveCount` still 1 (a second add by the same person is not a second save). Check out and pay (Stage 3) → after the order lands, `inCartsCount` drops to 0 and the marker is inactive; `saveCount` still 1.
   **If it fails:** counts not moving → `firebase functions:log --only commerceAddLine --project dev`; paste. Tip card never appears → it was dismissed on this phone already; that is by design.
 
-- [ ] **CP-J2 Cart posts and reviews.**
-  **Grace does:** put two or three things in the cart → Cart → **Post my cart** → caption → Post it. Market feed: the cart post shows a row of the items and **Add all to my cart**. Sign in as the other account → tap **Add all** → the cart fills. Then, to prove the cap, Claude replays the rules test rather than you adding 25 things (the rules refuse 25; the composer only ever sends 24). Reviews: ask Claude to mark one of your purchases delivered (`node scripts/replay-order.mjs` with the fulfilment payload, or the Shipturtle webhook in Stage 8) → the **How was it?** card appears at the top of the feed → Write a review → 5 stars, a sentence → Post review.
+- [x] **CP-J2 Cart posts and reviews.**
+  **Grace does:** put two or three things in the cart → Cart → **Post my cart** → caption → Post it. Market feed: the cart post shows a row of the items and **Add all to my cart**. Sign in as the other account → tap **Add all** → the cart fills. Then, to prove the cap, Claude replays the rules test rather than you adding 25 things (the rules refuse 25; the composer only ever sends 24). Reviews: Claude marks a purchase delivered with `npm run replay-order -- --order <number> --deliver` (done for #1002 and #1003 on 2026-09-05) → the **How was it?** card appears at the top of the feed → Write a review → 5 stars, a sentence → Post review.
   **Pass:** the cart post renders with its items and adds them for the other account ("Added 3 to your cart"); the review appears in the feed as its own post within seconds, on the product's page under Reviews, and the product's star rating updates; the Bought grid shows **Reviewed** on that purchase and the card disappears.
   **If it fails:** "Add all" adds nothing → the snackbar names why (sold out / no longer listed); paste it. The review post never appears → `firebase functions:log --only onReviewWritten --project dev`.
 

@@ -9,6 +9,12 @@
 //
 //   npm run replay-order -- --order 1001          # the order number, or its id
 //   npm run replay-order -- --order 1001 --topic orders/paid
+//   npm run replay-order -- --order 1001 --deliver       # a delivered fulfilment
+//   npm run replay-order -- --order 1001 --ship          # an in-transit fulfilment
+//
+// `--deliver` / `--ship` send a fulfillments/update payload for the order,
+// which is how a purchase becomes "Received" on the buyer's profile (and how
+// "How was it?" appears) without a courier.
 //
 // The client secret is read into memory through the Firebase CLI and used
 // only to compute the HMAC. Nothing secret is printed.
@@ -26,7 +32,9 @@ import {
 
 const projectId = resolveProject(arg('project', 'dev'));
 const wanted = arg('order');
-const topic = arg('topic', 'orders/paid');
+const deliver = process.argv.includes('--deliver');
+const ship = process.argv.includes('--ship');
+const topic = deliver || ship ? 'fulfillments/update' : arg('topic', 'orders/paid');
 if (!wanted) {
   console.error('Usage: npm run replay-order -- --order <number or id>');
   process.exit(1);
@@ -87,12 +95,21 @@ const payload = {
   })),
 };
 
-const body = JSON.stringify(payload);
+// A fulfilment payload names the order and carries the courier's word.
+const fulfilment = {
+  id: Number(tail(order.id)) * 10 + 1,
+  order_id: Number(tail(order.id)),
+  tracking_number: `LBM-TEST-${tail(order.id)}`,
+  tracking_company: 'Little Blue Courier',
+  shipment_status: deliver ? 'delivered' : 'in_transit',
+};
+
+const body = JSON.stringify(deliver || ship ? fulfilment : payload);
 const secret = process.env.SHOPIFY_CLIENT_SECRET || secretValue('SHOPIFY_CLIENT_SECRET', projectId);
 const hmac = crypto.createHmac('sha256', secret).update(body, 'utf8').digest('base64');
 const url = arg('url', defaultWebhookUrl(projectId));
 
-console.log(`Replaying ${order.name} (${payload.line_items.length} line(s), ${payload.financial_status}, app_uid ${payload.note_attributes.find((a) => a.name === 'app_uid')?.value ?? 'none'}) as ${topic}\n  -> ${url}`);
+console.log(`Replaying ${order.name} (${payload.line_items.length} line(s), ${payload.financial_status}, app_uid ${payload.note_attributes.find((a) => a.name === 'app_uid')?.value ?? 'none'}) as ${topic}${deliver ? ' (delivered)' : ship ? ' (in transit)' : ''}\n  -> ${url}`);
 const response = await fetch(url, {
   method: 'POST',
   headers: {

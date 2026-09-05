@@ -87,6 +87,37 @@ export async function syncCollections(): Promise<number> {
 }
 
 /**
+ * Puts a product on every sales channel the store has.
+ *
+ * "Active" and "published" are two different switches on Shopify. A product
+ * the app created is Active once the merchant approves it, but it is on no
+ * channel until something publishes it, and a product on no channel cannot
+ * be sold through the storefront API ("the merchandise does not exist").
+ * Idempotent: publishing to a channel it is already on is a no-op.
+ */
+export async function publishToAllChannels(productId: string): Promise<number> {
+  const pubs = await adminGraphQL<{ publications: { nodes: Array<{ id: string }> } }>(
+    `{ publications(first: 20) { nodes { id } } }`,
+  );
+  const input = pubs.publications.nodes.map((p) => ({ publicationId: p.id }));
+  if (input.length === 0) return 0;
+  const data = await adminGraphQL<{
+    publishablePublish: { userErrors: Array<{ message: string }> };
+  }>(
+    `mutation Publish($id: ID!, $input: [PublicationInput!]!) {
+      publishablePublish(id: $id, input: $input) { userErrors { field message } }
+    }`,
+    { id: `gid://shopify/Product/${productId}`, input },
+  );
+  const errors = data.publishablePublish.userErrors;
+  if (errors.length) {
+    throw new Error(`publishablePublish: ${errors.map((e) => e.message).join('; ')}`);
+  }
+  logger.info('Published a product to every channel', { productId, channels: input.length });
+  return input.length;
+}
+
+/**
  * The collection handles one product belongs to. Product webhooks do not
  * carry collections, so the mirror asks once per update.
  */
