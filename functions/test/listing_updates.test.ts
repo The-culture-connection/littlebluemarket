@@ -69,6 +69,7 @@ test('an edit never calls productSet, and touches only what it names', () => {
   assert.equal(stock.reason, 'correction');
   // 2026-07 has no ignoreCompareQuantity; the compare-and-set is per line.
   assert.equal('ignoreCompareQuantity' in stock, false);
+  assert.match(mutations[2].query, /@idempotent\(key: "[0-9a-f-]{36}"\)/);
   assert.deepEqual(stock.quantities, [
     { inventoryItemId: 'gid://shopify/InventoryItem/11', locationId: 'gid://shopify/Location/9', quantity: 40, changeFromQuantity: 70 },
   ]);

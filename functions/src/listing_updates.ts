@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 import { HttpsError } from 'firebase-functions/v2/https';
@@ -105,6 +107,11 @@ export async function refreshListings(
 }
 
 // ----------------------------------------------------------------- update
+//
+// Since API 2026-07 the inventory mutations must carry an @idempotent key.
+// A fresh one per call: a retried edit that reaches the store twice with the
+// same key would be treated as one, which is the opposite of what a second,
+// deliberate save means.
 
 export interface StoreProduct {
   id: string;
@@ -207,7 +214,7 @@ export function updateMutations(
     if (stock.length) {
       out.push({
         name: 'inventorySetQuantities',
-        query: `mutation Stock($input: InventorySetQuantitiesInput!) {
+        query: `mutation Stock($input: InventorySetQuantitiesInput!) @idempotent(key: "${randomUUID()}") {
           inventorySetQuantities(input: $input) {
             inventoryAdjustmentGroup { id } userErrors { field message }
           }
@@ -251,7 +258,7 @@ export function updateMutations(
       )?.quantity;
       out.push({
         name: 'inventorySetQuantities',
-        query: `mutation Stock($input: InventorySetQuantitiesInput!) {
+        query: `mutation Stock($input: InventorySetQuantitiesInput!) @idempotent(key: "${randomUUID()}") {
           inventorySetQuantities(input: $input) {
             inventoryAdjustmentGroup { id } userErrors { field message }
           }
