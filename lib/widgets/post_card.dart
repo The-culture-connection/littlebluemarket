@@ -171,7 +171,13 @@ class _ListingBody extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Flexible(child: _RatingLine(product: product)),
+                    Flexible(
+                      child: _RatingLine(
+                        product:
+                            ref.watch(liveProductProvider(product.id)).value ??
+                            product,
+                      ),
+                    ),
                   ],
                 ),
               ),

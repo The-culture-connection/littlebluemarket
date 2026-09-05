@@ -25,16 +25,16 @@ extension KeepCached on Ref {
 
 // ------------------------------------------------------------------ catalog
 
-final productProvider = FutureProvider.family<Product, String>((ref, id) {
+/// A product, live and kept: the rating, the "added" count and the price
+/// follow the backend on every card that shows them. A one-shot read kept
+/// showing the numbers from first open until the app restarted.
+final productProvider = StreamProvider.family<Product, String>((ref, id) {
   ref.keepCached();
-  return ref.watch(catalogRepositoryProvider).product(id);
-});
-
-/// The product, live. Used where a number on screen must move as soon as
-/// the backend moves it: the "N added" line under a listing.
-final liveProductProvider = StreamProvider.family<Product, String>((ref, id) {
   return ref.watch(catalogRepositoryProvider).watchProduct(id);
 });
+
+/// Same stream as [productProvider]; kept as a name for the count line.
+final liveProductProvider = productProvider;
 
 final productSpecProvider = FutureProvider.family<ProductSpec, String>((
   ref,
