@@ -25,6 +25,8 @@
     "verify:security": "firebase emulators:exec --only firestore \"node scripts/verify-security.mjs\"",
     "claim-code": "node scripts/claim-code-hash.mjs",
     "probe:shipturtle": "node scripts/shipturtle-probe.mjs --project dev",
+    "shipturtle:vendors": "node scripts/shipturtle-vendors.mjs --project dev",
+    "inspect:product": "node scripts/inspect-product.mjs --project dev",
     "replay-order": "node scripts/replay-order.mjs --project dev"
   },
   "dependencies": {

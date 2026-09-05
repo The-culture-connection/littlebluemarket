@@ -236,6 +236,26 @@ class _AdminCardState extends ConsumerState<_AdminCard> {
   bool _busy = false;
   String? _status;
   Object? _error;
+  final _sellerUid = TextEditingController();
+  final _vendorName = TextEditingController();
+
+  @override
+  void dispose() {
+    _sellerUid.dispose();
+    _vendorName.dispose();
+    super.dispose();
+  }
+
+  Future<String> _setVendor() async {
+    final uid = _sellerUid.text.trim();
+    final vendor = _vendorName.text.trim();
+    if (uid.isEmpty || vendor.isEmpty) {
+      return 'Enter both the seller\'s uid and the vendor string.';
+    }
+    final previous = await _repo.setSellerVendor(uid: uid, vendorName: vendor);
+    return 'Seller $uid now sells as "$vendor" (was "$previous"). Their '
+        'products re-attribute within seconds; the seller pulls to refresh.';
+  }
 
   Future<void> _run(String working, Future<String> Function() action) async {
     setState(() {
@@ -356,6 +376,34 @@ class _AdminCardState extends ConsumerState<_AdminCard> {
                       ),
               ),
             ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Re-point a seller at the vendor string Shipturtle uses for '
+            'their company (npm run shipturtle:vendors prints it). The uid '
+            'is on the seller\'s own Diagnostics facts card.',
+            style: LbmText.tiny.copyWith(color: c.ink2),
+          ),
+          const SizedBox(height: 8),
+          LbmField(
+            label: 'Seller uid',
+            controller: _sellerUid,
+            readOnly: _busy,
+          ),
+          const SizedBox(height: 8),
+          LbmField(
+            label: 'Vendor string',
+            controller: _vendorName,
+            hintText: 'exactly as Shipturtle shows it',
+            readOnly: _busy,
+          ),
+          const SizedBox(height: 8),
+          PillButton(
+            'Set seller vendor',
+            small: true,
+            expand: false,
+            style: PillStyle.quiet,
+            onPressed: _busy ? null : () => _run('Re-pointing…', _setVendor),
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),

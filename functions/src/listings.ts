@@ -72,14 +72,13 @@ export function productSetInput(
   draft: Record<string, unknown>,
   vendorName: string,
   locationId: string | null,
+  /** Shopify collection GIDs; the draft holds handles, which Shopify does not take. */
+  collectionIds: string[] = [],
 ): Record<string, unknown> {
   const tags = Array.isArray(draft.tags) ? draft.tags.map(String).filter(Boolean) : [];
   const quantity = typeof draft.quantity === 'number' ? draft.quantity : 0;
   const trackQuantity = draft.trackQuantity !== false;
   const weightGrams = typeof draft.weightGrams === 'number' ? draft.weightGrams : 0;
-  const collectionHandles = Array.isArray(draft.collectionHandles)
-    ? draft.collectionHandles.map(String)
-    : [];
 
   return {
     title: String(draft.title).trim(),
@@ -118,7 +117,7 @@ export function productSetInput(
       originalSource: url,
       contentType: 'IMAGE',
     })),
-    ...(collectionHandles.length ? { collections: collectionHandles } : {}),
+    ...(collectionIds.length ? { collections: collectionIds } : {}),
     metafields: [
       {
         namespace: 'lbm',
@@ -141,6 +140,19 @@ export async function findExistingProduct(
   );
   const first = data.products.nodes[0];
   return first ? first.id.split('/').pop() ?? null : null;
+}
+
+/** The mirrored collections' Shopify ids for the handles a draft picked. */
+export async function collectionIdsFor(handles: unknown): Promise<string[]> {
+  if (!Array.isArray(handles) || handles.length === 0) return [];
+  const db = getFirestore();
+  const ids: string[] = [];
+  for (const handle of handles.map(String)) {
+    const doc = await db.collection('collections').doc(handle).get();
+    const id = doc.data()?.id;
+    if (id) ids.push(`gid://shopify/Collection/${id}`);
+  }
+  return ids;
 }
 
 /**
@@ -220,7 +232,8 @@ export async function publishListing(
     let stockSet = false;
     if (!productId) {
       const locationId = await defaultLocationId(graphql);
-      const input = productSetInput(listingId, draft, vendorName, locationId);
+      const collectionIds = await collectionIdsFor(draft.collectionHandles);
+      const input = productSetInput(listingId, draft, vendorName, locationId, collectionIds);
       stockSet = Boolean(locationId);
 
       const data = await graphql<{

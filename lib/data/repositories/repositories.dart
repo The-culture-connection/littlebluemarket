@@ -264,6 +264,13 @@ abstract interface class DiagnosticsRepository {
 
   /// One page of the catalog import. Call until [BackfillProgress.done].
   Future<BackfillProgress> backfillCatalog({bool reset = false});
+
+  /// Re-points a seller's grant at the vendor string Shipturtle uses for
+  /// them. Returns the previous string.
+  Future<String> setSellerVendor({
+    required String uid,
+    required String vendorName,
+  });
 }
 
 /// A profile edit. Only the fields a person may change themselves — notably

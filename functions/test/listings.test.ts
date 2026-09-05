@@ -41,13 +41,14 @@ test('a draft must have a title, a positive whole-cent price and a photo', () =>
 });
 
 test('the productSet input is a DRAFT under the seller\'s vendor name, never the request\'s', () => {
-  const input = productSetInput('L1', draft, 'Gwynstone', 'gid://shopify/Location/9') as any;
+  const input = productSetInput('L1', draft, 'Gwynstone', 'gid://shopify/Location/9', ['gid://shopify/Collection/42']) as any;
   assert.equal(input.status, 'DRAFT');
   assert.equal(input.vendor, 'Gwynstone');
   assert.equal(input.title, 'Cocoa Mint Lip Balm');
   assert.equal(input.descriptionHtml, 'Cocoa &amp; mint.<br>Compostable tube.');
   assert.deepEqual(input.tags, ['feminist gift', 'lbm:L1']);
-  assert.deepEqual(input.collections, ['bath-beauty-wellness']);
+  // Shopify takes collection ids, never handles; the handles stay on the draft.
+  assert.deepEqual(input.collections, ['gid://shopify/Collection/42']);
   assert.deepEqual(input.files, [{ originalSource: 'https://firebasestorage/x.jpg', contentType: 'IMAGE' }]);
   assert.deepEqual(input.metafields, [
     { namespace: 'lbm', key: 'draft_id', type: 'single_line_text_field', value: 'L1' },

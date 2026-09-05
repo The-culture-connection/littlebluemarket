@@ -248,6 +248,75 @@ export async function revokeVendor(uid: string): Promise<void> {
 }
 
 /**
+ * Re-points a grant at a different vendor string. Admin only.
+ *
+ * The vendor string is the join key with Shipturtle: a vendor's products
+ * carry the string Shipturtle assigned to their company, and a grant issued
+ * against any other string puts the seller's new products under a stranger.
+ * `npm run shipturtle:vendors` prints which string each company uses.
+ *
+ * The old reservation is released and the new one taken in one transaction;
+ * the `sellers/{uid}` trigger then re-attributes both vendors' products.
+ */
+export async function reassignVendor(
+  uid: string,
+  rawVendorName: string,
+  adminUid: string,
+): Promise<{ vendorName: string; previous: string }> {
+  const vendorName = rawVendorName.trim();
+  if (!uid) throw new HttpsError('invalid-argument', 'Which account?');
+  if (!vendorName) throw new HttpsError('invalid-argument', 'Which vendor string?');
+
+  const db = getFirestore();
+  const sellerRef = db.collection('sellers').doc(uid);
+  const newNameRef = db.collection('vendorNames').doc(normalizeVendorName(vendorName));
+
+  const previous = await db.runTransaction(async (tx) => {
+    const seller = await tx.get(sellerRef);
+    if (!seller.exists) {
+      throw new HttpsError('not-found', 'That account is not a seller.');
+    }
+    const before = String(seller.data()?.shopifyVendorName ?? '');
+    const reserved = await tx.get(newNameRef);
+    if (reserved.exists && reserved.data()?.uid !== uid) {
+      throw new HttpsError(
+        'failed-precondition',
+        'Another account already claims that vendor string.',
+      );
+    }
+    if (before && normalizeVendorName(before) !== normalizeVendorName(vendorName)) {
+      const oldNameRef = db.collection('vendorNames').doc(normalizeVendorName(before));
+      const old = await tx.get(oldNameRef);
+      if (old.exists && old.data()?.uid === uid) tx.delete(oldNameRef);
+    }
+    tx.set(newNameRef, { uid, claimedAt: FieldValue.serverTimestamp() });
+    tx.set(
+      sellerRef,
+      { shopifyVendorName: vendorName, revokedAt: null, reassignedAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+    return before;
+  });
+
+  const user = await getAuth().getUser(uid);
+  await getAuth().setCustomUserClaims(uid, {
+    ...(user.customClaims ?? {}),
+    seller: true,
+    vendor: vendorName,
+  });
+  await db.collection('_internal').doc('sellerAudit').collection('events').add({
+    uid,
+    vendorName,
+    previous,
+    by: adminUid,
+    method: 'reassign',
+    at: FieldValue.serverTimestamp(),
+  });
+  logger.info('Re-pointed a seller grant', { uid, previous, vendorName });
+  return { vendorName, previous };
+}
+
+/**
  * The three-fact seller check, for every callable that writes on a seller's
  * behalf.
  *

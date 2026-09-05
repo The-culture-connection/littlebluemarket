@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import {
   catalogDocFor,
+  listingIdFromTags,
   productFromGraphQL,
   titleWords,
   type GraphQLProduct,
@@ -88,6 +89,13 @@ test('every tag survives; only hashtags are initiative tags', () => {
   assert.equal(doc.vendorKey, 'snowboard-vendor');
   assert.equal(doc.active, true);
   assert.equal(doc.description, 'Sturdy.\n\nFast.');
+});
+
+test('the app\'s own tags are bookkeeping, not product tags', () => {
+  const { doc } = catalogDocFor({ ...rest, tags: 'gift, lbm:L1, lbm-touch, #WomanOwned' }, undefined, []);
+  assert.deepEqual(doc.productTags, ['gift', '#WomanOwned']);
+  assert.equal(listingIdFromTags(['gift', 'lbm:L1']), 'L1');
+  assert.equal(listingIdFromTags(['gift']), null);
 });
 
 test('the spec keeps every variant with availability and stock', () => {

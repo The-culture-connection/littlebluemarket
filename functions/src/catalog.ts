@@ -71,6 +71,15 @@ export interface GraphQLProduct {
 
 const tail = (gid: string) => gid.split('/').pop() ?? gid;
 
+/** Tags the app uses for its own bookkeeping; never shown as product tags. */
+const INTERNAL_TAG = /^lbm[:-]/i;
+
+/** The listing a store product came from, if the app created it. */
+export function listingIdFromTags(tags: string[]): string | null {
+  const tag = tags.find((t) => /^lbm:/i.test(t));
+  return tag ? tag.slice(4) : null;
+}
+
 /** The shape adapter: GraphQL in, the webhook's REST shape out. */
 export function productFromGraphQL(node: GraphQLProduct): RestProduct {
   return {
@@ -123,7 +132,7 @@ export function catalogDocFor(
   const allTags = String(payload.tags ?? '')
     .split(',')
     .map((t) => t.trim())
-    .filter(Boolean);
+    .filter((t) => t && !INTERNAL_TAG.test(t));
   const initiativeTags = allTags.filter((t) => t.startsWith('#'));
 
   const lat = seller?.lat;
@@ -222,6 +231,32 @@ export async function mirrorProduct(payload: RestProduct): Promise<void> {
   );
   // The spec table is a subdocument so a feed read does not carry it.
   await ref.collection('spec').doc('detail').set(spec, { merge: true });
+
+  // Approval, push side. A product the app created carries its listing id;
+  // the merchant approving it (DRAFT -> ACTIVE in the store) is what flips
+  // the seller's chip from Under review to Live.
+  const listingId = listingIdFromTags(
+    String(payload.tags ?? '').split(',').map((t) => t.trim()),
+  );
+  if (listingId) {
+    const listingRef = db.collection('listings').doc(listingId);
+    const listing = (await listingRef.get()).data();
+    if (listing) {
+      const active = payload.status === 'active';
+      const wasLive = listing.status === 'live';
+      if (active && !wasLive) {
+        await listingRef.set(
+          { status: 'live', approvedAt: FieldValue.serverTimestamp(), shopifyProductId: id, updatedAt: FieldValue.serverTimestamp() },
+          { merge: true },
+        );
+      } else if (!active && wasLive) {
+        await listingRef.set(
+          { status: 'submitted', updatedAt: FieldValue.serverTimestamp() },
+          { merge: true },
+        );
+      }
+    }
+  }
 
   logger.info('Mirrored a product', { id, sellerUid: sellerUid || '(none)' });
 }

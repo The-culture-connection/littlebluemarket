@@ -102,6 +102,17 @@ class FirestoreDiagnosticsRepository implements DiagnosticsRepository {
   }, operation: 'callable adminSyncCollections');
 
   @override
+  Future<String> setSellerVendor({
+    required String uid,
+    required String vendorName,
+  }) => guardFirestore(() async {
+    final result = await _functions
+        .httpsCallable('adminSetSellerVendor')
+        .call<Map<String, dynamic>>({'uid': uid, 'vendorName': vendorName});
+    return FirestoreMappers.str(result.data['previous']);
+  }, operation: 'callable adminSetSellerVendor');
+
+  @override
   Future<BackfillProgress> backfillCatalog({bool reset = false}) =>
       guardFirestore(() async {
         final result = await _functions

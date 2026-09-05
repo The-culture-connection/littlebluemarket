@@ -1288,6 +1288,15 @@ class FixtureDiagnosticsRepository implements DiagnosticsRepository {
   Future<int> syncCollections() async => Fx.collections.length;
 
   @override
+  Future<String> setSellerVendor({
+    required String uid,
+    required String vendorName,
+  }) async {
+    if (!_admin) throw const PermissionException('Admins only.');
+    return 'Demo Vendor';
+  }
+
+  @override
   Future<BackfillProgress> backfillCatalog({bool reset = false}) async =>
       BackfillProgress(
         processed: Fx.products.length,

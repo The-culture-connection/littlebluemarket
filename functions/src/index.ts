@@ -35,7 +35,7 @@ import { claimAdmin, requireAdmin } from './admin.ts';
 import { syncCollections } from './collections.ts';
 import { backfillCatalogPage } from './backfill.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
-import { claimVendor, revokeVendor } from './sellers.ts';
+import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
 import { publishListing } from './listings.ts';
 import { verifyShopifyHmac, webhookHmacHeader, webhookTopic } from './webhooks.ts';
 import {
@@ -197,6 +197,19 @@ export const sellerPublishListing = onCall(
 );
 
 /**
+ * Re-points a seller at the vendor string Shipturtle actually uses for their
+ * company. Admin only. Fixes a claim code issued against the wrong string.
+ */
+export const adminSetSellerVendor = onCall(
+  withLoudErrors('adminSetSellerVendor', async (request) => {
+    const adminUid = requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const { uid, vendorName } = request.data ?? {};
+    return reassignVendor(String(uid ?? ''), String(vendorName ?? ''), adminUid);
+  }),
+);
+
+/**
  * Takes it away again. Admin only.
  *
  * Products already on the storefront stay: they are Shopify's, and pulling
@@ -242,6 +255,11 @@ export const resolveSellerForVendorName = onDocumentWritten(
     const nameChanged = before?.shopifyVendorName !== after?.shopifyVendorName;
     if (!nameChanged && revokedNow === revokedBefore) return;
 
+    // A re-pointed grant releases the old vendor's products first, or they
+    // would stay attributed to this account forever.
+    if (nameChanged && before?.shopifyVendorName && after?.shopifyVendorName) {
+      await backfillSellerForVendor(uid, before.shopifyVendorName, false);
+    }
     await backfillSellerForVendor(uid, name, !revokedNow);
   },
 );
