@@ -129,12 +129,12 @@ export function defaultProbes(): Probe[] {
       fix: 'reinstall the app on the store, then firebase functions:secrets:set SHOPIFY_CLIENT_SECRET --project dev',
       run: async () => {
         const data = await adminGraphQL<{
-          shop: { name: string; myshopifyDomain: string; plan: { displayName: string } | null };
+          shop: { name: string; myshopifyDomain: string; passwordEnabled: boolean; plan: { displayName: string } | null };
           currentAppInstallation: { accessScopes: Array<{ handle: string }> } | null;
-        }>('{ shop { name myshopifyDomain plan { displayName } } currentAppInstallation { accessScopes { handle } } }');
+        }>('{ shop { name myshopifyDomain passwordEnabled plan { displayName } } currentAppInstallation { accessScopes { handle } } }');
         const scopes = (data.currentAppInstallation?.accessScopes ?? []).map((s) => s.handle);
         return {
-          summary: `shop "${data.shop.name}" (${data.shop.myshopifyDomain}) · ${scopes.length} scope(s)`,
+          summary: `shop "${data.shop.name}" (${data.shop.myshopifyDomain}) · ${scopes.length} scope(s)${data.shop.passwordEnabled ? ' · STOREFRONT PASSWORD ON (checkout shows a password page: Online Store -> Preferences -> Password protection)' : ''}`,
           data: { scopes },
         };
       },

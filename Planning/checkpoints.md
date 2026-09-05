@@ -244,7 +244,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 ### Stage 3 walkthrough, as of 2026-09-05
 
-**Nothing to set up.** Webhooks, scopes and protected customer fields are all in place from Stage 2. Use the buyer account (`+buyer1` or `+customer1`), not the seller.
+**One thing to set up:** the dev store is password-protected, and the checkout tab shows that password page first. Dev store admin → Online Store → Preferences → Password protection → untick "Restrict access to visitors with the password" → Save (or type the password shown there once in the checkout tab). Webhooks, scopes and protected customer fields are all in place from Stage 2. Use the buyer account (`+buyer1` or `+customer1`), not the seller.
 
 1. Restart the app (`q`, then `scripts/run-live.sh`). Sign out and sign in as `grace-s+buyer1@…` if you are still the seller.
 2. **CP-B1.** Search **snowboard** → open "The Complete Snowboard" → **Add to cart** (or Buy). Tap the cart. **Pass:** the line is there with a real price and "Calculated at checkout" for shipping.
