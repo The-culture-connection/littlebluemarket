@@ -244,7 +244,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 ### Stage 3 walkthrough, as of 2026-09-05
 
-**One thing to set up:** the dev store is password-protected, and the checkout tab shows that password page first. Dev store admin → Online Store → Preferences → Password protection → untick "Restrict access to visitors with the password" → Save (or type the password shown there once in the checkout tab). Webhooks, scopes and protected customer fields are all in place from Stage 2. Use the buyer account (`+buyer1` or `+customer1`), not the seller.
+**Two things to know before paying:** (1) the dev store is password-protected and a development store usually cannot drop the password (Shopify asks you to choose a plan). Once per phone: Online Store → Preferences → copy the password; in the app tap Open checkout, type it on the password page — it then shows the shop home, which is expected — close the tab and tap Open checkout again; Chrome remembers it from then on. (2) Payments must be in test mode: Settings → Payments → Shopify Payments → Manage → Test mode (card 4242 4242 4242 4242), or activate the Bogus Gateway (card number 1). Webhooks, scopes and protected customer fields are all in place from Stage 2. Use the buyer account (`+buyer1` or `+customer1`), not the seller.
 
 1. Restart the app (`q`, then `scripts/run-live.sh`). Sign out and sign in as `grace-s+buyer1@…` if you are still the seller.
 2. **CP-B1.** Search **snowboard** → open "The Complete Snowboard" → **Add to cart** (or Buy). Tap the cart. **Pass:** the line is there with a real price and "Calculated at checkout" for shipping.

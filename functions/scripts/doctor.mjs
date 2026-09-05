@@ -178,7 +178,7 @@ async function main() {
           pass('shopify admin', `token mints · shop "${shop.shop.name}" (${shop.shop.myshopifyDomain}, ${shop.shop.plan?.displayName ?? 'plan ?'})`);
           const front = await fetch(`https://${params.SHOPIFY_STORE_DOMAIN}/`, { redirect: 'manual' }).catch(() => null);
           const passworded = front !== null && (front.status === 302 || front.status === 301) && /[/]password/.test(front.headers.get('location') ?? '');
-          if (passworded) warn('storefront password', 'the store is password-protected, so the checkout tab shows a password page first', 'dev store admin -> Online Store -> Preferences -> Password protection -> untick "Restrict access" -> Save (or type the password shown there once in the checkout tab)');
+          if (passworded) warn('storefront password', 'the store is password-protected, so the checkout tab shows a password page first', 'a development store usually cannot drop its password (Shopify: choose a plan). Workaround, once per phone: Online Store -> Preferences -> copy the password; in the app tap Open checkout, type it on the password page (it then shows the shop home, that is expected), close the tab, tap Open checkout again. Chrome remembers it from then on.');
           const granted = await grantedScopes(ctx);
           const missingScopes = REQUIRED_SCOPES.filter((s) => !hasScope(granted, s));
           if (missingScopes.length) {
