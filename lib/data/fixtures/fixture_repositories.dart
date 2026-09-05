@@ -90,6 +90,13 @@ class FixtureCatalogRepository implements CatalogRepository {
   @override
   Future<List<TagCount>> popularTags({int limit = 8}) =>
       _backend._delayed(Fx.tags.take(limit).toList());
+
+  @override
+  Stream<Product> watchProduct(String id) {
+    final found = Fx.products[id];
+    if (found == null) return Stream.error(NotFoundException('product', id));
+    return Stream.value(found);
+  }
 }
 
 class FixtureCollectionRepository implements CollectionRepository {

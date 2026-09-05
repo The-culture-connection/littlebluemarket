@@ -57,10 +57,19 @@ class PostCard extends ConsumerWidget {
 /// many people have. One widget rather than two look-alikes: the row
 /// appeared verbatim in both places and the copies had drifted apart.
 class PostActionBar extends StatelessWidget {
-  const PostActionBar({super.key, this.onComment, this.onAddToCart});
+  const PostActionBar({
+    super.key,
+    this.onComment,
+    this.onAddToCart,
+    this.inCart = false,
+  });
 
   final VoidCallback? onComment;
   final VoidCallback? onAddToCart;
+
+  /// Whether the viewer's cart already holds this listing. A filled, accent
+  /// cart says so; tapping it again takes the listing back out.
+  final bool inCart;
 
   @override
   Widget build(BuildContext context) {
@@ -70,9 +79,11 @@ class PostActionBar extends StatelessWidget {
         children: [
           if (onAddToCart != null) ...[
             _ActionIcon(
-              icon: Icons.add_shopping_cart_rounded,
-              label: 'Add to cart',
-              tint: context.c.accentDeep,
+              icon: inCart
+                  ? Icons.shopping_cart_rounded
+                  : Icons.add_shopping_cart_rounded,
+              label: inCart ? 'Remove from cart' : 'Add to cart',
+              tint: inCart ? context.c.accentDeep : null,
               onTap: onAddToCart,
             ),
             const SizedBox(width: 16),
@@ -329,11 +340,38 @@ class _Actions extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final id = productId;
+    // The viewer's own cart, live: the icon fills the moment the line lands.
+    final cart = ref.watch(cartProvider).value;
+    final line = id == null
+        ? null
+        : cart?.lines.cast<CartLine?>().firstWhere(
+            (l) => l?.productId == id,
+            orElse: () => null,
+          );
     return PostActionBar(
+      inCart: line != null,
       onComment: () => context.goToPost(post.id),
       onAddToCart: id == null
           ? null
           : () => requireProfile(context, ref, () async {
+              if (line != null) {
+                // Tapping the filled cart takes it back out, the way a
+                // second tap on a heart used to.
+                final messenger = ScaffoldMessenger.of(context);
+                try {
+                  await ref
+                      .read(commerceRepositoryProvider)
+                      .removeLine(line.id);
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Removed from your cart')),
+                  );
+                } on RepositoryException catch (error) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(describeError(error).body)),
+                  );
+                }
+                return;
+              }
               // The first time, say what the cart means here.
               await showCartTipOnce(context, ref);
               if (!context.mounted) return;
@@ -468,15 +506,20 @@ class _ActionIcon extends StatelessWidget {
 /// "N added · M comments" for a listing; "M comments" for everything else.
 /// "Added" is the product's own save count, so the number is the same on
 /// every post about that product.
-class _CountLine extends StatelessWidget {
+class _CountLine extends ConsumerWidget {
   const _CountLine({required this.post});
 
   final Post post;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
-    final product = post is ListingPost ? (post as ListingPost).product : null;
+    final snapshot = post is ListingPost ? (post as ListingPost).product : null;
+    // Live where possible: the feed's copy of the product was taken when the
+    // feed loaded, and the count has usually moved since.
+    final product = snapshot == null
+        ? null
+        : ref.watch(liveProductProvider(snapshot.id)).value ?? snapshot;
     return Text.rich(
       TextSpan(
         style: LbmText.tiny.copyWith(color: c.ink2),

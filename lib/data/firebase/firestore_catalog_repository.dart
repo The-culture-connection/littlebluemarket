@@ -111,6 +111,14 @@ class FirestoreCatalogRepository implements CatalogRepository {
       }, operation: 'callable commerceLiveVariants');
 
   @override
+  Stream<Product> watchProduct(String id) => _catalog
+      .doc(id)
+      .snapshots()
+      .where((doc) => doc.data() != null)
+      .map((doc) => FirestoreMappers.product(doc.id, doc.data()!))
+      .guarded(operation: 'firestore catalog watchProduct');
+
+  @override
   Future<List<TagCount>> popularTags({int limit = 8}) =>
       guardFirestore(() async {
         final snapshot = await _db

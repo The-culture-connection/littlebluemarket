@@ -30,6 +30,12 @@ final productProvider = FutureProvider.family<Product, String>((ref, id) {
   return ref.watch(catalogRepositoryProvider).product(id);
 });
 
+/// The product, live. Used where a number on screen must move as soon as
+/// the backend moves it: the "N added" line under a listing.
+final liveProductProvider = StreamProvider.family<Product, String>((ref, id) {
+  return ref.watch(catalogRepositoryProvider).watchProduct(id);
+});
+
 final productSpecProvider = FutureProvider.family<ProductSpec, String>((
   ref,
   id,

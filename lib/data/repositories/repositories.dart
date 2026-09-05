@@ -48,6 +48,10 @@ abstract interface class CatalogRepository {
   Future<List<Variant>> liveVariants(String productId);
 
   Future<List<TagCount>> popularTags({int limit = 8});
+
+  /// The product as it changes: the "N added" count moves the moment the
+  /// backend moves it, without a pull to refresh.
+  Stream<Product> watchProduct(String id);
 }
 
 /// The store's collections — its real taxonomy — and what is filed under
