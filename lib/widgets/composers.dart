@@ -163,6 +163,7 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
               rating: _rating,
               text: _text.text.trim(),
               purchaseId: picked.id,
+              tags: parseHashtags(_text.text),
               mentionedUids: mentioned,
             ),
           );
@@ -420,6 +421,7 @@ class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
         NewPost.shoutout(
           text: _text.text.trim(),
           aboutSellerId: _mentioned?.id,
+          tags: parseHashtags(_text.text),
           imageUrls: imageUrls,
           mentionedUids: mentioned,
         ),
@@ -569,7 +571,7 @@ class _ListingComposerState extends ConsumerState<ListingComposer> {
               caption: _caption.text.trim().isEmpty
                   ? null
                   : _caption.text.trim(),
-              tags: picked.tags,
+              tags: {...picked.tags, ...parseHashtags(_caption.text)}.toList(),
               mentionedUids: mentioned,
             ),
           );

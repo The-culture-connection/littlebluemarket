@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import {
   autoPostFor,
   catalogDocFor,
+  hashtagFor,
   listingIdFromTags,
   productFromGraphQL,
   titleWords,
@@ -84,10 +85,10 @@ test('the adapter carries collections, lowercases status and flattens tags', () 
   assert.equal(adapted.id, '15858163777696');
 });
 
-test('every tag survives; only hashtags are initiative tags', () => {
+test('every tag survives, and every tag becomes a hashtag', () => {
   const { doc } = catalogDocFor(rest, undefined, []);
   assert.deepEqual(doc.productTags, ['feminist gift', '#WomanOwned', 'New']);
-  assert.deepEqual(doc.tags, ['#WomanOwned']);
+  assert.deepEqual(doc.tags, ['#FeministGift', '#WomanOwned', '#New']);
   assert.equal(doc.sellerId, '');
   assert.equal(doc.vendorKey, 'snowboard-vendor');
   assert.equal(doc.active, true);
@@ -109,13 +110,21 @@ test('the spec keeps every variant with availability and stock', () => {
   ]);
 });
 
-test('a live, attributed product posts itself as its seller, with its initiative tags', () => {
+test('a store tag becomes one hashtag, however it was typed', () => {
+  assert.equal(hashtagFor('feminist gift'), '#FeministGift');
+  assert.equal(hashtagFor('Sport'), '#Sport');
+  assert.equal(hashtagFor('#WomanOwned'), '#WomanOwned');
+  assert.equal(hashtagFor('plastic-free!'), '#PlasticFree');
+  assert.equal(hashtagFor('  '), null);
+});
+
+test('a live, attributed product posts itself as its seller, with its tags', () => {
   const { doc } = catalogDocFor(rest, { uid: 'kali' }, []);
   const post = autoPostFor('15858163777696', 'kali', doc) as any;
   assert.equal(post.kind, 'listing');
   assert.equal(post.authorId, 'kali');
   assert.equal(post.productId, '15858163777696');
-  assert.deepEqual(post.tags, ['#WomanOwned']);
+  assert.deepEqual(post.tags, ['#FeministGift', '#WomanOwned', '#New']);
   assert.equal(post.auto, true);
   assert.equal(post.createdAt instanceof Date, true);
 });

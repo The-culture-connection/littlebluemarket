@@ -101,6 +101,19 @@ const tail = (gid: string) => gid.split('/').pop() ?? gid;
 const INTERNAL_TAG = /^lbm[:-]/i;
 
 /** The listing a store product came from, if the app created it. */
+/**
+ * The hashtag a store tag becomes: "feminist gift" -> #FeministGift,
+ * "Sport" -> #Sport, "#WomanOwned" stays. Nothing a seller types in the
+ * Shopify admin starts with '#', and the search vocabulary is hashtags, so
+ * every tag is turned into one rather than only the ones already shaped so.
+ */
+export function hashtagFor(tag: string): string | null {
+  const words = tag.replace(/^#+/, '').split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  if (words.length === 0) return null;
+  const body = words.map((w) => w[0]!.toUpperCase() + w.slice(1)).join('');
+  return `#${body}`;
+}
+
 export function listingIdFromTags(tags: string[]): string | null {
   const tag = tags.find((t) => /^lbm:/i.test(t));
   return tag ? tag.slice(4) : null;
@@ -161,7 +174,7 @@ export function catalogDocFor(
     .split(',')
     .map((t) => t.trim())
     .filter((t) => t && !INTERNAL_TAG.test(t));
-  const initiativeTags = allTags.filter((t) => t.startsWith('#'));
+  const initiativeTags = [...new Set(allTags.map(hashtagFor).filter((t): t is string => t !== null))];
 
   const lat = seller?.lat;
   const lng = seller?.lng;

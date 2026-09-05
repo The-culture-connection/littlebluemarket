@@ -4,13 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../app_assets.dart';
+import '../../data/providers.dart';
 import '../../data/repositories/repositories.dart';
 import '../../widgets/async.dart';
 import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/photo_source.dart';
 import '../../widgets/primitives.dart';
 
 /// The onboarding chrome: the hero blue, the cart mark, a title and a
@@ -548,12 +551,39 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   bool _sells = true;
   bool _busy = false;
   String? _error;
+  Uint8List? _photo;
+  String _photoType = 'image/jpeg';
 
   @override
   void dispose() {
     _handle.dispose();
     _bio.dispose();
     super.dispose();
+  }
+
+  /// The photo is only picked here; it is uploaded with the profile, so a
+  /// person who backs out never leaves an orphan in storage.
+  Future<void> _pickPhoto() async {
+    final source = await choosePhotoSource(context);
+    if (source == null || !mounted) return;
+    try {
+      final file = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1200,
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _photo = bytes;
+        _photoType = pickedContentType(file);
+        _error = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = 'Could not get that photo: $error');
+    }
   }
 
   Future<void> _finish() async {
@@ -573,6 +603,13 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               bio: _bio.text.trim().isEmpty ? null : _bio.text.trim(),
             ),
           );
+      final photo = _photo;
+      if (photo != null) {
+        // The upload writes the URL onto the profile itself.
+        await ref
+            .read(profileRepositoryProvider)
+            .uploadAvatar(photo, contentType: _photoType);
+      }
       if (!mounted) return;
       context.go('/market');
     } on RepositoryException catch (error) {
@@ -592,25 +629,34 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         Center(
           child: Column(
             children: [
-              Container(
-                width: 78,
-                height: 78,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    width: 1.5,
+              GestureDetector(
+                onTap: _busy ? null : _pickPhoto,
+                child: Container(
+                  width: 78,
+                  height: 78,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      width: 1.5,
+                    ),
                   ),
-                ),
-                child: const Icon(
-                  Icons.add_a_photo_outlined,
-                  color: LbmConst.onWelcome,
-                  size: 26,
+                  child: _photo != null
+                      ? Image.memory(_photo!, fit: BoxFit.cover)
+                      : const Icon(
+                          Icons.add_a_photo_outlined,
+                          color: LbmConst.onWelcome,
+                          size: 26,
+                        ),
                 ),
               ),
               const SizedBox(height: 8),
-              _QuietAction('Add a photo', onPressed: () {}),
+              _QuietAction(
+                _photo == null ? 'Add a photo' : 'Change photo',
+                onPressed: _busy ? () {} : _pickPhoto,
+              ),
             ],
           ),
         ),

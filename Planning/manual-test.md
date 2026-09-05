@@ -15,7 +15,7 @@
 
 1. Open the app → **Create a Profile** → `grace-s+buyer2@…` + a password → Next.
 2. **Confirm your email** screen appears. Do not tap anything yet. Open the mail, click the link, come back. Within 5 s the screen says **Confirmed. Thank you.** (or tap **I've confirmed it**). *Pass:* it never skips this screen on its own.
-3. Continue → **Set up your profile** → handle, bio → Create. *Pass:* Market feed with a **You** tab; no "Confirm your email" banner on the feed.
+3. Continue → **Set up your profile** → tap the circle or **Add a photo** → Take a photo / Choose from your photos → the picture shows in the circle → handle, bio → Create. *Pass:* Market feed with a **You** tab, your photo on the You tab; no "Confirm your email" banner on the feed.
 4. **Cold-start check:** force-close the app mid-way (after step 1, before step 2) and reopen. *Pass:* it opens on the Confirm your email screen, not the market.
 5. **Unconfirmed member check:** sign out, Create a Profile with `grace-s+buyer3@…`, tap **Continue for now** on the confirm screen, finish setup. *Pass:* the feed shows a **Confirm your email** card with **I've confirmed it** and **Resend**; buying, posting and commenting still work; Edit profile → Sell with us keeps "Check my seller status" disabled until the email is confirmed.
 6. Edit profile → **City, State** = `Detroit, MI` → Save. *Pass:* saved; Diagnostics shows nothing red. (This powers Near me later.)
@@ -66,7 +66,8 @@
 ## J8 · Search and Near me
 
 1. Search → `snowboard` → real products. `balm mint` (out of order) → the lip balm. A word that is only in a product's **description** → that product (descriptions are searched too). `zzzz` → "Nothing for zzzz" with **Did you mean** chips. Tap a chip → results or a collection.
-2. **Near me** on the emulator: first set a location (the emulator's ⋯ → Location → pick a point, e.g. Detroit → Set location; or Claude runs `adb emu geo fix -83.0458 42.3314`), then Market → **Near me**. The first time Android asks for permission. *Pass:* "Near Current location" within a few seconds, and results narrow to sellers whose profile City is nearby. With no fix on the phone it uses your own profile City; with neither it stays off, says so, and the message has an **Add my city** button. A slow fix is not an error any more: nothing red appears for it.
+2. **Hashtags.** Every store tag on a product is a hashtag now ("feminist gift" on Shopify is `#FeministGift` in the app), and any `#tag` typed into a shoutout, review, cart post or listing caption counts too. Market → the hashtag rail under the search pill shows the popular ones → tap one → results. Search → `#sport` (lowercase is fine) → the products tagged Sport. Post a shoutout with `#Detroit` in it → search `#detroit` → the shoutout's tag is found and the rail gains #Detroit. *Pass:* results, not "Nothing for #…". Empty rail and empty results everywhere → Claude runs `npm run touch-products` to re-mirror the catalog.
+3. **Near me** on the emulator: first set a location (the emulator's ⋯ → Location → pick a point, e.g. Detroit → Set location; or Claude runs `adb emu geo fix -83.0458 42.3314`), then Market → **Near me**. The first time Android asks for permission. *Pass:* "Near Current location" within a few seconds, and results narrow to sellers whose profile City is nearby. With no fix on the phone it uses your own profile City; with neither it stays off, says so, and the message has an **Add my city** button. A slow fix is not an error any more: nothing red appears for it.
 
 ## J9 · Community and messages
 

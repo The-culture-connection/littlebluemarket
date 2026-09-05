@@ -58,3 +58,6 @@ lib/dataconnect_generated/
 functions/src/dataconnect-admin-generated/
 dataconnect/
 .dataconnect/
+
+# Kotlin compiler session cache
+android/.kotlin/

@@ -69,6 +69,7 @@ class _CartComposerState extends ConsumerState<_CartComposer> {
               caption: _caption.text.trim().isEmpty
                   ? null
                   : _caption.text.trim(),
+              tags: parseHashtags(_caption.text),
               mentionedUids: mentioned,
             ),
           );

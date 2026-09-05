@@ -204,6 +204,15 @@ void main() {
   });
 
   group('Post', () {
+    test('hashtags in a text become its tags, once each', () {
+      expect(
+        parseHashtags('Love this #PlasticFree find #plasticfree #Detroit!'),
+        ['#PlasticFree', '#Detroit'],
+      );
+      expect(parseHashtags('no tags here'), isEmpty);
+      expect(parseHashtags('an email a#b is not a tag'), ['#b']);
+    });
+
     test('only a listing or a review has a subject product', () {
       final shoutout = ShoutoutPost(
         id: 's',

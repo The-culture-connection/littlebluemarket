@@ -51,6 +51,19 @@ List<String> parseMentionHandles(String text) {
   return out;
 }
 
+/// The `#hashtags` a text carries, in order, without duplicates (case
+/// folded), each kept as typed. Every post can carry tags; nobody should
+/// have to fill a separate field to say what a post is about.
+List<String> parseHashtags(String text) {
+  final seen = <String>{};
+  final out = <String>[];
+  for (final match in RegExp(r'#(\w+)').allMatches(text)) {
+    final tag = '#${match.group(1)!}';
+    if (seen.add(tag.toLowerCase())) out.add(tag);
+  }
+  return out;
+}
+
 /// A search that must find every word, not only the first.
 bool matchesAllWords(String haystack, String query) {
   final text = haystack.toLowerCase();

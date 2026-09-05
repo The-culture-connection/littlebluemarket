@@ -563,19 +563,28 @@ export const onPostWritten = onDocumentWritten(
     const db = getFirestore();
     const batch = db.batch();
 
+    // Keyed by the lowercase tag so #PlasticFree and #plasticfree are one
+    // hashtag; the first spelling seen is the one shown.
+    const keyOf = (tag: string) => tag.replace(/^#/, '').toLowerCase();
+    const previousKeys = new Set([...previous].map(keyOf));
+    const nextKeys = new Set([...next].map(keyOf));
     for (const tag of next) {
-      if (previous.has(tag)) continue;
+      if (previousKeys.has(keyOf(tag))) continue;
+      const key = keyOf(tag);
+      if (!key) continue;
       batch.set(
-        db.collection('hashtags').doc(tag.replace(/^#/, '')),
+        db.collection('hashtags').doc(key),
         { tag, postCount: FieldValue.increment(1) },
         { merge: true },
       );
     }
     for (const tag of previous) {
-      if (next.has(tag)) continue;
+      if (nextKeys.has(keyOf(tag))) continue;
+      const key = keyOf(tag);
+      if (!key) continue;
       batch.set(
-        db.collection('hashtags').doc(tag.replace(/^#/, '')),
-        { tag, postCount: FieldValue.increment(-1) },
+        db.collection('hashtags').doc(key),
+        { postCount: FieldValue.increment(-1) },
         { merge: true },
       );
     }

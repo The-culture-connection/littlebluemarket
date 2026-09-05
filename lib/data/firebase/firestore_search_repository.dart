@@ -54,8 +54,9 @@ class FirestoreSearchRepository implements SearchRepository {
             ? const <Person>[]
             : await _sellers(query);
 
-        final reviews = query.startsWith('#')
-            ? await _taggedReviews(query)
+        final tag = await _canonicalTag(query, filters.scope);
+        final reviews = tag != null
+            ? await _taggedReviews(tag)
             : const <TaggedReview>[];
 
         return SearchResults(
@@ -117,10 +118,11 @@ class FirestoreSearchRepository implements SearchRepository {
     final query = filters.query.trim();
     final lower = query.toLowerCase();
 
+    final tag = await _canonicalTag(query, filters.scope);
     Query<Map<String, dynamic>> base = _catalog;
     switch (filters.scope) {
       case SearchScope.hashtags:
-        base = base.where('tags', arrayContains: query);
+        base = base.where('tags', arrayContains: tag ?? query);
       case SearchScope.productType:
         base = base.where('typeSlug', isEqualTo: _slug(query));
       case SearchScope.sellers:
@@ -130,8 +132,8 @@ class FirestoreSearchRepository implements SearchRepository {
         );
       case SearchScope.keywords:
       case SearchScope.all:
-        if (query.startsWith('#')) {
-          base = base.where('tags', arrayContains: query);
+        if (tag != null) {
+          base = base.where('tags', arrayContains: tag);
         } else {
           // A word anywhere in the title. The mirror stores each title's
           // words, because a prefix scan on the whole title misses
@@ -225,6 +227,21 @@ class FirestoreSearchRepository implements SearchRepository {
   static String _firstWord(String lower) {
     final words = lower.split(RegExp(r'[^a-z0-9]+')).where((w) => w.isNotEmpty);
     return words.isEmpty ? lower : words.first;
+  }
+
+  /// The spelling a tag is stored under. Tags are written as the store or
+  /// the poster typed them (#PlasticFree); a search for #plasticfree finds
+  /// the same tag through the hashtag counter, which is keyed lowercase.
+  /// Null when the query is not a hashtag search at all.
+  Future<String?> _canonicalTag(String query, SearchScope scope) async {
+    final isTag = query.startsWith('#') || scope == SearchScope.hashtags;
+    if (!isTag) return null;
+    final typed = query.startsWith('#') ? query : '#$query';
+    final key = typed.substring(1).toLowerCase();
+    if (key.isEmpty) return typed;
+    final doc = await _db.collection('hashtags').doc(key).get();
+    final stored = doc.data()?['tag'];
+    return stored is String && stored.isNotEmpty ? stored : typed;
   }
 
   Future<List<TaggedReview>> _taggedReviews(String tag) async {
