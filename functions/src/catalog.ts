@@ -62,6 +62,10 @@ export async function mirrorProduct(payload: Record<string, any>): Promise<void>
       geohash: lat !== undefined && lng !== undefined ? geohash(lat, lng) : null,
       sellerHandleLower: (seller?.handleLower as string | undefined) ?? '',
       titleLower: String(payload.title ?? '').toLowerCase(),
+      // One entry per word, so "snowboard" finds "The Complete Snowboard".
+      // Firestore has no substring match; array-contains on words is the
+      // closest honest thing.
+      titleWords: titleWords(String(payload.title ?? '')),
       active: payload.status === 'active',
       shopifyProductId: id,
       updatedAt: FieldValue.serverTimestamp(),
@@ -116,6 +120,18 @@ export async function removeMirroredProduct(id: string): Promise<void> {
       { active: false, deletedAt: FieldValue.serverTimestamp() },
       { merge: true },
     );
+}
+
+/**
+ * The distinct words of a title, lowercased, letters and digits only, in
+ * order. "The Complete Snowboard!" -> ["the", "complete", "snowboard"].
+ */
+export function titleWords(title: string): string[] {
+  const seen = new Set<string>();
+  for (const word of title.toLowerCase().split(/[^a-z0-9]+/)) {
+    if (word) seen.add(word);
+  }
+  return [...seen];
 }
 
 function slug(value: string): string {

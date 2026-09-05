@@ -126,7 +126,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 **Grace does second (done 2026-09-05: scopes granted, protected customer data granted, all six webhooks registered, 17 products mirrored):** the order and fulfilment webhooks carry customer names and addresses, so Shopify also wants **Protected customer data access**: the app → Configuration (or API access) → Protected customer data access → Request access → reason "App functionality" → save. No review is needed for a development store. Then `cd functions; npm run webhooks:dev` registers the last three topics (ORDERS_PAID, FULFILLMENTS_CREATE, FULFILLMENTS_UPDATE).
 
-**Grace does next:** `scripts\doctor.ps1` (fix reds, rerun) → `cd functions; npm run webhooks:dev` → `cd functions; npm run touch-products` → `scripts\run-live.ps1` → "Continue as a guest" → search for the first word of a product you know is on the dev store.
+**Grace does next:** `scripts\doctor.ps1` (fix reds, rerun) → `scripts\run-live.ps1` → "Continue as a guest" → the Market feed says **Nothing posted yet** (expected: the feed shows *posts*, and nobody has posted on the live backend yet; browsing the shop by collection arrives in Stage 4) → tap the search icon → type **snowboard** → real products appear with photos and prices.
 **Pass looks like:** doctor all PASS/WARN/MANUAL; the corner badge (Stage 1, if landed) or the debug banner says live; the product appears with its real photo and price; Firebase console → Firestore shows `catalog` documents.
 **If it fails:** paste the doctor output. No search results → paste the `touch-products` output (M must be ≥ N).
 
@@ -163,7 +163,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 - [x] **1.4 Hidden Diagnostics screen** at `/you/diagnostics` (debug only): a facts card (backend, project, uid, email, `emailVerified`, `seller` claim, `isLinked`, app version) and, on live, "Run backend health check" rendering each check as a `ListRow` with a green/clay dot, summary, and fix; "Copy report for Claude". Entry row "Diagnostics (dev)" at the bottom of Edit Profile. `DiagnosticsRepository` interface + Firestore and fixture implementations; route added to the smoke and scaling tests.
 - [x] **1.5 `npm run verify:security`** — `functions/scripts/verify-security.mjs` under `firebase emulators:exec`: signs in as a normal user and attempts S1–S8 from `implementation-phases.md`; PASS/FAIL per line.
 
-**Grace does:** `scripts\run-live.ps1` → Profile → Edit profile → Diagnostics (dev) → Run backend health check. Then turn off Wi-Fi on the emulator and tap Add to cart on any product.
+**Grace does:** `scripts\run-live.ps1` → Profile → Edit profile → Diagnostics (dev) → Run backend health check. Then turn off Wi-Fi on the emulator (swipe down from the top of the phone screen, tap the Wi-Fi tile), search **snowboard**, open a product and tap Add to cart. (The feed itself is empty until someone posts; products live behind search until Stage 4.)
 **Pass looks like:** green rows for `adminToken`, `storefrontToken`, `webhooks`, `rulesSha`; the offline tap shows the red strip; Copy for Claude puts the block above on the clipboard.
 
 ### Stage 2 — Accounts and roles, verified by you (the missing wiring + Phase 3)

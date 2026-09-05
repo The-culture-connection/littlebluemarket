@@ -130,11 +130,12 @@ class FirestoreSearchRepository implements SearchRepository {
         if (query.startsWith('#')) {
           base = base.where('tags', arrayContains: query);
         } else {
-          // Prefix scan on a normalised title. Not a substring match — that is
-          // the honest limit of what Firestore can index.
-          base = base
-              .where('titleLower', isGreaterThanOrEqualTo: lower)
-              .where('titleLower', isLessThan: '$lower');
+          // A word anywhere in the title. The mirror stores each title's
+          // words, because a prefix scan on the whole title misses
+          // "The Complete Snowboard" for "snowboard" — which is how people
+          // actually search. Not a substring match; that is the honest
+          // limit of what Firestore can index.
+          base = base.where('titleWords', arrayContains: _firstWord(lower));
         }
     }
 
@@ -142,6 +143,24 @@ class FirestoreSearchRepository implements SearchRepository {
     final products = snapshot.docs
         .map((doc) => FirestoreMappers.product(doc.id, doc.data()))
         .toList();
+
+    // A multi-word query also takes titles that start with the whole phrase,
+    // which one word above cannot express.
+    if ((filters.scope == SearchScope.keywords || filters.scope == SearchScope.all) &&
+        !query.startsWith('#') &&
+        lower.contains(' ')) {
+      final byPrefix = await _catalog
+          .where('titleLower', isGreaterThanOrEqualTo: lower)
+          .where('titleLower', isLessThan: '$lower\uf8ff')
+          .limit(50)
+          .get();
+      final seenByPrefix = products.map((p) => p.id).toSet();
+      for (final doc in byPrefix.docs) {
+        if (seenByPrefix.add(doc.id)) {
+          products.add(FirestoreMappers.product(doc.id, doc.data()));
+        }
+      }
+    }
 
     // `all` also wants type and description hits, which the single query above
     // could not include.
@@ -191,6 +210,13 @@ class FirestoreSearchRepository implements SearchRepository {
     return snapshot.docs
         .map((doc) => FirestoreMappers.person(doc.id, doc.data()))
         .toList();
+  }
+
+  /// The first word of a query, the way the mirror indexes titles: lowercase,
+  /// letters and digits only.
+  static String _firstWord(String lower) {
+    final words = lower.split(RegExp(r'[^a-z0-9]+')).where((w) => w.isNotEmpty);
+    return words.isEmpty ? lower : words.first;
   }
 
   Future<List<TaggedReview>> _taggedReviews(String tag) async {
