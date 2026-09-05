@@ -5,6 +5,7 @@ import 'auth/auth_service.dart';
 import 'firebase/firebase_auth_service.dart';
 import 'firebase/firebase_bootstrap.dart';
 import 'firebase/firestore_catalog_repository.dart';
+import 'firebase/firestore_diagnostics_repository.dart';
 import 'firebase/firestore_messaging_repository.dart';
 import 'firebase/firestore_profile_repository.dart';
 import 'firebase/firestore_search_repository.dart';
@@ -30,6 +31,16 @@ const _backendFlag = String.fromEnvironment('LBM_BACKEND');
 final backendProvider = Provider<Backend>(
   (ref) => _backendFlag == 'live' ? Backend.live : Backend.fixtures,
 );
+
+/// A human label for the corner badge and the error reports:
+/// `fixtures`, `live · little-blue-610e5`, `emulators · little-blue-610e5`.
+final backendLabelProvider = Provider<String>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => 'fixtures',
+    Backend.live =>
+      '${useFirebaseEmulators ? 'emulators' : 'live'} · ${firebaseProjectId() ?? '?'}',
+  };
+});
 
 /// How slow the demo backend pretends to be.
 ///
@@ -131,6 +142,23 @@ final fulfillmentRepositoryProvider = Provider<FulfillmentRepository>((ref) {
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),
       uid: ref.watch(_uidProvider),
+    ),
+  };
+});
+
+/// The dev Diagnostics screen's data. Fixture rows on the demo backend, the
+/// deployed health check on the live one.
+final diagnosticsRepositoryProvider = Provider<DiagnosticsRepository>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => FixtureDiagnosticsRepository(
+      ref.watch(authServiceProvider),
+      backend: ref.watch(backendLabelProvider),
+    ),
+    Backend.live => FirestoreDiagnosticsRepository(
+      functions: ref.watch(firebaseFunctionsProvider),
+      auth: ref.watch(firebaseAuthProvider),
+      firestore: ref.watch(firestoreProvider),
+      backend: ref.watch(backendLabelProvider),
     ),
   };
 });

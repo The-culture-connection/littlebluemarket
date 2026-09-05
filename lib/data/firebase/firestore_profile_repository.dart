@@ -48,7 +48,7 @@ class FirestoreProfileRepository implements ProfileRepository {
         // state the app renders, not an error.
         return data == null ? null : FirestoreMappers.person(doc.id, data);
       })
-      .handleError(translateFirestoreError);
+      .guarded(operation: 'firestore users/{uid}');
 
   @override
   Future<Person> person(String id) => guardFirestore(() async {
@@ -181,7 +181,7 @@ class FirestoreProfileRepository implements ProfileRepository {
           vendorName: FirestoreMappers.str(data['vendorName']),
           shipturtleVendorId: data['shipturtleVendorId'] as String?,
         );
-      });
+      }, operation: 'callable sellerClaimVendor');
 
   @override
   Future<List<Address>> addresses() => guardFirestore(() async {

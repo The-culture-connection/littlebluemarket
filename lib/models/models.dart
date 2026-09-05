@@ -8,6 +8,7 @@ import 'formatting.dart';
 export 'address.dart';
 export 'cart.dart';
 export 'comment.dart';
+export 'diagnostics.dart';
 export 'formatting.dart';
 export 'geo.dart';
 export 'message.dart';

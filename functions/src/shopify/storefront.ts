@@ -35,7 +35,12 @@ export async function storefrontGraphQL<T>(
   );
 
   if (!response.ok) {
-    throw new Error(`Storefront API returned ${response.status}`);
+    throw new Error(
+      `Storefront API returned HTTP ${response.status} for ${domain} (API ${version}). ` +
+        'A 401 means SHOPIFY_STOREFRONT_PRIVATE_TOKEN is wrong: ' +
+        'firebase functions:secrets:set SHOPIFY_STOREFRONT_PRIVATE_TOKEN --project dev. ' +
+        'A 404 means SHOPIFY_STORE_DOMAIN is wrong in functions/.env.<project-id>.',
+    );
   }
 
   const body = (await response.json()) as {

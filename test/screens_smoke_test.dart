@@ -37,6 +37,7 @@ const _routes = <String, String>{
   'your profile': '/you',
   'edit profile': '/you/edit',
   'claim a shop': '/you/claim-shop',
+  'diagnostics (dev)': '/you/diagnostics',
   'shipping': '/you/shipping',
   'messages': '/you/messages',
   'direct message': '/you/dm/kali?to=1',

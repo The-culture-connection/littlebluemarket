@@ -58,7 +58,7 @@ class FulfillmentProxyRepository implements FulfillmentRepository {
           }
           return shipments;
         })
-        .guarded();
+        .guarded(operation: 'firestore orders ($field)');
   }
 
   @override
@@ -82,5 +82,5 @@ class FulfillmentProxyRepository implements FulfillmentRepository {
       'trackingNumber': tracking,
       'carrier': carrier,
     });
-  });
+  }, operation: 'callable fulfillmentAddTracking');
 }

@@ -205,6 +205,14 @@ abstract interface class FulfillmentRepository {
   });
 }
 
+/// The dev Diagnostics screen: who the phone thinks it is, and whether the
+/// backend can reach what it needs. Debug builds only; nothing a screen
+/// depends on.
+abstract interface class DiagnosticsRepository {
+  Future<HealthReport> healthCheck();
+  Future<AuthFacts> authFacts();
+}
+
 /// A profile edit. Only the fields a person may change themselves — notably
 /// not revenue or purchase counts, which only the order pipeline may write.
 class ProfileEdit {

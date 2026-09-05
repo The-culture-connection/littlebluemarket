@@ -1,18 +1,37 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app_assets.dart';
 import 'data/firebase/firebase_bootstrap.dart';
+import 'data/repositories/dev_error_sink.dart';
 import 'router/app_router.dart';
 import 'state/providers.dart';
 import 'state/session.dart';
 import 'theme/app_theme.dart';
+import 'widgets/dev_error_surface.dart';
 
 Future<void> main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
+
+  // Debug builds keep every raw failure, so the dev strip can say what broke
+  // and "Copy for Claude" can turn it into a bug report. Release builds never
+  // enable the sink, and widget tests never run main().
+  if (kDebugMode) {
+    DevErrorSink.enabled = true;
+    final presentError = FlutterError.onError;
+    FlutterError.onError = (details) {
+      presentError?.call(details);
+      DevErrorSink.report(details.exception, details.stack, 'FlutterError');
+    };
+    PlatformDispatcher.instance.onError = (error, stack) {
+      DevErrorSink.report(error, stack, 'uncaught');
+      return false;
+    };
+  }
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -86,7 +105,10 @@ class LittleBlueMarketApp extends ConsumerWidget {
         ).clamp(minScaleFactor: 0.85, maxScaleFactor: 1.35);
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaler: scale),
-          child: child!,
+          // Both overlays render nothing in release and under test.
+          child: DevErrorSurface(
+            child: Stack(children: [child!, const DevBackendBadge()]),
+          ),
         );
       },
     );

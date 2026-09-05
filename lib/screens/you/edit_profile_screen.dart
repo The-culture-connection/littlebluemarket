@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/repositories/dev_error_sink.dart';
 import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
 import '../../state/providers.dart';
@@ -211,6 +213,25 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ],
           const SizedBox(height: 16),
           if (me.isSeller) const _SellerRows() else const _BuyerRows(),
+          // The hidden dev screen. Not in release builds, not under test.
+          if (kDebugMode && !kUnderFlutterTest) ...[
+            const SizedBox(height: 12),
+            LbmCard(
+              child: ListRow(
+                title: const Text('Diagnostics (dev)'),
+                subtitle: const Text(
+                  'Who this phone thinks you are, and whether the backend '
+                  'can reach the store',
+                ),
+                trailing: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 22,
+                  color: c.ink3,
+                ),
+                onTap: () => context.push('/you/diagnostics'),
+              ),
+            ),
+          ],
         ],
       ),
     );

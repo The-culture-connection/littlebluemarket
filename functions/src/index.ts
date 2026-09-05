@@ -23,6 +23,8 @@ import {
 import { normalizeOrder, recordFulfillment, recordPaidOrder } from './orders.ts';
 import { addTracking } from './fulfillment.ts';
 import { linkStoreAccounts } from './linking.ts';
+import { withLoudErrors } from './errors.ts';
+import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { claimVendor, revokeVendor } from './sellers.ts';
 import { verifyShopifyHmac, webhookHmacHeader, webhookTopic } from './webhooks.ts';
 import {
@@ -51,7 +53,7 @@ const commerceOptions = {
   secrets: [SHOPIFY_CLIENT_SECRET, SHOPIFY_STOREFRONT_PRIVATE_TOKEN],
 };
 
-export const commerceAddLine = onCall(commerceOptions, async (request) => {
+export const commerceAddLine = onCall(commerceOptions, withLoudErrors('commerceAddLine', async (request) => {
   const uid = requireUid(request.auth);
   const { productId, variantId, quantity } = request.data ?? {};
   if (typeof productId !== 'string') {
@@ -64,47 +66,43 @@ export const commerceAddLine = onCall(commerceOptions, async (request) => {
     variantId: typeof variantId === 'string' ? variantId : undefined,
     quantity: Number(quantity ?? 1),
   });
-});
+}));
 
-export const commerceUpdateLine = onCall(commerceOptions, async (request) => {
+export const commerceUpdateLine = onCall(commerceOptions, withLoudErrors('commerceUpdateLine', async (request) => {
   const uid = requireUid(request.auth);
   const { lineId, quantity } = request.data ?? {};
   if (typeof lineId !== 'string') {
     throw new HttpsError('invalid-argument', 'A line is required.');
   }
   return updateLine(uid, lineId, Number(quantity ?? 1));
-});
+}));
 
-export const commerceRemoveLine = onCall(commerceOptions, async (request) => {
+export const commerceRemoveLine = onCall(commerceOptions, withLoudErrors('commerceRemoveLine', async (request) => {
   const uid = requireUid(request.auth);
   const { lineId } = request.data ?? {};
   if (typeof lineId !== 'string') {
     throw new HttpsError('invalid-argument', 'A line is required.');
   }
   return removeLine(uid, lineId);
-});
+}));
 
-export const commerceClearCart = onCall(commerceOptions, async (request) =>
+export const commerceClearCart = onCall(commerceOptions, withLoudErrors('commerceClearCart', async (request) =>
   clearCart(requireUid(request.auth)),
-);
+));
 
-export const commerceBeginCheckout = onCall(
-  commerceOptions,
-  async (request) => beginCheckout(requireUid(request.auth)),
-);
+export const commerceBeginCheckout = onCall(commerceOptions, withLoudErrors('commerceBeginCheckout', async (request) => beginCheckout(requireUid(request.auth)),
+));
 
-export const commerceLiveVariants = onCall(commerceOptions, async (request) => {
+export const commerceLiveVariants = onCall(commerceOptions, withLoudErrors('commerceLiveVariants', async (request) => {
   requireUid(request.auth);
   const { productId } = request.data ?? {};
   if (typeof productId !== 'string') {
     throw new HttpsError('invalid-argument', 'A product is required.');
   }
   return { variants: await liveVariants(productId) };
-});
+}));
 
-export const fulfillmentAddTracking = onCall(
-  { secrets: ALL_SECRETS },
-  async (request) => {
+export const fulfillmentAddTracking = onCall({ secrets: ALL_SECRETS }, withLoudErrors('fulfillmentAddTracking', async (request) => {
     const uid = requireUid(request.auth);
     const { orderId, trackingNumber, carrier } = request.data ?? {};
     if (typeof orderId !== 'string' || typeof trackingNumber !== 'string') {
@@ -117,7 +115,7 @@ export const fulfillmentAddTracking = onCall(
       carrier: String(carrier ?? 'Other'),
     });
   },
-);
+));
 
 // --------------------------------------------------------------- the linking
 
@@ -128,7 +126,7 @@ export const fulfillmentAddTracking = onCall(
  * from the request. Accepting a client-supplied address would let anyone type
  * a stranger's email and inherit their order history and revenue.
  */
-export const linkAccounts = onCall({ secrets: ALL_SECRETS }, async (request) => {
+export const linkAccounts = onCall({ secrets: ALL_SECRETS }, withLoudErrors('linkAccounts', async (request) => {
   const uid = requireUid(request.auth);
   const email = request.auth?.token?.email;
   const verified = request.auth?.token?.email_verified;
@@ -140,7 +138,7 @@ export const linkAccounts = onCall({ secrets: ALL_SECRETS }, async (request) => 
     );
   }
   return linkStoreAccounts(uid, email);
-});
+}));
 
 // --------------------------------------------------------------- the seller
 
@@ -156,7 +154,7 @@ export const linkAccounts = onCall({ secrets: ALL_SECRETS }, async (request) => 
  * `linkAccounts` and for the same reason: an unverified address lets anyone
  * type someone else's.
  */
-export const sellerClaimVendor = onCall(async (request) => {
+export const sellerClaimVendor = onCall(withLoudErrors('sellerClaimVendor', async (request) => {
   const uid = requireUid(request.auth);
   const email = request.auth?.token?.email;
   const verified = request.auth?.token?.email_verified;
@@ -170,7 +168,7 @@ export const sellerClaimVendor = onCall(async (request) => {
 
   const claimCode = String((request.data ?? {}).claimCode ?? '');
   return claimVendor(uid, email.trim().toLowerCase(), claimCode);
-});
+}));
 
 /**
  * Takes it away again. Admin only.
@@ -178,7 +176,7 @@ export const sellerClaimVendor = onCall(async (request) => {
  * Products already on the storefront stay: they are Shopify's, and pulling
  * them would punish buyers for a merchant decision.
  */
-export const sellerRevokeVendor = onCall(async (request) => {
+export const sellerRevokeVendor = onCall(withLoudErrors('sellerRevokeVendor', async (request) => {
   requireUid(request.auth);
   if (request.auth?.token?.admin !== true) {
     throw new HttpsError('permission-denied', 'Admins only.');
@@ -189,7 +187,28 @@ export const sellerRevokeVendor = onCall(async (request) => {
   }
   await revokeVendor(target);
   return { revoked: true };
-});
+}));
+
+// ------------------------------------------------------------ diagnostics
+
+/**
+ * The backend health check, for the hidden Diagnostics screen and the doctor.
+ *
+ * Reveals booleans, counts and a rules hash, never a secret. Open to any
+ * signed-in account on the dev project; elsewhere it needs the admin claim.
+ */
+export const diagnosticsHealthCheck = onCall(
+  { secrets: ALL_SECRETS, timeoutSeconds: 60 },
+  withLoudErrors('diagnosticsHealthCheck', async (request) => {
+    requireUid(request.auth);
+    // TODO(prod): once a `prod` alias exists this must be admin-only there.
+    const isDev = projectId() === 'little-blue-610e5';
+    if (!isDev && request.auth?.token?.admin !== true) {
+      throw new HttpsError('permission-denied', 'Admins only.');
+    }
+    return runHealthCheck(defaultProbes());
+  }),
+);
 
 // -------------------------------------------------------------- the webhooks
 //

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +20,7 @@ import '../screens/onboarding/auth_screens.dart';
 import '../screens/onboarding/welcome_screen.dart';
 import '../screens/you/dm_screen.dart';
 import '../screens/you/claim_shop_screen.dart';
+import '../screens/you/diagnostics_screen.dart';
 import '../screens/you/edit_profile_screen.dart';
 import '../screens/you/messages_screen.dart';
 import '../screens/you/profile_screen.dart';
@@ -203,6 +205,13 @@ GoRouter buildRouter(Ref ref) {
                     path: 'claim-shop',
                     builder: (context, state) => const ClaimShopScreen(),
                   ),
+                  // Debug builds only. Tests run in debug, so the smoke suite
+                  // still renders it.
+                  if (kDebugMode)
+                    GoRoute(
+                      path: 'diagnostics',
+                      builder: (context, state) => const DiagnosticsScreen(),
+                    ),
                   GoRoute(
                     path: 'shipping',
                     builder: (context, state) => const ShippingScreen(),

@@ -39,6 +39,11 @@ Future<void> initializeFirebase({bool useEmulators = false}) async {
 /// Whether this build should point at local emulators.
 const useFirebaseEmulators = bool.fromEnvironment('LBM_EMULATORS');
 
+/// The project the app is talking to, once Firebase is up. Null on a fixture
+/// build, where nothing was initialised.
+String? firebaseProjectId() =>
+    Firebase.apps.isEmpty ? null : Firebase.app().options.projectId;
+
 final firebaseAuthProvider = Provider<FirebaseAuth>(
   (ref) => FirebaseAuth.instance,
 );

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 
 import '../auth/auth_service.dart';
+import '../repositories/dev_error_sink.dart';
 import '../repositories/repositories.dart';
 
 /// Identity, backed by Firebase Auth.
@@ -142,6 +143,7 @@ class FirebaseAuthService implements AuthService {
   /// Firebase's error codes become the app's exception types, so the UI never
   /// has to know which identity provider is behind the screen.
   RepositoryException _translate(fb.FirebaseAuthException error) {
+    DevErrorSink.report(error, null, 'auth ${error.code}');
     return switch (error.code) {
       'invalid-email' => const ValidationException(
         'That email does not look right',

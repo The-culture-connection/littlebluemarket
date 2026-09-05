@@ -60,7 +60,12 @@ async function mint(): Promise<CachedToken> {
   if (!response.ok) {
     // Deliberately does not include the body: an OAuth error response can echo
     // back part of what was sent.
-    throw new Error(`Admin token mint failed with ${response.status}`);
+    throw new Error(
+      `Admin token mint failed with HTTP ${response.status} for ${domain}. ` +
+        'The client secret is wrong, or the app is not installed on that store. ' +
+        'Fix: reinstall the app on the store, then ' +
+        'firebase functions:secrets:set SHOPIFY_CLIENT_SECRET --project dev',
+    );
   }
 
   const body = (await response.json()) as {
@@ -160,7 +165,12 @@ export async function adminGraphQL<T>(
   }
 
   if (!response.ok) {
-    throw new Error(`Admin API returned ${response.status}`);
+    throw new Error(
+      `Admin API returned HTTP ${response.status} for ${SHOPIFY_STORE_DOMAIN.value()} ` +
+        `(API ${SHOPIFY_API_VERSION.value()}). A 404 or 301 usually means ` +
+        'SHOPIFY_STORE_DOMAIN is wrong in functions/.env.<project-id>; a 403 ' +
+        'means the app lacks a scope (run npm run doctor).',
+    );
   }
 
   const body = (await response.json()) as {

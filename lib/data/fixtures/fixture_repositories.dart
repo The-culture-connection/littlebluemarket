@@ -1,4 +1,5 @@
 import '../../models/models.dart';
+import '../auth/auth_service.dart';
 import '../repositories/repositories.dart';
 import 'fixture_data.dart';
 import 'fixture_store.dart';
@@ -1037,5 +1038,45 @@ class FixtureFulfillmentRepository implements FulfillmentRepository {
       ),
       ..._store.sending.value,
     ];
+  }
+}
+
+/// Diagnostics on the demo backend: every check passes bar one, and the facts
+/// come from the fixture identity, so the screen renders in tests and demos.
+class FixtureDiagnosticsRepository implements DiagnosticsRepository {
+  FixtureDiagnosticsRepository(this._auth, {required this.backend});
+
+  final AuthService _auth;
+  final String backend;
+
+  @override
+  Future<HealthReport> healthCheck() async => HealthReport(
+    project: 'fixtures',
+    at: DateTime.now(),
+    checks: const [
+      HealthCheckItem(name: 'storeDomain', ok: true, summary: 'demo store'),
+      HealthCheckItem(name: 'adminToken', ok: true, summary: 'demo token'),
+      HealthCheckItem(name: 'webhooks', ok: true, summary: '6 of 6 registered'),
+      HealthCheckItem(
+        name: 'shipturtleProbe',
+        ok: false,
+        summary: 'not configured on the demo backend',
+        fix: 'run against the live backend to check Shipturtle',
+      ),
+    ],
+  );
+
+  @override
+  Future<AuthFacts> authFacts() async {
+    final user = _auth.currentUser;
+    return AuthFacts(
+      backend: backend,
+      uid: user?.uid,
+      email: user?.email,
+      isAnonymous: user?.isAnonymous ?? false,
+      emailVerified: user?.emailVerified ?? false,
+      isSeller: user != null && !user.isAnonymous && user.uid == 'maya',
+      isLinked: user != null && !user.isAnonymous,
+    );
   }
 }

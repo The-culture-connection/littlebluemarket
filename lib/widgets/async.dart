@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/repositories/dev_error_sink.dart';
 import '../data/repositories/repositories.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
@@ -182,6 +184,17 @@ class LbmErrorCard extends StatelessWidget {
             described.body,
             style: TextStyle(fontSize: 13.5, height: 1.55, color: c.ink2),
           ),
+          // The raw cause, for whoever is building the app. A release build
+          // never shows it; the copy above is what a person sees.
+          if (kDebugMode && !kUnderFlutterTest) ...[
+            const SizedBox(height: 8),
+            Text(
+              _rawCause(error),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, height: 1.4, color: c.clay),
+            ),
+          ],
           if (onRetry != null) ...[
             const SizedBox(height: 16),
             PillButton(
@@ -196,6 +209,14 @@ class LbmErrorCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _rawCause(Object error) {
+  final report = DevErrorReport(error: error);
+  final cause = error is RepositoryException ? error.cause : null;
+  final code = report.code;
+  final head = code == null ? report.typeName : '${report.typeName} · $code';
+  return cause == null ? '$head: ${report.message}' : '$head: $cause';
 }
 
 /// The empty state. A sentence about what would fill this, not an apology.

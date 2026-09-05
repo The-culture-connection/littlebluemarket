@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import '../repositories/dev_error_sink.dart';
 import '../repositories/repositories.dart';
 
 /// Turns a backend failure into one the app knows how to talk about.
@@ -10,7 +11,17 @@ import '../repositories/repositories.dart';
 /// screens switch on the app's own exception types; below it, Firestore and the
 /// commerce proxy have their own vocabularies. A `PERMISSION_DENIED` string
 /// must never reach a person.
-RepositoryException translateFirestoreError(Object error, [StackTrace? _]) {
+///
+/// It is also the one place a raw failure is still raw, which is why the dev
+/// error sink is fed here: a debug build shows the code, the message and the
+/// function name; a release build shows only the copy.
+RepositoryException translateFirestoreError(
+  Object error, [
+  StackTrace? stack,
+  String? operation,
+]) {
+  DevErrorSink.report(error, stack, operation);
+
   if (error is RepositoryException) return error;
 
   if (error is FirebaseFunctionsException) {
@@ -58,19 +69,25 @@ RepositoryException translateFirestoreError(Object error, [StackTrace? _]) {
 }
 
 /// Runs [action], translating anything it throws.
-Future<T> guardFirestore<T>(Future<T> Function() action) async {
+///
+/// [operation] names what was attempted (`callable commerceAddLine`) so the
+/// dev error strip can say which function failed.
+Future<T> guardFirestore<T>(
+  Future<T> Function() action, {
+  String? operation,
+}) async {
   try {
     return await action();
   } catch (error, stack) {
-    throw translateFirestoreError(error, stack);
+    throw translateFirestoreError(error, stack, operation);
   }
 }
 
 /// The stream equivalent, so a permission error on a live query surfaces as a
 /// typed exception rather than a raw platform one.
 extension GuardedStream<T> on Stream<T> {
-  Stream<T> guarded() => handleError(
+  Stream<T> guarded({String? operation}) => handleError(
     (Object error, StackTrace stack) =>
-        throw translateFirestoreError(error, stack),
+        throw translateFirestoreError(error, stack, operation),
   );
 }

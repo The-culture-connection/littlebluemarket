@@ -44,7 +44,7 @@ class CommerceProxyRepository implements CommerceRepository {
         .httpsCallable(name)
         .call<Map<String, dynamic>>(payload ?? const {});
     return result.data;
-  });
+  }, operation: 'callable $name');
 
   /// The cart lives in our own store, so it renders instantly and offline and
   /// survives the storefront being swapped. Only the checkout handoff leaves.
@@ -58,7 +58,7 @@ class CommerceProxyRepository implements CommerceRepository {
         .doc(id)
         .snapshots()
         .map((doc) => CommerceMappers.cart(doc.id, doc.data() ?? const {}))
-        .guarded();
+        .guarded(operation: 'firestore carts/{uid}');
   }
 
   @override
@@ -163,5 +163,5 @@ class CommerceProxyRepository implements CommerceRepository {
             .map((doc) => FirestoreMappers.purchase(doc.id, doc.data()))
             .toList(),
       )
-      .guarded();
+      .guarded(operation: 'firestore users/{uid}/purchases');
 }
