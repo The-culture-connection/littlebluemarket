@@ -214,8 +214,8 @@ export function updateMutations(
     if (stock.length) {
       out.push({
         name: 'inventorySetQuantities',
-        query: `mutation Stock($input: InventorySetQuantitiesInput!) @idempotent(key: "${randomUUID()}") {
-          inventorySetQuantities(input: $input) {
+        query: `mutation Stock($input: InventorySetQuantitiesInput!) {
+          inventorySetQuantities(input: $input) @idempotent(key: "${randomUUID()}") {
             inventoryAdjustmentGroup { id } userErrors { field message }
           }
         }`,
@@ -258,8 +258,8 @@ export function updateMutations(
       )?.quantity;
       out.push({
         name: 'inventorySetQuantities',
-        query: `mutation Stock($input: InventorySetQuantitiesInput!) @idempotent(key: "${randomUUID()}") {
-          inventorySetQuantities(input: $input) {
+        query: `mutation Stock($input: InventorySetQuantitiesInput!) {
+          inventorySetQuantities(input: $input) @idempotent(key: "${randomUUID()}") {
             inventoryAdjustmentGroup { id } userErrors { field message }
           }
         }`,
