@@ -108,7 +108,16 @@ export async function refreshListings(
 
 export interface StoreProduct {
   id: string;
-  variants: { nodes: Array<{ id: string; inventoryItem: { id: string } }> };
+  variants: {
+    nodes: Array<{
+      id: string;
+      inventoryItem: {
+        id: string;
+        /** Present when the product was fetched with a location. */
+        inventoryLevel?: { quantities: Array<{ name: string; quantity: number }> } | null;
+      };
+    }>;
+  };
   collections: { nodes: Array<{ id: string }> };
 }
 
@@ -182,6 +191,12 @@ export function updateMutations(
     });
 
     if (locationId && typeof draft.quantity === 'number' && draft.trackQuantity !== false) {
+      // A compare-and-set when the current figure is known: if the store's
+      // count moved since the seller looked, the store refuses rather than
+      // silently overwriting a sale that landed in between.
+      const current = variant.inventoryItem.inventoryLevel?.quantities.find(
+        (q) => q.name === 'available',
+      )?.quantity;
       out.push({
         name: 'inventorySetQuantities',
         query: `mutation Stock($input: InventorySetQuantitiesInput!) {
@@ -193,9 +208,13 @@ export function updateMutations(
           input: {
             name: 'available',
             reason: 'correction',
-            ignoreCompareQuantity: true,
             quantities: [
-              { inventoryItemId: variant.inventoryItem.id, locationId, quantity: draft.quantity },
+              {
+                inventoryItemId: variant.inventoryItem.id,
+                locationId,
+                quantity: draft.quantity,
+                ...(typeof current === 'number' ? { changeFromQuantity: current } : {}),
+              },
             ],
           },
         },
@@ -230,16 +249,23 @@ export function updateMutations(
   return out;
 }
 
-async function fetchStoreProduct(graphql: GraphQL, productId: string): Promise<StoreProduct | null> {
+async function fetchStoreProduct(
+  graphql: GraphQL,
+  productId: string,
+  locationId: string | null,
+): Promise<StoreProduct | null> {
+  const level = locationId
+    ? `inventoryLevel(locationId: $loc) { quantities(names: ["available"]) { name quantity } }`
+    : '';
   const data = await graphql<{ product: StoreProduct | null }>(
-    `query Product($id: ID!) {
+    `query Product($id: ID!${locationId ? ', $loc: ID!' : ''}) {
       product(id: $id) {
         id
-        variants(first: 1) { nodes { id inventoryItem { id } } }
+        variants(first: 1) { nodes { id inventoryItem { id ${level} } } }
         collections(first: 50) { nodes { id } }
       }
     }`,
-    { id: `gid://shopify/Product/${productId}` },
+    { id: `gid://shopify/Product/${productId}`, ...(locationId ? { loc: locationId } : {}) },
   );
   return data.product;
 }
@@ -293,11 +319,11 @@ export async function updateListing(
   const productId = String(draft.shopifyProductId);
   const restoreTo = draft.status === 'failed' ? (draft.previousStatus ?? 'submitted') : draft.status;
   try {
-    const product = await fetchStoreProduct(graphql, productId);
+    const locationId = await defaultLocationId(graphql);
+    const product = await fetchStoreProduct(graphql, productId, locationId);
     if (!product) {
       throw new HttpsError('failed-precondition', 'The store no longer has this product.');
     }
-    const locationId = await defaultLocationId(graphql);
     const collectionIds = await collectionIdsFor(draft.collectionHandles);
     const mutations = updateMutations(listingId, draft, product, locationId, collectionIds);
 

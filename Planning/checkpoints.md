@@ -346,7 +346,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 - Rules: a listing's content stays editable at every status except mid-send; the outcome fields stay the function's. Rules tests updated.
 - Flutter: `SellerRepository.updateListing` / `refreshListings` (Firestore + fixture), `/you/edit-product/:id` reusing the Add form in edit mode (photos read-only for now), the drafts panel shows every app-made product with Edit, Retry routes to update or publish depending on whether the product exists on the store, and pull-to-refresh on the profile calls the store.
 
-- [ ] **CP-R1 Approval flips the chip.**
+- [x] **CP-R1 Approval flips the chip.** *(passed by Grace 2026-09-05)*
   **Grace does:** as the seller, add a product (Stage 5) → the chip says **Under review**. In the Shopify admin → Products → that product → Status **Active** → Save. Back in the app, watch the chip.
   **Pass:** the chip turns **Live** within a few seconds, no restart. Then the fallback: Shopify admin → Settings → Notifications → Webhooks is *not* the place (the app's webhooks are registered by the app, not listed there); instead run `node scripts/register-webhooks.mjs --project dev --check` to confirm they are registered, and to simulate a missed webhook set the product back to **Draft** in Shopify, wait 10 s (the chip goes back to Under review via the webhook), then set it **Active** again and *immediately* pull down on the Products tab: the chip goes Live either way. The point is that a pull always catches up.
   **If it fails:** chip stuck on Under review after a minute and a pull → `firebase functions:log --only sellerRefreshListings --project dev`, paste the last lines.

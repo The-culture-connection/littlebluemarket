@@ -13,7 +13,13 @@ const product: StoreProduct = {
   id: 'gid://shopify/Product/777',
   variants: {
     nodes: [
-      { id: 'gid://shopify/ProductVariant/1', inventoryItem: { id: 'gid://shopify/InventoryItem/11' } },
+      {
+        id: 'gid://shopify/ProductVariant/1',
+        inventoryItem: {
+          id: 'gid://shopify/InventoryItem/11',
+          inventoryLevel: { quantities: [{ name: 'available', quantity: 70 }] },
+        },
+      },
     ],
   },
   collections: { nodes: [{ id: 'gid://shopify/Collection/old' }, { id: 'gid://shopify/Collection/keep' }] },
@@ -61,9 +67,16 @@ test('an edit never calls productSet, and touches only what it names', () => {
   const stock = mutations[2].variables.input as any;
   assert.equal(stock.name, 'available');
   assert.equal(stock.reason, 'correction');
+  // 2026-07 has no ignoreCompareQuantity; the compare-and-set is per line.
+  assert.equal('ignoreCompareQuantity' in stock, false);
   assert.deepEqual(stock.quantities, [
-    { inventoryItemId: 'gid://shopify/InventoryItem/11', locationId: 'gid://shopify/Location/9', quantity: 40 },
+    { inventoryItemId: 'gid://shopify/InventoryItem/11', locationId: 'gid://shopify/Location/9', quantity: 40, changeFromQuantity: 70 },
   ]);
+
+  // Without a known current figure the set is unconditional.
+  const blind = { ...product, variants: { nodes: [{ id: 'gid://shopify/ProductVariant/1', inventoryItem: { id: 'gid://shopify/InventoryItem/11' } }] } };
+  const blindStock = updateMutations('L1', draft, blind, 'gid://shopify/Location/9', [])[2].variables.input as any;
+  assert.equal('changeFromQuantity' in blindStock.quantities[0], false);
 
   assert.deepEqual(mutations[3].variables, { id: 'gid://shopify/Collection/new', productIds: ['gid://shopify/Product/777'] });
   assert.deepEqual(mutations[4].variables, { id: 'gid://shopify/Collection/old', productIds: ['gid://shopify/Product/777'] });
