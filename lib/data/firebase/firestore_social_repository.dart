@@ -202,7 +202,6 @@ class FirestoreSocialRepository implements SocialRepository {
     // The like document is keyed by uid, so it exists at most once per person
     // however many times the button is tapped.
     final like = _posts.doc(postId).collection('likes').doc(me);
-    final post = _posts.doc(postId);
 
     await _db.runTransaction((tx) async {
       final existing = await tx.get(like);
@@ -217,7 +216,7 @@ class FirestoreSocialRepository implements SocialRepository {
       } else {
         tx.delete(like);
       }
-      tx.update(post, {'likeCount': FieldValue.increment(liked ? 1 : -1)});
+      // The count moves from the trigger; rules lock it here.
     });
   });
 
@@ -246,8 +245,9 @@ class FirestoreSocialRepository implements SocialRepository {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
-    final batch = _db.batch();
-    batch.set(_posts.doc(postId).collection('comments').doc(), {
+    // Only the comment. `onCommentWritten` moves the post's count; a client
+    // writing a total is exactly what the rules refuse.
+    await _posts.doc(postId).collection('comments').doc().set({
       'postId': postId,
       'authorId': me,
       'text': trimmed,
@@ -255,34 +255,31 @@ class FirestoreSocialRepository implements SocialRepository {
       'likeCount': 0,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    batch.update(_posts.doc(postId), {'commentCount': FieldValue.increment(1)});
-    await batch.commit();
   });
 
   @override
-  Future<void> setCommentLike(String commentId, bool liked) => guardFirestore(
-    () async {
-      final me = _requireUid;
-      // Comment ids are unique across posts, so a collection-group lookup
-      // finds the one document without needing its parent post id.
-      final found = await _db
-          .collectionGroup('comments')
-          .where(FieldPath.documentId, isEqualTo: commentId)
-          .limit(1)
-          .get();
-      if (found.docs.isEmpty) throw NotFoundException('comment', commentId);
+  Future<void> setCommentLike(String commentId, bool liked) =>
+      guardFirestore(() async {
+        final me = _requireUid;
+        // Comment ids are unique across posts, so a collection-group lookup
+        // finds the one document without needing its parent post id.
+        final found = await _db
+            .collectionGroup('comments')
+            .where(FieldPath.documentId, isEqualTo: commentId)
+            .limit(1)
+            .get();
+        if (found.docs.isEmpty) throw NotFoundException('comment', commentId);
 
-      final comment = found.docs.first.reference;
-      final like = comment.collection('likes').doc(me);
+        final comment = found.docs.first.reference;
+        final like = comment.collection('likes').doc(me);
 
-      await _db.runTransaction((tx) async {
-        final existing = await tx.get(like);
-        if (existing.exists == liked) return;
-        liked ? tx.set(like, {'uid': me}) : tx.delete(like);
-        tx.update(comment, {'likeCount': FieldValue.increment(liked ? 1 : -1)});
+        await _db.runTransaction((tx) async {
+          final existing = await tx.get(like);
+          if (existing.exists == liked) return;
+          liked ? tx.set(like, {'uid': me}) : tx.delete(like);
+          // `onCommentLikeWritten` moves the count.
+        });
       });
-    },
-  );
 
   // --------------------------------------------------------------- reviews
 
@@ -314,8 +311,10 @@ class FirestoreSocialRepository implements SocialRepository {
     final product = _catalog.doc(draft.productId);
     final rating = draft.rating.clamp(1, 5);
 
-    final batch = _db.batch();
-    batch.set(product.collection('reviews').doc(), {
+    // Only the review. `onReviewWritten` nudges the histogram bar, marks the
+    // purchase reviewed, recomputes the headline rating and posts it to the
+    // feed; every one of those is locked to the backend by rules.
+    await product.collection('reviews').doc().set({
       'authorId': me,
       'rating': rating,
       'text': draft.text.trim(),
@@ -324,26 +323,6 @@ class FirestoreSocialRepository implements SocialRepository {
       if (draft.imageUrls.isNotEmpty) 'imageUrls': draft.imageUrls,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    // The histogram is a set of counters, so a new review nudges one bar
-    // rather than recomputing the distribution.
-    batch.set(product.collection('rating').doc('summary'), {
-      'stars$rating': FieldValue.increment(1),
-    }, SetOptions(merge: true));
-
-    if (draft.purchaseId != null) {
-      // Marks the purchase reviewed, so the composer stops offering it and the
-      // profile badge is data rather than grid position.
-      batch.set(
-        _db
-            .collection('users')
-            .doc(me)
-            .collection('purchases')
-            .doc(draft.purchaseId),
-        {'reviewed': true},
-        SetOptions(merge: true),
-      );
-    }
-    await batch.commit();
   });
 
   @override
@@ -426,9 +405,7 @@ class FirestoreSocialRepository implements SocialRepository {
           joined
               ? tx.set(membership, {'joinedAt': FieldValue.serverTimestamp()})
               : tx.delete(membership);
-          tx.update(forum, {
-            'memberCount': FieldValue.increment(joined ? 1 : -1),
-          });
+          // `onForumMemberWritten` moves the count.
         });
       });
 
@@ -479,8 +456,8 @@ class FirestoreSocialRepository implements SocialRepository {
     }
 
     final doc = _threads.doc();
-    final batch = _db.batch();
-    batch.set(doc, {
+    // `onThreadWritten` moves the forum's thread count.
+    await doc.set({
       'forumId': draft.forumId,
       'authorId': me,
       'title': title,
@@ -488,10 +465,6 @@ class FirestoreSocialRepository implements SocialRepository {
       'commentCount': 0,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    batch.update(_forums.doc(draft.forumId), {
-      'threadCount': FieldValue.increment(1),
-    });
-    await batch.commit();
     return doc.id;
   });
 
@@ -518,17 +491,13 @@ class FirestoreSocialRepository implements SocialRepository {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
-    final batch = _db.batch();
-    batch.set(_threads.doc(threadId).collection('comments').doc(), {
+    // `onThreadCommentWritten` moves the thread's count.
+    await _threads.doc(threadId).collection('comments').doc().set({
       'threadId': threadId,
       'authorId': me,
       'text': trimmed,
       'parentId': ?parentId,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    batch.update(_threads.doc(threadId), {
-      'commentCount': FieldValue.increment(1),
-    });
-    await batch.commit();
   });
 }

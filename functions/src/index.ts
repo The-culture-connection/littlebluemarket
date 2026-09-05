@@ -32,6 +32,7 @@ import { normalizeOrder, recordFulfillment, recordPaidOrder } from './orders.ts'
 import { addTracking } from './fulfillment.ts';
 import { linkStoreAccounts } from './linking.ts';
 import { withLoudErrors } from './errors.ts';
+import { counterDelta, starKey } from './counters.ts';
 import { claimAdmin, requireAdmin } from './admin.ts';
 import { syncCollections } from './collections.ts';
 import { backfillCatalogPage } from './backfill.ts';
@@ -499,13 +500,32 @@ export const onPostWritten = onDocumentWritten(
 export const onReviewWritten = onDocumentWritten(
   'catalog/{productId}/reviews/{reviewId}',
   async (event) => {
+    const before = event.data?.before?.data();
     const after = event.data?.after?.data();
     const { productId, reviewId } = event.params;
     const db = getFirestore();
+    const summaryRef = db.collection('catalog').doc(productId).collection('rating').doc('summary');
 
-    // The headline rating, recomputed from the histogram the client
-    // increments, so it never drifts from the reviews themselves.
-    const summary = (await db.collection('catalog').doc(productId).collection('rating').doc('summary').get()).data() ?? {};
+    // The histogram moves here, not from the phone: rules lock it.
+    const delta = counterDelta(Boolean(before), Boolean(after));
+    const key = starKey((after ?? before)?.rating);
+    if (delta !== 0 && key) {
+      await summaryRef.set({ [key]: FieldValue.increment(delta) }, { merge: true });
+    }
+    // A reviewed purchase stops being offered by the composer. Locked to
+    // the pipeline by rules, so it is stamped here.
+    if (delta === 1 && after?.purchaseId && after?.authorId) {
+      await db
+        .collection('users')
+        .doc(String(after.authorId))
+        .collection('purchases')
+        .doc(String(after.purchaseId))
+        .set({ reviewed: true }, { merge: true });
+    }
+
+    // The headline rating, recomputed from the histogram so it never drifts
+    // from the reviews themselves.
+    const summary = (await summaryRef.get()).data() ?? {};
     let count = 0;
     let total = 0;
     for (let star = 1; star <= 5; star++) {
@@ -540,6 +560,75 @@ export const onReviewWritten = onDocumentWritten(
       },
       { merge: true },
     );
+  },
+);
+
+// ---------------------------------------------------------------- counters
+//
+// A client creates the comment, the like, the membership or the thread; the
+// trigger moves the number. Rules lock every one of these counts.
+
+export const onCommentWritten = onDocumentWritten(
+  'posts/{postId}/comments/{commentId}',
+  async (event) => {
+    const delta = counterDelta(Boolean(event.data?.before?.exists), Boolean(event.data?.after?.exists));
+    if (delta === 0) return;
+    await getFirestore()
+      .collection('posts')
+      .doc(event.params.postId)
+      .set({ commentCount: FieldValue.increment(delta) }, { merge: true });
+  },
+);
+
+export const onCommentLikeWritten = onDocumentWritten(
+  'posts/{postId}/comments/{commentId}/likes/{uid}',
+  async (event) => {
+    const delta = counterDelta(Boolean(event.data?.before?.exists), Boolean(event.data?.after?.exists));
+    if (delta === 0) return;
+    await getFirestore()
+      .collection('posts')
+      .doc(event.params.postId)
+      .collection('comments')
+      .doc(event.params.commentId)
+      .set({ likeCount: FieldValue.increment(delta) }, { merge: true });
+  },
+);
+
+export const onForumMemberWritten = onDocumentWritten(
+  'forums/{forumId}/members/{uid}',
+  async (event) => {
+    const delta = counterDelta(Boolean(event.data?.before?.exists), Boolean(event.data?.after?.exists));
+    if (delta === 0) return;
+    await getFirestore()
+      .collection('forums')
+      .doc(event.params.forumId)
+      .set({ memberCount: FieldValue.increment(delta) }, { merge: true });
+  },
+);
+
+export const onThreadWritten = onDocumentWritten(
+  'threads/{threadId}',
+  async (event) => {
+    const delta = counterDelta(Boolean(event.data?.before?.exists), Boolean(event.data?.after?.exists));
+    if (delta === 0) return;
+    const forumId = (event.data?.after?.data() ?? event.data?.before?.data())?.forumId;
+    if (typeof forumId !== 'string' || !forumId) return;
+    await getFirestore()
+      .collection('forums')
+      .doc(forumId)
+      .set({ threadCount: FieldValue.increment(delta) }, { merge: true });
+  },
+);
+
+export const onThreadCommentWritten = onDocumentWritten(
+  'threads/{threadId}/comments/{commentId}',
+  async (event) => {
+    const delta = counterDelta(Boolean(event.data?.before?.exists), Boolean(event.data?.after?.exists));
+    if (delta === 0) return;
+    await getFirestore()
+      .collection('threads')
+      .doc(event.params.threadId)
+      .set({ commentCount: FieldValue.increment(delta) }, { merge: true });
   },
 );
 

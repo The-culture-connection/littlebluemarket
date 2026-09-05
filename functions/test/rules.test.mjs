@@ -440,3 +440,25 @@ describe('cart posts are frozen copies, capped at 24', () => {
     await assertFails(member('maya').doc('catalog/p1/carted/maya').set({ active: true }));
   });
 });
+
+describe("counters are the functions' to move", () => {
+  test('a member comments without touching the count; the count itself is locked', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('posts/cp1').set({ kind: 'shoutout', authorId: 'kali', text: 'hi', tags: [], likeCount: 0, commentCount: 0 });
+    });
+    await assertSucceeds(
+      member('maya').collection('posts/cp1/comments').add({ postId: 'cp1', authorId: 'maya', text: 'lovely', likeCount: 0 }),
+    );
+    await assertFails(member('maya').doc('posts/cp1').update({ commentCount: 1 }));
+    // Comments can be found across posts (the like button's lookup).
+    await assertSucceeds(member('maya').collectionGroup('comments').where('postId', '==', 'cp1').get());
+  });
+
+  test('joining a forum is a membership document, not a member count', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('forums/cf1').set({ title: 'F', memberCount: 1, threadCount: 0, createdBy: 'kali' });
+    });
+    await assertSucceeds(member('maya').doc('forums/cf1/members/maya').set({ joinedAt: 1 }));
+    await assertFails(member('maya').doc('forums/cf1').update({ memberCount: 2 }));
+  });
+});

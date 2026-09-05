@@ -304,6 +304,13 @@ service cloud.firestore {
       }
     }
 
+    // A comment's like button knows the comment id but not its post, so it
+    // finds the comment with a collection-group query. Comments are public
+    // wherever they hang, and this is only ever a read.
+    match /{path=**}/comments/{commentId} {
+      allow read: if true;
+    }
+
     // --------------------------------------------------------------- hashtags
 
     match /hashtags/{tag} {
