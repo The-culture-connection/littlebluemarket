@@ -82,6 +82,15 @@ export const SHIPTURTLE_VENDORS_PATH = defineString('SHIPTURTLE_VENDORS_PATH', {
   default: '',
 });
 
+/**
+ * The location a seller's stock is written to: the one that fulfils online
+ * orders (the shop's main location). The numeric id, e.g. 121092407456.
+ * Empty means "work it out" — see `locations.ts`.
+ */
+export const SHOPIFY_LOCATION_ID = defineString('SHOPIFY_LOCATION_ID', {
+  default: '',
+});
+
 /** How the token travels: `Authorization` (Bearer), `x-api-key`, or `access-token`. */
 export const SHIPTURTLE_AUTH_HEADER = defineString('SHIPTURTLE_AUTH_HEADER', {
   default: 'Authorization',

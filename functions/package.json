@@ -27,6 +27,7 @@
     "probe:shipturtle": "node scripts/shipturtle-probe.mjs --project dev",
     "shipturtle:vendors": "node scripts/shipturtle-vendors.mjs --project dev",
     "inspect:product": "node scripts/inspect-product.mjs --project dev",
+    "move-stock": "node scripts/move-stock.mjs --project dev",
     "replay-order": "node scripts/replay-order.mjs --project dev"
   },
   "dependencies": {

@@ -3,6 +3,7 @@ import { logger } from 'firebase-functions';
 import { HttpsError } from 'firebase-functions/v2/https';
 
 import { catalogDocFor, type RestProduct } from './catalog.ts';
+import { stockLocationId } from './locations.ts';
 import { requireSeller } from './sellers.ts';
 import { adminGraphQL } from './shopify/token.ts';
 
@@ -185,23 +186,9 @@ export async function collectionIdsFor(handles: unknown): Promise<string[]> {
   return ids;
 }
 
-/**
- * The shop's first active location, for the opening stock. Needs the
- * `read_locations` scope; without it the product is still created, with
- * stock untracked, and the result says so.
- */
+/** The location opening stock goes to; see locations.ts. */
 async function defaultLocationId(graphql: GraphQL): Promise<string | null> {
-  try {
-    const data = await graphql<{ locations: { nodes: Array<{ id: string }> } }>(
-      `{ locations(first: 1, query: "active:true") { nodes { id } } }`,
-    );
-    return data.locations.nodes[0]?.id ?? null;
-  } catch (error) {
-    logger.warn('Could not read the shop location; creating without stock', {
-      error: String(error),
-    });
-    return null;
-  }
+  return stockLocationId(graphql);
 }
 
 export async function publishListing(

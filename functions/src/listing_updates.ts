@@ -11,6 +11,7 @@ import {
   type GraphQL,
   type PublishDeps,
 } from './listings.ts';
+import { stockLocationId } from './locations.ts';
 import { requireSeller } from './sellers.ts';
 import { adminGraphQL } from './shopify/token.ts';
 
@@ -336,15 +337,7 @@ async function fetchStoreProduct(
 }
 
 async function defaultLocationId(graphql: GraphQL): Promise<string | null> {
-  try {
-    const data = await graphql<{ locations: { nodes: Array<{ id: string }> } }>(
-      `{ locations(first: 1, query: "active:true") { nodes { id } } }`,
-    );
-    return data.locations.nodes[0]?.id ?? null;
-  } catch (error) {
-    logger.warn('Could not read the shop location; stock left as is', { error: String(error) });
-    return null;
-  }
+  return stockLocationId(graphql);
 }
 
 export async function updateListing(
