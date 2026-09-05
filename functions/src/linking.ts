@@ -61,7 +61,7 @@ export async function linkStoreAccounts(
   const alreadyLinked = Boolean(existing.linkedAt);
 
   // Stored so the order pipeline can attribute a website order by email.
-  //  is stamped at the end, after the lookups: a failed attempt
+  // linkedAt is stamped at the end, after the lookups: a failed attempt
   // must not look linked, or the app stops retrying.
   await user.set({ emailLower: email }, { merge: true });
 
