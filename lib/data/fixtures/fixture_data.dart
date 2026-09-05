@@ -723,7 +723,6 @@ abstract final class Fx {
           'moved my price since 2023. I know the answer is raise it. What I '
           'want to know is how you told your regulars — did you post about it, '
           'quietly change the number, or bundle it into a bigger relaunch?',
-      upvotes: 128,
       commentCount: 47,
       createdAt: _ago(hours: 6),
     ),
@@ -735,7 +734,6 @@ abstract final class Fx {
       body:
           'Bowls are heavy and dimensional weight is eating me alive. '
           'Considering a flat local pickup option through #DetroitPickupSwaps.',
-      upvotes: 64,
       commentCount: 22,
       createdAt: _ago(days: 1),
     ),
@@ -746,7 +744,6 @@ abstract final class Fx {
       title: 'Best label printer under \$200?',
       body:
           'Currently hand-writing 40 labels a week and my wrist has opinions.',
-      upvotes: 41,
       commentCount: 31,
       createdAt: _ago(days: 2),
     ),
@@ -761,7 +758,6 @@ abstract final class Fx {
   static final comments = <ThreadComment>[
     ThreadComment(
       authorId: 'torres',
-      upvotes: 34,
       createdAt: _ago(hours: 5),
       text:
           'Posted about it. One paragraph, no apology, named the actual input '
@@ -770,7 +766,6 @@ abstract final class Fx {
     ),
     ThreadComment(
       authorId: 'juniper',
-      upvotes: 22,
       createdAt: _ago(hours: 4),
       text:
           'Bundled mine into a relaunch with new labels so it read as a new '
@@ -779,7 +774,6 @@ abstract final class Fx {
     ),
     ThreadComment(
       authorId: 'kali',
-      upvotes: 11,
       createdAt: _ago(hours: 3),
       text:
           "That's the version I keep circling. Did anyone push back on the new "
@@ -788,7 +782,6 @@ abstract final class Fx {
     ),
     ThreadComment(
       authorId: 'rae',
-      upvotes: 18,
       createdAt: _ago(hours: 2),
       text:
           'Wrote a whole zine page on this. Short version: people forgive a '
@@ -797,7 +790,6 @@ abstract final class Fx {
     ),
     ThreadComment(
       authorId: 'ama',
-      upvotes: 9,
       createdAt: _ago(hours: 1),
       text:
           'If you reshoot before you raise, the new price lands on new photos '

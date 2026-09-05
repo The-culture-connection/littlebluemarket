@@ -63,6 +63,7 @@ export function verifyShipTurtleSignature(
  */
 export async function handleShipTurtleWebhook(
   payload: Record<string, any>,
+  verified = true,
 ): Promise<'recorded' | 'ignored'> {
   const orderId = String(
     payload.order_id ?? payload.marketplace_order_id ?? payload.orderId ?? '',
@@ -87,7 +88,103 @@ export async function handleShipTurtleWebhook(
     counterpartyName: payload.vendor_name
       ? String(payload.vendor_name)
       : undefined,
+    verified,
   });
 
   return 'recorded';
+}
+
+/**
+ * Header names that look like they carry a signature.
+ *
+ * Deliberately broad. `x-shipturtle-signature` is a *guess* — nobody has seen a
+ * real ShipTurtle webhook yet — so this matches anything plausible and reports
+ * what it found. Live traffic is what tells us the real name.
+ */
+function signatureHeaders(
+  headers: Record<string, string | string[] | undefined>,
+): Array<{ name: string; value: string }> {
+  const found: Array<{ name: string; value: string }> = [];
+  for (const [name, raw] of Object.entries(headers)) {
+    const lower = name.toLowerCase();
+    if (!lower.startsWith('x-')) continue;
+    if (
+      !lower.startsWith('x-shipturtle') &&
+      !/sign|hmac|digest|secret|token/.test(lower)
+    ) {
+      continue;
+    }
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (value) found.push({ name: lower, value });
+  }
+  return found;
+}
+
+/** The outcome of authenticating a ShipTurtle webhook. */
+export type ShipTurtleAuth =
+  | {
+      ok: true;
+      /** False when we accepted a request we could not actually verify. */
+      verified: boolean;
+      /** Set only when the caller must shout: they sign, and we are not checking. */
+      alarm?: string;
+      /** Signature-ish header *names* seen. Never values — those are credentials. */
+      sawHeaders: string[];
+    }
+  | { ok: false; reason: string };
+
+/**
+ * Whether to act on a ShipTurtle webhook, and how loudly to complain about it.
+ *
+ * ShipTurtle's "Register webhook" dialog asks only for a topic and a URL — it
+ * offers no signing secret and reveals none afterwards — so we cannot assume one
+ * exists. Failing closed on a secret that may not be obtainable would mean this
+ * endpoint rejects 100% of traffic forever, and vendor-side shipments would
+ * never reach the app at all.
+ *
+ * So: **an unset secret accepts, and says so.** The important case is the third
+ * one. If a signature header arrives while we hold no secret, that is proof a
+ * secret exists somewhere in their settings — and the alarm carries the exact
+ * command to fix it. Real traffic answers the question no documentation has.
+ *
+ * ⚠️ This accepts unverified writes to order documents. The blast radius is a
+ * forged shipment — a wrong tracking number, a Receiving tab showing a parcel
+ * that does not exist. It cannot move money, create products or grant seller
+ * status. That is a dev-project trade, not a production one; see the
+ * `TODO(prod)` at the call site.
+ */
+export function authenticateShipTurtleWebhook(
+  rawBody: Buffer | string,
+  headers: Record<string, string | string[] | undefined>,
+  secret: string | undefined,
+): ShipTurtleAuth {
+  const candidates = signatureHeaders(headers);
+  const sawHeaders = candidates.map((h) => h.name);
+
+  if (secret) {
+    const signed = candidates.some((h) =>
+      verifyShipTurtleSignature(rawBody, h.value, secret),
+    );
+    return signed
+      ? { ok: true, verified: true, sawHeaders }
+      : { ok: false, reason: 'bad signature' };
+  }
+
+  if (candidates.length > 0) {
+    return {
+      ok: true,
+      verified: false,
+      sawHeaders,
+      alarm:
+        'SHIPTURTLE SIGNS ITS WEBHOOKS AND WE ARE NOT VERIFYING THEM. ' +
+        `A signature header (${sawHeaders.join(', ')}) arrived but ` +
+        'SHIPTURTLE_WEBHOOK_SECRET is empty, so this endpoint is accepting ' +
+        'unverified writes to order documents — anyone who guesses this URL ' +
+        'can mark any order shipped. Find the secret in ShipTurtle ' +
+        '(Settings -> API Integration, or the webhook list after creating one), then: ' +
+        'firebase functions:secrets:set SHIPTURTLE_WEBHOOK_SECRET --project dev',
+    };
+  }
+
+  return { ok: true, verified: false, sawHeaders };
 }

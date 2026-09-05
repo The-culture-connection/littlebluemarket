@@ -698,7 +698,6 @@ class FixtureSocialRepository implements SocialRepository {
         authorId: _backend.uid,
         title: title,
         body: draft.body.trim(),
-        upvotes: 1,
         commentCount: 0,
         createdAt: DateTime.now(),
       ),
@@ -738,7 +737,6 @@ class FixtureSocialRepository implements SocialRepository {
       ...?all[threadId],
       ThreadComment(
         authorId: _backend.uid,
-        upvotes: 1,
         createdAt: DateTime.now(),
         text: trimmed,
         depth: parentId == null ? 0 : 1,
@@ -755,7 +753,6 @@ class FixtureSocialRepository implements SocialRepository {
             authorId: thread.authorId,
             title: thread.title,
             body: thread.body,
-            upvotes: thread.upvotes,
             commentCount: thread.commentCount + 1,
             createdAt: thread.createdAt,
           )
@@ -764,42 +761,6 @@ class FixtureSocialRepository implements SocialRepository {
     ];
   }
 
-  @override
-  Future<void> voteThread(String threadId, int delta) async {
-    final previous = _store.threadVotes[threadId] ?? 0;
-    if (previous == delta) return;
-    _store.threadVotes[threadId] = delta;
-    final change = delta - previous;
-
-    _store.threads.value = [
-      for (final thread in _store.threads.value)
-        if (thread.id == threadId)
-          ForumThread(
-            id: thread.id,
-            forumId: thread.forumId,
-            authorId: thread.authorId,
-            title: thread.title,
-            body: thread.body,
-            upvotes: (thread.upvotes + change).clamp(0, 1 << 30),
-            commentCount: thread.commentCount,
-            createdAt: thread.createdAt,
-          )
-        else
-          thread,
-    ];
-  }
-
-  @override
-  Future<void> voteThreadComment(String commentId, int delta) async {
-    _store.threadVotes[commentId] = delta;
-    _store.threadComments.touch();
-  }
-
-  @override
-  Future<void> voteForum(String forumId, int delta) async {
-    _store.threadVotes[forumId] = delta;
-    _store.forums.touch();
-  }
 }
 
 class FixtureMessagingRepository implements MessagingRepository {

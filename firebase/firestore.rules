@@ -7,7 +7,7 @@ rules_version = '2';
 // reacting to a verified webhook. The Admin SDK bypasses these rules, so
 // "deny everyone" here means "only Cloud Functions".
 //
-// Counters that clients *may* move — likes, upvotes, member counts — are moved
+// Counters that clients *may* move — likes, member counts — are moved
 // with FieldValue.increment inside a transaction, never by writing a total, so
 // two people liking at once cannot lose one of the two.
 service cloud.firestore {
@@ -64,6 +64,7 @@ service cloud.firestore {
         && untouched([
           'revenueCents',
           'purchaseCount',
+          'postCount',
           'shopifyCustomerId',
           'shipturtleVendorId'
         ]);
@@ -175,23 +176,13 @@ service cloud.firestore {
       allow create: if member() && authorIsSelf() && incoming().commentCount == 0;
       allow update: if member()
         && isSelf(existing().authorId)
-        && untouched(['upvotes', 'commentCount', 'authorId', 'createdAt']);
+        && untouched(['commentCount', 'authorId', 'createdAt']);
       allow delete: if member() && isSelf(existing().authorId);
-
-      match /votes/{uid} {
-        allow read: if true;
-        allow write: if isSelf(uid) && member();
-      }
 
       match /comments/{commentId} {
         allow read: if true;
         allow create: if member() && authorIsSelf();
         allow update, delete: if member() && isSelf(existing().authorId);
-
-        match /votes/{uid} {
-          allow read: if true;
-          allow write: if isSelf(uid) && member();
-        }
       }
     }
 

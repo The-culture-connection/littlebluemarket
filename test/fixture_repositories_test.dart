@@ -334,16 +334,6 @@ void main() {
       expect(await social.watchThreadComments('t3').first, isEmpty);
     });
 
-    test('a vote counts once however many times it is sent', () async {
-      final before = await social.watchThread('t1').first;
-      await social.voteThread('t1', 1);
-      await social.voteThread('t1', 1);
-      expect((await social.watchThread('t1').first).upvotes, before.upvotes + 1);
-
-      await social.voteThread('t1', 0);
-      expect((await social.watchThread('t1').first).upvotes, before.upvotes);
-    });
-
     test('an unknown forum throws', () {
       expect(
         () => social.watchForum('nope').first,

@@ -4,7 +4,7 @@
   "private": true,
   "main": "lib/index.js",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "scripts": {
     "build": "tsc",
@@ -13,16 +13,20 @@
     "serve": "npm run build && firebase emulators:start --only functions",
     "deploy": "npm run build && firebase deploy --only functions",
     "logs": "firebase functions:log",
+    "deploy:dev": "npm run build && firebase deploy --only functions --project dev",
+    "secrets:dev": "firebase functions:secrets:set --project dev",
+    "webhooks:dev": "node scripts/register-webhooks.mjs --project dev",
     "test:rules": "firebase emulators:exec --only firestore \"node --test test/rules.test.mjs\"",
     "seed": "node scripts/seed.mjs"
   },
   "dependencies": {
+    "@dataconnect/admin-generated": "file:src/dataconnect-admin-generated",
     "firebase-admin": "^13.0.2",
     "firebase-functions": "^6.3.1"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",
-    "@types/node": "^20.17.0",
+    "@types/node": "^22.10.0",
     "typescript": "^5.7.0"
   }
 }

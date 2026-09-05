@@ -261,6 +261,12 @@ export async function recordFulfillment(
     carrier: string;
     state: string;
     counterpartyName?: string;
+    /**
+     * False when the report could not be authenticated — currently only
+     * ShipTurtle, whose signing secret may not exist. Stamped on the shipment
+     * so that once it can be verified, the rows that never were are findable.
+     */
+    verified?: boolean;
   },
 ): Promise<void> {
   const db = getFirestore();
@@ -287,6 +293,7 @@ export async function recordFulfillment(
       state: shipment.state,
       tracking: shipment.trackingNumber,
       carrierNote: shipment.carrier,
+      verified: shipment.verified !== false,
     });
 
     tx.update(orderRef, {

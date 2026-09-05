@@ -364,7 +364,6 @@ class ForumThread {
     required this.authorId,
     required this.title,
     required this.body,
-    required this.upvotes,
     required this.commentCount,
     required this.createdAt,
   });
@@ -374,7 +373,6 @@ class ForumThread {
   final String authorId;
   final String title;
   final String body;
-  final int upvotes;
   final int commentCount;
   final DateTime createdAt;
 
@@ -385,14 +383,12 @@ class ForumThread {
 class ThreadComment {
   const ThreadComment({
     required this.authorId,
-    required this.upvotes,
     required this.createdAt,
     required this.text,
     required this.depth,
   });
 
   final String authorId;
-  final int upvotes;
   final DateTime createdAt;
   final String text;
 

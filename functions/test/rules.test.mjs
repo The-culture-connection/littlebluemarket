@@ -7,12 +7,13 @@
  *
  * Not part of `npm test`, because they need a running emulator:
  *
- *   firebase emulators:exec --only firestore \
- *     "node --test functions/test/rules.test.mjs"
+ *   npm run test:rules
  */
 import { strict as assert } from 'node:assert';
 import { after, before, describe, test } from 'node:test';
 import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   assertFails,
@@ -20,13 +21,23 @@ import {
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 
+// Resolved against this file, not the process cwd, so the suite runs the same
+// from `functions/` and from the repo root.
+const RULES = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  'firebase',
+  'firestore.rules',
+);
+
 let env;
 
 before(async () => {
   env = await initializeTestEnvironment({
     projectId: 'little-blue-cart-rules-test',
     firestore: {
-      rules: readFileSync('firebase/firestore.rules', 'utf8'),
+      rules: readFileSync(RULES, 'utf8'),
       host: '127.0.0.1',
       port: 8080,
     },

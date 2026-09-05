@@ -259,7 +259,6 @@ abstract final class FirestoreMappers {
         authorId: str(data['authorId']),
         title: str(data['title']),
         body: str(data['body']),
-        upvotes: integer(data['upvotes']),
         commentCount: integer(data['commentCount']),
         createdAt: time(data['createdAt']),
       );
@@ -267,7 +266,6 @@ abstract final class FirestoreMappers {
   static ThreadComment threadComment(Map<String, dynamic> data) =>
       ThreadComment(
         authorId: str(data['authorId']),
-        upvotes: integer(data['upvotes']),
         createdAt: time(data['createdAt']),
         text: str(data['text']),
         depth: data['parentId'] == null ? 0 : 1,

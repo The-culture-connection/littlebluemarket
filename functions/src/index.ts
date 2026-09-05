@@ -25,8 +25,8 @@ import { addTracking } from './fulfillment.ts';
 import { linkStoreAccounts } from './linking.ts';
 import { verifyShopifyHmac, webhookHmacHeader, webhookTopic } from './webhooks.ts';
 import {
+  authenticateShipTurtleWebhook,
   handleShipTurtleWebhook,
-  verifyShipTurtleSignature,
 } from './shipturtle.ts';
 
 initializeApp();
@@ -266,7 +266,6 @@ export const shipturtleWebhook = onRequest(
   { secrets: [SHIPTURTLE_WEBHOOK_SECRET] },
   async (request, response) => {
     const raw = request.rawBody;
-    const signature = request.get('x-shipturtle-signature');
 
     let secret: string | undefined;
     try {
@@ -275,18 +274,35 @@ export const shipturtleWebhook = onRequest(
       secret = undefined;
     }
 
-    if (!verifyShipTurtleSignature(raw, signature, secret)) {
-      // Same reasoning as the Shopify endpoint: a public URL that writes to
-      // order documents cannot take an unverified request.
-      logger.warn('Rejected a ShipTurtle webhook with a bad signature');
+    const auth = authenticateShipTurtleWebhook(raw, request.headers, secret);
+
+    if (!auth.ok) {
+      // A configured secret that does not match is a forgery, not a mystery.
+      logger.warn('Rejected a ShipTurtle webhook', { reason: auth.reason });
       response.status(401).send('bad signature');
       return;
     }
 
+    // TODO(prod): once a `prod` alias exists, accepting an unverified webhook
+    // must be dev-only — gate this branch on the project id and 401 in prod.
+    if (auth.alarm) {
+      // They sign; we are not checking. The one case worth an error-level page.
+      logger.error(auth.alarm, { sawHeaders: auth.sawHeaders });
+    } else if (!auth.verified) {
+      logger.warn(
+        'Accepted an unverified ShipTurtle webhook: no secret is configured ' +
+          'and the request carried no signature header.',
+        { sawHeaders: auth.sawHeaders },
+      );
+    }
+
     try {
       const payload = JSON.parse(raw.toString('utf8')) as Record<string, any>;
-      const outcome = await handleShipTurtleWebhook(payload);
-      logger.info('Handled a ShipTurtle webhook', { outcome });
+      const outcome = await handleShipTurtleWebhook(payload, auth.verified);
+      logger.info('Handled a ShipTurtle webhook', {
+        outcome,
+        verified: auth.verified,
+      });
       response.status(200).send('ok');
     } catch (error) {
       logger.error('A ShipTurtle webhook handler threw', { error });

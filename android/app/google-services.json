@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "125444581085",
+    "project_id": "little-blue-610e5",
+    "storage_bucket": "little-blue-610e5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:125444581085:android:0231610405fbfd9b505d34",
+        "android_client_info": {
+          "package_name": "com.littleblue.market"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDC6sIcDI3kI8z7IIOmcHO3faS_Lh1cvo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:125444581085:android:c6f27f5e3fa7d404505d34",
+        "android_client_info": {
+          "package_name": "com.littlebluemarket.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDC6sIcDI3kI8z7IIOmcHO3faS_Lh1cvo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

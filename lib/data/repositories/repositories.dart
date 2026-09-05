@@ -134,11 +134,6 @@ abstract interface class SocialRepository {
     required String text,
     String? parentId,
   });
-
-  /// [delta] is +1, -1 or 0, matching how a vote column actually behaves.
-  Future<void> voteThread(String threadId, int delta);
-  Future<void> voteThreadComment(String commentId, int delta);
-  Future<void> voteForum(String forumId, int delta);
 }
 
 /// The open chatroom and one-to-one threads.

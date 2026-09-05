@@ -87,7 +87,6 @@ class FixtureStore {
   /// Post ids this viewer has liked.
   final likedPosts = <String>{};
   final likedComments = <String>{};
-  final threadVotes = <String, int>{};
 
   var _nextId = 1;
   String newId(String prefix) => '$prefix${_nextId++}';

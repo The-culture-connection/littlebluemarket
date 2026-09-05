@@ -10,7 +10,7 @@ import 'mappers.dart';
 /// One rule runs through all of it: **counters move by increment, never by
 /// writing a total.** Two people liking the same post in the same second must
 /// produce two likes, and a read-modify-write loses one of them. The same goes
-/// for votes, member counts and comment counts.
+/// for member counts and comment counts.
 ///
 /// The second rule: **a vote or a like is stated, not toggled.** The caller
 /// says what it wants to be true; the repository works out the delta from what
@@ -501,11 +501,9 @@ class FirestoreSocialRepository implements SocialRepository {
       'authorId': me,
       'title': title,
       'body': draft.body.trim(),
-      'upvotes': 1,
       'commentCount': 0,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    batch.set(doc.collection('votes').doc(me), {'value': 1});
     batch.update(_forums.doc(draft.forumId), {
       'threadCount': FieldValue.increment(1),
     });
@@ -542,7 +540,6 @@ class FirestoreSocialRepository implements SocialRepository {
       'authorId': me,
       'text': trimmed,
       'parentId': ?parentId,
-      'upvotes': 1,
       'createdAt': FieldValue.serverTimestamp(),
     });
     batch.update(_threads.doc(threadId), {
@@ -551,48 +548,4 @@ class FirestoreSocialRepository implements SocialRepository {
     await batch.commit();
   });
 
-  @override
-  Future<void> voteThread(String threadId, int delta) =>
-      _vote(_threads.doc(threadId), delta, 'upvotes');
-
-  @override
-  Future<void> voteThreadComment(String commentId, int delta) =>
-      guardFirestore(() async {
-        final found = await _db
-            .collectionGroup('comments')
-            .where(FieldPath.documentId, isEqualTo: commentId)
-            .limit(1)
-            .get();
-        if (found.docs.isEmpty) throw NotFoundException('comment', commentId);
-        await _vote(found.docs.first.reference, delta, 'upvotes');
-      });
-
-  @override
-  Future<void> voteForum(String forumId, int delta) =>
-      _vote(_forums.doc(forumId), delta, 'upvotes');
-
-  /// Records this person's vote and moves the total by the difference.
-  ///
-  /// Storing the vote per uid is what makes the count correct: switching from
-  /// up to down moves the total by two, and voting the same way twice moves it
-  /// by nothing.
-  Future<void> _vote(
-    DocumentReference<Map<String, dynamic>> target,
-    int delta,
-    String field,
-  ) => guardFirestore(() async {
-    final me = _requireUid;
-    final vote = target.collection('votes').doc(me);
-
-    await _db.runTransaction((tx) async {
-      final existing = await tx.get(vote);
-      final previous = FirestoreMappers.integer(existing.data()?['value']);
-      if (previous == delta) return;
-
-      delta == 0
-          ? tx.delete(vote)
-          : tx.set(vote, {'value': delta, 'uid': me});
-      tx.update(target, {field: FieldValue.increment(delta - previous)});
-    });
-  });
 }

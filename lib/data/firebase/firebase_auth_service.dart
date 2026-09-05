@@ -53,13 +53,22 @@ class FirebaseAuthService implements AuthService {
       await _auth.sendSignInLinkToEmail(
         email: normalized,
         actionCodeSettings: fb.ActionCodeSettings(
-          // Set to the app's dynamic-link domain during Firebase setup; the
-          // link is what carries the one-time code back.
-          url: 'https://littlebluemarket.page.link/signin',
+          // The continue URL, which must be one of Firebase Auth's
+          // authorized domains. `<project>.firebaseapp.com` is authorized by
+          // default, so this works with no DNS or Hosting setup.
+          //
+          // This used to be a `page.link` Dynamic Links domain. Firebase
+          // Dynamic Links shut down in August 2025, so that address resolves
+          // to nothing and sign-in could not complete. Losing Dynamic Links
+          // costs us the deep link back into the app, not the sign-in: the
+          // link is pasted into [confirmCode] by hand, so opening it in a
+          // browser is the expected path. Universal Links / App Links are
+          // the upgrade when someone wants the tap-through.
+          url: 'https://little-blue-610e5.firebaseapp.com/signin',
           handleCodeInApp: true,
-          androidPackageName: 'com.littlebluemarket.app',
+          androidPackageName: 'com.littleblue.market',
           androidInstallApp: true,
-          iOSBundleId: 'com.littlebluemarket.app',
+          iOSBundleId: 'com.littleblue.market',
         ),
       );
     } on fb.FirebaseAuthException catch (error) {

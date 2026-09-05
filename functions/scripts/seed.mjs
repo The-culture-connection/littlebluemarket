@@ -205,7 +205,7 @@ async function seed() {
     authorId: 'kali',
     title: 'How do you price handmade when materials cost 4x what they did?',
     body: 'Shea butter went from $9/lb to $34/lb in two years.',
-    upvotes: 128, commentCount: 1,
+    commentCount: 1,
     createdAt: ago(0, 6),
   });
 
@@ -215,7 +215,6 @@ async function seed() {
       threadId: 't1',
       authorId: 'torres',
       text: 'Posted about it. One paragraph, no apology.',
-      upvotes: 34,
       createdAt: ago(0, 5),
     },
   );

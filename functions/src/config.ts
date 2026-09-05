@@ -41,6 +41,19 @@ export const SHOPIFY_WEBHOOK_SECRET = defineSecret('SHOPIFY_WEBHOOK_SECRET');
 /** Vendor attribution and tracking. Still outstanding. */
 export const SHIPTURTLE_API_KEY = defineSecret('SHIPTURTLE_API_KEY');
 
+/**
+ * Signs ShipTurtle's webhooks — if they sign at all. Their webhook
+ * registration form asks only for a topic and a URL, so this may have no
+ * source; `authenticateShipTurtleWebhook` accepts an empty value and shouts if
+ * a signature header ever turns up.
+ *
+ * Declared here, above [ALL_SECRETS], and not below it: it used to sit after
+ * the array, so the array silently omitted it.
+ */
+export const SHIPTURTLE_WEBHOOK_SECRET = defineSecret(
+  'SHIPTURTLE_WEBHOOK_SECRET',
+);
+
 // ------------------------------------------------------------------- config
 
 export const SHOPIFY_STORE_DOMAIN = defineString('SHOPIFY_STORE_DOMAIN');
@@ -50,7 +63,7 @@ export const SHOPIFY_STORE_DOMAIN = defineString('SHOPIFY_STORE_DOMAIN');
  * unpinned client starts failing on their schedule rather than yours.
  */
 export const SHOPIFY_API_VERSION = defineString('SHOPIFY_API_VERSION', {
-  default: '2025-07',
+  default: '2026-07',
 });
 
 /** Public by design in OAuth. */
@@ -66,9 +79,5 @@ export const ALL_SECRETS = [
   SHOPIFY_STOREFRONT_PRIVATE_TOKEN,
   SHOPIFY_WEBHOOK_SECRET,
   SHIPTURTLE_API_KEY,
+  SHIPTURTLE_WEBHOOK_SECRET,
 ];
-
-/** Signs ShipTurtle's webhooks. Shape to be confirmed against their docs. */
-export const SHIPTURTLE_WEBHOOK_SECRET = defineSecret(
-  'SHIPTURTLE_WEBHOOK_SECRET',
-);

@@ -221,17 +221,6 @@ class _ThreadCard extends ConsumerWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            VoteColumn(
-              upvotes: thread.upvotes,
-              onVote: (delta) => requireProfile(
-                context,
-                ref,
-                () => ref
-                    .read(socialRepositoryProvider)
-                    .voteThread(thread.id, delta),
-              ),
-            ),
-            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,78 +250,6 @@ class _ThreadCard extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// The up/down column beside a thread or a comment.
-class VoteColumn extends StatefulWidget {
-  const VoteColumn({super.key, required this.upvotes, required this.onVote});
-
-  final int upvotes;
-
-  /// Called with +1, -1, or 0 to clear — which is how a vote column behaves
-  /// when you tap the arrow you already chose.
-  final ValueChanged<int> onVote;
-
-  @override
-  State<VoteColumn> createState() => _VoteColumnState();
-}
-
-class _VoteColumnState extends State<VoteColumn> {
-  int _mine = 0;
-
-  void _tap(int direction) {
-    final next = _mine == direction ? 0 : direction;
-    setState(() => _mine = next);
-    widget.onVote(next);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Semantics(
-            button: true,
-            label: 'Upvote',
-            child: InkResponse(
-              radius: 18,
-              onTap: () => _tap(1),
-              child: Icon(
-                Icons.keyboard_arrow_up_rounded,
-                size: 18,
-                color: _mine == 1 ? c.accentDeep : c.ink3,
-              ),
-            ),
-          ),
-          Text(
-            '${widget.upvotes}',
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-              color: c.ink,
-              fontFeatures: kTabularFigures,
-            ),
-          ),
-          Semantics(
-            button: true,
-            label: 'Downvote',
-            child: InkResponse(
-              radius: 18,
-              onTap: () => _tap(-1),
-              child: Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 18,
-                color: _mine == -1 ? c.clay : c.ink3,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

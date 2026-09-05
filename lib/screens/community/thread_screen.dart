@@ -10,9 +10,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
-import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
-import 'forum_screen.dart';
 
 /// The original post, then its comments with one level of nesting.
 ///
@@ -138,29 +136,14 @@ class _ThreadHead extends ConsumerWidget {
             onTagTap: (tag) => context.goToResults(tag),
           ),
           const SizedBox(height: 13),
-          Row(
-            children: [
-              VoteColumn(
-                upvotes: thread.upvotes,
-                onVote: (delta) => requireProfile(
-                  context,
-                  ref,
-                  () => ref
-                      .read(socialRepositoryProvider)
-                      .voteThread(thread.id, delta),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Text(
-                '${Fmt.count(thread.commentCount)} comments',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                  color: c.ink3,
-                  fontFeatures: kTabularFigures,
-                ),
-              ),
-            ],
+          Text(
+            '${Fmt.count(thread.commentCount)} comments',
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              color: c.ink3,
+              fontFeatures: kTabularFigures,
+            ),
           ),
         ],
       ),
@@ -272,8 +255,6 @@ class _Comment extends ConsumerWidget {
                   comment.text,
                   style: TextStyle(fontSize: 13.5, height: 1.5, color: c.ink),
                 ),
-                const SizedBox(height: 6),
-                _CommentVotes(comment: comment),
               ],
             ),
           ),
@@ -283,54 +264,3 @@ class _Comment extends ConsumerWidget {
   }
 }
 
-class _CommentVotes extends ConsumerStatefulWidget {
-  const _CommentVotes({required this.comment});
-
-  final ThreadComment comment;
-
-  @override
-  ConsumerState<_CommentVotes> createState() => _CommentVotesState();
-}
-
-class _CommentVotesState extends ConsumerState<_CommentVotes> {
-  int _mine = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    final comment = widget.comment;
-
-    return Row(
-      children: [
-        Semantics(
-          button: true,
-          label: 'Upvote comment',
-          child: InkResponse(
-            radius: 16,
-            onTap: () => requireProfile(context, ref, () {
-              final next = _mine == 1 ? 0 : 1;
-              setState(() => _mine = next);
-              ref
-                  .read(socialRepositoryProvider)
-                  .voteThreadComment('${comment.authorId}_${comment.age}', next);
-            }),
-            child: Icon(
-              Icons.keyboard_arrow_up_rounded,
-              size: 15,
-              color: _mine == 1 ? c.accentDeep : c.ink3,
-            ),
-          ),
-        ),
-        Text(
-          ' ${comment.upvotes + _mine}',
-          style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w800,
-            color: c.ink3,
-            fontFeatures: kTabularFigures,
-          ),
-        ),
-      ],
-    );
-  }
-}
