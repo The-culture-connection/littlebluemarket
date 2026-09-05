@@ -18,7 +18,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | CP-A4 — A seller's existing products appear on their profile | ✅ Done, passed by Grace |
 | CP-A5 — Shipturtle roster probe, automatic vendor detection by email | ✅ Done, proven by the backend health check (roster at /api/v1/users) |
 | Stage 3 — Buying: add to cart, checkout in-app, order lands | ✅ Done, passed by Grace |
-| Stage 4 — The real catalog: admin claim, collections, backfill, browse an initiative | 🟡 Built and deployed 2026-09-05, ready for Grace to test |
+| Stage 4 — The real catalog: admin claim, collections, backfill, browse an initiative | ✅ Done, passed by Grace (2026-09-05) |
 | Stage 5 — A seller adds a product | ⬜ Not started |
 | Stage 6 — Approval, edits, "Total sales" | ⬜ Not started |
 | Stage 7 — Cart replaces like, cart posts, reviews | ⬜ Not started |
@@ -256,7 +256,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 ### Stage 4 — The real catalog (Phase 4)
 
-**Built and deployed to `little-blue-610e5` on 2026-09-05. Ready for Grace to test.** The boxes below get ticked as each step passes on the phone.
+**Built, deployed to `little-blue-610e5` and passed by Grace on 2026-09-05.** Note for testers: the Market feed lists *posts*, and nobody has posted on the live backend yet, so it stays "Nothing posted yet" until someone posts (the composer) or Stage 7 reshapes the feed. Real products live behind search, the Products tab, and the Browse the shop chips.
 
 **What changed, in plain words.** The app now knows the store's *collections* — the categories ("Bath, Beauty & Wellness") and the identity ones ("Ally Owned", "Woman Owned", "BIPOC Owned") that the store actually files products under. The Market feed gets a **Browse the shop** row of chips; tapping one opens a grid of everything in that collection. Behind the scenes, the whole catalog can be imported in one go from Diagnostics instead of touching products one at a time, and the two roads a product can take into the app (a webhook, or the import) are proven by a test to produce the same document.
 
@@ -269,7 +269,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 - Rules: `collections/{handle}` public read, no client writes (rules test added). Index: `catalog` on `collectionHandles` + `createdAt`.
 - Flutter: `Collection` model, `CollectionRepository` (Firestore + fixture), `Product.collectionHandles`, the **Browse the shop** rail on the feed, `/market/collection/:handle` (three-across grid, pull to refresh), and an **Admin · the catalog** card on Diagnostics with Claim admin / Sync collections / Backfill catalog / Backfill from the start.
 
-- [ ] **CP-C0 Admin claim without a key.**
+- [x] **CP-C0 Admin claim without a key.**
   **Grace does (once, Firebase console):** open https://console.firebase.google.com/project/little-blue-610e5/firestore → **Start collection** (or **+ Start collection** at the top of the left column).
   1. Collection ID: `_internal` → Next.
   2. Document ID: `admins`.
@@ -280,17 +280,17 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
   **Pass:** the card says "Admin claim granted to this account." and the facts card at the top shows **Admin claim: yes** (tap Refresh if it still says no).
   **If it fails:** "is not on the admin list" → the document is not at `_internal/admins`, or the email string differs; re-check steps 1–3. "Confirm your email address first" → Edit profile → Confirm your email, then try again. Anything else → Copy for Claude.
 
-- [ ] **CP-C1 Collections mirror.**
+- [x] **CP-C1 Collections mirror.**
   **Grace does:** Diagnostics → **Sync collections**.
   **Pass:** "Synced N collections", where N equals the number of collections on the dev store's admin (Products → Collections). Firestore console shows a `collections` collection with one document per handle. Pull the Market feed down to refresh: a **Browse the shop** row of chips appears under the hashtags (only collections that have at least one product are shown).
   **If it fails:** "Admins only" → CP-C0 first. Anything else → Copy for Claude.
 
-- [ ] **CP-C2 Catalog backfill.**
+- [x] **CP-C2 Catalog backfill.**
   **Grace does:** Diagnostics → **Backfill catalog**. Wait for "Imported N products. Done." Then tap it again.
   **Pass:** both runs end with the same N, and N equals the product count on the dev store (Products page, all statuses). Firestore → `catalog` has N documents, and any one of them has `collectionHandles` and `productTags` fields. Search **snowboard** still finds products.
   **If it fails:** stops partway → tap Backfill catalog again; it resumes. Wrong count → **Backfill from the start**, then paste the card's message. Anything red → Copy for Claude.
 
-- [ ] **CP-C3 Browse an initiative.**
+- [x] **CP-C3 Browse an initiative.**
   **Grace does:** Market → pull to refresh → tap a chip in **Browse the shop** (e.g. "Ally Owned" or "Woman Owned", whichever exists on the dev store) → tap a product in the grid → Add to cart.
   **Pass:** the collection screen shows its product count and a grid of real products with photos and prices, newest first; the product opens; add to cart works as in Stage 3.
   **If it fails:** empty grid although the store has products in that collection → Backfill did not run after Sync, or the collection's products are all drafts; run Backfill catalog again. Chip row missing → CP-C1.
