@@ -120,6 +120,8 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
     Backend.live => FirestoreProfileRepository(
       firestore: ref.watch(firestoreProvider),
       storage: ref.watch(firebaseStorageProvider),
+      functions: ref.watch(firebaseFunctionsProvider),
+      auth: ref.watch(firebaseAuthProvider),
       uid: ref.watch(_uidProvider),
     ),
   };

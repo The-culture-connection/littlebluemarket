@@ -172,9 +172,19 @@ abstract interface class ProfileRepository {
   Future<String> uploadAvatar(List<int> bytes, {required String contentType});
   Future<bool> handleAvailable(String handle);
 
-  /// Flips a buyer into a seller. Separate from [updateProfile] because it
-  /// changes what the person can do, not just how they look.
-  Future<void> becomeSeller();
+  /// Claims a vendor record with a merchant-issued code.
+  ///
+  /// The **only** way to become a seller. It replaced `becomeSeller()`,
+  /// which wrote `isSeller: true` straight from the client — and since the
+  /// order pipeline credits a sale to whichever account claims a vendor
+  /// name, that was two writes away from inheriting a stranger's catalogue
+  /// and their revenue.
+  ///
+  /// Everything is decided server-side. Throws [ValidationException] with
+  /// copy specific to the failure — an unknown code, a used one, an expired
+  /// one, a vendor already claimed, or an unverified email — because those
+  /// mean genuinely different things and three of them are actionable.
+  Future<SellerGrant> requestSellerStatus(String claimCode);
 
   Future<List<Address>> addresses();
   Future<void> saveAddress(Address address);

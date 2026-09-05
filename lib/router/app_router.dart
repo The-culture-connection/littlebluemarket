@@ -18,6 +18,7 @@ import '../screens/market/seller_feed_screen.dart';
 import '../screens/onboarding/auth_screens.dart';
 import '../screens/onboarding/welcome_screen.dart';
 import '../screens/you/dm_screen.dart';
+import '../screens/you/claim_shop_screen.dart';
 import '../screens/you/edit_profile_screen.dart';
 import '../screens/you/messages_screen.dart';
 import '../screens/you/profile_screen.dart';
@@ -197,6 +198,10 @@ GoRouter buildRouter(Ref ref) {
                   GoRoute(
                     path: 'edit',
                     builder: (context, state) => const EditProfileScreen(),
+                  ),
+                  GoRoute(
+                    path: 'claim-shop',
+                    builder: (context, state) => const ClaimShopScreen(),
                   ),
                   GoRoute(
                     path: 'shipping',

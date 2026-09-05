@@ -43,10 +43,12 @@ export async function linkStoreAccounts(
 
   const vendorId = await findVendor(email);
   if (vendorId) {
-    await user.set(
-      { shipturtleVendorId: vendorId, isSeller: true },
-      { merge: true },
-    );
+    // Deliberately not `isSeller`. Seller status is a grant, written to
+    // `sellers/{uid}` by `sellerClaimVendor` and mirrored into a custom claim;
+    // see Planning/backend-architecture.md §8. Recording the vendor id here is
+    // still useful — it is what the roster path will match on once Shipturtle
+    // can be queried.
+    await user.set({ shipturtleVendorId: vendorId }, { merge: true });
   }
 
   logger.info('Linked a store account', {

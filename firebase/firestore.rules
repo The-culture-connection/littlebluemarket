@@ -21,6 +21,9 @@ service cloud.firestore {
 
     // A guest is signed in anonymously, so they hold a uid but are not a
     // member. Anything that writes content needs a real account.
+    // Seller status is a custom claim, not a document field: a client can
+    // write a field, and cannot mint a claim. Paired with `sellers/{uid}`
+    // being unwritable, that is what closes the escalation §8 describes.
     function member() {
       return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
@@ -48,6 +51,33 @@ service cloud.firestore {
 
     // ------------------------------------------------------------------ users
 
+    // ------------------------------------------------------- seller identity
+    //
+    // None of this is client-writable, and that is the entire point. A lock
+    // list on `users/{uid}` has to be *remembered* every time a field is
+    // added, and it already was not: `isSeller` and `shopifyVendorName` were
+    // both missing from it, which is what made the escalation in
+    // Planning/backend-architecture.md §8 reachable in two client writes.
+    // A document nothing may write cannot develop that hole.
+
+    match /sellers/{uid} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // One vendor, one owner. Reserved inside the granting transaction, so
+    // two accounts racing for the same shop cannot both win.
+    match /vendorNames/{name} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Not readable, by anyone, ever. A readable list of unused claim codes
+    // is the same thing as no claim codes at all.
+    match /vendorClaims/{codeHash} {
+      allow read, write: if false;
+    }
+
     match /users/{uid} {
       // Profiles are public: the storefront, the seller strip on a listing and
       // the author of a review all need to read one.
@@ -56,7 +86,9 @@ service cloud.firestore {
       allow create: if isSelf(uid)
         && incoming().revenueCents == 0
         && incoming().purchaseCount == 0
-        && incoming().postCount == 0;
+        && incoming().postCount == 0
+        && !('isSeller' in incoming())
+        && !('shopifyVendorName' in incoming());
 
       // You may edit your own profile, but not your own numbers. Without this
       // clause a seller could set their revenue to anything.
@@ -66,7 +98,10 @@ service cloud.firestore {
           'purchaseCount',
           'postCount',
           'shopifyCustomerId',
-          'shipturtleVendorId'
+          'shipturtleVendorId',
+          'isSeller',
+          'shopifyVendorName',
+          'shopifyLocationId'
         ]);
 
       allow delete: if false;

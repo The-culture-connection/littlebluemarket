@@ -261,19 +261,6 @@ class _BuyerRows extends ConsumerStatefulWidget {
 }
 
 class _BuyerRowsState extends ConsumerState<_BuyerRows> {
-  bool _working = false;
-
-  Future<void> _startSelling() async {
-    setState(() => _working = true);
-    final messenger = ScaffoldMessenger.of(context);
-    await ref.read(profileRepositoryProvider).becomeSeller();
-    if (!mounted) return;
-    setState(() => _working = false);
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Selling is on. Your storefront is live.')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = context.c;
@@ -293,15 +280,13 @@ class _BuyerRowsState extends ConsumerState<_BuyerRows> {
           const _AddressesRow(),
           ListRow(
             title: const Text('Start selling'),
-            subtitle: const Text('Turn your profile into a storefront'),
-            trailing: _working
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
-            onTap: _working ? null : _startSelling,
+            subtitle: const Text('Connect the shop you already have'),
+            trailing: Icon(
+              Icons.chevron_right_rounded,
+              size: 22,
+              color: c.ink3,
+            ),
+            onTap: () => context.push('/you/claim-shop'),
           ),
         ],
       ),

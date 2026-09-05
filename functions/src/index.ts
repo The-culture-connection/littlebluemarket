@@ -23,6 +23,7 @@ import {
 import { normalizeOrder, recordFulfillment, recordPaidOrder } from './orders.ts';
 import { addTracking } from './fulfillment.ts';
 import { linkStoreAccounts } from './linking.ts';
+import { claimVendor, revokeVendor } from './sellers.ts';
 import { verifyShopifyHmac, webhookHmacHeader, webhookTopic } from './webhooks.ts';
 import {
   authenticateShipTurtleWebhook,
@@ -139,6 +140,55 @@ export const linkAccounts = onCall({ secrets: ALL_SECRETS }, async (request) => 
     );
   }
   return linkStoreAccounts(uid, email);
+});
+
+// --------------------------------------------------------------- the seller
+
+/**
+ * The only way to become a seller.
+ *
+ * It replaced a client write. `ProfileRepository.becomeSeller()` set
+ * `isSeller: true` on the caller's own user document, and since a sale is
+ * credited to whichever single account claims a product's vendor name, that
+ * was two writes away from inheriting a stranger's catalogue and revenue.
+ *
+ * The email comes from the verified token claim, exactly as in
+ * `linkAccounts` and for the same reason: an unverified address lets anyone
+ * type someone else's.
+ */
+export const sellerClaimVendor = onCall(async (request) => {
+  const uid = requireUid(request.auth);
+  const email = request.auth?.token?.email;
+  const verified = request.auth?.token?.email_verified;
+
+  if (typeof email !== 'string' || !verified) {
+    throw new HttpsError(
+      'failed-precondition',
+      'Confirm your email address first, then try your code again.',
+    );
+  }
+
+  const claimCode = String((request.data ?? {}).claimCode ?? '');
+  return claimVendor(uid, email.trim().toLowerCase(), claimCode);
+});
+
+/**
+ * Takes it away again. Admin only.
+ *
+ * Products already on the storefront stay: they are Shopify's, and pulling
+ * them would punish buyers for a merchant decision.
+ */
+export const sellerRevokeVendor = onCall(async (request) => {
+  requireUid(request.auth);
+  if (request.auth?.token?.admin !== true) {
+    throw new HttpsError('permission-denied', 'Admins only.');
+  }
+  const target = String((request.data ?? {}).uid ?? '');
+  if (!target) {
+    throw new HttpsError('invalid-argument', 'Which account?');
+  }
+  await revokeVendor(target);
+  return { revoked: true };
 });
 
 // -------------------------------------------------------------- the webhooks

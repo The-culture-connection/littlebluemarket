@@ -234,3 +234,85 @@ describe('forums', () => {
     );
   });
 });
+
+describe('selling is a grant, not a client write', () => {
+  // The escalation this closes was reachable in two writes: set
+  // `isSeller: true` on your own user document, then claim a vendor name that
+  // the real owner has not signed up to defend. The order pipeline credits a
+  // sale to whichever single account claims that name, so the second write
+  // inherited a stranger's catalogue and their revenue.
+
+  test('a member cannot make themselves a seller', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('users/maya').set({
+        name: 'Maya',
+        revenueCents: 0,
+        purchaseCount: 0,
+        postCount: 0,
+      });
+    });
+
+    // Write one of the two. Before this phase, both succeeded.
+    await assertFails(member('maya').doc('users/maya').update({ isSeller: true }));
+  });
+
+  test('a member cannot claim a vendor name on their user document', async () => {
+    // The leg that actually stole the money.
+    await assertFails(
+      member('maya').doc('users/maya').update({ shopifyVendorName: 'Gwynstone' }),
+    );
+    await assertFails(
+      member('maya').doc('users/maya').update({ shopifyLocationId: 'gid://x' }),
+    );
+  });
+
+  test('a new account cannot be created already selling', async () => {
+    await assertFails(
+      member('fresh').doc('users/fresh').set({
+        name: 'Fresh',
+        revenueCents: 0,
+        purchaseCount: 0,
+        postCount: 0,
+        isSeller: true,
+      }),
+    );
+  });
+
+  test('seller identity documents are function-written only', async () => {
+    await assertFails(
+      member('maya').doc('sellers/maya').set({ shopifyVendorName: 'Gwynstone' }),
+    );
+    await assertFails(
+      member('maya').doc('vendorNames/gwynstone').set({ uid: 'maya' }),
+    );
+    await assertFails(
+      member('maya').doc('vendorClaims/abc123').set({ vendorName: 'Gwynstone' }),
+    );
+  });
+
+  test('claim codes cannot be read by anyone', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('vendorClaims/abc123').set({
+        vendorName: 'Gwynstone',
+        vendorId: '1092484',
+      });
+    });
+
+    // A readable list of unused codes is the same thing as no codes at all:
+    // anyone who could read it could grant themselves any shop in it.
+    await assertFails(member('maya').doc('vendorClaims/abc123').get());
+    await assertFails(guest().doc('vendorClaims/abc123').get());
+  });
+
+  test('a grant is public to read, so a shop can be shown on a profile', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('sellers/kali').set({
+        shopifyVendorName: 'Gwynstone',
+      });
+      await admin.firestore().doc('vendorNames/gwynstone').set({ uid: 'kali' });
+    });
+
+    await assertSucceeds(member('maya').doc('sellers/kali').get());
+    await assertSucceeds(member('maya').doc('vendorNames/gwynstone').get());
+  });
+});

@@ -937,12 +937,43 @@ class FixtureProfileRepository implements ProfileRepository {
   }
 
   @override
-  Future<void> becomeSeller() async {
+  Future<SellerGrant> requestSellerStatus(String claimCode) async {
+    final code = claimCode.trim().toUpperCase();
+
+    // One canned code per outcome, so every branch of the claim screen is
+    // reachable on the fixtures backend and in tests. The real service
+    // decides all of this in one server-side transaction.
+    switch (code) {
+      case 'USED-CODE':
+        throw const ValidationException(
+          'That code has already been used. If that was not you, ask for a new one.',
+          field: 'claimCode',
+        );
+      case 'EXPIRED-CODE':
+        throw const ValidationException(
+          'That code has expired. Ask for a new one.',
+          field: 'claimCode',
+        );
+      case 'TAKEN-CODE':
+        throw const ValidationException(
+          'Another account already claims that shop. Get in touch and we will sort it out.',
+          field: 'claimCode',
+        );
+      case 'GWYNSTONE':
+        break;
+      default:
+        throw const ValidationException(
+          'That code is not recognised. Check for typos, or ask for a new one.',
+          field: 'claimCode',
+        );
+    }
+
     final people = {..._store.people.value};
     final current = people[_backend.uid];
     if (current == null) throw const UnauthenticatedException();
     people[_backend.uid] = current.copyWith(isSeller: true);
     _store.people.value = people;
+    return const SellerGrant(vendorName: 'Gwynstone');
   }
 
   @override

@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../models/models.dart';
@@ -12,12 +14,18 @@ class FirestoreProfileRepository implements ProfileRepository {
   FirestoreProfileRepository({
     required FirebaseFirestore firestore,
     required FirebaseStorage storage,
+    required FirebaseFunctions functions,
+    required FirebaseAuth auth,
     required this.uid,
   }) : _db = firestore,
-       _storage = storage;
+       _storage = storage,
+       _functions = functions,
+       _auth = auth;
 
   final FirebaseFirestore _db;
   final FirebaseStorage _storage;
+  final FirebaseFunctions _functions;
+  final FirebaseAuth _auth;
 
   /// Null while signed out. Every write checks it rather than assuming.
   final String? uid;
@@ -146,12 +154,34 @@ class FirestoreProfileRepository implements ProfileRepository {
   });
 
   @override
-  Future<void> becomeSeller() => guardFirestore(() async {
-    await _users.doc(_requireUid).set({
-      'isSeller': true,
-      'becameSellerAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-  });
+  Future<SellerGrant> requestSellerStatus(String claimCode) =>
+      guardFirestore(() async {
+        _requireUid;
+
+        // Nothing about the grant is decided here. The callable checks the
+        // verified email claim, consumes the code, reserves the vendor name
+        // and writes `sellers/{uid}` in one transaction — all of it on
+        // documents no client may write.
+        final result = await _functions
+            .httpsCallable('sellerClaimVendor')
+            .call<Map<String, dynamic>>({
+              'claimCode': claimCode.trim(),
+            });
+
+        final data = result.data;
+
+        // The grant is a **custom claim**, which reaches the client only on
+        // the next token refresh — up to an hour. Forcing it here is what
+        // makes the Products tab appear now rather than tomorrow, and a
+        // seller staring at an unchanged screen would reasonably conclude
+        // the claim failed.
+        await _auth.currentUser?.getIdToken(true);
+
+        return SellerGrant(
+          vendorName: FirestoreMappers.str(data['vendorName']),
+          shipturtleVendorId: data['shipturtleVendorId'] as String?,
+        );
+      });
 
   @override
   Future<List<Address>> addresses() => guardFirestore(() async {

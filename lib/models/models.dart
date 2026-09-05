@@ -492,3 +492,20 @@ class Shipment {
 
   int get step => state.step;
 }
+
+/// A granted vendor claim.
+///
+/// Carries the vendor name back so the confirmation can say *which* shop was
+/// claimed. A wrong name there is the one failure the person can catch and we
+/// cannot: the code was issued against a vendor record, and only they know
+/// whether it is theirs.
+@immutable
+class SellerGrant {
+  const SellerGrant({required this.vendorName, this.shipturtleVendorId});
+
+  /// The exact Shopify `vendor` string. The join key for every future sale.
+  final String vendorName;
+
+  /// Shipturtle's `company_id`, when the roster was reachable.
+  final String? shipturtleVendorId;
+}

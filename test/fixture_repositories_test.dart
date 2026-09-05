@@ -415,16 +415,60 @@ void main() {
       expect(await profiles.handleAvailable(me.handle), isTrue);
     });
 
-    test('a buyer can become a seller', () async {
-      final store = FixtureStore(currentUid: 'dee');
-      final buyerBackend = FixtureBackend(store: store);
-      final buyerProfiles = FixtureProfileRepository(buyerBackend);
-      addTearDown(store.dispose);
+  group('claiming a shop', () {
+    late FixtureStore store;
+    late FixtureProfileRepository buyer;
 
-      expect((await buyerProfiles.person('dee')).isSeller, isFalse);
-      await buyerProfiles.becomeSeller();
-      expect((await buyerProfiles.person('dee')).isSeller, isTrue);
+    setUp(() {
+      store = FixtureStore(currentUid: 'dee');
+      buyer = FixtureProfileRepository(FixtureBackend(store: store));
+      addTearDown(store.dispose);
     });
+
+    test('a valid code grants selling, and names the shop', () async {
+      expect((await buyer.person('dee')).isSeller, isFalse);
+
+      final grant = await buyer.requestSellerStatus('gwynstone');
+
+      expect(grant.vendorName, 'Gwynstone');
+      expect((await buyer.person('dee')).isSeller, isTrue);
+    });
+
+    test('an unknown code grants nothing', () async {
+      await expectLater(
+        buyer.requestSellerStatus('nope'),
+        throwsA(isA<ValidationException>()),
+      );
+
+      // The point of the whole phase: a refused claim must leave the account
+      // exactly as it was. `becomeSeller()` is gone, so this is the only way
+      // in, and it has to fail closed.
+      expect((await buyer.person('dee')).isSeller, isFalse);
+    });
+
+    test('each failure says something different', () async {
+      // Three of these are actionable in different ways — ask for a new code,
+      // get in touch, check for typos — so a single "something went wrong"
+      // would be the wrong call.
+      final messages = <String>{};
+      for (final code in ['USED-CODE', 'EXPIRED-CODE', 'TAKEN-CODE', 'junk']) {
+        try {
+          await buyer.requestSellerStatus(code);
+          fail('$code should not have been accepted');
+        } on ValidationException catch (error) {
+          messages.add(error.message);
+        }
+      }
+      expect(messages, hasLength(4));
+    });
+
+    test('the code is not case or whitespace sensitive', () async {
+      // People paste these out of an email. Refusing a trailing space would
+      // be a support ticket, not a security boundary.
+      final grant = await buyer.requestSellerStatus('  GwYnStOnE  ');
+      expect(grant.vendorName, 'Gwynstone');
+    });
+  });
 
     test('an address round-trips', () async {
       const address = Address(
