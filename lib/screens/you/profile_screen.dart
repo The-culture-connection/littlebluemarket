@@ -17,6 +17,7 @@ import '../../widgets/composers.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/seller_drafts.dart';
 import '../../widgets/seller_products_grid.dart';
+import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
 import '../market/results_screen.dart';
 
@@ -211,7 +212,9 @@ class _PurchasesGrid extends ConsumerWidget {
             badge: purchase.reviewed
                 ? 'Reviewed'
                 : (purchase.delivered ? 'Received' : null),
-            onTap: () => context.goToProduct(purchase.productId),
+            // A purchase is something you can review, not only something you
+            // can look at again.
+            onTap: () => showPurchaseSheet(context, purchase),
           );
         },
       ),
@@ -300,4 +303,48 @@ class _TextCell extends StatelessWidget {
       ),
     );
   }
+}
+
+/// What you can do with something you bought: review it, or open it.
+Future<void> showPurchaseSheet(BuildContext context, Purchase purchase) {
+  return showLbmSheet(context, (sheetContext) {
+    final c = sheetContext.c;
+    final status = purchase.reviewed
+        ? 'Reviewed'
+        : purchase.delivered
+        ? 'Received ${purchase.age} ago'
+        : 'On its way';
+    return LbmSheet(
+      children: [
+        Text(
+          purchase.title,
+          style: LbmText.display.copyWith(fontSize: 21, color: c.ink),
+        ),
+        const SizedBox(height: 4),
+        Text(status, style: LbmText.tiny.copyWith(color: c.ink2)),
+        const SizedBox(height: 14),
+        if (purchase.canReview) ...[
+          PillButton(
+            'Write a review',
+            onPressed: () {
+              Navigator.of(sheetContext).pop();
+              showLbmSheet(
+                context,
+                (_) => ReviewComposer(initialPurchaseId: purchase.id),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+        PillButton(
+          'View product',
+          style: PillStyle.ghost,
+          onPressed: () {
+            Navigator.of(sheetContext).pop();
+            context.goToProduct(purchase.productId);
+          },
+        ),
+      ],
+    );
+  });
 }

@@ -50,6 +50,10 @@ class _Body extends ConsumerWidget {
     final product = detail.product;
     final seller = detail.seller;
     final spec = detail.spec;
+    // Live, so a review posted a moment ago counts here too. The bundled
+    // rating is the fallback until the stream's first value.
+    final liveRating =
+        ref.watch(ratingProvider(productId)).value ?? detail.rating;
     final isGuest = ref.watch(isGuestProvider);
     final selected = ref
         .watch(selectedVariantProvider(productId))
@@ -112,10 +116,10 @@ class _Body extends ConsumerWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Stars(product.rating, size: 12),
+                            Stars(liveRating.average, size: 12),
                             const SizedBox(width: 7),
                             Text(
-                              product.rating.toStringAsFixed(1),
+                              liveRating.average.toStringAsFixed(1),
                               style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w700,
@@ -125,7 +129,7 @@ class _Body extends ConsumerWidget {
                           ],
                         ),
                         InlineLink(
-                          '${product.ratingCount} reviews',
+                          '${liveRating.total} reviews',
                           fontSize: 11.5,
                           onTap: () => context.goToReviews(productId),
                         ),
@@ -179,7 +183,8 @@ class _Body extends ConsumerWidget {
         ),
 
         const SectionHead('What buyers rated it'),
-        _RatingBreakdown(product: product, rating: detail.rating),
+        _RatingBreakdown(product: product, rating: liveRating),
+        _LatestReviews(productId: productId),
 
         const SectionHead('Shipping & pickup'),
         LbmCard(
@@ -592,6 +597,49 @@ class _RatingBreakdown extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The two most recent reviews, live, with the way to all of them.
+///
+/// A review posted from the profile lands under the product within seconds;
+/// without this the page showed a count and nothing to read.
+class _LatestReviews extends ConsumerWidget {
+  const _LatestReviews({required this.productId});
+
+  final String productId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final reviews = ref.watch(reviewsProvider(productId));
+    return LbmAsync<List<Review>>(
+      reviews,
+      skeleton: const SizedBox.shrink(),
+      errorBuilder: (_, _) => const SizedBox.shrink(),
+      isEmpty: (all) => all.isEmpty,
+      empty: const SizedBox.shrink(),
+      data: (all) => Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+        child: LbmCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              RowStack(
+                children: [for (final review in all.take(2)) ReviewRow(review)],
+              ),
+              if (all.length > 2)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+                  child: InlineLink(
+                    'See all ${all.length} reviews',
+                    onTap: () => context.goToReviews(productId),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
