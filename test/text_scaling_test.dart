@@ -19,6 +19,7 @@ const _routes = <String, String>{
   'collection (empty)': '/market/collection/gift-guide',
   'post detail': '/market/post/post_p3',
   'post detail (review)': '/market/post/post_review_1',
+  'post detail (cart)': '/market/post/post_cart_1',
   'product details': '/market/product/p3',
   'product details (service)': '/market/product/p6',
   'all reviews': '/market/reviews/p1',

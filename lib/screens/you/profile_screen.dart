@@ -278,7 +278,13 @@ class _TextCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final text = post is ShoutoutPost ? (post as ShoutoutPost).text : '';
+    final text = switch (post) {
+      final ShoutoutPost s => s.text,
+      final CartPost cart =>
+        '🛒 ${cart.itemCount} ${cart.itemCount == 1 ? 'thing' : 'things'}'
+            '${cart.caption == null ? '' : '\n${cart.caption}'}',
+      _ => '',
+    };
     return LbmCard(
       color: c.skyMist,
       padding: const EdgeInsets.all(10),

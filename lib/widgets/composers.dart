@@ -98,7 +98,10 @@ class _Option extends StatelessWidget {
 /// The list comes from the order pipeline, so you can only review a purchase
 /// that actually happened — which is what makes a review worth reading.
 class ReviewComposer extends ConsumerStatefulWidget {
-  const ReviewComposer({super.key});
+  const ReviewComposer({super.key, this.initialPurchaseId});
+
+  /// Opened from "How was it?": this purchase is picked already.
+  final String? initialPurchaseId;
 
   @override
   ConsumerState<ReviewComposer> createState() => _ReviewComposerState();
@@ -109,6 +112,7 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
   Purchase? _picked;
   int _rating = 5;
   bool _saving = false;
+  bool _preselected = false;
 
   @override
   void dispose() {
@@ -168,6 +172,12 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
           ),
           data: (all) {
             final reviewable = all.where((p) => p.canReview).toList();
+            if (!_preselected && widget.initialPurchaseId != null) {
+              _preselected = true;
+              for (final p in reviewable) {
+                if (p.id == widget.initialPurchaseId) _picked = p;
+              }
+            }
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

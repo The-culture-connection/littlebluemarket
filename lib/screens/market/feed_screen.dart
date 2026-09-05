@@ -13,6 +13,7 @@ import '../../widgets/primitives.dart';
 import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/tips.dart';
 import 'collection_screen.dart';
 
 /// The marketplace feed.
@@ -96,6 +97,10 @@ class FeedScreen extends ConsumerWidget {
             if (isGuest) const GuestBanner(),
             // The store's real taxonomy. Hidden until collections are mirrored.
             const CollectionRail(),
+            // Once: why there is no heart. Then: anything delivered and
+            // waiting for a review.
+            const CartTipCard(),
+            const ReviewPromptCard(),
             LbmAsync<List<Post>>(
               feed,
               skeleton: const PostCardSkeleton(),

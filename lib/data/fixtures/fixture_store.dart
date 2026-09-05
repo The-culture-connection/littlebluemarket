@@ -172,7 +172,7 @@ class FixtureStore {
           authorId: Fx.product(id).sellerId,
           createdAt: now.subtract(Duration(hours: 3 * (i + 1))),
           tags: Fx.product(id).tags,
-          likeCount: Fx.product(id).likes,
+          likeCount: Fx.product(id).saveCount,
           commentCount: Fx.product(id).commentCount,
           likedByMe: false,
           product: Fx.product(id),
@@ -180,6 +180,29 @@ class FixtureStore {
     ];
 
     return [
+      // A cart post, so the feed always renders one kind of each.
+      CartPost(
+        id: 'post_cart_1',
+        authorId: 'dee',
+        createdAt: now.subtract(const Duration(minutes: 40)),
+        tags: const ['#PlasticFree'],
+        likeCount: 0,
+        commentCount: 2,
+        likedByMe: false,
+        caption: 'Stocking up for the market this weekend.',
+        items: [
+          for (final id in const ['p1', 'p2', 'p5'])
+            CartPostItem(
+              productId: id,
+              title: Fx.product(id).title,
+              sellerId: Fx.product(id).sellerId,
+              priceCents: Fx.product(id).priceCents,
+              imageUrl: Fx.product(id).imageUrls.isEmpty
+                  ? null
+                  : Fx.product(id).imageUrls.first,
+            ),
+        ],
+      ),
       listings.first,
       ReviewPost(
         id: 'post_review_1',

@@ -417,3 +417,26 @@ describe("listings are the seller's own drafts", () => {
     await assertSucceeds(seller('kali').doc('listings/L5').get());
   });
 });
+
+describe('cart posts are frozen copies, capped at 24', () => {
+  const item = (i) => ({ productId: 'p' + i, title: 'Thing ' + i, imageUrl: null, sellerId: 'kali', priceCents: 100 });
+  const post = (n) => ({
+    kind: 'cart', authorId: 'maya', tags: [], likeCount: 0, commentCount: 0,
+    items: Array.from({ length: n }, (_, i) => item(i)), itemCount: n,
+  });
+
+  test('24 items post; 25 are refused; an honest count is required', async () => {
+    await assertSucceeds(member('maya').collection('posts').add(post(24)));
+    await assertFails(member('maya').collection('posts').add(post(25)));
+    await assertFails(member('maya').collection('posts').add({ ...post(3), itemCount: 2 }));
+    await assertFails(member('maya').collection('posts').add({ ...post(0) }));
+  });
+
+  test('the cart markers are public to read and nobody\'s to write', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('catalog/p1/carted/kali').set({ active: true });
+    });
+    await assertSucceeds(guest().doc('catalog/p1/carted/kali').get());
+    await assertFails(member('maya').doc('catalog/p1/carted/maya').set({ active: true }));
+  });
+});

@@ -1,6 +1,8 @@
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 
+import { applyMarkerChanges, markerChanges } from './carted.ts';
+
 import { resolveSellerUid, type VendorHints } from './vendors.ts';
 
 /**
@@ -168,8 +170,15 @@ export async function recordPaidOrder(
   const db = getFirestore();
   const orderRef = db.collection('orders').doc(order.id);
   const buyerUid = await resolveBuyerUid(order);
+  // Read before the transaction so the markers the cart held can be
+  // converted once it is cleared: the product leaves "in carts" and the
+  // purchase document is what remains.
+  const cartBefore = order.buyerUid
+    ? (await db.collection('carts').doc(order.buyerUid).get()).data()
+    : undefined;
+  let clearedCart: Array<{ productId: string }> = [];
 
-  return db.runTransaction(async (tx) => {
+  const outcome = await db.runTransaction(async (tx) => {
     const existing = await tx.get(orderRef);
     if (existing.exists) {
       // The retry case. Not an error, and not worth a second write.
@@ -227,6 +236,9 @@ export async function recordPaidOrder(
         { merge: true },
       );
     }
+    clearedCart = order.buyerUid
+      ? ((cartBefore?.lines ?? []) as Array<{ productId: string }>)
+      : [];
 
     if (buyerUid) {
       const itemCount = order.lines.reduce((sum, l) => sum + l.quantity, 0);
@@ -268,6 +280,14 @@ export async function recordPaidOrder(
 
     return 'recorded' as const;
   });
+
+  // Checkout converts the markers: the products leave "in carts" and the
+  // purchase documents are what remain. Outside the transaction, like the
+  // cart writes themselves.
+  if (outcome === 'recorded' && order.buyerUid && clearedCart.length) {
+    await applyMarkerChanges(order.buyerUid, markerChanges(clearedCart, []));
+  }
+  return outcome;
 }
 
 /** Marks the lines of an order delivered when a fulfilment reports it. */

@@ -78,6 +78,30 @@ class CommerceProxyRepository implements CommerceRepository {
   }
 
   @override
+  Future<AddManyResult> addManyLines(List<String> productIds) async {
+    final data = await _call('commerceAddManyLines', {
+      'productIds': productIds,
+    });
+    final skippedRows = data['skipped'];
+    return AddManyResult(
+      cart: CommerceMappers.cart(
+        _requireUid,
+        Map<String, dynamic>.from(data['cart'] as Map),
+      ),
+      added: [
+        if (data['added'] is List)
+          for (final id in data['added'] as List) id.toString(),
+      ],
+      skipped: {
+        if (skippedRows is List)
+          for (final row in skippedRows)
+            if (row is Map)
+              row['productId'].toString(): row['reason'].toString(),
+      },
+    );
+  }
+
+  @override
   Future<Cart> updateLine({
     required String lineId,
     required int quantity,

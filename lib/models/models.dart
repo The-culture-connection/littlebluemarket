@@ -132,8 +132,9 @@ class Product {
     required this.type,
     required this.description,
     required this.cityState,
-    required this.likes,
+    required this.saveCount,
     required this.commentCount,
+    this.inCartsCount = 0,
     this.imageUrls = const [],
     this.collectionHandles = const [],
     this.lat,
@@ -165,7 +166,13 @@ class Product {
   final double? lng;
   final bool freeShipping;
 
-  final int likes;
+  /// How many people have ever added this to their cart. On Little Blue
+  /// Market the cart is the like; this is the number a seller reads as
+  /// interest. Monotonic, function-written.
+  final int saveCount;
+
+  /// How many carts hold it right now. Rises and falls; function-written.
+  final int inCartsCount;
   final int commentCount;
 
   /// Photographs, in the order they appear in the detail slideshow. An
@@ -205,7 +212,7 @@ class Product {
   }
 
   Product copyWith({
-    int? likes,
+    int? saveCount,
     int? commentCount,
     double? rating,
     int? ratingCount,
@@ -220,7 +227,8 @@ class Product {
     type: type,
     description: description,
     cityState: cityState,
-    likes: likes ?? this.likes,
+    saveCount: saveCount ?? this.saveCount,
+    inCartsCount: inCartsCount,
     commentCount: commentCount ?? this.commentCount,
     imageUrls: imageUrls,
     collectionHandles: collectionHandles,

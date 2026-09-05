@@ -89,6 +89,10 @@ abstract interface class CommerceRepository {
     int quantity = 1,
   });
 
+  /// "Add all" from a cart post: each product's default variant, priced
+  /// server-side. Sold-out or delisted items are skipped and reported.
+  Future<AddManyResult> addManyLines(List<String> productIds);
+
   Future<Cart> updateLine({required String lineId, required int quantity});
   Future<Cart> removeLine(String lineId);
   Future<Cart> clearCart();

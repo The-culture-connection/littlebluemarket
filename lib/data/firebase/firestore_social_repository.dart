@@ -199,6 +199,20 @@ class FirestoreSocialRepository implements SocialRepository {
       if (draft.purchaseId != null) 'purchaseId': draft.purchaseId,
       if (draft.aboutSellerId != null) 'aboutSellerId': draft.aboutSellerId,
       if (draft.imageUrls.isNotEmpty) 'imageUrls': draft.imageUrls,
+      // A cart post: the items frozen now, and the count the rules check.
+      if (draft.kind == PostKind.cart) ...{
+        'items': [
+          for (final item in draft.items.take(CartPost.maxItems))
+            {
+              'productId': item.productId,
+              'title': item.title,
+              'imageUrl': item.imageUrl,
+              'sellerId': item.sellerId,
+              'priceCents': item.priceCents,
+            },
+        ],
+        'itemCount': draft.items.take(CartPost.maxItems).length,
+      },
     });
     return doc.id;
   });

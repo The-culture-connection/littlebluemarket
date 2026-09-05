@@ -20,8 +20,8 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | Stage 3 — Buying: add to cart, checkout in-app, order lands | ✅ Done, passed by Grace |
 | Stage 4 — The real catalog: admin claim, collections, backfill, browse an initiative | ✅ Done, passed by Grace (2026-09-05) |
 | Stage 5 — A seller adds a product | ✅ Done, passed by Grace (2026-09-05) |
-| Stage 6 — Approval, edits, "Total sales" | 🟡 Built and deployed 2026-09-05, ready for Grace to test |
-| Stage 7 — Cart replaces like, cart posts, reviews | ⬜ Not started |
+| Stage 6 — Approval, edits, "Total sales" | ✅ Done, passed by Grace (2026-09-05) |
+| Stage 7 — Cart replaces like, cart posts, reviews | 🟡 Built and deployed 2026-09-05, ready for Grace to test |
 | Stage 8 — Shipturtle: payouts, approval status, fulfilment push | ⬜ Not started |
 | Stage 9 — The gaps: seller application flow, Near me, @-tags, better search, live walkthroughs of messages/community/posting, shipping | ⬜ Not started (added 2026-09-05) |
 | Cutover to the real shop | ⬜ Not started |
@@ -335,7 +335,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 ### Stage 6 — Approval, edits, honest numbers (Phase 6)
 
-**Built and deployed to `little-blue-610e5` on 2026-09-05. Ready for Grace to test.** Quit the app and run `scripts/run-live.sh` again first (or use the build Claude installed).
+**Built, deployed and passed by Grace on 2026-09-05.** Quit the app and run `scripts/run-live.sh` again first (or use the build Claude installed).
 
 **What changed, in plain words.** Approval now reaches the seller two ways: the store's webhook (instant) and a pull-to-refresh on the Products tab that asks the store directly (the fallback). Every product the seller made from the app is listed at the top of their Products tab with a chip: Under review, Live, Needs attention, or Not approved. Live and Under review products have an **Edit** button: title, description, price, quantity, SKU, tags, category and collections go straight to the store, and the store keeps its variants (the edit never uses the call that would delete them). The profile stat that used to say "Revenue" now says **Total sales**, because that is what the number is: what buyers paid, not what the seller is owed. No payout figure is shown anywhere until Shipturtle's payout data arrives in Stage 8.
 
@@ -351,19 +351,38 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
   **Pass:** the chip turns **Live** within a few seconds, no restart. Then the fallback: Shopify admin → Settings → Notifications → Webhooks is *not* the place (the app's webhooks are registered by the app, not listed there); instead run `node scripts/register-webhooks.mjs --project dev --check` to confirm they are registered, and to simulate a missed webhook set the product back to **Draft** in Shopify, wait 10 s (the chip goes back to Under review via the webhook), then set it **Active** again and *immediately* pull down on the Products tab: the chip goes Live either way. The point is that a pull always catches up.
   **If it fails:** chip stuck on Under review after a minute and a pull → `firebase functions:log --only sellerRefreshListings --project dev`, paste the last lines.
 
-- [ ] **CP-R2 Edit and restock without losing variants.**
+- [x] **CP-R2 Edit and restock without losing variants.**
   **Grace does (Shopify admin, once):** open one of the seller's app-made products and add a second variant (Variants → Add options like Size: S, M). Save. In the app: Products tab → that product's **Edit** → the form reads the variants from the store and shows a price and quantity field for **each** → change them → **Save changes**. (A single-variant product keeps the plain price and quantity fields.)
   **Pass:** "Saved to the store." In the Shopify admin the product still has **both** variants; the first variant shows the new price; Inventory shows the new quantity at the store's location. The seller's grid shows the new price after a pull.
   **If it fails:** "The store refused the change (…)" → paste it. A variant vanished → tell Claude immediately; that is the one thing this stage promises never happens.
 
-- [ ] **CP-R3 "Total sales".**
+- [x] **CP-R3 "Total sales".**
   **Grace does:** open the seller's profile (their own, and from a buyer account via a product's Sold-by card).
   **Pass:** the stat row reads **Posts · Total sales · Purchases**; the number equals the sum of what buyers paid for that seller's lines (the order from Stage 3 counts); the word "Revenue", "Earnings" or "Payout" appears nowhere in the app.
 
 ### Stage 7 — The journey changes (Phase 7)
 
-- [ ] **CP-J1 The heart becomes the cart.** `PostActionBar` drops like; "N added · M comments"; `catalog/{id}/carted/{uid}` + `saveCount` (monotonic) + `inCartsCount` (live), written only by the commerce functions; the tutorial card. **Grace:** add from a feed card, remove, add again. **Pass:** "added" climbs and never drops; the seller's listing shows "in carts right now" dropping on remove.
-- [ ] **CP-J2 Cart posts and reviews.** `CartPost` (≤24 frozen items, rules), Cart tab on the profile, `commerceAddManyLines`, `onReviewWritten`, delivered → "How was it?". **Grace:** post your cart; "Add all" from another account; mark a purchase delivered (Claude replays a fulfilment webhook) and review it. **Pass:** the cart post renders; 30 items refused at 24; the review appears on the product and in the feed.
+**Built and deployed to `little-blue-610e5` on 2026-09-05. Ready for Grace to test.** Quit the app and run `scripts/run-live.sh` again first (or use the build Claude installed).
+
+**What changed, in plain words.** There is no heart any more. Adding something to your cart is how you show a maker you love their work, and every listing now says "**N added** · M comments" where N is how many people have ever added it. A one-time card at the top of the feed explains this ("♡ is now 🛒"), and the same tip appears once as a dialog the first time a cart button on a card is tapped. Your cart can be **posted**: a snapshot of up to 24 things, with an **Add all to my cart** button for everyone else. When something you bought is delivered and not yet reviewed, a **How was it?** card appears at the top of the feed and opens the review composer with that purchase picked; every review now also lands in the feed and keeps the product's star rating true.
+
+**Claude built:**
+
+- `functions/src/carted.ts` — `catalog/{productId}/carted/{uid}` markers plus `saveCount` (ever added; never drops) and `inCartsCount` (in carts right now), written only by the commerce functions: on every cart write, and converted on checkout when the paid order clears the cart. `commerceAddManyLines` adds a cart post's items in one write, skipping and reporting sold-out or delisted ones. `onReviewWritten` recomputes the product's headline rating from the histogram and mirrors the review into the feed (post id derived from the review id, so a retry cannot post twice).
+- Rules: `carted` markers public to read, nobody's to write; a `kind: 'cart'` post must carry 1–24 frozen items and an honest `itemCount` (rules tests: 24 allowed, 25 refused).
+- Flutter: `CartPost` (sealed-class variant) with its card, "Post my cart" on the cart screen, `Product.saveCount` / `inCartsCount` (mapper falls back to the old like count), the action bar without a heart, the "N added" count line, the tutorial card and one-time dialog (remembered per phone), the "How was it?" card, and `ReviewComposer` opening on a chosen purchase.
+
+**Two deviations from the plan, on purpose.** (1) No separate **Cart** tab on the profile: a fourth tab does not survive 2.0 text scale, so cart posts show under **Posted** as "🛒 N things" cells. (2) No **Repost** action yet: the plan named it without saying what it does; it can be added once that is decided.
+
+- [ ] **CP-J1 The heart becomes the cart.**
+  **Grace does:** Market feed → the "♡ is now 🛒" card is at the top; tap **Got it**. Post a listing as the seller if the feed is empty (You → Post → A good or a service). On that card tap the **cart** icon → the tip dialog appears once → Got it → "Added to your cart". Open the product's page and note the count; go back to the feed.
+  **Pass:** the listing's line reads **1 added · 0 comments** (pull to refresh). Firestore → `catalog/<product>` shows `saveCount: 1`, `inCartsCount: 1`, and a `carted/<your uid>` document. Remove it from the cart → `inCartsCount` drops to 0 and `saveCount` stays 1. Add it again → `inCartsCount` 1, `saveCount` still 1 (a second add by the same person is not a second save). Check out and pay (Stage 3) → after the order lands, `inCartsCount` drops to 0 and the marker is inactive; `saveCount` still 1.
+  **If it fails:** counts not moving → `firebase functions:log --only commerceAddLine --project dev`; paste. Tip card never appears → it was dismissed on this phone already; that is by design.
+
+- [ ] **CP-J2 Cart posts and reviews.**
+  **Grace does:** put two or three things in the cart → Cart → **Post my cart** → caption → Post it. Market feed: the cart post shows a row of the items and **Add all to my cart**. Sign in as the other account → tap **Add all** → the cart fills. Then, to prove the cap, Claude replays the rules test rather than you adding 25 things (the rules refuse 25; the composer only ever sends 24). Reviews: ask Claude to mark one of your purchases delivered (`node scripts/replay-order.mjs` with the fulfilment payload, or the Shipturtle webhook in Stage 8) → the **How was it?** card appears at the top of the feed → Write a review → 5 stars, a sentence → Post review.
+  **Pass:** the cart post renders with its items and adds them for the other account ("Added 3 to your cart"); the review appears in the feed as its own post within seconds, on the product's page under Reviews, and the product's star rating updates; the Bought grid shows **Reviewed** on that purchase and the card disappears.
+  **If it fails:** "Add all" adds nothing → the snackbar names why (sold out / no longer listed); paste it. The review post never appears → `firebase functions:log --only onReviewWritten --project dev`.
 
 ### Stage 8 — Shipturtle, the rest (Phase 8)
 

@@ -194,7 +194,7 @@ void main() {
         type: 'x',
         description: 'd',
         cityState: 'Detroit, MI',
-        likes: 0,
+        saveCount: 0,
         commentCount: 0,
       );
       expect(p.locationLabel(), 'Detroit, MI');
@@ -214,7 +214,7 @@ void main() {
         description: 'd',
         cityState: 'Nashville, TN',
         freeShipping: true,
-        likes: 0,
+        saveCount: 0,
         commentCount: 0,
       );
       expect(p.locationLabel(), 'Nashville, TN · ships free');

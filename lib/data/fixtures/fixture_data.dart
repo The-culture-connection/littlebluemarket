@@ -174,7 +174,7 @@ abstract final class Fx {
       cityState: 'Detroit, MI',
       lat: 42.3314,
       lng: -83.0458,
-      likes: 214,
+      saveCount: 214,
       commentCount: 18,
     ),
     'p2': Product(
@@ -195,7 +195,7 @@ abstract final class Fx {
       cityState: 'Hamtramck, MI',
       lat: 42.3928,
       lng: -83.0496,
-      likes: 341,
+      saveCount: 341,
       commentCount: 29,
     ),
     'p3': Product(
@@ -216,7 +216,7 @@ abstract final class Fx {
       lat: 36.1627,
       lng: -86.7816,
       freeShipping: true,
-      likes: 508,
+      saveCount: 508,
       commentCount: 61,
     ),
     'p4': Product(
@@ -236,7 +236,7 @@ abstract final class Fx {
       cityState: 'Detroit, MI',
       lat: 42.3314,
       lng: -83.0458,
-      likes: 187,
+      saveCount: 187,
       commentCount: 22,
     ),
     'p5': Product(
@@ -256,7 +256,7 @@ abstract final class Fx {
       cityState: 'Hamtramck, MI',
       lat: 42.3928,
       lng: -83.0496,
-      likes: 296,
+      saveCount: 296,
       commentCount: 33,
     ),
     'p6': Product(
@@ -279,7 +279,7 @@ abstract final class Fx {
       cityState: 'Detroit, MI',
       lat: 42.3314,
       lng: -83.0458,
-      likes: 141,
+      saveCount: 141,
       commentCount: 22,
     ),
   };

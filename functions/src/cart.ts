@@ -1,6 +1,7 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 
+import { applyMarkerChanges, markerChanges } from './carted.ts';
 import { adminGraphQL } from './shopify/token.ts';
 import { storefrontGraphQL } from './shopify/storefront.ts';
 import { toCents } from './orders.ts';
@@ -56,6 +57,10 @@ async function readCart(uid: string): Promise<CartDoc> {
 }
 
 async function writeCart(uid: string, lines: CartLine[]): Promise<CartDoc> {
+  // The public signal moves with the cart: a product's first line in adds a
+  // marker and a count; its last line out removes them.
+  const before = await readCart(uid);
+  await applyMarkerChanges(uid, markerChanges(before.lines, lines));
   await cartRef(uid).set(
     {
       lines,
@@ -197,6 +202,66 @@ export async function removeLine(
 
 export async function clearCart(uid: string): Promise<CartDoc> {
   return writeCart(uid, []);
+}
+
+export interface AddManyResult {
+  cart: CartDoc;
+  added: string[];
+  skipped: Array<{ productId: string; reason: string }>;
+}
+
+/**
+ * "Add all" from a cart post: every product's default variant, priced
+ * server-side, in one write. Items that are gone or sold out are skipped and
+ * reported, never silently dropped.
+ */
+export async function addManyLines(uid: string, productIds: string[]): Promise<AddManyResult> {
+  const unique = [...new Set(productIds.map(String).filter(Boolean))].slice(0, 24);
+  const cart = await readCart(uid);
+  const lines = [...cart.lines];
+  const added: string[] = [];
+  const skipped: Array<{ productId: string; reason: string }> = [];
+  const db = getFirestore();
+
+  for (const productId of unique) {
+    try {
+      const variant = await resolveVariant(productId, undefined);
+      if (!variant.available) {
+        skipped.push({ productId, reason: 'sold out' });
+        continue;
+      }
+      const product = await db.collection('catalog').doc(productId).get();
+      if (!product.exists || product.data()?.active === false) {
+        skipped.push({ productId, reason: 'no longer listed' });
+        continue;
+      }
+      const existing = lines.find((line) => line.variantId === variant.variantId);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        lines.push({
+          id: `${productId}_${variant.variantId}`,
+          productId,
+          variantId: variant.variantId,
+          title: variant.title,
+          variantTitle: variant.variantTitle,
+          unitPriceCents: variant.unitPriceCents,
+          quantity: 1,
+          sellerUid: String(product.data()?.sellerId ?? ''),
+          imageUrl: variant.imageUrl ?? null,
+        });
+      }
+      added.push(productId);
+    } catch (error) {
+      skipped.push({
+        productId,
+        reason: error instanceof HttpsError ? error.message : 'could not be added',
+      });
+    }
+  }
+
+  const next = added.length ? await writeCart(uid, lines) : cart;
+  return { cart: next, added, skipped };
 }
 
 /**

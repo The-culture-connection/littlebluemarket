@@ -317,6 +317,27 @@ class FixtureCommerceRepository implements CommerceRepository {
   }
 
   @override
+  Future<AddManyResult> addManyLines(List<String> productIds) async {
+    final added = <String>[];
+    final skipped = <String, String>{};
+    for (final id in {...productIds}.take(CartPost.maxItems)) {
+      try {
+        await addLine(productId: id);
+        added.add(id);
+      } on NotFoundException {
+        skipped[id] = 'no longer listed';
+      } on ValidationException {
+        skipped[id] = 'sold out';
+      }
+    }
+    return AddManyResult(
+      cart: _store.cart.value,
+      added: added,
+      skipped: skipped,
+    );
+  }
+
+  @override
   Future<Cart> updateLine({
     required String lineId,
     required int quantity,
@@ -450,6 +471,25 @@ class FixtureSocialRepository implements SocialRepository {
         aboutSellerId: draft.aboutSellerId,
         imageUrls: draft.imageUrls,
       ),
+      PostKind.cart => () {
+        // The rules refuse more than the cap; the demo says so the same way.
+        if (draft.items.isEmpty || draft.items.length > CartPost.maxItems) {
+          throw ValidationException(
+            'A cart post holds 1 to ${CartPost.maxItems} things.',
+          );
+        }
+        return CartPost(
+          id: id,
+          authorId: _backend.uid,
+          createdAt: now,
+          tags: draft.tags,
+          likeCount: 0,
+          commentCount: 0,
+          likedByMe: false,
+          items: draft.items,
+          caption: draft.caption,
+        );
+      }(),
     };
     _store.posts.value = [post, ..._store.posts.value];
     return id;
@@ -512,6 +552,17 @@ class FixtureSocialRepository implements SocialRepository {
         text: p.text,
         aboutSellerId: p.aboutSellerId,
         imageUrls: p.imageUrls,
+      ),
+      CartPost p => CartPost(
+        id: p.id,
+        authorId: p.authorId,
+        createdAt: p.createdAt,
+        tags: p.tags,
+        likeCount: count,
+        commentCount: p.commentCount,
+        likedByMe: liked,
+        items: p.items,
+        caption: p.caption,
       ),
     };
   }

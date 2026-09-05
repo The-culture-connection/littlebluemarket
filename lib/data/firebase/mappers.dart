@@ -120,7 +120,9 @@ abstract final class FirestoreMappers {
     lat: data['lat'] == null ? null : decimal(data['lat']),
     lng: data['lng'] == null ? null : decimal(data['lng']),
     freeShipping: boolean(data['freeShipping']),
-    likes: integer(data['likeCount']),
+    // The old field name is read until every product has been re-mirrored.
+    saveCount: integer(data['saveCount'] ?? data['likeCount']),
+    inCartsCount: integer(data['inCartsCount']),
     commentCount: integer(data['commentCount']),
     imageUrls: strings(data['imageUrls']),
     collectionHandles: strings(data['collectionHandles']),
@@ -230,6 +232,31 @@ abstract final class FirestoreMappers {
           text: str(data['text']),
           purchaseId: data['purchaseId'] as String?,
           imageUrls: strings(data['imageUrls']),
+        );
+      case 'cart':
+        return CartPost(
+          id: id,
+          authorId: authorId,
+          createdAt: createdAt,
+          tags: tags,
+          likeCount: likeCount,
+          commentCount: commentCount,
+          likedByMe: likedByMe,
+          caption: data['caption'] as String?,
+          items: [
+            if (data['items'] is List)
+              for (final row in data['items'] as List)
+                if (row is Map)
+                  CartPostItem(
+                    productId: str(row['productId']),
+                    title: str(row['title'], 'Untitled'),
+                    sellerId: str(row['sellerId']),
+                    priceCents: integer(row['priceCents']),
+                    imageUrl: row['imageUrl'] is String
+                        ? row['imageUrl'] as String
+                        : null,
+                  ),
+          ],
         );
       case 'shoutout':
         return ShoutoutPost(

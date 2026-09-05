@@ -12,6 +12,7 @@ import 'primitives.dart';
 import 'product_art.dart';
 import 'sheets.dart';
 import 'skeleton.dart';
+import 'tips.dart';
 
 /// An entry in the feed.
 ///
@@ -41,6 +42,7 @@ class PostCard extends ConsumerWidget {
             final ListingPost listing => _ListingBody(post: listing),
             final ReviewPost review => _ReviewBody(post: review),
             final ShoutoutPost shoutout => _ShoutoutBody(post: shoutout),
+            final CartPost cart => _CartBody(post: cart),
           },
         ],
       ),
@@ -48,21 +50,15 @@ class PostCard extends ConsumerWidget {
   }
 }
 
-/// Like, comment, and add-to-cart, shared by the feed card and the post screen.
+/// Add to cart and comment, shared by the feed card and the post screen.
 ///
-/// One widget rather than two look-alikes: the row appeared verbatim in both
-/// places, and the copies had already drifted apart in their callbacks.
+/// There is no like. On Little Blue Market adding something to your cart is
+/// how you show a maker you love their work, and the count line says how
+/// many people have. One widget rather than two look-alikes: the row
+/// appeared verbatim in both places and the copies had drifted apart.
 class PostActionBar extends StatelessWidget {
-  const PostActionBar({
-    super.key,
-    this.liked = false,
-    this.onLike,
-    this.onComment,
-    this.onAddToCart,
-  });
+  const PostActionBar({super.key, this.onComment, this.onAddToCart});
 
-  final bool liked;
-  final VoidCallback? onLike;
   final VoidCallback? onComment;
   final VoidCallback? onAddToCart;
 
@@ -72,28 +68,20 @@ class PostActionBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 11, 16, 4),
       child: Row(
         children: [
-          _ActionIcon(
-            icon: liked
-                ? Icons.favorite_rounded
-                : Icons.favorite_border_rounded,
-            label: liked ? 'Unlike' : 'Like',
-            tint: liked ? context.c.accentDeep : null,
-            onTap: onLike,
-          ),
-          const SizedBox(width: 16),
+          if (onAddToCart != null) ...[
+            _ActionIcon(
+              icon: Icons.add_shopping_cart_rounded,
+              label: 'Add to cart',
+              tint: context.c.accentDeep,
+              onTap: onAddToCart,
+            ),
+            const SizedBox(width: 16),
+          ],
           _ActionIcon(
             icon: Icons.chat_bubble_outline_rounded,
             label: 'Comments',
             onTap: onComment,
           ),
-          if (onAddToCart != null) ...[
-            const Spacer(),
-            _ActionIcon(
-              icon: Icons.add_shopping_cart_rounded,
-              label: 'Add to cart',
-              onTap: onAddToCart,
-            ),
-          ],
         ],
       ),
     );
@@ -342,16 +330,15 @@ class _Actions extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final id = productId;
     return PostActionBar(
-      liked: post.likedByMe,
-      onLike: () => requireProfile(context, ref, () {
-        // The state wanted, not a toggle, so a double tap cannot double count.
-        ref.read(socialRepositoryProvider).setLike(post.id, !post.likedByMe);
-      }),
       onComment: () => context.goToPost(post.id),
       onAddToCart: id == null
           ? null
-          : () =>
-                requireProfile(context, ref, () => addToCart(context, ref, id)),
+          : () => requireProfile(context, ref, () async {
+              // The first time, say what the cart means here.
+              await showCartTipOnce(context, ref);
+              if (!context.mounted) return;
+              await addToCart(context, ref, id);
+            }),
     );
   }
 }
@@ -478,6 +465,9 @@ class _ActionIcon extends StatelessWidget {
   }
 }
 
+/// "N added · M comments" for a listing; "M comments" for everything else.
+/// "Added" is the product's own save count, so the number is the same on
+/// every post about that product.
 class _CountLine extends StatelessWidget {
   const _CountLine({required this.post});
 
@@ -486,16 +476,188 @@ class _CountLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
+    final product = post is ListingPost ? (post as ListingPost).product : null;
     return Text.rich(
       TextSpan(
         style: LbmText.tiny.copyWith(color: c.ink2),
         children: [
-          TextSpan(
-            text: '${Fmt.count(post.likeCount)} likes',
-            style: TextStyle(fontWeight: FontWeight.w700, color: c.ink),
-          ),
-          TextSpan(text: ' · ${Fmt.count(post.commentCount)} comments'),
+          if (product != null) ...[
+            TextSpan(
+              text: '${Fmt.count(product.saveCount)} added',
+              style: TextStyle(fontWeight: FontWeight.w700, color: c.ink),
+            ),
+            const TextSpan(text: ' · '),
+          ],
+          TextSpan(text: '${Fmt.count(post.commentCount)} comments'),
         ],
+      ),
+    );
+  }
+}
+
+/// Someone's cart, posted: a row of what is in it and one tap to add it all.
+class _CartBody extends ConsumerStatefulWidget {
+  const _CartBody({required this.post});
+
+  final CartPost post;
+
+  @override
+  ConsumerState<_CartBody> createState() => _CartBodyState();
+}
+
+class _CartBodyState extends ConsumerState<_CartBody> {
+  bool _adding = false;
+
+  Future<void> _addAll() async {
+    if (_adding) return;
+    setState(() => _adding = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final result = await ref.read(commerceRepositoryProvider).addManyLines([
+        for (final i in widget.post.items) i.productId,
+      ]);
+      final skipped = result.skipped.length;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            skipped == 0
+                ? 'Added ${result.added.length} to your cart'
+                : 'Added ${result.added.length}; $skipped could not be '
+                      'added (${result.skipped.values.toSet().join(', ')})',
+          ),
+        ),
+      );
+    } on RepositoryException catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(describeError(error).body)),
+      );
+    } finally {
+      if (mounted) setState(() => _adding = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final post = widget.post;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (post.caption != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+            child: HashtagText(
+              post.caption!,
+              style: TextStyle(fontSize: 14.5, height: 1.55, color: c.ink),
+              onTagTap: (tag) => context.goToResults(tag),
+            ),
+          ),
+        SizedBox(
+          // Two text lines under the image; the row grows with the text
+          // scale rather than overflowing at 2.0.
+          height: 84 + 36 * MediaQuery.textScalerOf(context).scale(1),
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            itemCount: post.items.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, i) => _CartItemTile(item: post.items[i]),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          // A Wrap, not a Row: at 2.0 text the button drops below the count
+          // instead of running off the right edge.
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Text(
+                '${post.itemCount} ${post.itemCount == 1 ? 'thing' : 'things'}',
+                style: LbmText.tiny.copyWith(color: c.ink2),
+              ),
+              PillButton(
+                _adding ? 'Adding…' : 'Add all to my cart',
+                small: true,
+                expand: false,
+                onPressed: _adding
+                    ? null
+                    : () => requireProfile(context, ref, _addAll),
+              ),
+            ],
+          ),
+        ),
+        _Actions(post: post),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _CountLine(post: post),
+              if (post.tags.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                TagChips(post.tags, onTap: (tag) => context.goToResults(tag)),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CartItemTile extends StatelessWidget {
+  const _CartItemTile({required this.item});
+
+  final CartPostItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final url = item.imageUrl;
+    return GestureDetector(
+      onTap: () => context.goToProduct(item.productId),
+      child: SizedBox(
+        width: 92,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 92,
+              height: 78,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: c.skyWash,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: url == null
+                  ? const SizedBox.shrink()
+                  : url.startsWith('asset://')
+                  ? Image.asset(url.substring(8), fit: BoxFit.cover)
+                  : Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              item.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: LbmText.xtiny.copyWith(color: c.ink),
+            ),
+            Text(
+              item.price,
+              style: LbmText.xtiny.copyWith(
+                fontWeight: FontWeight.w800,
+                color: c.ink,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

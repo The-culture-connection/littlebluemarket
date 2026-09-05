@@ -8,7 +8,7 @@ import 'models.dart';
 /// thing that could appear in it. The product needs three: a seller posting a
 /// listing, a buyer reviewing something they bought, and anyone shouting out a
 /// seller. They share the like/comment/tag machinery and differ in their body.
-enum PostKind { listing, review, shoutout }
+enum PostKind { listing, review, shoutout, cart }
 
 /// A feed entry.
 ///
@@ -138,6 +138,60 @@ final class ShoutoutPost extends Post {
   String? get subjectProductId => null;
 }
 
+/// One frozen item of a cart post.
+@immutable
+class CartPostItem {
+  const CartPostItem({
+    required this.productId,
+    required this.title,
+    required this.sellerId,
+    required this.priceCents,
+    this.imageUrl,
+  });
+
+  final String productId;
+  final String title;
+  final String sellerId;
+  final int priceCents;
+  final String? imageUrl;
+
+  String get price => Fmt.money(priceCents);
+}
+
+/// Someone's cart, posted.
+///
+/// A snapshot, never a live reference: a cart changes by the minute, and a
+/// post that mutated after publication (or emptied itself at checkout) would
+/// be a bug people notice immediately. At most [maxItems], enforced by the
+/// rules as well as here.
+@immutable
+final class CartPost extends Post {
+  const CartPost({
+    required super.id,
+    required super.authorId,
+    required super.createdAt,
+    required super.tags,
+    required super.likeCount,
+    required super.commentCount,
+    required super.likedByMe,
+    required this.items,
+    this.caption,
+  });
+
+  static const maxItems = 24;
+
+  final List<CartPostItem> items;
+  final String? caption;
+
+  int get itemCount => items.length;
+
+  @override
+  PostKind get kind => PostKind.cart;
+
+  @override
+  String? get subjectProductId => null;
+}
+
 /// What the composer hands to the repository. Not a [Post] — it has no id, no
 /// counts, and no author until the write happens.
 @immutable
@@ -151,7 +205,8 @@ class NewPost {
        rating = null,
        purchaseId = null,
        aboutSellerId = null,
-       imageUrls = const [];
+       imageUrls = const [],
+       items = const [];
 
   const NewPost.review({
     required this.productId,
@@ -162,7 +217,8 @@ class NewPost {
     this.imageUrls = const [],
   }) : kind = PostKind.review,
        caption = null,
-       aboutSellerId = null;
+       aboutSellerId = null,
+       items = const [];
 
   const NewPost.shoutout({
     required this.text,
@@ -173,7 +229,19 @@ class NewPost {
        productId = null,
        caption = null,
        rating = null,
-       purchaseId = null;
+       purchaseId = null,
+       items = const [];
+
+  /// The cart as it is right now, frozen. The caller trims to
+  /// [CartPost.maxItems]; the rules refuse anything longer.
+  const NewPost.cart({required this.items, this.caption, this.tags = const []})
+    : kind = PostKind.cart,
+      productId = null,
+      text = null,
+      rating = null,
+      purchaseId = null,
+      aboutSellerId = null,
+      imageUrls = const [];
 
   final PostKind kind;
   final String? productId;
@@ -184,4 +252,5 @@ class NewPost {
   final String? aboutSellerId;
   final List<String> tags;
   final List<String> imageUrls;
+  final List<CartPostItem> items;
 }

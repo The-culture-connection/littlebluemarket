@@ -55,6 +55,22 @@ class CartLine {
   );
 }
 
+/// What "Add all" from a cart post did: what landed, and what could not.
+@immutable
+class AddManyResult {
+  const AddManyResult({
+    required this.cart,
+    required this.added,
+    required this.skipped,
+  });
+
+  final Cart cart;
+  final List<String> added;
+
+  /// Product id → reason ("sold out", "no longer listed").
+  final Map<String, String> skipped;
+}
+
 /// The cart.
 ///
 /// Shipping and tax are nullable because only the checkout provider can compute

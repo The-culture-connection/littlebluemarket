@@ -8,6 +8,7 @@ import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/cart_composer.dart';
 import '../../widgets/checkout_launcher.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/product_art.dart';
@@ -275,6 +276,13 @@ class _SummaryState extends ConsumerState<_Summary> {
             PillButton(
               _working ? 'Opening checkout…' : 'Checkout',
               onPressed: _working ? null : _checkout,
+            ),
+            const SizedBox(height: 8),
+            // The cart is a wishlist you can act on, and you can post it.
+            PillButton(
+              'Post my cart',
+              style: PillStyle.ghost,
+              onPressed: () => showPostCartSheet(context, ref, cart),
             ),
           ],
         ),

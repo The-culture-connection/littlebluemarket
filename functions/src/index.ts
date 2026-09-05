@@ -21,6 +21,7 @@ import {
 } from './catalog.ts';
 import {
   addLine,
+  addManyLines,
   beginCheckout,
   clearCart,
   liveVariants,
@@ -78,6 +79,16 @@ export const commerceAddLine = onCall(commerceOptions, withLoudErrors('commerceA
     variantId: typeof variantId === 'string' ? variantId : undefined,
     quantity: Number(quantity ?? 1),
   });
+}));
+
+/** "Add all" from a cart post. Skips and reports what cannot be added. */
+export const commerceAddManyLines = onCall(commerceOptions, withLoudErrors('commerceAddManyLines', async (request) => {
+  const uid = requireUid(request.auth);
+  const { productIds } = request.data ?? {};
+  if (!Array.isArray(productIds) || productIds.length === 0) {
+    throw new HttpsError('invalid-argument', 'Which products?');
+  }
+  return addManyLines(uid, productIds.map(String));
 }));
 
 export const commerceUpdateLine = onCall(commerceOptions, withLoudErrors('commerceUpdateLine', async (request) => {
@@ -477,6 +488,58 @@ export const onPostWritten = onDocumentWritten(
       );
     }
     await batch.commit();
+  },
+);
+
+/**
+ * A review is written under its product; this puts it in the feed as well
+ * and keeps the product's headline rating true. The post id is derived from
+ * the review id, so a retried trigger cannot post it twice.
+ */
+export const onReviewWritten = onDocumentWritten(
+  'catalog/{productId}/reviews/{reviewId}',
+  async (event) => {
+    const after = event.data?.after?.data();
+    const { productId, reviewId } = event.params;
+    const db = getFirestore();
+
+    // The headline rating, recomputed from the histogram the client
+    // increments, so it never drifts from the reviews themselves.
+    const summary = (await db.collection('catalog').doc(productId).collection('rating').doc('summary').get()).data() ?? {};
+    let count = 0;
+    let total = 0;
+    for (let star = 1; star <= 5; star++) {
+      const n = Number(summary[`stars${star}`] ?? 0);
+      count += n;
+      total += n * star;
+    }
+    await db.collection('catalog').doc(productId).set(
+      { rating: count ? Math.round((total / count) * 10) / 10 : 0, ratingCount: count },
+      { merge: true },
+    );
+
+    const postRef = db.collection('posts').doc(`review_${reviewId}`);
+    if (!after) {
+      await postRef.delete().catch(() => undefined);
+      return;
+    }
+    await postRef.set(
+      {
+        kind: 'review',
+        authorId: String(after.authorId ?? ''),
+        productId,
+        rating: Number(after.rating ?? 5),
+        text: String(after.text ?? ''),
+        tags: Array.isArray(after.tags) ? after.tags : [],
+        purchaseId: after.purchaseId ?? null,
+        imageUrls: Array.isArray(after.imageUrls) ? after.imageUrls : [],
+        reviewId,
+        likeCount: 0,
+        commentCount: FieldValue.increment(0),
+        createdAt: after.createdAt ?? FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
   },
 );
 

@@ -164,6 +164,13 @@ service cloud.firestore {
         allow read: if true;
         allow write: if false;
       }
+
+      // Who has this in their cart. Written only by the commerce functions:
+      // the count is a public signal sellers read, so it has to be true.
+      match /carted/{uid} {
+        allow read: if true;
+        allow write: if false;
+      }
     }
 
     // ------------------------------------------------------------------ posts
@@ -174,7 +181,14 @@ service cloud.firestore {
       allow create: if member()
         && authorIsSelf()
         && incoming().likeCount == 0
-        && incoming().commentCount == 0;
+        && incoming().commentCount == 0
+        // A cart post is a frozen copy of at most 24 items, never a live
+        // reference to the cart itself.
+        && (incoming().kind != 'cart'
+            || (incoming().items is list
+                && incoming().items.size() >= 1
+                && incoming().items.size() <= 24
+                && incoming().itemCount == incoming().items.size()));
 
       // Counters move by increment from the like and comment subcollections,
       // not by anyone writing a total.
