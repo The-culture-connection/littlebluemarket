@@ -36,7 +36,7 @@ class FirestoreCatalogRepository implements CatalogRepository {
     // fallback meant a bad deep link showed the wrong listing.
     if (data == null) throw NotFoundException('product', id);
     return FirestoreMappers.product(doc.id, data);
-  });
+  }, operation: 'firestore catalog product');
 
   @override
   Future<ProductSpec> spec(String id) => guardFirestore(() async {
@@ -44,7 +44,7 @@ class FirestoreCatalogRepository implements CatalogRepository {
     final data = doc.data();
     if (data == null) throw NotFoundException('spec', id);
     return FirestoreMappers.spec(data);
-  });
+  }, operation: 'firestore catalog spec');
 
   @override
   Future<List<Product>> productsByIds(List<String> ids) =>
@@ -72,7 +72,7 @@ class FirestoreCatalogRepository implements CatalogRepository {
           for (final id in ids)
             ?found[id],
         ];
-      });
+      }, operation: 'firestore catalog productsByIds');
 
   @override
   Future<Page<Product>> productsBySeller(String sellerId, {String? cursor}) =>
@@ -93,7 +93,7 @@ class FirestoreCatalogRepository implements CatalogRepository {
               .toList(),
           cursor: snapshot.docs.length < 30 ? null : snapshot.docs.last.id,
         );
-      });
+      }, operation: 'firestore catalog productsBySeller');
 
   @override
   Future<List<Variant>> liveVariants(String productId) =>
@@ -111,7 +111,7 @@ class FirestoreCatalogRepository implements CatalogRepository {
             if (item is Map)
               FirestoreMappers.variant(Map<String, dynamic>.from(item)),
         ];
-      });
+      }, operation: 'callable commerceLiveVariants');
 
   @override
   Future<List<TagCount>> popularTags({int limit = 8}) =>
@@ -129,5 +129,5 @@ class FirestoreCatalogRepository implements CatalogRepository {
               ),
             )
             .toList();
-      });
+      }, operation: 'firestore catalog popularTags');
 }

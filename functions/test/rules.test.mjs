@@ -349,3 +349,22 @@ describe('creating a profile', () => {
     );
   });
 });
+
+describe('the catalog mirror is public, including its subdocuments', () => {
+  // Grace's first product page on the live backend was refused: the product
+  // was readable but its spec/detail subdocument had no rule at all.
+  test('a guest can read a product, its spec and its rating', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('catalog/p1').set({ title: 'Snowboard', active: true });
+      await admin.firestore().doc('catalog/p1/spec/detail').set({ variants: [] });
+      await admin.firestore().doc('catalog/p1/rating/summary').set({ count: 0 });
+    });
+    await assertSucceeds(guest().doc('catalog/p1').get());
+    await assertSucceeds(guest().doc('catalog/p1/spec/detail').get());
+    await assertSucceeds(guest().doc('catalog/p1/rating/summary').get());
+  });
+
+  test('nobody client-side can write a spec', async () => {
+    await assertFails(member('maya').doc('catalog/p1/spec/detail').set({ variants: [] }));
+  });
+});

@@ -148,6 +148,13 @@ service cloud.firestore {
         allow read: if true;
         allow write: if false;
       }
+
+      // The variant table and spec rows, written by the mirror. Public like
+      // the product itself; without this the product page could not open.
+      match /spec/{doc} {
+        allow read: if true;
+        allow write: if false;
+      }
     }
 
     // ------------------------------------------------------------------ posts
