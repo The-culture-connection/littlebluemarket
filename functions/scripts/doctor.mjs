@@ -220,7 +220,9 @@ async function main() {
       try {
         const url = defaultWebhookUrl(projectId);
         const { atUrl, missing: missingTopics } = await listWebhookSubscriptions(ctx, url);
-        if (missingTopics.length) fail('webhooks', `${atUrl.size}/6 topics registered at shopifyWebhook; missing ${missingTopics.join(', ')}`, 'npm run webhooks:dev   (fails with "cannot create a webhook subscription" until the scopes line above is PASS)');
+        if (missingTopics.length) fail('webhooks', `${atUrl.size}/6 topics registered at shopifyWebhook; missing ${missingTopics.join(', ')}`, missingTopics.every((t) => /^(ORDERS|FULFILLMENTS)_/.test(t))
+            ? 'the order and fulfilment topics need Shopify "protected customer data" access: Dev Dashboard -> the app -> Configuration -> Protected customer data access -> Request access (reason: app functionality), save, then npm run webhooks:dev'
+            : 'npm run webhooks:dev   (fails with "cannot create a webhook subscription" until the scopes line above is PASS)');
         else pass('webhooks', 'all 6 topics registered at the deployed shopifyWebhook');
       } catch (error) {
         fail('webhooks', error.message, 'npm run webhooks:check');

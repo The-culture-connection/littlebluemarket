@@ -75,7 +75,9 @@ async function main() {
     if (errors.length) {
       const why = errors.map((e) => e.message).join('; ');
       console.log(`  FAILED   ${topic} — ${why}`);
-      if (/specified topic/i.test(why)) {
+      if (/protected customer data/i.test(why)) {
+        console.log('           (Orders and fulfilments carry customer names and addresses. Shopify Dev Dashboard -> the app -> Configuration (or API access) -> Protected customer data access -> Request access, choose the reason (app functionality) and save; then re-run npm run webhooks:dev.)');
+      } else if (/specified topic/i.test(why)) {
         console.log('           (Shopify says this when the app lacks the scope for the topic. Run npm run doctor: the "shopify scopes" line names what to add in the Shopify Dev Dashboard.)');
       }
       failures += 1;
