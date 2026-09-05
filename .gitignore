@@ -52,3 +52,9 @@ functions/node_modules/
 firebase-debug.log
 firestore-debug.log
 .firebase/
+
+# Firebase Data Connect samples must never re-leak into the app (see _archive in the parent folder)
+lib/dataconnect_generated/
+functions/src/dataconnect-admin-generated/
+dataconnect/
+.dataconnect/

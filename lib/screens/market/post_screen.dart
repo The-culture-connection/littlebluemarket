@@ -10,7 +10,6 @@ import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/post_card.dart';
 import '../../widgets/primitives.dart';
-import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';

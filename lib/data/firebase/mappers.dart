@@ -22,7 +22,6 @@ abstract final class FirestoreMappers {
   static int integer(Object? value, [int fallback = 0]) => switch (value) {
     final int v => v,
     final double v => v.round(),
-    final num v => v.toInt(),
     final String v => int.tryParse(v) ?? fallback,
     _ => fallback,
   };

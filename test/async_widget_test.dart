@@ -1,3 +1,7 @@
+// `copyWithPrevious` is the only way to build "loading over data" outside a
+// provider. Riverpod marks it internal but it is stable and this is a test.
+// ignore_for_file: invalid_use_of_internal_member
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

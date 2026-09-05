@@ -27,7 +27,7 @@ if (!process.env.FIRESTORE_EMULATOR_HOST) {
   process.exit(1);
 }
 
-initializeApp({ projectId: process.env.GCLOUD_PROJECT ?? 'little-blue-cart-dev' });
+initializeApp({ projectId: process.env.GCLOUD_PROJECT ?? 'little-blue-610e5' });
 const db = getFirestore();
 
 const now = Date.now();

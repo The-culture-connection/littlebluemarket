@@ -5,21 +5,48 @@ The backend is hybrid: **Firebase** owns identity and social data, **Shopify + S
 and fulfilment, behind an interface designed so Shopify can be removed later without touching a screen.
 
 Read first, in this order:
-1. `README.md` — the design system, the welcome handoff, the accent contrast split, the glyph rules. Still accurate; do not contradict it.
-2. `Planning/i-have-a-prototype-vivid-dongarra.md` — the approved implementation plan. **It is the source of truth for scope, sequence, and architecture.** If this file and the plan disagree, the plan wins.
+1. **`Planning/checkpoints.md` — the order of work.** Stages 0–8, each cut into checkpoints Grace verifies by tapping through the app. Find the first unticked box; do only that.
+2. `README.md` — the design system, the welcome handoff, the accent contrast split, the glyph rules. Still accurate; do not contradict it.
+3. `Planning/i-have-a-prototype-vivid-dongarra.md` — the approved implementation plan for PRs 1–15 (all done). Source of truth for the architecture.
+4. `Planning/identity-and-catalog.md` — how buyers and sellers actually authenticate, verified against the live systems, and how products map to sellers. Read before touching `linking.ts`, `vendors.ts` or `catalog.ts`.
+5. `Planning/backend-architecture.md` — which box owns what, the seller journeys traced end to end, the app→Shopify product write path, and the seller-authorization guard.
+6. `Planning/implementation-phases.md` — the engineering depth behind Stages 4–8 of `checkpoints.md`.
+7. `Planning/user-journeys.md` — buyer and unified journeys. **Two product decisions live here and contradict the current code: the like is gone (adding to cart is the affinity signal) and upvoting is gone.** They land in Stage 7.
 
 ---
+
+## Start of every session
+
+1. `scripts\doctor.ps1` — one line per check with the exact fix. Do not start feature work with a FAIL you have not fixed or reported.
+2. `scripts\test-all.ps1` — analyze (zero issues), flutter test, tsc, npm test. All green.
+3. Open `Planning/checkpoints.md`, find the first unticked checkpoint, do only that one. Do not skip ahead.
+4. Say which backend you are about to run (`run-live.ps1` is Grace's default; `run-fixtures.ps1` needs no backend; `run-emulators.ps1` is local).
+5. Finishing a checkpoint = tests green, app runs, commit, push, tick the box. Never commit red.
+
+**How Grace reports a failure:** the app's "Copy for Claude" block, the doctor output, or the last 30 lines of the terminal, pasted verbatim, plus which checkpoint step and what was tapped. No paraphrasing, no screenshots of text.
+
+**How Claude reports a failure:** name the file and line, quote the exact message, give one command to run, stop. Do not fix three other things on the way.
+
+**Dev-only surfaces** (error strip, backend badge, Diagnostics screen) are off in release builds and off under `bool.fromEnvironment('FLUTTER_TEST')`, always.
 
 ## Commands
 
 ```bash
-flutter pub get
+scripts\doctor.ps1              # preflight: tools, project, params, secrets, Shopify, functions, webhooks, auth providers
+scripts\test-all.ps1            # flutter analyze + flutter test + tsc + npm test, stops at the first failure
+scripts\run-live.ps1            # Android emulator against the REAL dev project + dev Shopify shop (Grace's default)
+scripts\run-fixtures.ps1        # no backend, demo data (-Chrome to run in the browser)
+scripts\run-emulators.ps1       # local Firebase emulators, seeded
+scripts\deploy-dev.ps1          # test-all -> deploy functions+rules+indexes+storage -> register webhooks -> doctor
+
 flutter analyze                 # must be clean — zero issues, not "only warnings"
-flutter test                    # 291 Flutter tests; 30 more in functions/
-flutter run                     # fixtures backend (default)
-flutter run --dart-define=LBM_BACKEND=live             # once Track B lands
+flutter test                    # 311 Flutter tests; 39 more in functions/
 flutter test test/visual_check.dart --update-goldens   # regenerate test/shots/ after intentional UI changes
 ```
+
+Never run bare `firebase deploy --only functions`: it does not compile TypeScript. `npm run deploy:dev` (or `deploy-dev.ps1`) builds first and also ships rules, indexes and Storage rules, so "are the real rules deployed" is answered by construction.
+
+The parent folder holds `.env.dev`, `.env.littlebluemarket` and `shopify_recovery_codes.txt` (outside git, on purpose) and `_archive/` (an accidental `firebase init` scaffold moved out of the way on 2026-09-04; see its README). Nothing else up there is real.
 
 `visual_check.dart` is deliberately not `_test`-suffixed, so `flutter test` skips it. It renders
 screenshots for human eyeballing, not assertions.
@@ -54,6 +81,11 @@ These exist so Shopify stays removable. Breaking one is a design regression even
   Riverpod providers. `test/no_fixture_imports_test.dart` enforces this once PR 10 lands.
 - **`lib/data/repositories/` is pure Dart.** No `firebase_*`, no Shopify, no Flutter imports there.
 - **Counters use `FieldValue.increment`, never read-modify-write** — likes, upvotes, revenue, member counts.
+- **Selling is a grant, never a client write.** `sellers/{uid}`, `vendorNames/` and `vendorClaims/`
+  are `allow write: if false`; `isSeller` is a Firebase **custom claim**, not a document field. Any
+  new seller-only capability checks `request.auth.token.seller`, plus `sellers/{uid}` and
+  `vendorNames/` server-side. Never add a seller field to `users/{uid}` and never re-introduce
+  `becomeSeller()` — see `Planning/backend-architecture.md` §8 for the escalation it enabled.
 - **Money is `int` cents everywhere.** Never a double, never a pre-formatted string in a model.
   Formatting lives in `lib/models/formatting.dart` (`Fmt`) and extension getters.
 
@@ -150,10 +182,18 @@ post-checkout screen says "we'll confirm shortly" rather than asserting success.
 
 ## Blocked on the user — do not invent answers
 
-- ShipTurtle API credentials.
-- **The ShipTurtle vendor → app-user mapping rule.** Launch blocker: without it no existing seller
-  can log in as a seller, and revenue cannot be attributed. If you reach PR 13 and this is still
-  open, stop and ask.
+- **Shipturtle's API Integration add-on and a merchant-level token.** Paid add-on; without it
+  vendor linking stays manual via `vendorMappings`, and payouts, approval status and the fulfilment
+  push in `fulfillment.ts` cannot be wired. Everything else routes around it — see
+  `Planning/backend-architecture.md` §10.
+- **Who issues vendor claim codes, and how.** The mechanism is specified in
+  `Planning/backend-architecture.md` §8; the operational side (bulk-issue to all 79 vendors, or on
+  request) is not. Needed before PR 16 ships.
+
+**Resolved** — the Shipturtle vendor → app-user mapping rule is no longer open. A vendor is a
+Shipturtle *user* whose `company_id` is the vendor id; the rule is verified email ↔ that user's
+email → `shipturtleVendorId = company_id`. That is strategy 4 in `vendors.ts`. See
+`Planning/identity-and-catalog.md` §2.
 
 ---
 

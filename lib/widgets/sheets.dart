@@ -12,7 +12,6 @@ import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
 import 'primitives.dart';
-import 'product_art.dart';
 
 /// The shared bottom-sheet body: the grip, the soft top radius, and padding.
 class LbmSheet extends StatelessWidget {

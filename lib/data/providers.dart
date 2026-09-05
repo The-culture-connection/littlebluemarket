@@ -58,10 +58,6 @@ final fixtureBackendProvider = Provider<FixtureBackend>((ref) {
 // Each repository resolves independently, which is the point: Firebase lands
 // two PRs before the commerce proxy, and in between the app runs half live and
 // half fixture without a special mode for it.
-//
-// Every `Backend.live` arm throws until its implementation lands. That is
-// deliberate — a silent fall-through to fixtures in a live build would be a
-// much worse bug than a loud one.
 
 final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
@@ -138,12 +134,6 @@ final fulfillmentRepositoryProvider = Provider<FulfillmentRepository>((ref) {
     ),
   };
 });
-
-BackendException _notWired(String name) => BackendException(
-  '$name has no live implementation yet. '
-  'Run without --dart-define=LBM_BACKEND=live, or wire it up.',
-  code: 'not-wired',
-);
 
 /// Identity.
 ///

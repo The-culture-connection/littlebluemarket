@@ -14,7 +14,6 @@ import '../../widgets/product_art.dart';
 import '../../widgets/profile_identity.dart';
 import '../../widgets/composers.dart';
 import '../../widgets/screen.dart';
-import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
 import '../market/results_screen.dart';
 
