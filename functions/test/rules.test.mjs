@@ -316,3 +316,36 @@ describe('selling is a grant, not a client write', () => {
     await assertSucceeds(member('maya').doc('vendorNames/gwynstone').get());
   });
 });
+
+describe('creating a profile', () => {
+  // The shape FirestoreProfileRepository.updateProfile writes on first save.
+  // Grace hit PERMISSION_DENIED on her very first sign-up because the app
+  // omitted the counters; this pins the contract between the two.
+  const firstSave = {
+    revenueCents: 0,
+    purchaseCount: 0,
+    postCount: 0,
+    name: 'Grace',
+    handle: '@grace',
+    handleLower: 'grace',
+    bio: '',
+  };
+
+  test('the first profile save, as the app writes it, is allowed', async () => {
+    await assertSucceeds(member('newbie').doc('users/newbie').set(firstSave));
+  });
+
+  test('a first save that omits the counters is refused', async () => {
+    const { revenueCents, purchaseCount, postCount, ...bare } = firstSave;
+    await assertFails(member('newbie2').doc('users/newbie2').set(bare));
+  });
+
+  test('a first save cannot smuggle a non-zero counter or a seller flag', async () => {
+    await assertFails(
+      member('newbie3').doc('users/newbie3').set({ ...firstSave, revenueCents: 1 }),
+    );
+    await assertFails(
+      member('newbie4').doc('users/newbie4').set({ ...firstSave, isSeller: true }),
+    );
+  });
+});

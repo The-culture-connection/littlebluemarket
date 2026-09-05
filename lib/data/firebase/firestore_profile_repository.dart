@@ -108,7 +108,19 @@ class FirestoreProfileRepository implements ProfileRepository {
       throw const ValidationException('That handle is taken', field: 'handle');
     }
 
+    // The first save *creates* the profile, and the rules insist a new
+    // document carries its money counters at zero — a client that could omit
+    // them could also invent them. Written here, once, and never again: on an
+    // existing document these fields are locked to the order pipeline.
+    final exists = (await _users.doc(id).get()).exists;
+
     await _users.doc(id).set({
+      if (!exists) ...{
+        'revenueCents': 0,
+        'purchaseCount': 0,
+        'postCount': 0,
+        'createdAt': FieldValue.serverTimestamp(),
+      },
       if (edit.name != null) 'name': edit.name!.trim(),
       if (handle != null) ...{
         'handle': handle,
@@ -121,7 +133,7 @@ class FirestoreProfileRepository implements ProfileRepository {
       if (edit.avatarUrl != null) 'avatarUrl': edit.avatarUrl,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-  });
+  }, operation: 'firestore users/{uid} updateProfile');
 
   @override
   Future<String> uploadAvatar(

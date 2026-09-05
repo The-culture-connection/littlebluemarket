@@ -476,6 +476,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _handle = TextEditingController(text: '@');
   final _bio = TextEditingController();
   bool _sells = true;
+  bool _busy = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -485,16 +487,28 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 
   Future<void> _finish() async {
-    // The handle and bio are written, not discarded. The prototype collected
-    // both and threw them away.
-    await ref.read(sessionProvider.notifier).createProfile(
-      ProfileEdit(
-        handle: _handle.text.trim().isEmpty ? null : _handle.text.trim(),
-        bio: _bio.text.trim().isEmpty ? null : _bio.text.trim(),
-      ),
-    );
-    if (!mounted) return;
-    context.go('/market');
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      // The handle and bio are written, not discarded. The prototype collected
+      // both and threw them away.
+      await ref.read(sessionProvider.notifier).createProfile(
+        ProfileEdit(
+          handle: _handle.text.trim().isEmpty ? null : _handle.text.trim(),
+          bio: _bio.text.trim().isEmpty ? null : _bio.text.trim(),
+        ),
+      );
+      if (!mounted) return;
+      context.go('/market');
+    } on RepositoryException catch (error) {
+      if (!mounted) return;
+      setState(() => _error = describeError(error).body);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -548,8 +562,25 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           value: _sells,
           onChanged: (v) => setState(() => _sells = v),
         ),
+        if (_error != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: LbmConst.onWelcome,
+            ),
+          ),
+        ],
       ],
-      actions: [_SlateButton(label: 'Create a profile', onPressed: _finish)],
+      actions: [
+        _SlateButton(
+          label: _busy ? 'One moment…' : 'Create a profile',
+          onPressed: _busy ? null : _finish,
+        ),
+      ],
     );
   }
 }
