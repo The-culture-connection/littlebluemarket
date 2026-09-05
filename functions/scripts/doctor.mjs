@@ -299,7 +299,11 @@ async function main() {
   // 13. android emulator -------------------------------------------------------------
   const devices = run('flutter', ['devices', '--machine']).out;
   if (/emulator-\d+/.test(devices)) pass('android', `emulator booted (${devices.match(/emulator-\d+/)[0]})`);
-  else warn('android', 'no Android emulator running', 'Android Studio -> Device Manager -> Play, or: flutter emulators --launch <name>');
+  else {
+    const qemu = run(process.platform === 'win32' ? 'tasklist' : 'ps', process.platform === 'win32' ? [] : ['-A']).out;
+    if (/qemu-system/i.test(qemu)) warn('android', 'an emulator process is running but adb cannot see it', 'adb kill-server; adb start-server   (then re-run the doctor)');
+    else warn('android', 'no Android emulator running', 'Android Studio -> Device Manager -> Play, or: flutter emulators --launch Pixel_3');
+  }
 
   // summary -----------------------------------------------------------------------
   const count = (s) => results.filter((r) => r.status === s).length;
