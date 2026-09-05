@@ -136,7 +136,7 @@ void main() {
             tint: 0,
             bio: '',
             tags: [],
-            revenueCents: 0,
+            grossSalesCents: 0,
             purchases: 0,
             posts: 0,
           ),

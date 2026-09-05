@@ -41,7 +41,7 @@ void main() {
       expect(person.id, 'abc');
       expect(person.name, isNotEmpty);
       expect(person.handle, isNotEmpty);
-      expect(person.revenueCents, 0);
+      expect(person.grossSalesCents, 0);
       expect(person.isSeller, isFalse);
     });
 

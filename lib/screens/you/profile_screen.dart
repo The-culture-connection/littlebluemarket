@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
 import '../../router/nav.dart';
 import '../../state/providers.dart';
@@ -77,6 +78,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ref.invalidate(sellerProductsProvider(me.id));
           ref.invalidate(postsByProvider(me.id));
           ref.invalidate(purchasesProvider);
+          if (me.isSeller) {
+            // The pull side of approval. Errors are not worth a card here;
+            // the chips simply stay as they were.
+            try {
+              await ref.read(sellerRepositoryProvider).refreshListings();
+            } on RepositoryException {
+              // Left to the next pull.
+            }
+          }
           await Future<void>.delayed(const Duration(milliseconds: 400));
         },
         child: ListView(

@@ -118,6 +118,7 @@ class FirestoreProfileRepository implements ProfileRepository {
     await _users.doc(id).set({
       if (!exists) ...{
         'revenueCents': 0,
+        'grossSalesCents': 0,
         'purchaseCount': 0,
         'postCount': 0,
         'createdAt': FieldValue.serverTimestamp(),

@@ -10,8 +10,8 @@ import '../theme/tokens.dart';
 import 'async.dart';
 import 'primitives.dart';
 
-/// The top of a seller's own Products tab: the Add button, and every draft
-/// that is not live yet with an honest chip on it.
+/// The top of a seller's own Products tab: the Add button, and every
+/// listing the seller made from the app with an honest chip on it.
 ///
 /// A submitted product is on the store as a DRAFT awaiting the merchant; it
 /// is not in the shop, and the grid below will not show it. Listing it here
@@ -38,29 +38,23 @@ class SellerDraftsPanel extends ConsumerWidget {
             listings,
             skeleton: const SizedBox.shrink(),
             errorBuilder: (_, _) => const SizedBox.shrink(),
-            isEmpty: (items) =>
-                items.where((l) => l.status != ListingStatus.live).isEmpty,
+            isEmpty: (items) => items.isEmpty,
             empty: const SizedBox.shrink(),
-            data: (items) {
-              final pending = items
-                  .where((l) => l.status != ListingStatus.live)
-                  .toList();
-              return Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: LbmCard(
-                  child: RowStack(
-                    children: [
-                      for (final listing in pending)
-                        _DraftRow(listing: listing),
-                    ],
-                  ),
+            data: (items) => Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: LbmCard(
+                child: RowStack(
+                  children: [
+                    for (final listing in items) _DraftRow(listing: listing),
+                  ],
                 ),
-              );
-            },
+              ),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Approved products appear in the grid below.',
+            'Approved products also appear in the grid below. Pull down to '
+            'ask the store for the latest status.',
             style: LbmText.xtiny.copyWith(color: c.ink3),
           ),
         ],
@@ -86,10 +80,20 @@ class _DraftRowState extends ConsumerState<_DraftRow> {
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref
-          .read(sellerRepositoryProvider)
-          .publishListing(widget.listing.id);
-      messenger.showSnackBar(const SnackBar(content: Text('Sent for review.')));
+      final repo = ref.read(sellerRepositoryProvider);
+      // A product already on the store is updated; one that never got there
+      // is sent again. Neither makes a second product.
+      if (widget.listing.onStore) {
+        await repo.updateListing(widget.listing.id);
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Saved to the store.')),
+        );
+      } else {
+        await repo.publishListing(widget.listing.id);
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Sent for review.')),
+        );
+      }
     } on RepositoryException catch (error) {
       messenger.showSnackBar(
         SnackBar(content: Text(describeError(error).body)),
@@ -159,6 +163,18 @@ class _DraftRowState extends ConsumerState<_DraftRow> {
               expand: false,
               style: PillStyle.quiet,
               onPressed: _retry,
+            ),
+          ],
+          if (listing.onStore &&
+              listing.status != ListingStatus.submitting &&
+              !_busy) ...[
+            const SizedBox(height: 6),
+            PillButton(
+              'Edit',
+              small: true,
+              expand: false,
+              style: PillStyle.ghost,
+              onPressed: () => context.push('/you/edit-product/${listing.id}'),
             ),
           ],
         ],

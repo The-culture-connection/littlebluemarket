@@ -48,6 +48,8 @@ class Listing {
     this.tags = const [],
     this.error,
     this.shopifyProductId,
+    this.categoryId,
+    this.categoryName,
   });
 
   final String id;
@@ -65,7 +67,12 @@ class Listing {
   /// Human-readable, from the publish function, when [status] is failed.
   final String? error;
   final String? shopifyProductId;
+  final String? categoryId;
+  final String? categoryName;
   final DateTime updatedAt;
+
+  /// Whether the product exists on the store, so an edit goes to it.
+  bool get onStore => shopifyProductId != null && shopifyProductId!.isNotEmpty;
 
   Listing copyWith({
     ListingStatus? status,
@@ -87,6 +94,8 @@ class Listing {
     tags: tags,
     error: clearError ? null : (error ?? this.error),
     shopifyProductId: shopifyProductId ?? this.shopifyProductId,
+    categoryId: categoryId,
+    categoryName: categoryName,
     updatedAt: updatedAt ?? this.updatedAt,
   );
 }

@@ -132,6 +132,41 @@ void main() {
       );
     });
 
+    test('an edit goes to the existing product and keeps its id', () async {
+      final id = await repo.saveDraft(good);
+      final first = await repo.publishListing(id);
+      // The store approves it (pull side).
+      expect(await repo.refreshListings(), 1);
+      expect(
+        (await repo.watchListings().first).single.status,
+        ListingStatus.live,
+      );
+
+      await repo.saveDraft(
+        const ListingDraft(
+          title: 'Cocoa Mint Lip Balm, 2-pack',
+          priceCents: 1400,
+          quantity: 5,
+          imageUrls: ['asset://x.png'],
+        ),
+        id: id,
+      );
+      final updated = await repo.updateListing(id);
+      expect(updated.shopifyProductId, first.shopifyProductId);
+      final listing = (await repo.watchListings().first).single;
+      expect(listing.status, ListingStatus.live);
+      expect(listing.title, 'Cocoa Mint Lip Balm, 2-pack');
+      expect(listing.priceCents, 1400);
+      expect(listing.onStore, isTrue);
+
+      // A never-published draft cannot be "updated".
+      final fresh = await repo.saveDraft(good);
+      await expectLater(
+        repo.updateListing(fresh),
+        throwsA(isA<ValidationException>()),
+      );
+    });
+
     test('category search is by name and ignores one-letter queries', () async {
       expect(await repo.searchCategories('s'), isEmpty);
       final hits = await repo.searchCategories('sweat');

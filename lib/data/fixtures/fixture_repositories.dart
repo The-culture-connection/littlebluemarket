@@ -1136,13 +1136,16 @@ class FixtureSellerRepository implements SellerRepository {
     final listings = [..._store.listings.value];
     final index = id == null ? -1 : listings.indexWhere((l) => l.id == id);
     final existing = index == -1 ? null : listings[index];
-    if (existing != null && !existing.status.editable) {
+    // Content is editable at every status except mid-send, like the rules.
+    if (existing != null && existing.status == ListingStatus.submitting) {
       throw const PermissionException(
-        'That product has already been sent for review.',
+        'That product is still being sent. Try again in a moment.',
       );
     }
     final listingId = id ?? 'L${_next++}';
     final saved = Listing(
+      categoryId: draft.category?.id,
+      categoryName: draft.category?.fullName,
       id: listingId,
       sellerUid: _backend.uid,
       status: existing?.status ?? ListingStatus.draft,
@@ -1251,6 +1254,67 @@ class FixtureSellerRepository implements SellerRepository {
     return _backend._delayed(
       _categories.where((c) => c.fullName.toLowerCase().contains(q)).toList(),
     );
+  }
+
+  @override
+  Future<PublishResult> updateListing(String listingId) async {
+    if (!_isSeller) {
+      throw const PermissionException('You are not set up to sell yet.');
+    }
+    final listings = [..._store.listings.value];
+    final index = listings.indexWhere((l) => l.id == listingId);
+    if (index == -1) throw NotFoundException('listing', listingId);
+    final listing = listings[index];
+    if (!listing.onStore) {
+      throw const ValidationException(
+        'That product has not been added to the store yet.',
+      );
+    }
+    final problem = listing.title.isEmpty
+        ? 'Give it a title.'
+        : listing.priceCents <= 0
+        ? 'Set a price above \$0.'
+        : null;
+    if (problem != null) {
+      listings[index] = listing.copyWith(
+        status: ListingStatus.failed,
+        error: problem,
+        updatedAt: DateTime.now(),
+      );
+      _store.listings.value = listings;
+      throw ValidationException(problem);
+    }
+    // The product keeps its id and its status; only content moved.
+    listings[index] = listing.copyWith(
+      status: listing.status == ListingStatus.failed
+          ? ListingStatus.live
+          : listing.status,
+      clearError: true,
+      updatedAt: DateTime.now(),
+    );
+    _store.listings.value = listings;
+    return _backend._delayed(
+      PublishResult(shopifyProductId: listing.shopifyProductId!),
+    );
+  }
+
+  @override
+  Future<int> refreshListings() async {
+    // The demo store approves everything on the first look.
+    final listings = [..._store.listings.value];
+    var changed = 0;
+    for (var i = 0; i < listings.length; i++) {
+      if (listings[i].status == ListingStatus.submitted &&
+          listings[i].sellerUid == _backend.uid) {
+        listings[i] = listings[i].copyWith(
+          status: ListingStatus.live,
+          updatedAt: DateTime.now(),
+        );
+        changed += 1;
+      }
+    }
+    if (changed > 0) _store.listings.value = listings;
+    return _backend._delayed(changed);
   }
 
   @override

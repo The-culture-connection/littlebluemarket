@@ -49,13 +49,13 @@ class ProfileIdentity extends StatelessWidget {
                         label: 'Posts',
                       ),
                     ),
-                    // Buyers have no revenue, and a "$0" next to their name
+                    // Buyers have no sales, and a "$0" next to their name
                     // reads as a judgement rather than a fact.
                     if (person.isSeller)
                       Expanded(
                         child: _Stat(
-                          value: person.revenueLabel,
-                          label: 'Revenue',
+                          value: person.grossSalesLabel,
+                          label: 'Total sales',
                         ),
                       ),
                     Expanded(

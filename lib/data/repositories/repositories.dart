@@ -250,6 +250,14 @@ abstract interface class SellerRepository {
   /// characters.
   Future<List<ProductCategory>> searchCategories(String query);
 
+  /// Pushes an edited draft to its existing store product: title, price,
+  /// stock, tags, category, collections. The store keeps its variants.
+  Future<PublishResult> updateListing(String listingId);
+
+  /// Asks the store what each submitted listing is now (the fallback when
+  /// the webhook has not answered). Returns how many chips changed.
+  Future<int> refreshListings();
+
   Future<void> deleteDraft(String id);
 }
 

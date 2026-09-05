@@ -92,6 +92,7 @@ service cloud.firestore {
 
       allow create: if isSelf(uid)
         && incoming().revenueCents == 0
+        && (!('grossSalesCents' in incoming()) || incoming().grossSalesCents == 0)
         && incoming().purchaseCount == 0
         && incoming().postCount == 0
         && !('isSeller' in incoming())
@@ -102,6 +103,7 @@ service cloud.firestore {
       allow update: if isSelf(uid)
         && untouched([
           'revenueCents',
+          'grossSalesCents',
           'purchaseCount',
           'postCount',
           'shopifyCustomerId',
@@ -309,8 +311,10 @@ service cloud.firestore {
         && !('submittedAt' in incoming());
       allow update: if seller()
         && isSelf(existing().sellerUid)
-        && untouched(['sellerUid', 'shopifyProductId', 'status', 'submittedAt', 'approvedAt', 'stockSet'])
-        && existing().status in ['draft', 'failed', 'rejected'];
+        && untouched(['sellerUid', 'shopifyProductId', 'status', 'submittedAt', 'approvedAt', 'stockSet', 'previousStatus', 'refreshedAt'])
+        // Content may change at any point except mid-send; the edit path
+        // pushes it to the store afterwards.
+        && existing().status != 'submitting';
       allow delete: if seller()
         && isSelf(existing().sellerUid)
         && existing().status in ['draft', 'failed'];

@@ -137,7 +137,7 @@ void main() {
 
     expect(find.text(Fx.me.handle), findsOneWidget);
     // The stat row is Instagram's, remapped.
-    expect(find.text('Revenue'), findsOneWidget);
+    expect(find.text('Total sales'), findsOneWidget);
     expect(find.text('Purchases'), findsOneWidget);
     expect(find.text('Followers'), findsNothing);
     expect(find.text('Following'), findsNothing);

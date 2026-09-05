@@ -19,8 +19,8 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | CP-A5 — Shipturtle roster probe, automatic vendor detection by email | ✅ Done, proven by the backend health check (roster at /api/v1/users) |
 | Stage 3 — Buying: add to cart, checkout in-app, order lands | ✅ Done, passed by Grace |
 | Stage 4 — The real catalog: admin claim, collections, backfill, browse an initiative | ✅ Done, passed by Grace (2026-09-05) |
-| Stage 5 — A seller adds a product | 🟡 Built and deployed 2026-09-05, ready for Grace to test |
-| Stage 6 — Approval, edits, "Total sales" | ⬜ Not started |
+| Stage 5 — A seller adds a product | ✅ Done, passed by Grace (2026-09-05) |
+| Stage 6 — Approval, edits, "Total sales" | 🟡 Built and deployed 2026-09-05, ready for Grace to test |
 | Stage 7 — Cart replaces like, cart posts, reviews | ⬜ Not started |
 | Stage 8 — Shipturtle: payouts, approval status, fulfilment push | ⬜ Not started |
 | Stage 9 — The gaps: seller application flow, Near me, @-tags, better search, live walkthroughs of messages/community/posting, shipping | ⬜ Not started (added 2026-09-05) |
@@ -298,7 +298,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 ### Stage 5 — A seller adds a product (Phase 5)
 
-**Built and deployed to `little-blue-610e5` on 2026-09-05. Ready for Grace to test.** After every deploy, quit the app and run `scripts/run-live.sh` (Git Bash) or `scripts\run-live.ps1` (PowerShell) again so the phone gets the new build.
+**Built, deployed and passed by Grace on 2026-09-05.** After every deploy, quit the app and run `scripts/run-live.sh` (Git Bash) or `scripts\run-live.ps1` (PowerShell) again so the phone gets the new build.
 
 **What changed, in plain words.** A seller now has an **Add a product** button at the top of their Products tab. The form takes photos, a title, a description, a price, a quantity, an optional SKU and tags, and the collections it belongs to. Tapping **Add to my shop** uploads the photos, saves a draft, and sends it to the store as a *draft product under review*: it is **not** in the shop until Little Blue Market approves it in Shipturtle, and a modal says exactly that. The draft stays on the Products tab with an **Under review** chip. If anything fails, the chip says **Needs attention** with the reason and a Retry button, and retrying never makes a second product.
 
@@ -311,7 +311,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 **One-time (Shopify admin, dev store):** the app needs the **read_locations** scope for opening stock. Shopify admin → Settings → Apps and sales channels → Develop apps → the Little Blue app → Configuration → Admin API integration → tick **read_locations** → Save. If the app is a Partner-dashboard app instead, add the scope there and reinstall. `scripts/doctor.sh` shows `shopify scopes` PASS when it is done. Without it, products are still created, just without stock.
 
-- [ ] **CP-P1 Draft → Under review.**
+- [x] **CP-P1 Draft → Under review.**
   **Grace does:** as `+seller1` (the claimed seller) → You → Products tab → **Add a product** → Add photos (pick one from the emulator's gallery; if it is empty, open the emulator's Camera app once and take a picture, or drag a JPG onto the emulator window) → title, price (e.g. 12.50), quantity → Category: type "sweat" and pick **Sweatshirts** (Shopify's own product taxonomy, searched live) → tap a collection chip → **Add to my shop**.
   **Pass:** the button walks through Uploading photos → Saving the draft → Sending it to the store, then the **Under review** modal appears; Got it lands on the Products tab where the draft shows with an **Under review** chip. In the Shopify admin → Products, the product exists as **Draft** with **Vendor** = your vendor string, the photo attached, and a tag `lbm:…`. In Shipturtle → Products it appears under that vendor's company (Shipturtle mirrors it from Shopify on its next sync; there is no separate "pending approval" entry for products the app creates).
 
@@ -320,24 +320,45 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
   **Also learned:** the vendor string is the join key with Shipturtle. The claim code for `+seller1` was issued against "Snowboard Vendor" (a sample-data vendor), but Shipturtle's company for that email uses the string **"cc"**, so the app's first product landed under the wrong vendor. Fix, once: Diagnostics (as admin) → **Set seller vendor** with the seller's uid and `cc`. From now on, issue claim codes with the string `npm run shipturtle:vendors` prints for the seller's company, never a guess. The product already created ("Fall Crewneck") needs its Vendor changed to `cc` by hand in the Shopify admin.
   **If it fails:** a red card on the form names the reason; tap Copy for Claude if it is not plain. "You are not set up to sell yet" → sign in as the seller account (Diagnostics → Seller claim: yes). "The store refused it: …" → paste the whole message. Product under the wrong vendor in Shopify → the grant's vendor string is wrong; see "Also learned" above.
 
-- [ ] **CP-P2 Retry is safe.**
+- [x] **CP-P2 Retry is safe.**
   **Grace does:** fill the form again with a new title → tap **Add to my shop** → the moment it says "Sending it to the store…", swipe the app away (recent apps → swipe up) → reopen with `run-live` → Products tab.
   **Pass:** the draft is there as **Under review** or **Needs attention**. If it says Needs attention, tap **Retry**: it becomes Under review. Shopify admin → Products shows **one** product with that title, not two.
   **If it fails:** two products in Shopify → paste the two products' tags (each has an `lbm:…` tag; if the tags differ, the second attempt did not reuse the id, tell Claude).
 
-- [ ] **CP-P3 Bad input refused before Shopify.**
+- [x] **CP-P3 Bad input refused before Shopify.**
   **Grace does:** Add a product → price `0` → Add to my shop. Then price `5` but no photo → Add to my shop.
   **Pass:** "Set a price above $0." and "Add at least one photo." appear on the form, nothing is uploaded, and Shopify's product count does not change.
 
-- [ ] **CP-P4 A non-seller is refused.**
+- [x] **CP-P4 A non-seller is refused.**
   **Grace does:** sign out, sign in as `+buyer1` → You: no Products tab and no Add button. Edit profile → Diagnostics → **Try publish**.
   **Pass:** the card reads "Backend answered: PermissionException · You are not set up to sell yet." (As a seller the same button says the probe draft no longer exists, which is also correct.)
 
 ### Stage 6 — Approval, edits, honest numbers (Phase 6)
 
-- [ ] **CP-R1 Approval flips the chip.** Approval branch in `mirrorProduct` reading `app.draft_id`; `sellerRefreshListings` (batched, 60 s limit); status chips + pull-to-refresh. **Grace:** approve in Shipturtle → Live. Then with the webhook disabled (script), approve another, pull-to-refresh → Live.
-- [ ] **CP-R2 Edit and restock without losing variants.** `sellerUpdateListing` via `productVariantsBulkUpdate` + `inventorySetQuantities`, never `productSet` (asserted by a test). **Grace:** edit price, restock. **Pass:** Shopify shows both; variant count unchanged.
-- [ ] **CP-R3 "Total sales".** `revenueCents` → `grossSalesCents` end to end. **Pass:** the label says Total sales; no payout figure anywhere.
+**Built and deployed to `little-blue-610e5` on 2026-09-05. Ready for Grace to test.** Quit the app and run `scripts/run-live.sh` again first (or use the build Claude installed).
+
+**What changed, in plain words.** Approval now reaches the seller two ways: the store's webhook (instant) and a pull-to-refresh on the Products tab that asks the store directly (the fallback). Every product the seller made from the app is listed at the top of their Products tab with a chip: Under review, Live, Needs attention, or Not approved. Live and Under review products have an **Edit** button: title, description, price, quantity, SKU, tags, category and collections go straight to the store, and the store keeps its variants (the edit never uses the call that would delete them). The profile stat that used to say "Revenue" now says **Total sales**, because that is what the number is: what buyers paid, not what the seller is owed. No payout figure is shown anywhere until Shipturtle's payout data arrives in Stage 8.
+
+**Claude built:**
+
+- `functions/src/listing_updates.ts` — `sellerRefreshListings` (one store query for up to 50 submitted/live listings, rate-limited to one look per listing per minute; ACTIVE → Live, DRAFT → Under review, archived or gone → Not approved with a reason) and `sellerUpdateListing` (`productUpdate` + `productVariantsBulkUpdate` + `inventorySetQuantities` + collection add/remove; a test asserts `productSet` is never among the mutations). The approval push side in the mirror was already in from Stage 5.
+- `orders.ts` writes `grossSalesCents` (and keeps `revenueCents` in step until cutover); rules lock both; the app reads the new field and falls back to the old one for older profiles. Label: **Total sales**.
+- Rules: a listing's content stays editable at every status except mid-send; the outcome fields stay the function's. Rules tests updated.
+- Flutter: `SellerRepository.updateListing` / `refreshListings` (Firestore + fixture), `/you/edit-product/:id` reusing the Add form in edit mode (photos read-only for now), the drafts panel shows every app-made product with Edit, Retry routes to update or publish depending on whether the product exists on the store, and pull-to-refresh on the profile calls the store.
+
+- [ ] **CP-R1 Approval flips the chip.**
+  **Grace does:** as the seller, add a product (Stage 5) → the chip says **Under review**. In the Shopify admin → Products → that product → Status **Active** → Save. Back in the app, watch the chip.
+  **Pass:** the chip turns **Live** within a few seconds, no restart. Then the fallback: Shopify admin → Settings → Notifications → Webhooks is *not* the place (the app's webhooks are registered by the app, not listed there); instead run `node scripts/register-webhooks.mjs --project dev --check` to confirm they are registered, and to simulate a missed webhook set the product back to **Draft** in Shopify, wait 10 s (the chip goes back to Under review via the webhook), then set it **Active** again and *immediately* pull down on the Products tab: the chip goes Live either way. The point is that a pull always catches up.
+  **If it fails:** chip stuck on Under review after a minute and a pull → `firebase functions:log --only sellerRefreshListings --project dev`, paste the last lines.
+
+- [ ] **CP-R2 Edit and restock without losing variants.**
+  **Grace does (Shopify admin, once):** open one of the seller's app-made products and add a second variant (Variants → Add options like Size: S, M). Save. In the app: Products tab → that product's **Edit** → change the price to a new number and the quantity to a new number → **Save changes**.
+  **Pass:** "Saved to the store." In the Shopify admin the product still has **both** variants; the first variant shows the new price; Inventory shows the new quantity at the store's location. The seller's grid shows the new price after a pull.
+  **If it fails:** "The store refused the change (…)" → paste it. A variant vanished → tell Claude immediately; that is the one thing this stage promises never happens.
+
+- [ ] **CP-R3 "Total sales".**
+  **Grace does:** open the seller's profile (their own, and from a buyer account via a product's Sold-by card).
+  **Pass:** the stat row reads **Posts · Total sales · Purchases**; the number equals the sum of what buyers paid for that seller's lines (the order from Stage 3 counts); the word "Revenue", "Earnings" or "Payout" appears nowhere in the app.
 
 ### Stage 7 — The journey changes (Phase 7)
 

@@ -221,6 +221,12 @@ GoRouter buildRouter(Ref ref) {
                     builder: (context, state) => const AddProductScreen(),
                   ),
                   GoRoute(
+                    path: 'edit-product/:id',
+                    builder: (context, state) => EditProductScreen(
+                      listingId: state.pathParameters['id']!,
+                    ),
+                  ),
+                  GoRoute(
                     path: 'claim-shop',
                     builder: (context, state) => const ClaimShopScreen(),
                   ),

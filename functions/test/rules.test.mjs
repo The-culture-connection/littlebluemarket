@@ -84,6 +84,7 @@ describe('money is never client-writable', () => {
       db.doc('users/maya').update({ revenueCents: 999999 }),
     );
     await assertFails(db.doc('users/maya').update({ purchaseCount: 999 }));
+    await assertFails(db.doc('users/maya').update({ grossSalesCents: 999999 }));
   });
 
   test('but can still edit their profile', async () => {
@@ -407,8 +408,10 @@ describe("listings are the seller's own drafts", () => {
     await assertSucceeds(seller('kali').doc('listings/L5').update({ title: 'Better balm' }));
     await assertFails(seller('kali').doc('listings/L5').update({ status: 'live' }));
     await assertFails(seller('kali').doc('listings/L5').update({ shopifyProductId: '2' }));
-    // Once submitted, nothing is editable until the store answers.
-    await assertFails(seller('kali').doc('listings/L6').update({ title: 'x' }));
+    // Content stays editable once submitted or live (the edit path pushes it);
+    // only the outcome fields are the function's.
+    await assertSucceeds(seller('kali').doc('listings/L6').update({ title: 'x' }));
+    await assertFails(seller('kali').doc('listings/L6').update({ status: 'live' }));
     // Nobody else reads it.
     await assertFails(member('maya').doc('listings/L5').get());
     await assertSucceeds(seller('kali').doc('listings/L5').get());

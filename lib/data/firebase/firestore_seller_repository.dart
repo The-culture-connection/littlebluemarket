@@ -137,6 +137,31 @@ class FirestoreSellerRepository implements SellerRepository {
       }, operation: 'callable sellerSearchCategories');
 
   @override
+  Future<PublishResult> updateListing(
+    String listingId,
+  ) => guardFirestore(() async {
+    final result = await _functions
+        .httpsCallable(
+          'sellerUpdateListing',
+          options: HttpsCallableOptions(timeout: const Duration(seconds: 130)),
+        )
+        .call<Map<String, dynamic>>({'listingId': listingId});
+    return PublishResult(
+      shopifyProductId: FirestoreMappers.str(result.data['shopifyProductId']),
+      stockSet: FirestoreMappers.boolean(result.data['stockSet'], true),
+    );
+  }, operation: 'callable sellerUpdateListing');
+
+  @override
+  Future<int> refreshListings() => guardFirestore(() async {
+    if (_uid == null) return 0;
+    final result = await _functions
+        .httpsCallable('sellerRefreshListings')
+        .call<Map<String, dynamic>>(const {});
+    return FirestoreMappers.integer(result.data['changed']);
+  }, operation: 'callable sellerRefreshListings');
+
+  @override
   Future<void> deleteDraft(String id) => guardFirestore(
     () => _listings.doc(id).delete(),
     operation: 'firestore listings delete',
@@ -159,6 +184,12 @@ class FirestoreSellerRepository implements SellerRepository {
       error: data['error'] is String ? data['error'] as String : null,
       shopifyProductId: data['shopifyProductId'] is String
           ? data['shopifyProductId'] as String
+          : null,
+      categoryId: data['categoryId'] is String
+          ? data['categoryId'] as String
+          : null,
+      categoryName: data['categoryName'] is String
+          ? data['categoryName'] as String
           : null,
       updatedAt: updated is Timestamp ? updated.toDate() : DateTime.now(),
     );

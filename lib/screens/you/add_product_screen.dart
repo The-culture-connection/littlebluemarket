@@ -22,10 +22,49 @@ import '../../widgets/screen.dart';
 /// model diverges from reality ("I pressed Add and it is not in my shop") is
 /// a modal, not a snackbar.
 class AddProductScreen extends ConsumerStatefulWidget {
-  const AddProductScreen({super.key});
+  const AddProductScreen({super.key, this.existing});
+
+  /// When set, the form edits this listing and pushes the change to the
+  /// product already on the store. Photos stay as they are.
+  final Listing? existing;
 
   @override
   ConsumerState<AddProductScreen> createState() => _AddProductScreenState();
+}
+
+/// Resolves the listing for `/you/edit-product/:id` and opens the form on it.
+class EditProductScreen extends ConsumerWidget {
+  const EditProductScreen({super.key, required this.listingId});
+
+  final String listingId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final listings = ref.watch(listingsProvider);
+    return LbmAsync<List<Listing>>(
+      listings,
+      skeleton: const LbmScreen(
+        appBar: LbmAppBar(title: 'Edit product'),
+        child: SizedBox.shrink(),
+      ),
+      onRetry: () => ref.invalidate(listingsProvider),
+      data: (items) {
+        for (final listing in items) {
+          if (listing.id == listingId) {
+            return AddProductScreen(existing: listing);
+          }
+        }
+        return const LbmScreen(
+          appBar: LbmAppBar(title: 'Edit product'),
+          child: LbmEmpty(
+            title: 'That product is not here',
+            body:
+                'It may have been removed. Pull to refresh your Products tab.',
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _PickedPhoto {
@@ -42,6 +81,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _sku = TextEditingController();
   final _tags = TextEditingController();
   final _photos = <_PickedPhoto>[];
+  final _existingUrls = <String>[];
   final _collections = <String>{};
   final _categoryQuery = TextEditingController();
   List<ProductCategory> _categoryHits = const [];
@@ -56,9 +96,31 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   /// making a second product.
   String? _draftId;
 
+  bool get _editing => widget.existing != null;
+
   @override
   void initState() {
     super.initState();
+    final existing = widget.existing;
+    if (existing != null) {
+      _draftId = existing.id;
+      _title.text = existing.title;
+      _description.text = existing.description;
+      _price.text = (existing.priceCents / 100).toStringAsFixed(2);
+      _quantity.text = existing.quantity.toString();
+      _sku.text = existing.sku ?? '';
+      _tags.text = existing.tags.join(', ');
+      _collections.addAll(existing.collectionHandles);
+      _existingUrls.addAll(existing.imageUrls);
+      if (existing.categoryId != null) {
+        _category = ProductCategory(
+          id: existing.categoryId!,
+          name: (existing.categoryName ?? '').split(' > ').last,
+          fullName: existing.categoryName ?? '',
+        );
+        _categoryQuery.text = _category!.fullName;
+      }
+    }
     _categoryQuery.addListener(_onCategoryTyped);
   }
 
@@ -141,7 +203,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     if (quantity == null || quantity < 0) {
       return 'Quantity must be a whole number, zero or more.';
     }
-    if (_photos.isEmpty) return 'Add at least one photo.';
+    if (_photos.isEmpty && _existingUrls.isEmpty) {
+      return 'Add at least one photo.';
+    }
     return null;
   }
 
@@ -161,7 +225,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     try {
       // 1. Photos first: nothing is left behind if this fails.
       setState(() => _stage = 'Uploading photos…');
-      final urls = <String>[];
+      final urls = <String>[..._existingUrls];
       for (final photo in _photos) {
         urls.add(
           await repo.uploadListingPhoto(
@@ -191,7 +255,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       _draftId = await repo.saveDraft(draft, id: _draftId);
 
       // 3. The function does the rest, by id.
-      await _publish(repo);
+      if (_editing) {
+        await _update(repo);
+      } else {
+        await _publish(repo);
+      }
     } on RepositoryException catch (error) {
       if (!mounted) return;
       setState(() => _error = describeError(error).body);
@@ -214,7 +282,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       _error = null;
     });
     try {
-      await _publish(ref.read(sellerRepositoryProvider));
+      final repo = ref.read(sellerRepositoryProvider);
+      if (_editing) {
+        await _update(repo);
+      } else {
+        await _publish(repo);
+      }
     } on RepositoryException catch (error) {
       if (!mounted) return;
       setState(() => _error = describeError(error).body);
@@ -226,6 +299,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         });
       }
     }
+  }
+
+  Future<void> _update(SellerRepository repo) async {
+    setState(() => _stage = 'Saving to the store…');
+    await repo.updateListing(_draftId!);
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Saved to the store.')));
+    context.pop();
   }
 
   Future<void> _publish(SellerRepository repo) async {
@@ -247,22 +330,31 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     final collections = ref.watch(collectionsProvider);
 
     return LbmScreen(
-      appBar: const LbmAppBar(title: 'Add a product'),
+      appBar: LbmAppBar(title: _editing ? 'Edit product' : 'Add a product'),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
           Text(
-            'It goes to Little Blue Market for approval first, then appears in '
-            'your shop. Photos, a title and a price are all it needs.',
+            _editing
+                ? 'Changes go straight to the product on the store. Photos '
+                      'cannot be changed here yet.'
+                : 'It goes to Little Blue Market for approval first, then '
+                      'appears in your shop. Photos, a title and a price are '
+                      'all it needs.',
             style: LbmText.tiny.copyWith(color: c.ink2),
           ),
           const SizedBox(height: 14),
           const SectionHead('Photos'),
-          _PhotoRow(
-            photos: _photos,
-            onAdd: _busy ? null : _pickPhotos,
-            onRemove: _busy ? null : (i) => setState(() => _photos.removeAt(i)),
-          ),
+          if (_editing)
+            _ExistingPhotos(urls: _existingUrls)
+          else
+            _PhotoRow(
+              photos: _photos,
+              onAdd: _busy ? null : _pickPhotos,
+              onRemove: _busy
+                  ? null
+                  : (i) => setState(() => _photos.removeAt(i)),
+            ),
           const SectionHead('The product'),
           LbmCard(
             padding: const EdgeInsets.all(16),
@@ -457,15 +549,55 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             const SizedBox(height: 12),
           ],
           PillButton(
-            _busy ? _stage : 'Add to my shop',
+            _busy ? _stage : (_editing ? 'Save changes' : 'Add to my shop'),
             onPressed: _busy ? null : _submit,
           ),
           const SizedBox(height: 8),
           Text(
-            'Nothing is public until Little Blue Market approves it.',
+            _editing
+                ? 'Price and stock change on the store right away.'
+                : 'Nothing is public until Little Blue Market approves it.',
             textAlign: TextAlign.center,
             style: LbmText.xtiny.copyWith(color: c.ink3),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The photos already on the store, read-only in edit mode.
+class _ExistingPhotos extends StatelessWidget {
+  const _ExistingPhotos({required this.urls});
+
+  final List<String> urls;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return SizedBox(
+      height: 92,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        children: [
+          for (final url in urls)
+            Container(
+              width: 88,
+              margin: const EdgeInsets.only(right: 8),
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: c.skyWash,
+              ),
+              child: url.startsWith('asset://')
+                  ? Image.asset(url.substring(8), fit: BoxFit.cover)
+                  : Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => ColoredBox(color: c.skyWash),
+                    ),
+            ),
         ],
       ),
     );

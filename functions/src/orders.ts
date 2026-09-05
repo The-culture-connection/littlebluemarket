@@ -206,7 +206,13 @@ export async function recordPaidOrder(
     for (const [sellerUid, cents] of revenueBySeller) {
       tx.set(
         db.collection('users').doc(sellerUid),
-        { revenueCents: FieldValue.increment(cents) },
+        // "Gross sales" is what this number is: the sum of what buyers paid
+        // for this seller's lines. Not a payout; that comes from Shipturtle.
+        // `revenueCents` is kept in step until cutover, then dropped.
+        {
+          grossSalesCents: FieldValue.increment(cents),
+          revenueCents: FieldValue.increment(cents),
+        },
         { merge: true },
       );
     }

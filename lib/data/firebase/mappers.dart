@@ -69,7 +69,8 @@ abstract final class FirestoreMappers {
     tint: integer(data['tint'], tintFor(id)),
     bio: str(data['bio']),
     tags: strings(data['tags']),
-    revenueCents: integer(data['revenueCents']),
+    // The old field name is read until every profile has the new one.
+    grossSalesCents: integer(data['grossSalesCents'] ?? data['revenueCents']),
     purchases: integer(data['purchaseCount']),
     posts: integer(data['postCount']),
     isSeller: boolean(data['isSeller']),

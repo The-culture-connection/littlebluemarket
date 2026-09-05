@@ -22,7 +22,7 @@ export 'search.dart';
 
 /// A person — seller, buyer, or both. The prototype's `U`.
 ///
-/// The stat row is remapped from Instagram: Followers becomes [revenueCents],
+/// The stat row is remapped from Instagram: Followers becomes [grossSalesCents] ("Total sales"),
 /// Following becomes [purchases]. There is no follow relationship anywhere in
 /// the product; discovery runs on hashtags and search.
 @immutable
@@ -34,7 +34,7 @@ class Person {
     required this.tint,
     required this.bio,
     required this.tags,
-    required this.revenueCents,
+    required this.grossSalesCents,
     required this.purchases,
     required this.posts,
     this.isSeller = true,
@@ -56,9 +56,10 @@ class Person {
   /// Initiative hashtags shown on the storefront.
   final List<String> tags;
 
-  /// Lifetime seller revenue. Maintained by the order pipeline, never by the
-  /// client — see the Firestore rules.
-  final int revenueCents;
+  /// Lifetime gross sales: the sum of what buyers paid for this seller's
+  /// lines. Not a payout, and the label never says otherwise. Maintained by
+  /// the order pipeline, never by the client — see the Firestore rules.
+  final int grossSalesCents;
   final int purchases;
   final int posts;
 
@@ -74,7 +75,7 @@ class Person {
   /// record, past orders, vendor id). Set by `linkAccounts`, never by the app.
   final bool isLinked;
 
-  String get revenueLabel => Fmt.money(revenueCents);
+  String get grossSalesLabel => Fmt.money(grossSalesCents);
 
   /// Up to two initials, for the avatar.
   String get initials => name
@@ -89,7 +90,7 @@ class Person {
     String? handle,
     String? bio,
     List<String>? tags,
-    int? revenueCents,
+    int? grossSalesCents,
     int? purchases,
     int? posts,
     bool? isSeller,
@@ -102,7 +103,7 @@ class Person {
     tint: tint,
     bio: bio ?? this.bio,
     tags: tags ?? this.tags,
-    revenueCents: revenueCents ?? this.revenueCents,
+    grossSalesCents: grossSalesCents ?? this.grossSalesCents,
     purchases: purchases ?? this.purchases,
     posts: posts ?? this.posts,
     isSeller: isSeller ?? this.isSeller,

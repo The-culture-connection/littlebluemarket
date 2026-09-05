@@ -37,6 +37,7 @@ import { backfillCatalogPage } from './backfill.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
 import { publishListing, searchCategories } from './listings.ts';
+import { refreshListings, updateListing } from './listing_updates.ts';
 import { verifyShopifyHmac, webhookHmacHeader, webhookTopic } from './webhooks.ts';
 import {
   authenticateShipTurtleWebhook,
@@ -206,6 +207,28 @@ export const adminSetSellerVendor = onCall(
     requireAdmin(request.auth?.token);
     const { uid, vendorName } = request.data ?? {};
     return reassignVendor(String(uid ?? ''), String(vendorName ?? ''), adminUid);
+  }),
+);
+
+/**
+ * Pull side of approval: asks the store what each submitted listing is now.
+ * Rate-limited per listing; the webhook usually answers first.
+ */
+export const sellerRefreshListings = onCall(
+  { secrets: [SHOPIFY_CLIENT_SECRET] },
+  withLoudErrors('sellerRefreshListings', async (request) => {
+    const uid = requireUid(request.auth);
+    return refreshListings(uid, request.auth?.token);
+  }),
+);
+
+/** Edit and restock an existing product. Never productSet. */
+export const sellerUpdateListing = onCall(
+  { secrets: [SHOPIFY_CLIENT_SECRET], timeoutSeconds: 120 },
+  withLoudErrors('sellerUpdateListing', async (request) => {
+    const uid = requireUid(request.auth);
+    const listingId = String((request.data ?? {}).listingId ?? '');
+    return updateListing(uid, request.auth?.token, listingId);
   }),
 );
 
