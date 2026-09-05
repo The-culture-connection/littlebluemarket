@@ -86,7 +86,10 @@ class FirestoreSocialRepository implements SocialRepository {
         if (doc.data()['productId'] case final String id) id,
     };
     final products = await _productsByIds(productIds.toList());
-    final liked = await _likedPostIds(snapshot.docs.map((d) => d.id).toList());
+    // There is no like on Little Blue Market (the cart is the like), so
+    // nothing per viewer is looked up. The old collection-group query over
+    // every likes subcollection was also one the rules never allowed.
+    const liked = <String>{};
 
     return [
       for (final doc in snapshot.docs)
@@ -118,34 +121,6 @@ class FirestoreSocialRepository implements SocialRepository {
     return products;
   }
 
-  /// Which of [postIds] this viewer has liked.
-  ///
-  /// One collection-group query on the like documents keyed by uid, rather
-  /// than a read per post.
-  Future<Set<String>> _likedPostIds(List<String> postIds) async {
-    final me = uid;
-    if (me == null || postIds.isEmpty) return const {};
-
-    final liked = <String>{};
-    const chunkSize = 30;
-    for (var i = 0; i < postIds.length; i += chunkSize) {
-      final chunk = postIds.sublist(
-        i,
-        i + chunkSize > postIds.length ? postIds.length : i + chunkSize,
-      );
-      final snapshot = await _db
-          .collectionGroup('likes')
-          .where('uid', isEqualTo: me)
-          .where('postId', whereIn: chunk)
-          .get();
-      for (final doc in snapshot.docs) {
-        final postId = doc.data()['postId'];
-        if (postId is String) liked.add(postId);
-      }
-    }
-    return liked;
-  }
-
   @override
   Future<Post> post(String id) => guardFirestore(() async {
     final doc = await _posts.doc(id).get();
@@ -156,7 +131,7 @@ class FirestoreSocialRepository implements SocialRepository {
     final product = productId is String
         ? (await _productsByIds([productId]))[productId]
         : null;
-    final liked = (await _likedPostIds([id])).contains(id);
+    const liked = false;
 
     final post = FirestoreMappers.post(
       doc.id,
