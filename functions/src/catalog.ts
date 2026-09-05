@@ -1,7 +1,7 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 
-import { productCollectionHandles, publishToAllChannels } from './collections.ts';
+import { ensureOnAppChannel, productCollectionHandles, publishToAllChannels } from './collections.ts';
 import { geohash } from './geohash.ts';
 import { toCents } from './orders.ts';
 import { normalizeVendorName } from './sellers.ts';
@@ -43,6 +43,10 @@ export interface RestProduct {
     price?: string | number;
     available?: boolean;
     inventory_quantity?: number;
+    /** "deny" or "continue": whether it sells past zero. */
+    inventory_policy?: string;
+    /** Null when stock is not tracked at all. */
+    inventory_management?: string | null;
   }>;
   /** Not on webhooks; the backfill carries it, the webhook path fetches it. */
   collectionHandles?: string[];
@@ -67,9 +71,28 @@ export interface GraphQLProduct {
       price: string;
       availableForSale: boolean;
       inventoryQuantity: number | null;
+      inventoryPolicy?: string;
     }>;
   };
   collections: { nodes: Array<{ handle: string }> };
+}
+
+/**
+ * Whether a variant can be bought right now, from what a webhook carries.
+ * The REST payload has no `available` flag; it has the stock count and the
+ * policy, and that is what the storefront decides from too.
+ */
+export function variantAvailable(variant: {
+  available?: boolean;
+  inventory_quantity?: number;
+  inventory_policy?: string;
+  inventory_management?: string | null;
+}): boolean {
+  if (typeof variant.available === 'boolean') return variant.available;
+  if (String(variant.inventory_policy ?? '').toLowerCase() === 'continue') return true;
+  if (variant.inventory_management === null) return true; // untracked
+  if (typeof variant.inventory_quantity !== 'number') return true;
+  return variant.inventory_quantity > 0;
 }
 
 const tail = (gid: string) => gid.split('/').pop() ?? gid;
@@ -102,6 +125,7 @@ export function productFromGraphQL(node: GraphQLProduct): RestProduct {
       price: v.price,
       available: v.availableForSale,
       inventory_quantity: v.inventoryQuantity ?? undefined,
+      inventory_policy: v.inventoryPolicy?.toLowerCase(),
     })),
     collectionHandles: node.collections.nodes.map((c) => c.handle),
   };
@@ -185,7 +209,7 @@ export function catalogDocFor(
         name: String(variant.title ?? 'Default'),
         variantId: String(variant.id ?? ''),
         priceCents: toCents(variant.price),
-        availableForSale: variant.available !== false,
+        availableForSale: variantAvailable(variant),
         quantityAvailable:
           typeof variant.inventory_quantity === 'number' ? variant.inventory_quantity : null,
       })),
@@ -270,6 +294,16 @@ export async function mirrorProduct(payload: RestProduct): Promise<void> {
       .collection('posts')
       .doc(`listing_${id}`)
       .set(autoPostFor(id, sellerUid, doc), { merge: true });
+  }
+
+  // Every active product must be on the app's channel, or the storefront
+  // refuses it at checkout however visible it is in the app.
+  if (doc.active === true) {
+    try {
+      await ensureOnAppChannel(id);
+    } catch (error) {
+      logger.warn("Could not put a product on the app's channel", { id, error: String(error) });
+    }
   }
 
   // Approval, push side. A product the app created carries its listing id;

@@ -35,7 +35,7 @@ const QUERY = `
       nodes {
         id title descriptionHtml vendor productType tags status createdAt publishedAt
         images(first: 20) { nodes { url } }
-        variants(first: 100) { nodes { id title price availableForSale inventoryQuantity } }
+        variants(first: 100) { nodes { id title price availableForSale inventoryQuantity inventoryPolicy } }
         collections(first: 50) { nodes { handle } }
       }
     }

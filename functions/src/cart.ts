@@ -18,7 +18,7 @@ import { toCents } from './orders.ts';
  * single most obvious thing to tamper with in a commerce app.
  */
 
-interface CartLine {
+export interface CartLine {
   id: string;
   productId: string;
   variantId: string;
@@ -265,6 +265,23 @@ export async function addManyLines(uid: string, productIds: string[]): Promise<A
 }
 
 /**
+ * The storefront's checkout errors, in the buyer's terms. "The merchandise
+ * with id gid://…/ProductVariant/123 does not exist" means that variant is
+ * not on the app's sales channel (or is gone); the buyer needs to know which
+ * line, not which id.
+ */
+export function explainCheckoutError(message: string | undefined, lines: CartLine[]): string {
+  const text = message ?? 'Checkout failed.';
+  const match = /ProductVariant\/(\d+)/.exec(text);
+  if (match && /does not exist/i.test(text)) {
+    const line = lines.find((l) => l.variantId === match[1]);
+    const name = line ? `"${line.title}"` : 'One item';
+    return `${name} is not available in the app's shop right now. Remove it from your cart and try again.`;
+  }
+  return text;
+}
+
+/**
  * Hands the cart to the storefront and returns where to finish.
  *
  * The attributes are the whole attribution mechanism: `app_uid` on the cart and
@@ -306,10 +323,7 @@ export async function beginCheckout(
 
   const errors = result.cartCreate.userErrors;
   if (errors?.length) {
-    throw new HttpsError(
-      'failed-precondition',
-      errors[0]?.message ?? 'Checkout failed.',
-    );
+    throw new HttpsError('failed-precondition', explainCheckoutError(errors[0]?.message, cart.lines));
   }
   const created = result.cartCreate.cart;
   if (!created) {

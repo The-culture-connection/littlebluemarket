@@ -118,6 +118,64 @@ export async function publishToAllChannels(productId: string): Promise<number> {
 }
 
 /**
+ * The app's own sales channel, by name.
+ *
+ * The Storefront token belongs to the headless channel Shopify created for
+ * the app, and the storefront can only sell what is published to it. A
+ * product on the Online Store alone is invisible to checkout. Pure, so the
+ * choice is testable: the headless publication if there is one, else null.
+ */
+export function pickAppPublication(
+  publications: Array<{ id: string; name: string }>,
+): string | null {
+  const headless = publications.find((p) => /headless/i.test(p.name));
+  return headless?.id ?? null;
+}
+
+let appPublicationCache: string | null | undefined;
+
+async function appPublicationId(): Promise<string | null> {
+  if (appPublicationCache !== undefined) return appPublicationCache;
+  const data = await adminGraphQL<{ publications: { nodes: Array<{ id: string; name: string }> } }>(
+    `{ publications(first: 20) { nodes { id name } } }`,
+  );
+  appPublicationCache = pickAppPublication(data.publications.nodes);
+  if (!appPublicationCache) {
+    logger.warn('No headless publication found; products cannot be sold through the app', {
+      publications: data.publications.nodes.map((p) => p.name),
+    });
+  }
+  return appPublicationCache;
+}
+
+/**
+ * Makes sure a product is on the app's channel. Every active product goes
+ * through here on mirror; a merchant creating a product in the Shopify admin
+ * publishes it to the Online Store and never thinks about the app's channel,
+ * and the checkout then says the merchandise does not exist.
+ */
+export async function ensureOnAppChannel(productId: string): Promise<boolean> {
+  const publicationId = await appPublicationId();
+  if (!publicationId) return false;
+  const gid = `gid://shopify/Product/${productId}`;
+  const check = await adminGraphQL<{ product: { publishedOnPublication: boolean } | null }>(
+    `query OnChannel($id: ID!, $pub: ID!) { product(id: $id) { publishedOnPublication(publicationId: $pub) } }`,
+    { id: gid, pub: publicationId },
+  );
+  if (!check.product || check.product.publishedOnPublication) return false;
+  const data = await adminGraphQL<{ publishablePublish: { userErrors: Array<{ message: string }> } }>(
+    `mutation Publish($id: ID!, $input: [PublicationInput!]!) {
+      publishablePublish(id: $id, input: $input) { userErrors { field message } }
+    }`,
+    { id: gid, input: [{ publicationId }] },
+  );
+  const errors = data.publishablePublish.userErrors;
+  if (errors.length) throw new Error(`publishablePublish: ${errors.map((e) => e.message).join('; ')}`);
+  logger.info("Published a product to the app's channel", { productId });
+  return true;
+}
+
+/**
  * The collection handles one product belongs to. Product webhooks do not
  * carry collections, so the mirror asks once per update.
  */
