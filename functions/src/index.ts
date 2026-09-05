@@ -12,6 +12,7 @@ import {
   SHOPIFY_STOREFRONT_PRIVATE_TOKEN,
   SHOPIFY_WEBHOOK_SECRET,
   SHIPTURTLE_WEBHOOK_SECRET,
+  SHIPTURTLE_API_KEY,
 } from './config.ts';
 import {
   backfillSellerForVendor,
@@ -38,6 +39,11 @@ import { syncCollections } from './collections.ts';
 import { backfillCatalogPage } from './backfill.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
+import { syncVendorRoster } from './roster_grant.ts';
+import { decideApplication, parseDecision } from './applications.ts';
+import { geocodeProfileIfNeeded } from './geocode.ts';
+import { mentionsToNotify, notify } from './notifications.ts';
+import { syncShipturtleOrders } from './shipturtle_orders.ts';
 import { publishListing, searchCategories } from './listings.ts';
 import { refreshListings, updateListing } from './listing_updates.ts';
 import { verifyShopifyHmac, webhookHmacHeader, webhookTopic } from './webhooks.ts';
@@ -255,6 +261,19 @@ export const sellerSearchCategories = onCall(
 );
 
 /**
+ * Stage 9: an admin answers a seller application. Approving makes the same
+ * grant a claim code would, as the vendor string the admin names.
+ */
+export const adminDecideApplication = onCall(
+  withLoudErrors('adminDecideApplication', async (request) => {
+    const adminUid = requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    return decideApplication(adminUid, String(data.uid ?? ''), parseDecision(data));
+  }),
+);
+
+/**
  * Takes it away again. Admin only.
  *
  * Products already on the storefront stay: they are Shopify's, and pulling
@@ -348,11 +367,55 @@ export const adminBackfillCatalog = onCall(
   }),
 );
 
+/**
+ * Stage 8: selling without a code. Every six hours, every Shipturtle vendor
+ * user whose email belongs to a verified app account becomes a seller, as
+ * the vendor string their company's products carry.
+ */
+export const sellerSyncVendorRoster = onSchedule(
+  { schedule: 'every 6 hours', secrets: [SHIPTURTLE_API_KEY] },
+  async () => {
+    await syncVendorRoster();
+  },
+);
+
+/**
+ * Stage 8: what Shipturtle knows about every order — the courier's tracking
+ * and the vendor's settlement state — pulled every fifteen minutes and on
+ * demand from the seller's shipping screen.
+ */
+export const shipturtleSyncOrders = onSchedule(
+  { schedule: 'every 15 minutes', secrets: [SHIPTURTLE_API_KEY] },
+  async () => {
+    await syncShipturtleOrders();
+  },
+);
+
+export const sellerRefreshShipments = onCall(
+  { secrets: [SHIPTURTLE_API_KEY], timeoutSeconds: 120 },
+  withLoudErrors('sellerRefreshShipments', async (request) => {
+    requireUid(request.auth);
+    return syncShipturtleOrders();
+  }),
+);
+
 /** Collections change rarely; twice a day keeps the picker honest. */
 export const syncCollectionsScheduled = onSchedule(
   { schedule: 'every 12 hours', secrets: [SHOPIFY_CLIENT_SECRET] },
   async () => {
     await syncCollections();
+  },
+);
+
+/** Stage 9: a typed city becomes a point, on the profile and on the seller's products. */
+export const onUserWritten = onDocumentWritten(
+  'users/{uid}',
+  async (event) => {
+    await geocodeProfileIfNeeded(
+      event.params.uid,
+      event.data?.before?.data() as Record<string, unknown> | undefined,
+      event.data?.after?.data() as Record<string, unknown> | undefined,
+    );
   },
 );
 
@@ -489,6 +552,18 @@ export const onPostWritten = onDocumentWritten(
       );
     }
     await batch.commit();
+
+    // Stage 9: the people this post names hear about it.
+    const afterAll = event.data?.after?.data() as Record<string, unknown> | undefined;
+    const beforeAll = event.data?.before?.data() as Record<string, unknown> | undefined;
+    for (const uid of mentionsToNotify(afterAll, beforeAll)) {
+      await notify(uid, {
+        type: 'mention',
+        postId: event.params.postId,
+        fromUid: String(afterAll?.authorId ?? ''),
+        text: String(afterAll?.text ?? afterAll?.caption ?? '').slice(0, 140),
+      });
+    }
   },
 );
 
@@ -553,6 +628,7 @@ export const onReviewWritten = onDocumentWritten(
         tags: Array.isArray(after.tags) ? after.tags : [],
         purchaseId: after.purchaseId ?? null,
         imageUrls: Array.isArray(after.imageUrls) ? after.imageUrls : [],
+        mentionedUids: Array.isArray(after.mentionedUids) ? after.mentionedUids : [],
         reviewId,
         likeCount: 0,
         commentCount: FieldValue.increment(0),
@@ -573,10 +649,25 @@ export const onCommentWritten = onDocumentWritten(
   async (event) => {
     const delta = counterDelta(Boolean(event.data?.before?.exists), Boolean(event.data?.after?.exists));
     if (delta === 0) return;
-    await getFirestore()
-      .collection('posts')
-      .doc(event.params.postId)
-      .set({ commentCount: FieldValue.increment(delta) }, { merge: true });
+    const db = getFirestore();
+    const postRef = db.collection('posts').doc(event.params.postId);
+    await postRef.set({ commentCount: FieldValue.increment(delta) }, { merge: true });
+
+    // A new comment tells the post's author, unless they wrote it.
+    if (delta === 1) {
+      const comment = event.data?.after?.data() as Record<string, unknown> | undefined;
+      const post = (await postRef.get()).data();
+      const authorId = String(post?.authorId ?? '');
+      const fromUid = String(comment?.authorId ?? '');
+      if (authorId && fromUid && authorId !== fromUid) {
+        await notify(authorId, {
+          type: 'comment',
+          postId: event.params.postId,
+          fromUid,
+          text: String(comment?.text ?? '').slice(0, 140),
+        });
+      }
+    }
   },
 );
 
@@ -659,8 +750,14 @@ export const shipturtleWebhook = onRequest(
       return;
     }
 
-    // TODO(prod): once a `prod` alias exists, accepting an unverified webhook
-    // must be dev-only — gate this branch on the project id and 401 in prod.
+    // An unverified webhook is accepted on the dev project only. Anywhere
+    // else, no secret means no writes: a forged shipment is a wrong
+    // tracking number on a real buyer's order.
+    if (!auth.verified && projectId() !== 'little-blue-610e5') {
+      logger.warn('Rejected an unverified ShipTurtle webhook outside dev', { project: projectId() });
+      response.status(401).send('unverified');
+      return;
+    }
     if (auth.alarm) {
       // They sign; we are not checking. The one case worth an error-level page.
       logger.error(auth.alarm, { sawHeaders: auth.sawHeaders });

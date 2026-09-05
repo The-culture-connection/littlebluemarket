@@ -213,12 +213,19 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
           '/verify?email=${Uri.encodeComponent(_email.text)}&create=1',
         );
       } else {
-        await session.signInWithPassword(
+        final user = await session.signInWithPassword(
           email: _email.text,
           password: _password.text,
         );
         if (!mounted) return;
-        context.go('/market');
+        // An existing account that never confirmed its address gets the
+        // confirm screen back, with a way past it, rather than the market
+        // and a wall later.
+        if (!user.emailVerified) {
+          context.go('/verify?email=${Uri.encodeComponent(_email.text)}');
+        } else {
+          context.go('/market');
+        }
       }
     } on RepositoryException catch (error) {
       if (!mounted) return;

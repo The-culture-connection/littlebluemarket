@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/repositories/repositories.dart';
@@ -12,6 +15,28 @@ import 'primitives.dart';
 import 'product_art.dart';
 import 'sheets.dart';
 import 'skeleton.dart';
+
+/// The uids of the members a text names with @, looked up by handle. A
+/// handle nobody holds is left as text.
+Future<List<String>> resolveMentionUids(
+  WidgetRef ref,
+  String text, {
+  String? except,
+}) async {
+  final profiles = ref.read(profileRepositoryProvider);
+  final uids = <String>[];
+  for (final handle in parseMentionHandles(text)) {
+    try {
+      final person = await profiles.personByHandle(handle);
+      if (person != null && person.id != except && !uids.contains(person.id)) {
+        uids.add(person.id);
+      }
+    } on RepositoryException {
+      // A lookup that fails costs a notification, not the post.
+    }
+  }
+  return uids;
+}
 
 /// The sheet behind the + on your own profile.
 ///
@@ -128,6 +153,7 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
+      final mentioned = await resolveMentionUids(ref, _text.text);
       await ref
           .read(socialRepositoryProvider)
           .addReview(
@@ -136,6 +162,7 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
               rating: _rating,
               text: _text.text.trim(),
               purchaseId: picked.id,
+              mentionedUids: mentioned,
             ),
           );
       navigator.pop();
@@ -315,6 +342,34 @@ class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
   Person? _mentioned;
   List<Person> _matches = const [];
   bool _saving = false;
+  Uint8List? _photo;
+  String _photoType = 'image/jpeg';
+
+  Future<void> _pickPhoto() async {
+    try {
+      final file = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 2000,
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _photo = bytes;
+        _photoType =
+            file.mimeType ??
+            (file.name.toLowerCase().endsWith('.png')
+                ? 'image/png'
+                : 'image/jpeg');
+      });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open your photos: $error')),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -356,14 +411,20 @@ class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
-      await ref
-          .read(socialRepositoryProvider)
-          .createPost(
-            NewPost.shoutout(
-              text: _text.text.trim(),
-              aboutSellerId: _mentioned?.id,
-            ),
-          );
+      final social = ref.read(socialRepositoryProvider);
+      final photo = _photo;
+      final imageUrls = photo == null
+          ? const <String>[]
+          : [await social.uploadPostPhoto(photo, contentType: _photoType)];
+      final mentioned = await resolveMentionUids(ref, _text.text);
+      await social.createPost(
+        NewPost.shoutout(
+          text: _text.text.trim(),
+          aboutSellerId: _mentioned?.id,
+          imageUrls: imageUrls,
+          mentionedUids: mentioned,
+        ),
+      );
       navigator.pop();
       messenger.showSnackBar(const SnackBar(content: Text('Shoutout posted')));
     } on RepositoryException catch (error) {
@@ -425,6 +486,39 @@ class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
             ),
           ),
         ],
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            PillButton(
+              _photo == null ? 'Add a photo' : 'Change photo',
+              small: true,
+              expand: false,
+              style: PillStyle.quiet,
+              icon: Icons.add_a_photo_outlined,
+              onPressed: _saving ? null : _pickPhoto,
+            ),
+            if (_photo != null) ...[
+              const SizedBox(width: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.memory(
+                  _photo!,
+                  width: 44,
+                  height: 44,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(width: 6),
+              PillButton(
+                'Remove',
+                small: true,
+                expand: false,
+                style: PillStyle.ghost,
+                onPressed: _saving ? null : () => setState(() => _photo = null),
+              ),
+            ],
+          ],
+        ),
         const SizedBox(height: 14),
         PillButton(
           _saving ? 'Posting…' : 'Post shoutout',
@@ -467,6 +561,7 @@ class _ListingComposerState extends ConsumerState<ListingComposer> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
+      final mentioned = await resolveMentionUids(ref, _caption.text);
       await ref
           .read(socialRepositoryProvider)
           .createPost(
@@ -476,6 +571,7 @@ class _ListingComposerState extends ConsumerState<ListingComposer> {
                   ? null
                   : _caption.text.trim(),
               tags: picked.tags,
+              mentionedUids: mentioned,
             ),
           );
       navigator.pop();

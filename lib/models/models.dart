@@ -15,10 +15,12 @@ export 'geo.dart';
 export 'link_result.dart';
 export 'listing.dart';
 export 'message.dart';
+export 'notification.dart';
 export 'order.dart';
 export 'page.dart';
 export 'post.dart';
 export 'search.dart';
+export 'seller_application.dart';
 
 /// A person — seller, buyer, or both. The prototype's `U`.
 ///
@@ -40,10 +42,19 @@ class Person {
     this.isSeller = true,
     this.avatarUrl,
     this.isLinked = false,
+    this.cityState = '',
+    this.lat,
+    this.lng,
   });
 
   final String id;
   final String name;
+
+  /// "Detroit, MI", typed on the profile. The backend turns it into [lat]
+  /// and [lng], which Near me and the seller's listings measure from.
+  final String cityState;
+  final double? lat;
+  final double? lng;
 
   /// Also the storefront address, which is why signup asks for it first.
   final String handle;
@@ -96,6 +107,7 @@ class Person {
     bool? isSeller,
     String? avatarUrl,
     bool? isLinked,
+    String? cityState,
   }) => Person(
     id: id,
     name: name ?? this.name,
@@ -109,6 +121,9 @@ class Person {
     isSeller: isSeller ?? this.isSeller,
     avatarUrl: avatarUrl ?? this.avatarUrl,
     isLinked: isLinked ?? this.isLinked,
+    cityState: cityState ?? this.cityState,
+    lat: lat,
+    lng: lng,
   );
 }
 
@@ -510,9 +525,14 @@ class Shipment {
     required this.state,
     required this.tracking,
     required this.carrierNote,
+    this.payoutNote,
   });
 
   final String productId;
+
+  /// Shipturtle's settlement state for the seller, e.g. "Payout pending" or
+  /// "Credited". Their words, never a figure computed here. Null for buyers.
+  final String? payoutNote;
 
   /// "J. Alvarez · Chicago, IL" when sending, "from Rae Ortiz" when receiving.
   final String counterpartyName;

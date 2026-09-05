@@ -38,11 +38,19 @@ final class GuestSession extends Session {
 /// Authenticated, but with no profile document yet.
 @immutable
 final class OnboardingSession extends Session {
-  const OnboardingSession({required this.uid, required this.email});
+  const OnboardingSession({
+    required this.uid,
+    required this.email,
+    this.emailVerified = false,
+  });
 
   @override
   final String uid;
   final String email;
+
+  /// Whether the address is confirmed. A cold start mid-onboarding lands on
+  /// the confirm screen until it is, then on profile setup.
+  final bool emailVerified;
 }
 
 @immutable
@@ -51,7 +59,11 @@ final class MemberSession extends Session {
     required this.uid,
     required this.profile,
     this.emailVerified = false,
+    this.isAdmin = false,
   });
+
+  /// The admin claim on the token: the merchant's own account.
+  final bool isAdmin;
 
   @override
   final String uid;
@@ -93,7 +105,11 @@ class SessionNotifier extends StreamNotifier<Session> {
       // Profile screen reaches every screen that shows the current user.
       return profiles.watchPerson(user.uid).map<Session>((person) {
         if (person == null) {
-          return OnboardingSession(uid: user.uid, email: user.email ?? '');
+          return OnboardingSession(
+            uid: user.uid,
+            email: user.email ?? '',
+            emailVerified: user.emailVerified,
+          );
         }
 
         _linkOnce(user, person, profiles);
@@ -104,6 +120,7 @@ class SessionNotifier extends StreamNotifier<Session> {
           // Seller status is the token's claim, not the document's field.
           profile: person.copyWith(isSeller: user.isSeller),
           emailVerified: user.emailVerified,
+          isAdmin: user.isAdmin,
         );
       });
     });
@@ -141,7 +158,9 @@ class SessionNotifier extends StreamNotifier<Session> {
   Future<void> signUp({required String email, required String password}) =>
       _auth.signUpWithPassword(email: email, password: password);
 
-  Future<void> signInWithPassword({
+  /// Returns the account so the caller can route on whether its address is
+  /// confirmed. The session updates itself through the auth stream.
+  Future<AuthUser> signInWithPassword({
     required String email,
     required String password,
   }) => _auth.signInWithPassword(email: email, password: password);
@@ -195,6 +214,11 @@ final meProvider = Provider<Person?>((ref) {
 final isSellerProvider = Provider<bool>((ref) {
   final session = ref.watch(sessionProvider).value;
   return session is MemberSession && session.isSeller;
+});
+
+final isAdminProvider = Provider<bool>((ref) {
+  final session = ref.watch(sessionProvider).value;
+  return session is MemberSession && session.isAdmin;
 });
 
 /// The theme override, held apart from [Session].

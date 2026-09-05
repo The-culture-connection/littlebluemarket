@@ -179,6 +179,21 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "_comment": "The admin's queue: applications waiting, newest first.",
+      "collectionGroup": "sellerApplications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

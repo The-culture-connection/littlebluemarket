@@ -21,6 +21,9 @@ import '../screens/onboarding/auth_screens.dart';
 import '../screens/onboarding/welcome_screen.dart';
 import '../screens/you/dm_screen.dart';
 import '../screens/you/add_product_screen.dart';
+import '../screens/you/applications_screen.dart';
+import '../screens/you/apply_screen.dart';
+import '../screens/you/notifications_screen.dart';
 import '../screens/you/claim_shop_screen.dart';
 import '../screens/you/diagnostics_screen.dart';
 import '../screens/you/edit_profile_screen.dart';
@@ -106,7 +109,13 @@ GoRouter buildRouter(Ref ref) {
       // me". Guests who chose "continue as a guest" once are known too.
       if (path == '/' || path == '/welcome') {
         if (session is MemberSession) return '/market';
-        if (session is OnboardingSession) return '/setup';
+        if (session is OnboardingSession) {
+          // Mid-onboarding on a cold start: the confirm screen first when
+          // the address is not yet proven, so it is never skipped past.
+          return session.emailVerified
+              ? '/setup'
+              : '/verify?email=${Uri.encodeComponent(session.email)}&create=1';
+        }
         if (session is GuestSession && session.uid != null) return '/market';
       }
 
@@ -229,6 +238,18 @@ GoRouter buildRouter(Ref ref) {
                   GoRoute(
                     path: 'claim-shop',
                     builder: (context, state) => const ClaimShopScreen(),
+                  ),
+                  GoRoute(
+                    path: 'apply',
+                    builder: (context, state) => const ApplyToSellScreen(),
+                  ),
+                  GoRoute(
+                    path: 'applications',
+                    builder: (context, state) => const ApplicationsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'notifications',
+                    builder: (context, state) => const NotificationsScreen(),
                   ),
                   // Debug builds only. Tests run in debug, so the smoke suite
                   // still renders it.

@@ -147,6 +147,7 @@ class NewReview {
     this.purchaseId,
     this.tags = const [],
     this.imageUrls = const [],
+    this.mentionedUids = const [],
   });
 
   final String productId;
@@ -155,4 +156,5 @@ class NewReview {
   final String? purchaseId;
   final List<String> tags;
   final List<String> imageUrls;
+  final List<String> mentionedUids;
 }

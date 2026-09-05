@@ -31,6 +31,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _name = TextEditingController();
   final _handle = TextEditingController();
   final _bio = TextEditingController();
+  final _city = TextEditingController();
   final _newTag = TextEditingController();
   List<String>? _tags;
   bool _saving = false;
@@ -41,6 +42,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _name.dispose();
     _handle.dispose();
     _bio.dispose();
+    _city.dispose();
     _newTag.dispose();
     super.dispose();
   }
@@ -52,6 +54,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _name.text = me.name;
     _handle.text = me.handle;
     _bio.text = me.bio;
+    _city.text = me.cityState;
     _tags = List.of(me.tags);
   }
 
@@ -71,6 +74,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               name: _name.text.trim(),
               handle: _handle.text.trim(),
               bio: _bio.text.trim(),
+              cityState: _city.text.trim(),
               tags: _tags,
             ),
           );
@@ -184,6 +188,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 16),
           LbmField(label: 'Bio', controller: _bio, maxLines: 3),
           const SizedBox(height: 16),
+          LbmField(
+            label: 'City, State',
+            controller: _city,
+            hintText: 'Detroit, MI',
+            helper: 'Near me measures from here, and your listings show it.',
+          ),
+          const SizedBox(height: 16),
           Text(
             'Initiative hashtags',
             style: LbmText.fieldLabel.copyWith(color: c.ink2),
@@ -240,6 +251,27 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ],
           const SizedBox(height: 16),
           if (me.isSeller) const _SellerRows() else const _BuyerRows(),
+          if (ref.watch(isAdminProvider)) ...[
+            const SizedBox(height: 12),
+            LbmCard(
+              child: ListRow(
+                leading: Icon(
+                  Icons.verified_user_outlined,
+                  color: c.accentDeep,
+                ),
+                title: const Text('Seller applications'),
+                subtitle: const Text(
+                  'Approve or decline people who applied to sell',
+                ),
+                trailing: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 22,
+                  color: c.ink3,
+                ),
+                onTap: () => context.push('/you/applications'),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           LbmCard(
             child: ListRow(
@@ -345,7 +377,7 @@ class _BuyerRowsState extends ConsumerState<_BuyerRows> {
           const _AddressesRow(),
           ListRow(
             title: const Text('Start selling'),
-            subtitle: const Text('Connect the shop you already have'),
+            subtitle: const Text('I have a claim code'),
             trailing: Icon(
               Icons.chevron_right_rounded,
               size: 22,
@@ -353,6 +385,7 @@ class _BuyerRowsState extends ConsumerState<_BuyerRows> {
             ),
             onTap: () => context.push('/you/claim-shop'),
           ),
+          const _ApplyRow(),
         ],
       ),
     );
@@ -378,6 +411,27 @@ class _AddressesRow extends ConsumerWidget {
       }),
       trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
       onTap: () => context.push('/you/shipping'),
+    );
+  }
+}
+
+/// The way in without a code: apply, and see where it stands.
+class _ApplyRow extends ConsumerWidget {
+  const _ApplyRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final application = ref.watch(myApplicationProvider).value;
+    return ListRow(
+      title: const Text('Apply to sell'),
+      subtitle: Text(
+        application == null
+            ? 'No code? Tell us about your shop'
+            : application.status.label,
+      ),
+      trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
+      onTap: () => context.push('/you/apply'),
     );
   }
 }

@@ -7,6 +7,7 @@ import '../state/providers.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
+import 'composers.dart';
 import 'primitives.dart';
 import 'sheets.dart';
 
@@ -59,6 +60,7 @@ class _CartComposerState extends ConsumerState<_CartComposer> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
+      final mentioned = await resolveMentionUids(ref, _caption.text);
       await ref
           .read(socialRepositoryProvider)
           .createPost(
@@ -67,6 +69,7 @@ class _CartComposerState extends ConsumerState<_CartComposer> {
               caption: _caption.text.trim().isEmpty
                   ? null
                   : _caption.text.trim(),
+              mentionedUids: mentioned,
             ),
           );
       navigator.pop();

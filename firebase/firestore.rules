@@ -35,6 +35,10 @@ service cloud.firestore {
       return member() && request.auth.token.seller == true;
     }
 
+    function admin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
     function isSelf(uid) {
       return signedIn() && request.auth.uid == uid;
     }
@@ -110,7 +114,10 @@ service cloud.firestore {
           'shipturtleVendorId',
           'isSeller',
           'shopifyVendorName',
-          'shopifyLocationId'
+          'shopifyLocationId',
+          'lat',
+          'lng',
+          'geohash'
         ]);
 
       allow delete: if false;
@@ -128,6 +135,15 @@ service cloud.firestore {
       match /conversations/{conversationId} {
         allow read: if isSelf(uid);
         allow write: if false;
+      }
+
+      // The bell. Written only by the functions; yours to read and to mark
+      // read, nobody's to invent.
+      match /notifications/{notificationId} {
+        allow read: if isSelf(uid);
+        allow create, delete: if false;
+        allow update: if isSelf(uid)
+          && incoming().diff(existing()).affectedKeys().hasOnly(['read', 'readAt']);
       }
     }
 
@@ -339,6 +355,19 @@ service cloud.firestore {
       allow delete: if seller()
         && isSelf(existing().sellerUid)
         && existing().status in ['draft', 'failed'];
+    }
+
+    // ----------------------------------------------------- seller applications
+
+    // Applying to sell: once, your own, with the address your token carries.
+    // The outcome is the admin's to write, through a function.
+    match /sellerApplications/{uid} {
+      allow read: if isSelf(uid) || admin();
+      allow create: if member()
+        && isSelf(uid)
+        && incoming().status == 'submitted'
+        && incoming().appliedEmail == request.auth.token.email;
+      allow update, delete: if false;
     }
 
     // The store's collections, mirrored by the backend. The real taxonomy.

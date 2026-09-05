@@ -198,6 +198,69 @@ export async function claimVendor(
 }
 
 /**
+ * The grant itself, with no code to consume: the roster sweep and an
+ * approved application both end here. Same transaction as the claim-code
+ * path minus the claim document: reserve the vendor string, write the
+ * seller record, mirror the display flag, then mint the claim.
+ */
+export async function grantSellerDirect(input: {
+  uid: string;
+  email: string;
+  vendorName: string;
+  shipturtleVendorId: string | null;
+  method: 'roster' | 'application';
+  by?: string;
+}): Promise<{ vendorName: string }> {
+  const vendorName = input.vendorName.trim();
+  if (!vendorName) throw new HttpsError('invalid-argument', 'A vendor string is required.');
+  const db = getFirestore();
+  const sellerRef = db.collection('sellers').doc(input.uid);
+  const nameRef = db.collection('vendorNames').doc(normalizeVendorName(vendorName));
+
+  await db.runTransaction(async (tx) => {
+    const reserved = await tx.get(nameRef);
+    if (reserved.exists && reserved.data()?.uid !== input.uid) {
+      throw new HttpsError(
+        'failed-precondition',
+        'Another account already claims that shop. Get in touch and we will sort it out.',
+      );
+    }
+    tx.set(
+      sellerRef,
+      {
+        shopifyVendorName: vendorName,
+        shipturtleVendorId: input.shipturtleVendorId,
+        canUploadProducts: true,
+        verifiedAt: FieldValue.serverTimestamp(),
+        verifiedBy: input.method,
+        grantVersion: 1,
+        revokedAt: null,
+      },
+      { merge: true },
+    );
+    tx.set(nameRef, { uid: input.uid, claimedAt: FieldValue.serverTimestamp() });
+    tx.set(db.collection('users').doc(input.uid), { isSeller: true }, { merge: true });
+  });
+
+  const user = await getAuth().getUser(input.uid);
+  await getAuth().setCustomUserClaims(input.uid, {
+    ...(user.customClaims ?? {}),
+    seller: true,
+    vendor: vendorName,
+  });
+  await db.collection('_internal').doc('sellerAudit').collection('events').add({
+    uid: input.uid,
+    email: input.email,
+    vendorName,
+    method: input.method,
+    by: input.by ?? null,
+    at: FieldValue.serverTimestamp(),
+  });
+  logger.info('Granted seller status', { uid: input.uid, vendor: vendorName, method: input.method });
+  return { vendorName };
+}
+
+/**
  * Revokes a grant.
  *
  * Products already on the storefront stay there — they are Shopify's, and

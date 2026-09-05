@@ -58,6 +58,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         title: me.handle,
         actions: [
           CircleIconButton(
+            icon: Icons.notifications_none_rounded,
+            tooltip: 'Notifications',
+            badge: ref.watch(unreadNotificationsProvider) > 0,
+            onPressed: () => context.push('/you/notifications'),
+          ),
+          CircleIconButton(
             icon: Icons.mail_outline_rounded,
             tooltip: 'Messages',
             badge: (unread ?? 0) > 0,

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/models.dart';
 import '../../router/nav.dart';
 import '../../state/providers.dart';
+import '../../state/location.dart';
 import '../../state/session.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
@@ -14,6 +15,7 @@ import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
 import '../../widgets/tips.dart';
+import '../../widgets/unverified_banner.dart';
 import 'collection_screen.dart';
 
 /// The marketplace feed.
@@ -52,8 +54,7 @@ class FeedScreen extends ConsumerWidget {
                 // toggle here and the chips there cannot drift apart.
                 NearMeButton(
                   active: filters.nearMe,
-                  onTap: () =>
-                      ref.read(searchFiltersProvider.notifier).toggleNearMe(),
+                  onTap: () => toggleNearMe(context, ref),
                 ),
                 const SizedBox(width: 8),
                 CircleIconButton(
@@ -95,6 +96,9 @@ class FeedScreen extends ConsumerWidget {
           padding: EdgeInsets.zero,
           children: [
             if (isGuest) const GuestBanner(),
+            // A member whose address is not confirmed: the two buttons that
+            // fix it, before anything refuses them for it.
+            const UnverifiedBanner(),
             // The store's real taxonomy. Hidden until collections are mirrored.
             const CollectionRail(),
             // Once: why there is no heart. Then: anything delivered and

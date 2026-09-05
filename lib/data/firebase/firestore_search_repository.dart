@@ -191,14 +191,18 @@ class FirestoreSearchRepository implements SearchRepository {
       SearchScope.hashtags => product.tags.contains(query),
       SearchScope.productType => product.type.toLowerCase().contains(lower),
       SearchScope.sellers => product.sellerId.toLowerCase().contains(lower),
-      SearchScope.keywords =>
-        product.title.toLowerCase().contains(lower) ||
-            product.description.toLowerCase().contains(lower),
+      // Every word, in any order, anywhere in the title, type or
+      // description: "balm mint" finds the mint lip balm.
+      SearchScope.keywords => matchesAllWords(
+        '${product.title} ${product.description}',
+        lower,
+      ),
       SearchScope.all =>
         product.tags.contains(query) ||
-            product.title.toLowerCase().contains(lower) ||
-            product.type.toLowerCase().contains(lower) ||
-            product.description.toLowerCase().contains(lower),
+            matchesAllWords(
+              '${product.title} ${product.type} ${product.description}',
+              lower,
+            ),
     };
   }
 
@@ -306,4 +310,41 @@ class FirestoreSearchRepository implements SearchRepository {
     if (doc == null) return;
     await doc.set({'recentSearches': <String>[]}, SetOptions(merge: true));
   });
+
+  @override
+  Future<List<SearchSuggestion>> suggestions(String query) =>
+      guardFirestore(() async {
+        final words = query
+            .toLowerCase()
+            .replaceAll('#', '')
+            .split(RegExp(r'\s+'))
+            .where((w) => w.length >= 3)
+            .toList();
+        if (words.isEmpty) return const [];
+        final out = <SearchSuggestion>[];
+
+        final collections = await _db.collection('collections').limit(50).get();
+        for (final doc in collections.docs) {
+          final title = FirestoreMappers.str(doc.data()['title']);
+          final lower = title.toLowerCase();
+          if (words.any(
+            (w) => lower.contains(w) || w.contains(lower.split(' ').first),
+          )) {
+            out.add(SearchSuggestion.collection(title, doc.id));
+          }
+        }
+        final tags = await _db
+            .collection('hashtags')
+            .orderBy('postCount', descending: true)
+            .limit(30)
+            .get();
+        for (final doc in tags.docs) {
+          final tag = FirestoreMappers.str(doc.data()['tag'], '#${doc.id}');
+          final lower = tag.toLowerCase();
+          if (words.any((w) => lower.contains(w))) {
+            out.add(SearchSuggestion.query(tag, tag));
+          }
+        }
+        return out.take(8).toList();
+      }, operation: 'firestore search suggestions');
 }

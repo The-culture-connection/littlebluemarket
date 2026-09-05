@@ -61,6 +61,21 @@ const seller = (uid = 'kali') =>
     firebase: { sign_in_provider: 'password' },
   }).firestore();
 
+/** A member with the admin claim. */
+const adminUser = (uid = 'grace') =>
+  env.authenticatedContext(uid, {
+    admin: true,
+    email: 'grace@example.com',
+    firebase: { sign_in_provider: 'password' },
+  }).firestore();
+
+/** A member whose token carries an email, for the application rule. */
+const memberWithEmail = (uid, email) =>
+  env.authenticatedContext(uid, {
+    email,
+    firebase: { sign_in_provider: 'password' },
+  }).firestore();
+
 /** A guest: signed in anonymously, so they hold a uid but are not a member. */
 const guest = () =>
   env.authenticatedContext('anon', {
@@ -460,5 +475,46 @@ describe("counters are the functions' to move", () => {
     });
     await assertSucceeds(member('maya').doc('forums/cf1/members/maya').set({ joinedAt: 1 }));
     await assertFails(member('maya').doc('forums/cf1').update({ memberCount: 2 }));
+  });
+});
+
+describe('seller applications', () => {
+  test('a member applies once with their own token email; the outcome is not theirs', async () => {
+    const app = { status: 'submitted', appliedEmail: 'dee@example.com', shopName: 'Dee Makes' };
+    await assertSucceeds(memberWithEmail('dee', 'dee@example.com').doc('sellerApplications/dee').set(app));
+    await assertFails(memberWithEmail('dee', 'dee@example.com').doc('sellerApplications/dee').update({ status: 'approved' }));
+    await assertFails(memberWithEmail('dee', 'dee@example.com').doc('sellerApplications/kali').set({ ...app, appliedEmail: 'x@example.com' }));
+    await assertFails(memberWithEmail('rae', 'rae@example.com').doc('sellerApplications/rae').set({ ...app, appliedEmail: 'someone-else@example.com' }));
+    await assertFails(memberWithEmail('rae', 'rae@example.com').doc('sellerApplications/rae').set({ ...app, status: 'approved' }));
+  });
+
+  test('applications are readable by the applicant and by an admin, nobody else', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('sellerApplications/dee').set({ status: 'submitted', appliedEmail: 'dee@example.com' });
+    });
+    await assertSucceeds(memberWithEmail('dee', 'dee@example.com').doc('sellerApplications/dee').get());
+    await assertSucceeds(adminUser().doc('sellerApplications/dee').get());
+    await assertFails(member('maya').doc('sellerApplications/dee').get());
+  });
+});
+
+describe('notifications and coordinates', () => {
+  test('you read and mark your own notifications; nothing else', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('users/maya/notifications/n1').set({ type: 'mention', read: false });
+    });
+    await assertSucceeds(member('maya').doc('users/maya/notifications/n1').get());
+    await assertSucceeds(member('maya').doc('users/maya/notifications/n1').update({ read: true }));
+    await assertFails(member('maya').doc('users/maya/notifications/n1').update({ text: 'forged' }));
+    await assertFails(member('maya').collection('users/maya/notifications').add({ type: 'mention', read: false }));
+    await assertFails(member('kali').doc('users/maya/notifications/n1').get());
+  });
+
+  test('a person types their city; the point is the backend\'s', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('users/maya').set({ name: 'Maya', revenueCents: 0, purchaseCount: 0, postCount: 0 });
+    });
+    await assertSucceeds(member('maya').doc('users/maya').update({ cityState: 'Detroit, MI' }));
+    await assertFails(member('maya').doc('users/maya').update({ lat: 1, lng: 2 }));
   });
 });

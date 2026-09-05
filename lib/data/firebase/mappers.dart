@@ -76,7 +76,41 @@ abstract final class FirestoreMappers {
     isSeller: boolean(data['isSeller']),
     avatarUrl: data['avatarUrl'] as String?,
     isLinked: data['linkedAt'] != null,
+    cityState: str(data['cityState']),
+    lat: data['lat'] == null ? null : decimal(data['lat']),
+    lng: data['lng'] == null ? null : decimal(data['lng']),
   );
+
+  static SellerApplication application(String id, Map<String, dynamic> data) =>
+      SellerApplication(
+        uid: id,
+        status: ApplicationStatus.parse(data['status'] as String?),
+        shopName: str(data['shopName'], 'A shop'),
+        appliedEmail: str(data['appliedEmail']),
+        storeUrl: str(data['storeUrl']),
+        vendorEmail: str(data['vendorEmail']),
+        note: str(data['note']),
+        vendorName: data['vendorName'] is String
+            ? data['vendorName'] as String
+            : null,
+        reason: data['reason'] is String ? data['reason'] as String : null,
+        createdAt: time(data['createdAt']),
+      );
+
+  static AppNotification notification(String id, Map<String, dynamic> data) =>
+      AppNotification(
+        id: id,
+        kind: switch (str(data['type'])) {
+          'mention' => NotificationKind.mention,
+          'comment' => NotificationKind.comment,
+          _ => NotificationKind.other,
+        },
+        postId: str(data['postId']),
+        fromUid: str(data['fromUid']),
+        text: str(data['text']),
+        createdAt: time(data['createdAt']),
+        read: boolean(data['read']),
+      );
 
   /// A deterministic avatar colour from a uid.
   ///
@@ -388,13 +422,15 @@ abstract final class FirestoreMappers {
     reviewed: boolean(data['reviewed']),
   );
 
-  static Shipment shipment(Map<String, dynamic> data) => Shipment(
-    productId: str(data['productId']),
-    counterpartyName: str(data['counterpartyName']),
-    state: shipmentState(data['state']),
-    tracking: str(data['tracking']),
-    carrierNote: str(data['carrierNote']),
-  );
+  static Shipment shipment(Map<String, dynamic> data, {String? payoutNote}) =>
+      Shipment(
+        productId: str(data['productId']),
+        counterpartyName: str(data['counterpartyName']),
+        state: shipmentState(data['state']),
+        tracking: str(data['tracking']),
+        carrierNote: str(data['carrierNote']),
+        payoutNote: payoutNote,
+      );
 
   static ShipmentState shipmentState(Object? value) => switch (str(value)) {
     'inTransit' => ShipmentState.inTransit,

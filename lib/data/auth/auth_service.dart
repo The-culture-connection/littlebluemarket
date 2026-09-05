@@ -19,10 +19,15 @@ class AuthUser {
     this.isAnonymous = false,
     this.emailVerified = false,
     this.isSeller = false,
+    this.isAdmin = false,
   });
 
   final String uid;
   final String? email;
+
+  /// The `admin` custom claim: the merchant's own account. Reviews seller
+  /// applications, syncs the catalog.
+  final bool isAdmin;
 
   /// A guest. They get a uid so security rules can require one and so a cart
   /// built before signing up survives the upgrade.
@@ -184,6 +189,7 @@ class FixtureAuthService implements AuthService {
       email: email,
       emailVerified: true,
       isSeller: _sellers.contains(demoUid),
+      isAdmin: demoUid == Fx.meId,
     );
     _emit(user);
     return user;
@@ -219,6 +225,7 @@ class FixtureAuthService implements AuthService {
       email: email,
       emailVerified: true,
       isSeller: _sellers.contains(demoUid),
+      isAdmin: demoUid == Fx.meId,
     );
     _emit(user);
     return user;
@@ -271,6 +278,7 @@ class FixtureAuthService implements AuthService {
         email: 'demo@example.com',
         emailVerified: true,
         isSeller: _sellers.contains(demoUid),
+        isAdmin: demoUid == Fx.meId,
       ),
     );
   }

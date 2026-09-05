@@ -129,6 +129,7 @@ final socialRepositoryProvider = Provider<SocialRepository>((ref) {
     ),
     Backend.live => FirestoreSocialRepository(
       firestore: ref.watch(firestoreProvider),
+      storage: ref.watch(firebaseStorageProvider),
       uid: ref.watch(_uidProvider),
     ),
   };

@@ -2,16 +2,16 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 import { HttpsError } from 'firebase-functions/v2/https';
 
-import { SHIPTURTLE_API_KEY, SHIPTURTLE_BASE_URL } from './config.ts';
 import { recordFulfillment } from './orders.ts';
+import { adminGraphQL } from './shopify/token.ts';
 
 /**
  * A seller marking an order shipped.
  *
  * One call so the courier and the buyer learn the same number: the fulfilment
- * goes upstream, and the same tracking is written onto our order document so
- * the buyer's Receiving tab shows it whether or not the upstream call
- * succeeded.
+ * is created on the store (which Shipturtle mirrors), and the same tracking
+ * is written onto our order document so the buyer's Receiving tab shows it
+ * whether or not the store call succeeded.
  *
  * Order matters here. The upstream write happens first, because if it fails the
  * seller needs to know now — showing the buyer a tracking number the courier
@@ -22,7 +22,7 @@ export async function addTracking(input: {
   orderId: string;
   trackingNumber: string;
   carrier: string;
-}): Promise<{ ok: true }> {
+}): Promise<{ ok: true; upstream: 'created' | 'nothing-open' | 'unavailable' }> {
   const db = getFirestore();
   const orderRef = db.collection('orders').doc(input.orderId);
   const order = await orderRef.get();
@@ -38,7 +38,7 @@ export async function addTracking(input: {
     throw new HttpsError('permission-denied', 'That is not your order.');
   }
 
-  await pushToShipTurtle(input);
+  const upstream = await fulfillInShopify(input);
 
   await recordFulfillment(input.orderId, {
     trackingNumber: input.trackingNumber,
@@ -46,63 +46,65 @@ export async function addTracking(input: {
     state: 'inTransit',
   });
 
-  return { ok: true };
+  return { ok: true, upstream };
 }
 
 /**
- * Sends the fulfilment to ShipTurtle.
+ * Creates the fulfilment on the store.
  *
- * ⚠️ **Outstanding.** This needs the ShipTurtle API key and the exact
- * fulfilment endpoint. Until both are set the call is skipped with a warning
- * rather than failing: a seller can still record tracking, the buyer still sees
- * it, and the only thing missing is the upstream copy — which is a much better
- * failure than a seller unable to mark anything shipped.
+ * Shipturtle mirrors Shopify, so a fulfilment created here reaches the
+ * vendor's Shipturtle dashboard on its next sync, and Shopify's own
+ * `fulfillments/update` webhook records it back onto our order. Their API
+ * has no fulfilment endpoint of its own; the guessed URL that lived here
+ * is gone.
  *
- * The request shape below is a placeholder to be confirmed against their API
- * docs before this is switched on.
+ * Needs the merchant-managed fulfilment order scopes. Without them the
+ * fulfilment is recorded locally only and the result says so, rather than
+ * a seller at a parcel counter being told nothing went through.
  */
-async function pushToShipTurtle(input: {
+async function fulfillInShopify(input: {
   orderId: string;
   trackingNumber: string;
   carrier: string;
-}): Promise<void> {
-  let key: string;
+}): Promise<'created' | 'nothing-open' | 'unavailable'> {
+  let orders;
   try {
-    key = SHIPTURTLE_API_KEY.value();
-  } catch {
-    key = '';
-  }
-
-  if (!key) {
-    logger.warn(
-      'ShipTurtle is not configured; tracking was recorded locally only',
-      { orderId: input.orderId },
+    orders = await adminGraphQL<{
+      order: { fulfillmentOrders: { nodes: Array<{ id: string; status: string }> } } | null;
+    }>(
+      `query Open($id: ID!) { order(id: $id) { fulfillmentOrders(first: 10) { nodes { id status } } } }`,
+      { id: `gid://shopify/Order/${input.orderId}` },
     );
-    return;
+  } catch (error) {
+    logger.warn('Could not read fulfilment orders; tracking recorded locally only', {
+      orderId: input.orderId,
+      error: String(error).slice(0, 200),
+      fix: 'grant read_merchant_managed_fulfillment_orders and write_merchant_managed_fulfillment_orders',
+    });
+    return 'unavailable';
   }
+  const open = (orders.order?.fulfillmentOrders.nodes ?? []).filter((n) =>
+    ['OPEN', 'IN_PROGRESS', 'SCHEDULED'].includes(n.status),
+  );
+  if (open.length === 0) return 'nothing-open';
 
-  const response = await fetch(
-    `${SHIPTURTLE_BASE_URL.value()}/v1/fulfillments`,
+  const data = await adminGraphQL<{
+    fulfillmentCreate: { fulfillment: { id: string } | null; userErrors: Array<{ message: string }> };
+  }>(
+    `mutation Ship($fulfillment: FulfillmentInput!) {
+      fulfillmentCreate(fulfillment: $fulfillment) { fulfillment { id } userErrors { field message } }
+    }`,
     {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${key}`,
+      fulfillment: {
+        lineItemsByFulfillmentOrder: open.map((o) => ({ fulfillmentOrderId: o.id })),
+        trackingInfo: { number: input.trackingNumber, company: input.carrier },
+        notifyCustomer: true,
       },
-      body: JSON.stringify({
-        order_id: input.orderId,
-        tracking_number: input.trackingNumber,
-        courier: input.carrier,
-      }),
     },
   );
-
-  if (!response.ok) {
-    // Surfaced to the seller rather than swallowed: they are standing at a
-    // parcel counter and need to know it did not go through.
-    throw new HttpsError(
-      'unavailable',
-      'Could not reach the shipping service. Try again in a moment.',
-    );
+  const errors = data.fulfillmentCreate.userErrors;
+  if (errors.length) {
+    throw new HttpsError('failed-precondition', `The store refused the shipment: ${errors.map((e) => e.message).join('; ')}`);
   }
+  return 'created';
 }

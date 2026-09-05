@@ -50,6 +50,9 @@ const REQUIRED_SCOPES = [
 const OPTIONAL_SCOPES = {
   // Stage 5: the opening stock on a seller's new product needs the shop location.
   read_locations: "a seller's new product is created without its opening stock",
+  // Stage 8: a seller marking an order shipped creates the fulfilment on the store.
+  read_merchant_managed_fulfillment_orders: 'a seller\'s "mark shipped" is recorded in the app only, not on the store',
+  write_merchant_managed_fulfillment_orders: 'a seller\'s "mark shipped" is recorded in the app only, not on the store',
 };
 function hasScope(granted, scope) {
   return granted.includes(scope) || granted.includes(scope.replace(/^read_/, 'write_'));

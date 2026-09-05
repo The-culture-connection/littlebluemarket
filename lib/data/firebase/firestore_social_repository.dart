@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../models/models.dart';
 import '../repositories/repositories.dart';
@@ -18,10 +21,13 @@ import 'mappers.dart';
 class FirestoreSocialRepository implements SocialRepository {
   FirestoreSocialRepository({
     required FirebaseFirestore firestore,
+    required FirebaseStorage storage,
     required this.uid,
-  }) : _db = firestore;
+  }) : _db = firestore,
+       _storage = storage;
 
   final FirebaseFirestore _db;
+  final FirebaseStorage _storage;
   final String? uid;
 
   String get _requireUid {
@@ -174,6 +180,7 @@ class FirestoreSocialRepository implements SocialRepository {
       if (draft.purchaseId != null) 'purchaseId': draft.purchaseId,
       if (draft.aboutSellerId != null) 'aboutSellerId': draft.aboutSellerId,
       if (draft.imageUrls.isNotEmpty) 'imageUrls': draft.imageUrls,
+      if (draft.mentionedUids.isNotEmpty) 'mentionedUids': draft.mentionedUids,
       // A cart post: the items frozen now, and the count the rules check.
       if (draft.kind == PostKind.cart) ...{
         'items': [
@@ -321,6 +328,7 @@ class FirestoreSocialRepository implements SocialRepository {
       'tags': draft.tags,
       if (draft.purchaseId != null) 'purchaseId': draft.purchaseId,
       if (draft.imageUrls.isNotEmpty) 'imageUrls': draft.imageUrls,
+      if (draft.mentionedUids.isNotEmpty) 'mentionedUids': draft.mentionedUids,
       'createdAt': FieldValue.serverTimestamp(),
     });
   });
@@ -500,4 +508,60 @@ class FirestoreSocialRepository implements SocialRepository {
       'createdAt': FieldValue.serverTimestamp(),
     });
   });
+
+  // --------------------------------------------------------- photos, bell
+
+  @override
+  Future<String> uploadPostPhoto(
+    List<int> bytes, {
+    required String contentType,
+  }) => guardFirestore(() async {
+    final me = _requireUid;
+    final ext = contentType == 'image/png' ? 'png' : 'jpg';
+    final ref = _storage.ref(
+      'posts/$me/${DateTime.now().millisecondsSinceEpoch}.$ext',
+    );
+    await ref.putData(
+      Uint8List.fromList(bytes),
+      SettableMetadata(contentType: contentType),
+    );
+    return ref.getDownloadURL();
+  }, operation: 'storage posts upload');
+
+  CollectionReference<Map<String, dynamic>> _notifications(String me) =>
+      _db.collection('users').doc(me).collection('notifications');
+
+  @override
+  Stream<List<AppNotification>> watchNotifications() {
+    final me = uid;
+    if (me == null) return Stream.value(const []);
+    return _notifications(me)
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map(
+          (snapshot) => [
+            for (final doc in snapshot.docs)
+              FirestoreMappers.notification(doc.id, doc.data()),
+          ],
+        )
+        .guarded(operation: 'firestore notifications');
+  }
+
+  @override
+  Future<void> markNotificationsRead() => guardFirestore(() async {
+    final me = _requireUid;
+    final unread = await _notifications(
+      me,
+    ).where('read', isEqualTo: false).limit(100).get();
+    if (unread.docs.isEmpty) return;
+    final batch = _db.batch();
+    for (final doc in unread.docs) {
+      batch.update(doc.reference, {
+        'read': true,
+        'readAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }, operation: 'firestore notifications markRead');
 }

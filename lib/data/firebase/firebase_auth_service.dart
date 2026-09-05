@@ -25,7 +25,11 @@ class FirebaseAuthService implements AuthService {
 
   final fb.FirebaseAuth _auth;
 
-  AuthUser? _wrap(fb.User? user, {bool isSeller = false}) {
+  AuthUser? _wrap(
+    fb.User? user, {
+    bool isSeller = false,
+    bool isAdmin = false,
+  }) {
     if (user == null) return null;
     return AuthUser(
       uid: user.uid,
@@ -33,6 +37,7 @@ class FirebaseAuthService implements AuthService {
       isAnonymous: user.isAnonymous,
       emailVerified: user.emailVerified,
       isSeller: isSeller,
+      isAdmin: isAdmin,
     );
   }
 
@@ -41,13 +46,15 @@ class FirebaseAuthService implements AuthService {
   Future<AuthUser?> _wrapWithClaims(fb.User? user) async {
     if (user == null) return null;
     var isSeller = false;
+    var isAdmin = false;
     try {
       final token = await user.getIdTokenResult();
       isSeller = token.claims?['seller'] == true;
+      isAdmin = token.claims?['admin'] == true;
     } catch (_) {
       // Offline, or a token that could not be read: not a seller for now.
     }
-    return _wrap(user, isSeller: isSeller);
+    return _wrap(user, isSeller: isSeller, isAdmin: isAdmin);
   }
 
   @override
@@ -68,6 +75,7 @@ class FirebaseAuthService implements AuthService {
       a?.uid == b?.uid &&
       a?.emailVerified == b?.emailVerified &&
       a?.isSeller == b?.isSeller &&
+      a?.isAdmin == b?.isAdmin &&
       a?.isAnonymous == b?.isAnonymous;
 
   @override

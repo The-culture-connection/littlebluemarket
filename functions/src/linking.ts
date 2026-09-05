@@ -2,6 +2,7 @@ import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 
 import { adminGraphQL } from './shopify/token.ts';
+import { autoGrantFromRoster } from './roster_grant.ts';
 import { listVendorUsers } from './shipturtle_api.ts';
 import { resolveSellerUid, type VendorHints } from './vendors.ts';
 
@@ -36,6 +37,10 @@ export interface LinkResult {
   backfilledItems: number;
   /** True when nothing new happened: already linked, already backfilled. */
   alreadyLinked: boolean;
+  /** The vendor string granted from the Shipturtle roster, when one was. */
+  grantedVendor?: string;
+  /** Why a roster match did not become a grant, when it did not. */
+  grantNote?: string;
 }
 
 type GraphQL = <T>(query: string, variables?: Record<string, unknown>) => Promise<T>;
@@ -95,6 +100,25 @@ export async function linkStoreAccounts(
     }
   }
 
+  // The vendor id alone is a note; the grant is what changes the app. Once
+  // per link, and only when the roster and the products agree on one string.
+  let grantedVendor: string | undefined;
+  let grantNote: string | undefined;
+  if (vendorId) {
+    const seller = await db.collection('sellers').doc(uid).get();
+    const alreadySeller = seller.exists && !seller.data()?.revokedAt;
+    if (!alreadySeller) {
+      try {
+        const outcome = await autoGrantFromRoster(uid, email, vendorId);
+        if ('vendorName' in outcome) grantedVendor = outcome.vendorName;
+        else grantNote = outcome.reason;
+      } catch (error) {
+        grantNote = String((error as Error)?.message ?? error);
+        logger.warn('Roster grant failed', { uid, error: grantNote });
+      }
+    }
+  }
+
   await user.set({ linkedAt: FieldValue.serverTimestamp() }, { merge: true });
 
   logger.info('Linked a store account', {
@@ -111,6 +135,8 @@ export async function linkStoreAccounts(
     backfilledOrders: backfilled.orders,
     backfilledItems: backfilled.items,
     alreadyLinked,
+    ...(grantedVendor ? { grantedVendor } : {}),
+    ...(grantNote ? { grantNote } : {}),
   };
 }
 

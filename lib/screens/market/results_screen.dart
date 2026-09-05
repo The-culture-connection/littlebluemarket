@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/models.dart';
 import '../../router/nav.dart';
+import '../../state/location.dart';
 import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
@@ -81,8 +82,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                 const SizedBox(width: 10),
                 NearMeButton(
                   active: active.nearMe,
-                  onTap: () =>
-                      ref.read(searchFiltersProvider.notifier).toggleNearMe(),
+                  onTap: () => toggleNearMe(context, ref),
                 ),
               ],
             ),
@@ -97,6 +97,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
               body: active.isGeoConstrained
                   ? 'Try a wider radius, or turn off Near me.'
                   : 'Try a different word, or one of the hashtags.',
+              action: _Suggestions(query: widget.query),
             ),
             data: (results) => _Results(results: results, query: widget.query),
           ),
@@ -364,6 +365,42 @@ class _TaggedReviewRow extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// "Did you mean": hashtags and collections that share a word with the query.
+class _Suggestions extends ConsumerWidget {
+  const _Suggestions({required this.query});
+
+  final String query;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final suggestions = ref.watch(suggestionsProvider(query));
+    return LbmAsync<List<SearchSuggestion>>(
+      suggestions,
+      skeleton: const SizedBox.shrink(),
+      errorBuilder: (_, _) => const SizedBox.shrink(),
+      isEmpty: (all) => all.isEmpty,
+      empty: const SizedBox.shrink(),
+      data: (all) => Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 7,
+        runSpacing: 7,
+        children: [
+          for (final s in all)
+            LbmChip(
+              s.label,
+              style: s.collectionHandle != null
+                  ? ChipStyle.plain
+                  : ChipStyle.initiative,
+              onTap: () => s.collectionHandle != null
+                  ? context.goToCollection(s.collectionHandle!)
+                  : context.goToResults(s.query!),
+            ),
+        ],
       ),
     );
   }

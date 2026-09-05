@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../app_assets.dart';
@@ -903,6 +904,7 @@ class HashtagText extends StatelessWidget {
     this.style,
     this.tagColor,
     this.onTagTap,
+    this.onMentionTap,
   });
 
   final String text;
@@ -910,7 +912,10 @@ class HashtagText extends StatelessWidget {
   final Color? tagColor;
   final ValueChanged<String>? onTagTap;
 
-  static final _pattern = RegExp(r'#\w+');
+  /// Tapping an @handle. Null leaves mentions bold but inert.
+  final ValueChanged<String>? onMentionTap;
+
+  static final _pattern = RegExp(r'#\w+|(?<![\w.])@[A-Za-z0-9_.]+');
 
   @override
   Widget build(BuildContext context) {
@@ -921,10 +926,20 @@ class HashtagText extends StatelessWidget {
       if (match.start > index) {
         spans.add(TextSpan(text: text.substring(index, match.start)));
       }
+      final token = match[0]!;
+      final isMention = token.startsWith('@');
       spans.add(
         TextSpan(
-          text: match[0],
+          text: token,
           style: TextStyle(fontWeight: FontWeight.w800, color: tagColor),
+          recognizer: isMention
+              ? (onMentionTap == null
+                    ? null
+                    : (TapGestureRecognizer()
+                        ..onTap = () => onMentionTap!(token.substring(1))))
+              : (onTagTap == null
+                    ? null
+                    : (TapGestureRecognizer()..onTap = () => onTagTap!(token))),
         ),
       );
       index = match.end;

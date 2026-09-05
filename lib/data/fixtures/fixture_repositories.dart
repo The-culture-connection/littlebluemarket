@@ -133,6 +133,25 @@ class FixtureSearchRepository implements SearchRepository {
 
   final FixtureBackend _backend;
 
+  @override
+  Future<List<SearchSuggestion>> suggestions(String query) async {
+    final words = query
+        .toLowerCase()
+        .replaceAll('#', '')
+        .split(RegExp(r'\s+'))
+        .where((w) => w.length >= 3)
+        .toList();
+    if (words.isEmpty) return const [];
+    return [
+      for (final c in Fx.collections)
+        if (words.any((w) => c.title.toLowerCase().contains(w)))
+          SearchSuggestion.collection(c.title, c.handle),
+      for (final t in Fx.tags)
+        if (words.any((w) => t.tag.toLowerCase().contains(w)))
+          SearchSuggestion.query(t.tag, t.tag),
+    ].take(8).toList();
+  }
+
   FixtureStore get _store => _backend.store;
 
   @override
@@ -696,6 +715,32 @@ class FixtureSocialRepository implements SocialRepository {
   }
 
   @override
+  Future<String> uploadPostPhoto(
+    List<int> bytes, {
+    required String contentType,
+  }) => _backend._delayed('asset://assets/images/product-stickers.jpg');
+
+  @override
+  Stream<List<AppNotification>> watchNotifications() =>
+      _store.notifications.stream;
+
+  @override
+  Future<void> markNotificationsRead() async {
+    _store.notifications.value = [
+      for (final n in _store.notifications.value)
+        AppNotification(
+          id: n.id,
+          kind: n.kind,
+          postId: n.postId,
+          fromUid: n.fromUid,
+          text: n.text,
+          createdAt: n.createdAt,
+          read: true,
+        ),
+    ];
+  }
+
+  @override
   Future<List<TaggedReview>> reviewsTagged(String tag, {int limit = 20}) =>
       _backend._delayed([
         for (final entry in _store.reviews.value.entries)
@@ -1021,8 +1066,83 @@ class FixtureProfileRepository implements ProfileRepository {
       bio: edit.bio,
       tags: edit.tags,
       avatarUrl: edit.avatarUrl,
+      cityState: edit.cityState,
     );
     _store.people.value = people;
+  }
+
+  @override
+  Future<Person?> personByHandle(String handle) async {
+    final lower = handle.toLowerCase().replaceFirst('@', '').trim();
+    for (final p in _store.people.value.values) {
+      if (p.handle.toLowerCase().replaceFirst('@', '') == lower) return p;
+    }
+    return null;
+  }
+
+  @override
+  Future<void> applyToSell(SellerApplicationDraft draft) async {
+    final uid = _backend.uid;
+    if (_store.applications.value.containsKey(uid)) {
+      throw const ValidationException('You have already applied.');
+    }
+    _store.applications.value = {
+      ..._store.applications.value,
+      uid: SellerApplication(
+        uid: uid,
+        status: ApplicationStatus.submitted,
+        shopName: draft.shopName,
+        appliedEmail: _backend.auth?.currentUser?.email ?? 'maya@example.com',
+        storeUrl: draft.storeUrl,
+        vendorEmail: draft.vendorEmail,
+        note: draft.note,
+        createdAt: DateTime.now(),
+      ),
+    };
+  }
+
+  @override
+  Stream<SellerApplication?> watchMyApplication() =>
+      _store.applications.stream.map((all) => all[_backend.uid]);
+
+  @override
+  Stream<List<SellerApplication>> watchApplications() =>
+      _store.applications.stream.map(
+        (all) => all.values
+            .where((a) => a.status == ApplicationStatus.submitted)
+            .toList(),
+      );
+
+  @override
+  Future<void> decideApplication(
+    String uid, {
+    required bool approve,
+    String? vendorName,
+    String? reason,
+  }) async {
+    final all = {..._store.applications.value};
+    final existing = all[uid];
+    if (existing == null) throw NotFoundException('application', uid);
+    all[uid] = SellerApplication(
+      uid: uid,
+      status: approve ? ApplicationStatus.approved : ApplicationStatus.declined,
+      shopName: existing.shopName,
+      appliedEmail: existing.appliedEmail,
+      storeUrl: existing.storeUrl,
+      vendorEmail: existing.vendorEmail,
+      note: existing.note,
+      vendorName: approve ? vendorName : null,
+      reason: approve ? null : reason,
+      createdAt: existing.createdAt,
+    );
+    _store.applications.value = all;
+    if (approve) {
+      final people = {..._store.people.value};
+      final person = people[uid];
+      if (person != null) people[uid] = person.copyWith(isSeller: true);
+      _store.people.value = people;
+      _backend.auth?.grantSeller(uid);
+    }
   }
 
   @override
@@ -1126,6 +1246,9 @@ class FixtureFulfillmentRepository implements FulfillmentRepository {
   FixtureFulfillmentRepository(this._backend);
 
   final FixtureBackend _backend;
+
+  @override
+  Future<void> refreshShipments() => _backend._delayed(null);
 
   FixtureStore get _store => _backend.store;
 

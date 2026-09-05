@@ -70,6 +70,10 @@ abstract interface class CollectionRepository {
 abstract interface class SearchRepository {
   Future<SearchResults> search(SearchFilters filters, {String? cursor});
 
+  /// What to try when a search found nothing: hashtags and collections
+  /// that share a word with the query.
+  Future<List<SearchSuggestion>> suggestions(String query);
+
   Future<List<String>> recentSearches();
   Future<void> recordSearch(String query);
   Future<void> removeRecentSearch(String query);
@@ -133,6 +137,16 @@ abstract interface class SocialRepository {
     String? parentId,
   });
   Future<void> setCommentLike(String commentId, bool liked);
+
+  /// A photo for a post, uploaded to the poster's own folder. Returns its URL.
+  Future<String> uploadPostPhoto(
+    List<int> bytes, {
+    required String contentType,
+  });
+
+  /// The bell, newest first.
+  Stream<List<AppNotification>> watchNotifications();
+  Future<void> markNotificationsRead();
 
   Stream<List<Review>> watchReviews(String productId);
   Stream<RatingSummary> watchRating(String productId);
@@ -212,6 +226,22 @@ abstract interface class ProfileRepository {
   /// idempotent on the backend, so a retry costs nothing.
   Future<LinkResult> linkStoreAccounts();
 
+  /// One person by their handle, or null. For @-mentions.
+  Future<Person?> personByHandle(String handle);
+
+  /// Applying to sell without a claim code. Once per account.
+  Future<void> applyToSell(SellerApplicationDraft draft);
+  Stream<SellerApplication?> watchMyApplication();
+
+  /// Admin only: the queue, and the answer.
+  Stream<List<SellerApplication>> watchApplications();
+  Future<void> decideApplication(
+    String uid, {
+    required bool approve,
+    String? vendorName,
+    String? reason,
+  });
+
   Future<List<Address>> addresses();
   Future<void> saveAddress(Address address);
   Future<void> deleteAddress(String id);
@@ -229,6 +259,9 @@ abstract interface class FulfillmentRepository {
     required String trackingNumber,
     required String carrier,
   });
+
+  /// Asks Shipturtle for the latest tracking and settlement on every order.
+  Future<void> refreshShipments();
 }
 
 /// The dev Diagnostics screen: who the phone thinks it is, and whether the
@@ -302,6 +335,7 @@ class ProfileEdit {
     this.bio,
     this.tags,
     this.avatarUrl,
+    this.cityState,
   });
 
   final String? name;
@@ -309,6 +343,9 @@ class ProfileEdit {
   final String? bio;
   final List<String>? tags;
   final String? avatarUrl;
+
+  /// "City, ST". The backend geocodes it; Near me measures from it.
+  final String? cityState;
 }
 
 class NewForum {

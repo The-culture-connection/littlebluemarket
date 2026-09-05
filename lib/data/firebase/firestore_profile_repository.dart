@@ -131,6 +131,7 @@ class FirestoreProfileRepository implements ProfileRepository {
         'handleLower': handle.toLowerCase().replaceFirst('@', ''),
       },
       if (edit.bio != null) 'bio': edit.bio!.trim(),
+      if (edit.cityState != null) 'cityState': edit.cityState!.trim(),
       if (edit.tags != null) 'tags': edit.tags,
       if (edit.avatarUrl != null) 'avatarUrl': edit.avatarUrl,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -256,4 +257,81 @@ class FirestoreProfileRepository implements ProfileRepository {
   Future<void> deleteAddress(String id) => guardFirestore(
     () => _users.doc(_requireUid).collection('addresses').doc(id).delete(),
   );
+
+  @override
+  Future<Person?> personByHandle(String handle) => guardFirestore(() async {
+    final lower = handle.toLowerCase().replaceFirst('@', '').trim();
+    if (lower.isEmpty) return null;
+    final snapshot = await _users
+        .where('handleLower', isEqualTo: lower)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty) return null;
+    final doc = snapshot.docs.first;
+    return FirestoreMappers.person(doc.id, doc.data());
+  }, operation: 'firestore users personByHandle');
+
+  CollectionReference<Map<String, dynamic>> get _applications =>
+      _db.collection('sellerApplications');
+
+  @override
+  Future<void> applyToSell(SellerApplicationDraft draft) =>
+      guardFirestore(() async {
+        final id = _requireUid;
+        final email = _auth.currentUser?.email ?? '';
+        // Once, own, with the token's email: exactly what the rules allow.
+        await _applications.doc(id).set({
+          'status': 'submitted',
+          'appliedEmail': email,
+          'shopName': draft.shopName.trim(),
+          'storeUrl': draft.storeUrl.trim(),
+          'vendorEmail': draft.vendorEmail.trim().toLowerCase(),
+          'note': draft.note.trim(),
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }, operation: 'firestore sellerApplications apply');
+
+  @override
+  Stream<SellerApplication?> watchMyApplication() {
+    final id = uid;
+    if (id == null) return Stream.value(null);
+    return _applications
+        .doc(id)
+        .snapshots()
+        .map(
+          (doc) => doc.data() == null
+              ? null
+              : FirestoreMappers.application(doc.id, doc.data()!),
+        )
+        .guarded(operation: 'firestore sellerApplications mine');
+  }
+
+  @override
+  Stream<List<SellerApplication>> watchApplications() => _applications
+      .where('status', isEqualTo: 'submitted')
+      .orderBy('createdAt', descending: true)
+      .limit(50)
+      .snapshots()
+      .map(
+        (snapshot) => [
+          for (final doc in snapshot.docs)
+            FirestoreMappers.application(doc.id, doc.data()),
+        ],
+      )
+      .guarded(operation: 'firestore sellerApplications queue');
+
+  @override
+  Future<void> decideApplication(
+    String uid, {
+    required bool approve,
+    String? vendorName,
+    String? reason,
+  }) => guardFirestore(() async {
+    await _functions.httpsCallable('adminDecideApplication').call({
+      'uid': uid,
+      'approve': approve,
+      'vendorName': ?vendorName,
+      'reason': ?reason,
+    });
+  }, operation: 'callable adminDecideApplication');
 }

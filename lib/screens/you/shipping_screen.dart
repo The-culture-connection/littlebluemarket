@@ -56,10 +56,15 @@ class _ShippingScreenState extends ConsumerState<ShippingScreen> {
               emptyTitle: 'Nothing on its way',
               emptyBody: 'What you buy shows up here with its tracking.',
             ),
-            1 => _Shipments(
-              shipments: sending,
-              emptyTitle: 'Nothing to send',
-              emptyBody: 'Orders you need to ship appear here.',
+            1 => Column(
+              children: [
+                const _RefreshShipments(),
+                _Shipments(
+                  shipments: sending,
+                  emptyTitle: 'Nothing to send',
+                  emptyBody: 'Orders you need to ship appear here.',
+                ),
+              ],
             ),
             _ => const _ManageSales(),
           },
@@ -318,6 +323,16 @@ class _ShipmentCard extends ConsumerWidget {
             shipment.carrierNote,
             style: LbmText.xtiny.copyWith(color: c.ink3),
           ),
+          if (shipment.payoutNote != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              shipment.payoutNote!,
+              style: LbmText.xtiny.copyWith(
+                fontWeight: FontWeight.w700,
+                color: c.ink2,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -348,6 +363,54 @@ class _TrackBar extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Pulls the latest tracking and settlement words from Shipturtle now,
+/// rather than at the next scheduled sync.
+class _RefreshShipments extends ConsumerStatefulWidget {
+  const _RefreshShipments();
+
+  @override
+  ConsumerState<_RefreshShipments> createState() => _RefreshShipmentsState();
+}
+
+class _RefreshShipmentsState extends ConsumerState<_RefreshShipments> {
+  bool _busy = false;
+
+  Future<void> _refresh() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(fulfillmentRepositoryProvider).refreshShipments();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Checked with Shipturtle.')),
+      );
+    } on RepositoryException catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(describeError(error).body)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: PillButton(
+          _busy ? 'Checking…' : 'Check with Shipturtle',
+          small: true,
+          expand: false,
+          style: PillStyle.quiet,
+          onPressed: _busy ? null : _refresh,
+        ),
+      ),
     );
   }
 }

@@ -48,10 +48,27 @@ class FulfillmentProxyRepository implements FulfillmentRepository {
           for (final doc in snapshot.docs) {
             final list = doc.data()['shipments'];
             if (list is! List) continue;
+            // Sending only: what Shipturtle says about this seller's cut of
+            // the order, in Shipturtle's words.
+            String? payoutNote;
+            if (field != 'buyerUid') {
+              final mine = doc.data()['shipturtleBySeller'];
+              final entry = mine is Map ? mine[id] : null;
+              if (entry is Map) {
+                final credited = entry['credited'] == true;
+                final status = entry['payoutStatus']?.toString() ?? 'pending';
+                payoutNote = credited
+                    ? 'Shipturtle: credited'
+                    : 'Shipturtle: payout $status';
+              }
+            }
             for (final item in list) {
               if (item is Map) {
                 shipments.add(
-                  FirestoreMappers.shipment(Map<String, dynamic>.from(item)),
+                  FirestoreMappers.shipment(
+                    Map<String, dynamic>.from(item),
+                    payoutNote: payoutNote,
+                  ),
                 );
               }
             }
@@ -83,4 +100,14 @@ class FulfillmentProxyRepository implements FulfillmentRepository {
       'carrier': carrier,
     });
   }, operation: 'callable fulfillmentAddTracking');
+
+  @override
+  Future<void> refreshShipments() => guardFirestore(() async {
+    await _functions
+        .httpsCallable(
+          'sellerRefreshShipments',
+          options: HttpsCallableOptions(timeout: const Duration(seconds: 120)),
+        )
+        .call(const {});
+  }, operation: 'callable sellerRefreshShipments');
 }

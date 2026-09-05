@@ -93,6 +93,31 @@ final listingsProvider = StreamProvider<List<Listing>>((ref) {
   return ref.watch(sellerRepositoryProvider).watchListings();
 });
 
+/// What to try when a search found nothing.
+final suggestionsProvider =
+    FutureProvider.family<List<SearchSuggestion>, String>(
+      (ref, query) => ref.watch(searchRepositoryProvider).suggestions(query),
+    );
+
+/// The bell.
+final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
+  return ref.watch(socialRepositoryProvider).watchNotifications();
+});
+
+final unreadNotificationsProvider = Provider<int>((ref) {
+  return ref.watch(notificationsProvider).value?.where((n) => !n.read).length ??
+      0;
+});
+
+/// Applying to sell: mine, and (admin) the queue.
+final myApplicationProvider = StreamProvider<SellerApplication?>((ref) {
+  return ref.watch(profileRepositoryProvider).watchMyApplication();
+});
+
+final applicationsProvider = StreamProvider<List<SellerApplication>>((ref) {
+  return ref.watch(profileRepositoryProvider).watchApplications();
+});
+
 final popularTagsProvider = FutureProvider<List<TagCount>>((ref) {
   ref.keepCached();
   return ref.watch(catalogRepositoryProvider).popularTags();

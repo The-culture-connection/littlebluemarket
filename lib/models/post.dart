@@ -200,6 +200,7 @@ class NewPost {
     required this.productId,
     this.caption,
     this.tags = const [],
+    this.mentionedUids = const [],
   }) : kind = PostKind.listing,
        text = null,
        rating = null,
@@ -215,6 +216,7 @@ class NewPost {
     this.purchaseId,
     this.tags = const [],
     this.imageUrls = const [],
+    this.mentionedUids = const [],
   }) : kind = PostKind.review,
        caption = null,
        aboutSellerId = null,
@@ -225,6 +227,7 @@ class NewPost {
     this.aboutSellerId,
     this.tags = const [],
     this.imageUrls = const [],
+    this.mentionedUids = const [],
   }) : kind = PostKind.shoutout,
        productId = null,
        caption = null,
@@ -234,14 +237,18 @@ class NewPost {
 
   /// The cart as it is right now, frozen. The caller trims to
   /// [CartPost.maxItems]; the rules refuse anything longer.
-  const NewPost.cart({required this.items, this.caption, this.tags = const []})
-    : kind = PostKind.cart,
-      productId = null,
-      text = null,
-      rating = null,
-      purchaseId = null,
-      aboutSellerId = null,
-      imageUrls = const [];
+  const NewPost.cart({
+    required this.items,
+    this.caption,
+    this.tags = const [],
+    this.mentionedUids = const [],
+  }) : kind = PostKind.cart,
+       productId = null,
+       text = null,
+       rating = null,
+       purchaseId = null,
+       aboutSellerId = null,
+       imageUrls = const [];
 
   final PostKind kind;
   final String? productId;
@@ -253,4 +260,8 @@ class NewPost {
   final List<String> tags;
   final List<String> imageUrls;
   final List<CartPostItem> items;
+
+  /// The members named with @ in the text, resolved to uids so a renamed
+  /// handle still points at the same person and the backend can tell them.
+  final List<String> mentionedUids;
 }

@@ -87,6 +87,8 @@ class FixtureStore {
   late final sending = Watchable<List<Shipment>>([...Fx.sending]);
   late final receiving = Watchable<List<Shipment>>([...Fx.receiving]);
   final listings = Watchable<List<Listing>>([]);
+  final notifications = Watchable<List<AppNotification>>([]);
+  final applications = Watchable<Map<String, SellerApplication>>({});
 
   /// Post ids this viewer has liked.
   final likedPosts = <String>{};
@@ -97,6 +99,16 @@ class FixtureStore {
 
   void _seed() {
     posts.value = _seedPosts();
+    notifications.value = [
+      AppNotification(
+        id: 'n1',
+        kind: NotificationKind.mention,
+        postId: 'post_shoutout_1',
+        fromUid: 'kali',
+        text: 'Go see @maya for the good soap.',
+        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+      ),
+    ];
     comments.value = _seedComments();
     threadComments.value = {
       // The prototype rendered one global comment list under every thread.
@@ -311,6 +323,8 @@ class FixtureStore {
       sending,
       receiving,
       listings,
+      notifications,
+      applications,
     ]) {
       w.dispose();
     }

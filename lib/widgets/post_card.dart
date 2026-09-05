@@ -99,6 +99,30 @@ class PostActionBar extends StatelessWidget {
   }
 }
 
+/// An @handle in a post opens that person, when the handle is someone's.
+Future<void> openMention(
+  BuildContext context,
+  WidgetRef ref,
+  String handle,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final person = await ref
+        .read(profileRepositoryProvider)
+        .personByHandle(handle);
+    if (!context.mounted) return;
+    if (person == null) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Nobody here is @$handle.')),
+      );
+      return;
+    }
+    context.goToSeller(person.id);
+  } on RepositoryException catch (error) {
+    messenger.showSnackBar(SnackBar(content: Text(describeError(error).body)));
+  }
+}
+
 /// Adds a listing to the cart and says so, or says why it could not.
 Future<void> addToCart(
   BuildContext context,
@@ -295,12 +319,33 @@ class _ShoutoutBody extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (post.imageUrls.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+            child: ClipRRect(
+              borderRadius: LbmRadius.imageR,
+              child: AspectRatio(
+                aspectRatio: 4 / 3,
+                child: post.imageUrls.first.startsWith('asset://')
+                    ? Image.asset(
+                        post.imageUrls.first.substring(8),
+                        fit: BoxFit.cover,
+                      )
+                    : Image.network(
+                        post.imageUrls.first,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => ColoredBox(color: c.skyWash),
+                      ),
+              ),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
           child: HashtagText(
             post.text,
             style: TextStyle(fontSize: 14.5, height: 1.55, color: c.ink),
             onTagTap: (tag) => context.goToResults(tag),
+            onMentionTap: (handle) => openMention(context, ref, handle),
           ),
         ),
         if (post.aboutSellerId != null)
