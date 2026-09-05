@@ -211,6 +211,17 @@ export async function recordPaidOrder(
       );
     }
 
+    // An order the app started is the app's cart, paid for. Empty the cart
+    // now, or the person comes back from checkout to the things they just
+    // bought. Website orders carry no app_uid and touch no cart.
+    if (order.buyerUid) {
+      tx.set(
+        db.collection('carts').doc(order.buyerUid),
+        { lines: [], clearedByOrder: order.id, updatedAt: FieldValue.serverTimestamp() },
+        { merge: true },
+      );
+    }
+
     if (buyerUid) {
       const itemCount = order.lines.reduce((sum, l) => sum + l.quantity, 0);
       tx.set(

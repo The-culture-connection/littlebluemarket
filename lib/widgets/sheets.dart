@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,6 +12,7 @@ import '../state/session.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
+import 'checkout_launcher.dart';
 import 'primitives.dart';
 
 /// The shared bottom-sheet body: the grip, the soft top radius, and padding.
@@ -206,7 +208,11 @@ Future<void> showBuySheet(
 /// a hosted checkout completing -- the sheet closing means the person dismissed
 /// it, not that they paid -- so the copy says what is actually true and the
 /// order arrives through the paid webhook.
-Future<void> showCheckoutSheet(BuildContext context, CheckoutHandoff handoff) {
+Future<void> showCheckoutSheet(
+  BuildContext context,
+  WidgetRef ref,
+  CheckoutHandoff handoff,
+) {
   return showLbmSheet(context, (sheetContext) {
     final c = sheetContext.c;
     return LbmSheet(
@@ -228,11 +234,29 @@ Future<void> showCheckoutSheet(BuildContext context, CheckoutHandoff handoff) {
         const SizedBox(height: 18),
         PillButton(
           'Open checkout',
-          onPressed: () {
+          onPressed: () async {
             Navigator.of(sheetContext).pop();
-            // The web handoff itself lands with the commerce proxy.
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Checkout: ${handoff.webUrl}')),
+            final messenger = ScaffoldMessenger.of(context);
+            // An in-app browser tab on the store's own checkout. Whether
+            // the person paid is not known here; the cart empties and the
+            // purchase appears when the paid-order webhook lands.
+            final opened = await ref
+                .read(checkoutLauncherProvider)
+                .open(handoff.webUrl);
+            if (opened) {
+              ref.read(checkoutPendingProvider.notifier).set(true);
+              return;
+            }
+            messenger.showSnackBar(
+              SnackBar(
+                content: const Text('Could not open checkout on this phone.'),
+                action: SnackBarAction(
+                  label: 'Copy link',
+                  onPressed: () => Clipboard.setData(
+                    ClipboardData(text: handoff.webUrl.toString()),
+                  ),
+                ),
+              ),
             );
           },
         ),

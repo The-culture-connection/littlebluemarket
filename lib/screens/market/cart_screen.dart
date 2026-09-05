@@ -8,6 +8,7 @@ import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/checkout_launcher.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
@@ -24,6 +25,14 @@ class CartScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cart = ref.watch(cartProvider);
+    final pending = ref.watch(checkoutPendingProvider);
+
+    // Something new in the cart means the last checkout is history.
+    ref.listen(cartProvider, (_, next) {
+      if (next.value?.isEmpty == false) {
+        ref.read(checkoutPendingProvider.notifier).set(false);
+      }
+    });
 
     return LbmScreen(
       appBar: const LbmAppBar(title: 'Your cart'),
@@ -31,10 +40,20 @@ class CartScreen extends ConsumerWidget {
         cart,
         skeleton: const ListRowSkeleton(rows: 2),
         isEmpty: (cart) => cart.isEmpty,
-        empty: const LbmEmpty(
-          title: 'Your cart is empty',
-          body: 'Add something from the market and it waits here.',
-        ),
+        // After a checkout the cart empties when the paid-order webhook lands,
+        // and that is the moment this copy has to be true. It never claims the
+        // payment went through: the app cannot see that.
+        empty: pending
+            ? const LbmEmpty(
+                title: "Thanks! We'll confirm shortly",
+                body:
+                    'Your order shows under Bought & received on your profile '
+                    'as soon as the store confirms it, usually within a minute.',
+              )
+            : const LbmEmpty(
+                title: 'Your cart is empty',
+                body: 'Add something from the market and it waits here.',
+              ),
         data: (cart) => ListView(
           padding: EdgeInsets.zero,
           children: [
@@ -201,7 +220,7 @@ class _SummaryState extends ConsumerState<_Summary> {
       setState(() => _working = false);
       // Nothing here claims the purchase succeeded. The app cannot observe a
       // hosted checkout completing; only the paid webhook is proof.
-      showCheckoutSheet(context, handoff);
+      showCheckoutSheet(context, ref, handoff);
     } on RepositoryException catch (error) {
       if (!mounted) return;
       setState(() => _working = false);

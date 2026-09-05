@@ -24,7 +24,8 @@
     "seed": "node scripts/seed.mjs",
     "verify:security": "firebase emulators:exec --only firestore \"node scripts/verify-security.mjs\"",
     "claim-code": "node scripts/claim-code-hash.mjs",
-    "probe:shipturtle": "node scripts/shipturtle-probe.mjs --project dev"
+    "probe:shipturtle": "node scripts/shipturtle-probe.mjs --project dev",
+    "replay-order": "node scripts/replay-order.mjs --project dev"
   },
   "dependencies": {
     "firebase-admin": "^13.0.2",
