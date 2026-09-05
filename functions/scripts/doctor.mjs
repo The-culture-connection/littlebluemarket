@@ -174,9 +174,11 @@ async function main() {
         try {
           const token = await mintAdminToken({ domain: params.SHOPIFY_STORE_DOMAIN, clientId: params.SHOPIFY_CLIENT_ID, clientSecret });
           ctx = { domain: params.SHOPIFY_STORE_DOMAIN, version: params.SHOPIFY_API_VERSION ?? '2026-07', token };
-          const shop = await adminGraphQL(ctx, '{ shop { name myshopifyDomain passwordEnabled plan { displayName } } }');
+          const shop = await adminGraphQL(ctx, '{ shop { name myshopifyDomain plan { displayName } } }');
           pass('shopify admin', `token mints · shop "${shop.shop.name}" (${shop.shop.myshopifyDomain}, ${shop.shop.plan?.displayName ?? 'plan ?'})`);
-          if (shop.shop.passwordEnabled) warn('storefront password', 'the store is password-protected, so the checkout tab shows a password page first', 'dev store admin -> Online Store -> Preferences -> Password protection -> untick "Restrict access" -> Save (or type the password shown there once in the checkout tab)');
+          const front = await fetch(`https://${params.SHOPIFY_STORE_DOMAIN}/`, { redirect: 'manual' }).catch(() => null);
+          const passworded = front !== null && (front.status === 302 || front.status === 301) && /[/]password/.test(front.headers.get('location') ?? '');
+          if (passworded) warn('storefront password', 'the store is password-protected, so the checkout tab shows a password page first', 'dev store admin -> Online Store -> Preferences -> Password protection -> untick "Restrict access" -> Save (or type the password shown there once in the checkout tab)');
           const granted = await grantedScopes(ctx);
           const missingScopes = REQUIRED_SCOPES.filter((s) => !hasScope(granted, s));
           if (missingScopes.length) {

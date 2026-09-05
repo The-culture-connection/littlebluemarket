@@ -95,6 +95,16 @@ export function decodeJwtClaims(token: string): Record<string, unknown> | null {
   }
 }
 
+/** A password-protected storefront redirects its home page to /password. */
+async function storefrontPassworded(domain: string): Promise<boolean> {
+  try {
+    const res = await fetch(`https://${domain}/`, { redirect: 'manual' });
+    return (res.status === 301 || res.status === 302) && /[/]password/.test(res.headers.get('location') ?? '');
+  } catch {
+    return false;
+  }
+}
+
 function secret(read: () => string): string {
   try {
     return read();
@@ -129,12 +139,12 @@ export function defaultProbes(): Probe[] {
       fix: 'reinstall the app on the store, then firebase functions:secrets:set SHOPIFY_CLIENT_SECRET --project dev',
       run: async () => {
         const data = await adminGraphQL<{
-          shop: { name: string; myshopifyDomain: string; passwordEnabled: boolean; plan: { displayName: string } | null };
+          shop: { name: string; myshopifyDomain: string; plan: { displayName: string } | null };
           currentAppInstallation: { accessScopes: Array<{ handle: string }> } | null;
-        }>('{ shop { name myshopifyDomain passwordEnabled plan { displayName } } currentAppInstallation { accessScopes { handle } } }');
+        }>('{ shop { name myshopifyDomain plan { displayName } } currentAppInstallation { accessScopes { handle } } }');
         const scopes = (data.currentAppInstallation?.accessScopes ?? []).map((s) => s.handle);
         return {
-          summary: `shop "${data.shop.name}" (${data.shop.myshopifyDomain}) · ${scopes.length} scope(s)${data.shop.passwordEnabled ? ' · STOREFRONT PASSWORD ON (checkout shows a password page: Online Store -> Preferences -> Password protection)' : ''}`,
+          summary: `shop "${data.shop.name}" (${data.shop.myshopifyDomain}) · ${scopes.length} scope(s)${(await storefrontPassworded(data.shop.myshopifyDomain)) ? ' · STOREFRONT PASSWORD ON (checkout shows a password page: Online Store -> Preferences -> Password protection)' : ''}`,
           data: { scopes },
         };
       },
