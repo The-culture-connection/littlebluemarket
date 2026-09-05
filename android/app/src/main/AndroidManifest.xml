@@ -41,5 +41,15 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Opening the store's checkout. Android 11+ hides every browser from
+             the app unless it declares it wants to open web links; without this
+             url_launcher reports "no browser" even with Chrome installed. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService"/>
+        </intent>
     </queries>
 </manifest>
