@@ -39,20 +39,40 @@ abstract interface class AuthService {
 
   AuthUser? get currentUser;
 
-  /// Passwordless: the store's customer accounts are code-based, and no
-  /// password of theirs could be verified here anyway.
-  Future<void> sendSignInCode(String email);
+  /// Creates the account and signs in.
+  ///
+  /// A guest is upgraded **in place** rather than replaced, preserving
+  /// anything already attached to that uid — notably a cart built before
+  /// signing up, which the prototype's "Buy, sign up" flow silently threw
+  /// away.
+  ///
+  /// The returned user is **not** email-verified. Firebase sends the
+  /// verification mail itself; until the person clicks it, linking their
+  /// Shopify or vendor record is refused — see [AuthUser.emailVerified].
+  Future<AuthUser> signUpWithPassword({
+    required String email,
+    required String password,
+  });
 
-  /// Returns the signed-in user. Throws [ValidationException] on a bad code.
-  Future<AuthUser> confirmCode({required String email, required String code});
+  /// Signs an existing account in.
+  ///
+  /// Throws [ValidationException] on a wrong password or unknown address.
+  /// Modern Firebase collapses those two into one error code on purpose, so
+  /// the message cannot say which — and should not try.
+  Future<AuthUser> signInWithPassword({
+    required String email,
+    required String password,
+  });
+
+  /// Re-sends the verification mail to the signed-in account.
+  Future<void> sendEmailVerification();
+
+  /// Sends a reset link. Deliberately silent about whether the address is
+  /// known: saying so turns this screen into a way to enumerate accounts.
+  Future<void> sendPasswordReset(String email);
 
   /// Anonymous sign-in, so a guest still has a uid.
   Future<void> continueAsGuest();
-
-  /// Upgrades the anonymous account in place, preserving anything already
-  /// attached to that uid — notably a cart built before signing up, which the
-  /// prototype's "Buy, sign up" flow silently threw away.
-  Future<void> linkGuestToEmail({required String email, required String code});
 
   Future<void> signOut();
 }
@@ -74,9 +94,13 @@ class FixtureAuthService implements AuthService {
   AuthUser? _user;
   final _controller = StreamController<AuthUser?>.broadcast();
 
-  /// Any six digits are accepted, as in the prototype. The real service
-  /// verifies for real.
-  static final _codePattern = RegExp(r'^\d{6}$');
+  /// Firebase's own minimum. Matching it here means the fixture backend
+  /// rejects exactly what the real one would.
+  static const _minPasswordLength = 6;
+
+  /// Addresses that already "exist" on this backend, so the sign-in and
+  /// sign-up paths can both be exercised without Firebase.
+  final _accounts = <String, String>{};
 
   @override
   AuthUser? get currentUser => _user;
@@ -100,25 +124,78 @@ class FixtureAuthService implements AuthService {
     return out.stream;
   }
 
-  @override
-  Future<void> sendSignInCode(String email) async {
+  void _checkEmail(String email) {
     if (!email.contains('@') || !email.contains('.')) {
-      throw const ValidationException('That email does not look right', field: 'email');
+      throw const ValidationException(
+        'That email does not look right',
+        field: 'email',
+      );
     }
   }
 
   @override
-  Future<AuthUser> confirmCode({
+  Future<AuthUser> signUpWithPassword({
     required String email,
-    required String code,
+    required String password,
   }) async {
-    if (!_codePattern.hasMatch(code)) {
-      throw const ValidationException('That code is not right', field: 'code');
+    _checkEmail(email);
+    if (password.length < _minPasswordLength) {
+      throw const ValidationException(
+        'Use at least 6 characters',
+        field: 'password',
+      );
     }
+    final normalized = email.trim().toLowerCase();
+    if (_accounts.containsKey(normalized)) {
+      throw const ValidationException(
+        'That email already has an account. Sign in instead.',
+        field: 'email',
+      );
+    }
+    _accounts[normalized] = password;
+
+    // Verified on this backend, so the fixture flow reaches the same screens
+    // a verified account would. Only the real service can prove an address.
     final user = AuthUser(uid: demoUid, email: email, emailVerified: true);
     _emit(user);
     return user;
   }
+
+  @override
+  Future<AuthUser> signInWithPassword({
+    required String email,
+    required String password,
+  }) async {
+    _checkEmail(email);
+    final normalized = email.trim().toLowerCase();
+    final known = _accounts[normalized];
+
+    // An address nobody signed up for still signs in, because the fixture
+    // backend has no account list worth honouring — but a password shorter
+    // than the real minimum is refused, so the error path stays reachable.
+    if (known == null && password.length < _minPasswordLength) {
+      throw const ValidationException(
+        'That email and password do not match',
+        field: 'password',
+      );
+    }
+    if (known != null && known != password) {
+      throw const ValidationException(
+        'That email and password do not match',
+        field: 'password',
+      );
+    }
+
+    final user = AuthUser(uid: demoUid, email: email, emailVerified: true);
+    _emit(user);
+    return user;
+  }
+
+  @override
+  Future<void> sendEmailVerification() async {}
+
+  @override
+  Future<void> sendPasswordReset(String email) async => _checkEmail(email);
 
   @override
   Future<void> continueAsGuest() async {
@@ -126,17 +203,11 @@ class FixtureAuthService implements AuthService {
   }
 
   @override
-  Future<void> linkGuestToEmail({
-    required String email,
-    required String code,
-  }) async {
-    await confirmCode(email: email, code: code);
-  }
-
-  @override
   Future<void> signOut() async => _emit(null);
 
   /// Test and demo shortcut: land straight in a signed-in session.
+  ///
+  /// Real sign-in goes through [signInWithPassword].
   void signInAsDemoUser() {
     _emit(AuthUser(uid: demoUid, email: 'demo@example.com', emailVerified: true));
   }

@@ -141,48 +141,108 @@ class _QuietAction extends StatelessWidget {
   }
 }
 
-// -------------------------------------------------------------------- email
+// ------------------------------------------------------------ email + password
 
-/// Step one: the email address.
+/// Sign in, or create an account.
 ///
-/// The store uses passwordless customer accounts, so there is no password
-/// field anywhere in this flow. Signing in and creating a profile are the same
-/// first step — the difference only shows up after the code is confirmed.
-class EmailScreen extends StatefulWidget {
+/// One screen, both fields. The prototype drew a six-digit code here, but
+/// Firebase issues links rather than codes, and the link had to travel through
+/// Dynamic Links, which shut down in August 2025. Password auth is the one
+/// option that needs no mail infrastructure of our own.
+class EmailScreen extends ConsumerStatefulWidget {
   const EmailScreen({super.key, this.creating = false});
 
   /// Whether the person arrived via "Create a Profile" rather than "Sign in".
   final bool creating;
 
   @override
-  State<EmailScreen> createState() => _EmailScreenState();
+  ConsumerState<EmailScreen> createState() => _EmailScreenState();
 }
 
-class _EmailScreenState extends State<EmailScreen> {
+class _EmailScreenState extends ConsumerState<EmailScreen> {
   final _email = TextEditingController();
+  final _password = TextEditingController();
   bool _valid = false;
+  bool _busy = false;
+  String? _error;
+  String? _notice;
+
+  /// Firebase's own minimum. Enforcing it here means the button is disabled
+  /// rather than the server refusing after a round trip.
+  static const _minPassword = 6;
 
   @override
   void initState() {
     super.initState();
-    _email.addListener(() {
-      final next = _email.text.contains('@') && _email.text.contains('.');
-      if (next != _valid) setState(() => _valid = next);
-    });
+    _email.addListener(_revalidate);
+    _password.addListener(_revalidate);
+  }
+
+  void _revalidate() {
+    final next =
+        _email.text.contains('@') &&
+        _email.text.contains('.') &&
+        _password.text.length >= _minPassword;
+    if (next != _valid) setState(() => _valid = next);
   }
 
   @override
   void dispose() {
     _email.dispose();
+    _password.dispose();
     super.dispose();
   }
 
-  void _submit() {
-    if (!_valid) return;
-    context.push(
-      '/verify?email=${Uri.encodeComponent(_email.text)}'
-      '&create=${widget.creating ? 1 : 0}',
-    );
+  Future<void> _submit() async {
+    if (!_valid || _busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _notice = null;
+    });
+
+    try {
+      final session = ref.read(sessionProvider.notifier);
+      if (widget.creating) {
+        await session.signUp(email: _email.text, password: _password.text);
+        if (!mounted) return;
+        // The account exists and is signed in; the address is not yet proven.
+        // That only blocks linking a shop record, so it is a notice rather
+        // than a gate.
+        context.push('/verify?email=${Uri.encodeComponent(_email.text)}&create=1');
+      } else {
+        await session.signInWithPassword(
+          email: _email.text,
+          password: _password.text,
+        );
+        if (!mounted) return;
+        context.go('/market');
+      }
+    } on RepositoryException catch (error) {
+      if (!mounted) return;
+      setState(() => _error = describeError(error).body);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    if (!_email.text.contains('@')) {
+      setState(() => _error = 'Enter your email first');
+      return;
+    }
+    try {
+      await ref.read(sessionProvider.notifier).sendPasswordReset(_email.text);
+      if (!mounted) return;
+      // Worded so it says nothing about whether the address has an account.
+      setState(() {
+        _error = null;
+        _notice = 'If that address has an account, a reset link is on its way.';
+      });
+    } on RepositoryException catch (error) {
+      if (!mounted) return;
+      setState(() => _error = describeError(error).body);
+    }
   }
 
   @override
@@ -190,8 +250,8 @@ class _EmailScreenState extends State<EmailScreen> {
     return _OnboardingScaffold(
       title: widget.creating ? 'Create a profile' : 'Welcome back',
       subtitle: widget.creating
-          ? "We'll email you a six-digit code. No password to remember."
-          : 'Enter your email and we’ll send you a six-digit code.',
+          ? 'Pick a password with at least 6 characters.'
+          : 'Sign in with your email and password.',
       fields: [
         LbmField(
           label: 'Email',
@@ -199,20 +259,47 @@ class _EmailScreenState extends State<EmailScreen> {
           hintText: 'you@example.com',
           onDark: true,
           keyboardType: TextInputType.emailAddress,
-          textInputAction: TextInputAction.go,
+          textInputAction: TextInputAction.next,
           autofocus: true,
-          onSubmitted: (_) => _submit(),
+          autofillHints: const [AutofillHints.email],
         ),
+        const SizedBox(height: 12),
+        LbmField(
+          label: 'Password',
+          controller: _password,
+          hintText: 'At least 6 characters',
+          onDark: true,
+          obscureText: true,
+          textInputAction: TextInputAction.go,
+          onSubmitted: (_) => _submit(),
+          autofillHints: widget.creating
+              ? const [AutofillHints.newPassword]
+              : const [AutofillHints.password],
+        ),
+        if (_error != null || _notice != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            _error ?? _notice!,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: LbmConst.onWelcome.withValues(alpha: _error != null ? 1 : 0.8),
+            ),
+          ),
+        ],
       ],
       actions: [
         _SlateButton(
-          label: 'Send my code',
-          onPressed: _valid ? _submit : null,
+          label: _busy
+              ? 'One moment…'
+              : (widget.creating ? 'Create my profile' : 'Sign in'),
+          onPressed: _valid && !_busy ? _submit : null,
         ),
+        if (!widget.creating)
+          _QuietAction('I forgot my password', onPressed: _resetPassword),
         _QuietAction(
-          widget.creating
-              ? 'I already have a profile'
-              : 'Create one instead',
+          widget.creating ? 'I already have a profile' : 'Create one instead',
           onPressed: () => context.pushReplacement(
             '/signin?create=${widget.creating ? 0 : 1}',
           ),
@@ -268,9 +355,14 @@ class _SlateButton extends StatelessWidget {
   }
 }
 
-// --------------------------------------------------------------------- code
+// ------------------------------------------------------------------- verify
 
-/// Step two: the six-digit code.
+/// Shown once, straight after signing up.
+///
+/// Deliberately **not** a gate. The account already works; an unverified
+/// address only blocks linking an existing shop customer or vendor record,
+/// which happens later and refuses on its own. Blocking here would strand
+/// anyone whose mail is slow for the sake of a check they have not reached.
 class VerifyScreen extends ConsumerStatefulWidget {
   const VerifyScreen({super.key, required this.email, this.creating = false});
 
@@ -282,19 +374,14 @@ class VerifyScreen extends ConsumerStatefulWidget {
 }
 
 class _VerifyScreenState extends ConsumerState<VerifyScreen> {
-  final _code = TextEditingController();
-  final _focus = FocusNode();
   Timer? _resendTimer;
   int _resendIn = 30;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _startResendCountdown();
-    _code.addListener(() {
-      setState(() {});
-      if (_code.text.length == 6) _confirm();
-    });
   }
 
   void _startResendCountdown() {
@@ -310,61 +397,40 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
   @override
   void dispose() {
     _resendTimer?.cancel();
-    _code.dispose();
-    _focus.dispose();
     super.dispose();
   }
 
-  String? _codeError;
-  bool _confirming = false;
-
-  Future<void> _confirm() async {
-    if (_code.text.length < 6 || _confirming) return;
-    setState(() {
-      _confirming = true;
-      _codeError = null;
-    });
-
+  Future<void> _resend() async {
     try {
-      // The code is verified before anything else happens. Signing in is what
-      // links an existing customer or vendor record, and that link must rest on
-      // a proven email — otherwise anyone could type a stranger's address and
-      // inherit their order history.
-      await ref
-          .read(sessionProvider.notifier)
-          .confirmCode(email: widget.email, code: _code.text);
+      await ref.read(sessionProvider.notifier).sendEmailVerification();
       if (!mounted) return;
-
-      // A returning buyer goes straight in; a first-time account still needs a
-      // handle and a bio before it has a storefront.
-      if (widget.creating) {
-        context.push('/setup');
-      } else {
-        context.go('/market');
-      }
+      setState(() => _error = null);
+      _startResendCountdown();
     } on RepositoryException catch (error) {
       if (!mounted) return;
-      setState(() => _codeError = describeError(error).body);
-    } finally {
-      if (mounted) setState(() => _confirming = false);
+      setState(() => _error = describeError(error).body);
+    }
+  }
+
+  void _continue() {
+    if (widget.creating) {
+      context.push('/setup');
+    } else {
+      context.go('/market');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return _OnboardingScaffold(
-      title: 'Check your email',
-      subtitle: 'We sent a six-digit code to ${widget.email}.',
+      title: 'Confirm your email',
+      subtitle:
+          'We sent a link to ${widget.email}. Open it when you get a moment — '
+          "you'll need it before your shop orders can be linked to this profile.",
       fields: [
-        _CodeBoxes(
-          controller: _code,
-          focusNode: _focus,
-          onCompleted: _confirm,
-        ),
-        if (_codeError != null) ...[
-          const SizedBox(height: 12),
+        if (_error != null) ...[
           Text(
-            _codeError!,
+            _error!,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 12.5,
@@ -372,8 +438,8 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
               color: LbmConst.onWelcome,
             ),
           ),
+          const SizedBox(height: 12),
         ],
-        const SizedBox(height: 18),
         Center(
           child: _resendIn > 0
               ? Text(
@@ -384,92 +450,11 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
                     color: LbmConst.onWelcome.withValues(alpha: 0.7),
                   ),
                 )
-              : _QuietAction('Send a new code', onPressed: _startResendCountdown),
+              : _QuietAction('Send it again', onPressed: _resend),
         ),
       ],
       actions: [
-        _SlateButton(
-          label: _confirming ? 'Checking…' : 'Confirm',
-          onPressed: _code.text.length == 6 && !_confirming ? _confirm : null,
-        ),
-        _QuietAction(
-          'Use a different email',
-          onPressed: () => context.pop(),
-        ),
-      ],
-    );
-  }
-}
-
-/// Six boxes that share one hidden field, so paste and SMS autofill both work.
-class _CodeBoxes extends StatelessWidget {
-  const _CodeBoxes({
-    required this.controller,
-    required this.focusNode,
-    required this.onCompleted,
-  });
-
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final VoidCallback onCompleted;
-
-  @override
-  Widget build(BuildContext context) {
-    final digits = controller.text.padRight(6, ' ').split('');
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (var i = 0; i < 6; i++)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Container(
-                  width: 44,
-                  height: 54,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.16),
-                    borderRadius: LbmRadius.fieldR,
-                    border: Border.all(
-                      color: controller.text.length == i
-                          ? LbmConst.onWelcome
-                          : Colors.white.withValues(alpha: 0.34),
-                      width: 1.6,
-                    ),
-                  ),
-                  child: Text(
-                    digits[i].trim(),
-                    style: const TextStyle(
-                      fontFamily: kDisplayFont,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: LbmConst.onWelcome,
-                      fontFeatures: kTabularFigures,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        // The real field, invisible but focusable and autofillable.
-        Positioned.fill(
-          child: Opacity(
-            opacity: 0,
-            child: TextField(
-              controller: controller,
-              focusNode: focusNode,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              autofillHints: const [AutofillHints.oneTimeCode],
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onSubmitted: (_) => onCompleted(),
-              decoration: const InputDecoration(counterText: ''),
-            ),
-          ),
-        ),
+        _SlateButton(label: 'Continue', onPressed: _continue),
       ],
     );
   }

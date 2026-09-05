@@ -38,13 +38,13 @@ void main() {
     expect(container.read(meProvider), isNull);
   });
 
-  test('a confirmed code produces a member session', () async {
+  test('signing in produces a member session', () async {
     final container = _container();
     await _settle(container, (s) => s is GuestSession);
 
     await container
         .read(sessionProvider.notifier)
-        .confirmCode(email: 'maya@example.com', code: '123456');
+        .signInWithPassword(email: 'maya@example.com', password: 'hunter22');
 
     final session = await _settle(container, (s) => s is MemberSession);
     expect((session as MemberSession).profile.handle, '@mayamakes');
@@ -53,12 +53,12 @@ void main() {
     expect(container.read(isSellerProvider), isTrue);
   });
 
-  test('a bad code is refused', () async {
+  test('a password under the minimum is refused', () async {
     final container = _container();
     await expectLater(
       container
           .read(sessionProvider.notifier)
-          .confirmCode(email: 'maya@example.com', code: '12'),
+          .signInWithPassword(email: 'maya@example.com', password: '12'),
       throwsA(isA<ValidationException>()),
     );
     expect(container.read(isGuestProvider), isTrue);

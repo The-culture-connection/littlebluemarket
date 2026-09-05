@@ -613,6 +613,8 @@ class LbmField extends StatelessWidget {
     this.textInputAction,
     this.onSubmitted,
     this.helper,
+    this.obscureText = false,
+    this.autofillHints,
   });
 
   final String? label;
@@ -632,6 +634,14 @@ class LbmField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
   final String? helper;
+
+  /// A password field. Forces [maxLines] to 1 — Flutter asserts otherwise.
+  final bool obscureText;
+
+  /// Lets the platform password manager offer to fill and to save. Worth
+  /// having: an app that cannot be autofilled trains people into worse
+  /// passwords.
+  final Iterable<String>? autofillHints;
 
   @override
   Widget build(BuildContext context) {
@@ -653,7 +663,9 @@ class LbmField extends StatelessWidget {
       controller: controller,
       readOnly: readOnly,
       autofocus: autofocus,
-      maxLines: maxLines,
+      obscureText: obscureText,
+      autofillHints: autofillHints,
+      maxLines: obscureText ? 1 : maxLines,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       onSubmitted: onSubmitted,

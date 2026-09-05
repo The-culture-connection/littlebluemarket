@@ -7,19 +7,22 @@ import '../repositories/repositories.dart';
 
 /// Identity, backed by Firebase Auth.
 ///
-/// Passwordless by necessity as well as by design: the store's customer
-/// accounts are code-based, and no password of theirs could be verified here
-/// anyway. Someone who already buys on the website signs in with the same
-/// email and a Cloud Function links their existing customer record — so to
-/// them this is logging in, not signing up.
+/// Email and password.
+///
+/// Not what the prototype drew — that was a six-digit code — but Firebase does
+/// not issue codes, only links, and the link had to travel through Dynamic
+/// Links, which shut down in August 2025. Password auth is the one option that
+/// needs no email infrastructure of our own: Firebase sends the verification
+/// and reset mail itself.
+///
+/// The account here is not the shop account. Someone who already buys on the
+/// website signs up with the same address and a Cloud Function links their
+/// existing customer record once the address is **verified** — so to them this
+/// still reads as logging in.
 class FirebaseAuthService implements AuthService {
   FirebaseAuthService(this._auth);
 
   final fb.FirebaseAuth _auth;
-
-  /// The address the current code was sent to, so [confirmCode] can complete
-  /// the email-link sign-in the platform started.
-  String? _pendingEmail;
 
   AuthUser? _wrap(fb.User? user) {
     if (user == null) return null;
@@ -39,73 +42,86 @@ class FirebaseAuthService implements AuthService {
       _auth.authStateChanges().map(_wrap);
 
   @override
-  Future<void> sendSignInCode(String email) async {
-    final normalized = _normalize(email);
-    if (!normalized.contains('@') || !normalized.contains('.')) {
-      throw const ValidationException(
-        'That email does not look right',
-        field: 'email',
-      );
-    }
-    _pendingEmail = normalized;
-
-    try {
-      await _auth.sendSignInLinkToEmail(
-        email: normalized,
-        actionCodeSettings: fb.ActionCodeSettings(
-          // The continue URL, which must be one of Firebase Auth's
-          // authorized domains. `<project>.firebaseapp.com` is authorized by
-          // default, so this works with no DNS or Hosting setup.
-          //
-          // This used to be a `page.link` Dynamic Links domain. Firebase
-          // Dynamic Links shut down in August 2025, so that address resolves
-          // to nothing and sign-in could not complete. Losing Dynamic Links
-          // costs us the deep link back into the app, not the sign-in: the
-          // link is pasted into [confirmCode] by hand, so opening it in a
-          // browser is the expected path. Universal Links / App Links are
-          // the upgrade when someone wants the tap-through.
-          url: 'https://little-blue-610e5.firebaseapp.com/signin',
-          handleCodeInApp: true,
-          androidPackageName: 'com.littleblue.market',
-          androidInstallApp: true,
-          iOSBundleId: 'com.littleblue.market',
-        ),
-      );
-    } on fb.FirebaseAuthException catch (error) {
-      throw _translate(error);
-    }
-  }
-
-  @override
-  Future<AuthUser> confirmCode({
+  Future<AuthUser> signUpWithPassword({
     required String email,
-    required String code,
+    required String password,
   }) async {
     final normalized = _normalize(email);
     try {
-      final credential = fb.EmailAuthProvider.credentialWithLink(
+      final credential = fb.EmailAuthProvider.credential(
         email: normalized,
-        emailLink: code,
+        password: password,
       );
 
-      // An anonymous guest is upgraded in place rather than replaced, so the
-      // cart and anything else attached to that uid survives signing up.
+      // A guest is upgraded in place rather than replaced, so the cart and
+      // anything else attached to that uid survives signing up.
       final current = _auth.currentUser;
       final result = current != null && current.isAnonymous
           ? await current.linkWithCredential(credential)
-          : await _auth.signInWithCredential(credential);
+          : await _auth.createUserWithEmailAndPassword(
+              email: normalized,
+              password: password,
+            );
 
       final user = _wrap(result.user);
       if (user == null) {
-        throw const BackendException('Sign-in returned no user');
+        throw const BackendException('Sign-up returned no user');
       }
-      _pendingEmail = null;
+
+      // Fire and forget. Firebase sends this from its own domain with no
+      // setup, but a failure here must not strand an account that already
+      // exists — the account is made either way, and the screen offers a
+      // resend.
+      unawaited(result.user!.sendEmailVerification().catchError((_) {}));
       return user;
     } on fb.FirebaseAuthException catch (error) {
       throw _translate(error);
     }
   }
 
+  @override
+  Future<AuthUser> signInWithPassword({
+    required String email,
+    required String password,
+  }) async {
+    final normalized = _normalize(email);
+    try {
+      final result = await _auth.signInWithEmailAndPassword(
+        email: normalized,
+        password: password,
+      );
+      final user = _wrap(result.user);
+      if (user == null) {
+        throw const BackendException('Sign-in returned no user');
+      }
+      return user;
+    } on fb.FirebaseAuthException catch (error) {
+      throw _translate(error);
+    }
+  }
+
+  @override
+  Future<void> sendEmailVerification() async {
+    final user = _auth.currentUser;
+    if (user == null || user.emailVerified) return;
+    try {
+      await user.sendEmailVerification();
+    } on fb.FirebaseAuthException catch (error) {
+      throw _translate(error);
+    }
+  }
+
+  @override
+  Future<void> sendPasswordReset(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: _normalize(email));
+    } on fb.FirebaseAuthException catch (error) {
+      // Never confirm whether an address is known: that turns the reset
+      // screen into a way to enumerate accounts.
+      if (error.code == 'user-not-found') return;
+      throw _translate(error);
+    }
+  }
   @override
   Future<void> continueAsGuest() async {
     // A guest still gets a uid, so security rules can require one and a cart
@@ -119,15 +135,7 @@ class FirebaseAuthService implements AuthService {
   }
 
   @override
-  Future<void> linkGuestToEmail({
-    required String email,
-    required String code,
-  }) => confirmCode(email: email, code: code);
-
-  @override
   Future<void> signOut() => _auth.signOut();
-
-  String get pendingEmail => _pendingEmail ?? '';
 
   String _normalize(String email) => email.trim().toLowerCase();
 
@@ -144,6 +152,23 @@ class FirebaseAuthService implements AuthService {
       'invalid-verification-code' => const ValidationException(
         'That code is not right, or it expired',
         field: 'code',
+      ),
+      // Firebase collapses a wrong password and an unknown address into one
+      // code on purpose. Saying which would let anyone test whether an
+      // address has an account here.
+      'invalid-credential' ||
+      'wrong-password' ||
+      'user-not-found' => const ValidationException(
+        'That email and password do not match',
+        field: 'password',
+      ),
+      'weak-password' => const ValidationException(
+        'Use at least 6 characters',
+        field: 'password',
+      ),
+      'operation-not-allowed' => const BackendException(
+        'Email and password sign-in is not enabled for this project',
+        code: 'operation-not-allowed',
       ),
       'network-request-failed' => const OfflineException(),
       'too-many-requests' => const RateLimitException(),

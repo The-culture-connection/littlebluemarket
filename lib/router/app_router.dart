@@ -121,8 +121,9 @@ GoRouter buildRouter(Ref ref) {
         builder: (context, state) => const WelcomeScreen(playIntro: false),
       ),
 
-      // Passwordless sign-in: email, then a code, then a profile the first
-      // time. There is no password field anywhere in this flow.
+      // Email and password, then a profile the first time. `/verify` is no
+      // longer a gate — it tells a new account to confirm its address, which
+      // only matters when linking a shop record later.
       GoRoute(
         path: '/signin',
         builder: (context, state) => EmailScreen(

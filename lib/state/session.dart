@@ -79,10 +79,18 @@ class SessionNotifier extends StreamNotifier<Session> {
 
   AuthService get _auth => ref.read(authServiceProvider);
 
-  Future<void> sendCode(String email) => _auth.sendSignInCode(email);
+  Future<void> signUp({required String email, required String password}) =>
+      _auth.signUpWithPassword(email: email, password: password);
 
-  Future<void> confirmCode({required String email, required String code}) =>
-      _auth.confirmCode(email: email, code: code);
+  Future<void> signInWithPassword({
+    required String email,
+    required String password,
+  }) => _auth.signInWithPassword(email: email, password: password);
+
+  Future<void> sendEmailVerification() => _auth.sendEmailVerification();
+
+  Future<void> sendPasswordReset(String email) =>
+      _auth.sendPasswordReset(email);
 
   Future<void> continueAsGuest() => _auth.continueAsGuest();
 
@@ -94,7 +102,7 @@ class SessionNotifier extends StreamNotifier<Session> {
     await ref.read(profileRepositoryProvider).updateProfile(edit);
   }
 
-  /// Demo and test shortcut. Real sign-in goes through [confirmCode].
+  /// Demo and test shortcut. Real sign-in goes through [signInWithPassword].
   void signIn() {
     final auth = _auth;
     if (auth is FixtureAuthService) {
