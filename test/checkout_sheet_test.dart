@@ -17,6 +17,13 @@ Future<ProviderContainer> _pump(
   WidgetTester tester,
   CheckoutLauncher launcher,
 ) async {
+  // A phone-sized surface. The default 800x600 test screen is shorter than
+  // the sheet, so the buttons land below the bottom edge and a tap on them
+  // hits nothing.
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+
   final container = ProviderContainer(
     overrides: [checkoutLauncherProvider.overrideWithValue(launcher)],
   );
