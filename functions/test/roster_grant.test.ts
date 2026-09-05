@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { grantDecision } from '../src/roster_grant.ts';
+import { brandNameFromCompany, grantDecision } from '../src/roster_grant.ts';
 
 /**
  * When a Shipturtle roster match becomes a seller grant. Every refusal here
@@ -42,4 +42,11 @@ test('two different vendor strings on one company is refused, not guessed', () =
   const d = grantDecision({ uid: 'u1', companyMatches: 1, vendorStrings: ['cc', 'CC Studio'], reservedBy: null });
   assert.equal(d.grant, false);
   assert.match((d as { reason: string }).reason, /more than one vendor string/);
+});
+
+test('the vendor string is the company\'s brand name, then its company name, else nothing', () => {
+  assert.equal(brandNameFromCompany({ data: { id: 1092574, company_name: 'test vendor', brand_name: 'cc' } }), 'cc');
+  assert.equal(brandNameFromCompany({ data: { id: 1, company_name: 'New seller', brand_name: '' } }), 'New seller');
+  assert.equal(brandNameFromCompany({ data: { id: 1 } }), null);
+  assert.equal(brandNameFromCompany(null), null);
 });

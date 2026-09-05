@@ -418,6 +418,8 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 - [ ] **CP-S5 Messages, community and posting, walked through live.** No new code; the manual test covers it.
 - [x] **CP-S6 Shipping, simplified (2026-09-05).** The Packages screen no longer manages shipping: buyers are told to watch their email and see tracking under "On its way to you"; sellers get an **Open Shipturtle** button. Tracking arrives from Shipturtle's orders every 15 minutes.
 
+**Also fixed later on 2026-09-05 (Grace's second round):** *Check my seller status* now asks Shipturtle fresh (the 15-minute roster and vendor caches are dropped for that tap) and takes the vendor string from the company's **Brand name**, so a vendor approved a minute ago with no products yet is granted. The avatar's **Change photo** works, and every photo picker (avatar, shoutout, product) asks Take a photo / Choose from your photos first, because an empty gallery looked like a broken picker. Near me asks Android's own location manager on the phone (the fused provider on an emulator never sees the fix it was given), reuses the last known fix, treats a timeout as "no fix" instead of an error, and offers **Add my city**. Hashtag search over reviews needed a collection-group read rule for `reviews`.
+
 **Also fixed 2026-09-05:** the onboarding bug where the confirm-email step was skipped on a cold start and an unconfirmed member had no way forward. A cold start mid-onboarding now lands on the confirm screen; an unconfirmed sign-in gets it back; and an unconfirmed member sees a banner on the feed with **Resend** and **I've confirmed it**. Shoutouts can carry a photo.
 
 ### Cutover (later, its own checklist)

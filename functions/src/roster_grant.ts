@@ -67,6 +67,45 @@ export async function vendorStringsByCompany(
   return map;
 }
 
+/** Pure: the vendor string a Shipturtle company record carries. */
+export function brandNameFromCompany(json: unknown): string | null {
+  const data = (json as { data?: Record<string, unknown> })?.data ?? (json as Record<string, unknown>);
+  const brand = String(data?.brand_name ?? '').trim();
+  if (brand) return brand;
+  const company = String(data?.company_name ?? '').trim();
+  return company || null;
+}
+
+/**
+ * The vendor string for one company, from its record. `brand_name` is
+ * what Shipturtle writes onto every product the vendor lists, so a vendor
+ * approved five minutes ago with no products yet can still be granted.
+ */
+export async function companyBrandName(
+  companyId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string | null> {
+  let key = '';
+  try {
+    key = SHIPTURTLE_API_KEY.value();
+  } catch {
+    key = '';
+  }
+  if (!key || !companyId) return null;
+  const base = SHIPTURTLE_BASE_URL.value().replace(/\/$/, '');
+  try {
+    const res = await fetchImpl(`${base}/api/v1/companies/${encodeURIComponent(companyId)}`, {
+      headers: { Accept: 'application/json', ...authHeaders(key, SHIPTURTLE_AUTH_HEADER.value() || 'Authorization') },
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) return null;
+    return brandNameFromCompany(await res.json());
+  } catch (error) {
+    logger.warn('Shipturtle company lookup failed', { companyId, error: String(error).slice(0, 120) });
+    return null;
+  }
+}
+
 export type GrantDecision = { grant: true; vendorName: string } | { grant: false; reason: string };
 
 /** Pure: whether a roster match becomes a grant, and as which vendor string. */
@@ -93,8 +132,11 @@ export async function autoGrantFromRoster(
   companyId: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<{ vendorName: string } | { reason: string }> {
-  const byCompany = await vendorStringsByCompany(fetchImpl);
-  const strings = byCompany.get(companyId) ?? [];
+  // The company record first (works before the vendor has products); the
+  // products' vendor strings as the fallback.
+  const brand = await companyBrandName(companyId, fetchImpl);
+  const byCompany = brand ? new Map<string, string[]>() : await vendorStringsByCompany(fetchImpl);
+  const strings = brand ? [brand] : (byCompany.get(companyId) ?? []);
   const db = getFirestore();
   let reservedBy: string | null = null;
   if (strings.length === 1) {

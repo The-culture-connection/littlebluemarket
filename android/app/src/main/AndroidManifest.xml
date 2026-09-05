@@ -2,6 +2,10 @@
     <!-- Near me: the coarse fix is enough for a 20-mile radius. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Photos for listings, shoutouts and the avatar come from the camera
+         app or the system photo picker; neither needs a runtime permission,
+         but a phone without a camera must still be allowed to install. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <application
         android:label="Little Blue Market"
         android:name="${applicationName}"
@@ -53,6 +57,10 @@
         </intent>
         <intent>
             <action android:name="android.support.customtabs.action.CustomTabsService"/>
+        </intent>
+        <!-- Taking a photo hands off to the camera app. -->
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE"/>
         </intent>
     </queries>
 </manifest>

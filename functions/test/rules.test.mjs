@@ -505,3 +505,12 @@ describe('starting a conversation', () => {
     await assertFails(member('rae').collection('conversations').where('participantIds', 'array-contains', 'maya').get());
   });
 });
+
+describe('reviews across products', () => {
+  test('a tagged-review search reads reviews under every product', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('catalog/p1/reviews/r1').set({ authorId: 'kali', rating: 5, tags: ['#PlasticFree'] });
+    });
+    await assertSucceeds(guest().collectionGroup('reviews').where('tags', 'array-contains', '#PlasticFree').get());
+  });
+});

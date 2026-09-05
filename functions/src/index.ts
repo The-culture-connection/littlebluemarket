@@ -287,6 +287,13 @@ export const sellerSyncMe = onCall(
     if (seller.exists && !seller.data()?.revokedAt) {
       return { status: 'alreadySeller', vendorName: String(seller.data()?.shopifyVendorName ?? '') };
     }
+    // A person tapping "check" has usually just been approved. The roster
+    // and vendor caches are for the background paths; here they are dropped
+    // so the answer is what Shipturtle says right now.
+    await Promise.all([
+      db.doc('_internal/shipturtleRoster').delete().catch(() => undefined),
+      db.doc('_internal/shipturtleVendors').delete().catch(() => undefined),
+    ]);
     const result = await linkStoreAccounts(uid, email.trim().toLowerCase());
     if (result.grantedVendor) return { status: 'granted', vendorName: result.grantedVendor };
     if (result.linkedVendor) return { status: 'undecided', note: result.grantNote ?? 'On the roster, but no single vendor string could be decided.' };

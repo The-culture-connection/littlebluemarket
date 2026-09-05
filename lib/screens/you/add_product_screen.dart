@@ -11,6 +11,7 @@ import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/photo_source.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 
@@ -200,17 +201,28 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Future<void> _pickPhotos() async {
+    final source = await choosePhotoSource(context);
+    if (source == null || !mounted) return;
     try {
-      final picked = await ImagePicker().pickMultiImage(
-        imageQuality: 85,
-        maxWidth: 2000,
-        limit: 8,
-      );
+      final picker = ImagePicker();
+      final picked = source == ImageSource.camera
+          ? [
+              ?await picker.pickImage(
+                source: ImageSource.camera,
+                imageQuality: 85,
+                maxWidth: 2000,
+              ),
+            ]
+          : await picker.pickMultiImage(
+              imageQuality: 85,
+              maxWidth: 2000,
+              limit: 8,
+            );
       if (picked.isEmpty || !mounted) return;
       final loaded = <_PickedPhoto>[];
       for (final file in picked) {
         final bytes = await file.readAsBytes();
-        final type = file.mimeType ?? _guessType(file.name);
+        final type = pickedContentType(file);
         loaded.add(_PickedPhoto(bytes, type));
       }
       if (!mounted) return;
@@ -223,9 +235,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       setState(() => _error = 'Could not open your photos: $error');
     }
   }
-
-  static String _guessType(String name) =>
-      name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
 
   bool get _perVariant => _variantRows.isNotEmpty;
 

@@ -331,6 +331,12 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    // Reviews are public under their product; the hashtag search reads them
+    // across every product at once.
+    match /{path=**}/reviews/{reviewId} {
+      allow read: if true;
+    }
+
     // --------------------------------------------------------------- hashtags
 
     match /hashtags/{tag} {

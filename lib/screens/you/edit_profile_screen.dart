@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../data/repositories/dev_error_sink.dart';
 import '../../data/repositories/repositories.dart';
@@ -12,6 +13,7 @@ import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/photo_source.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
@@ -56,6 +58,44 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _bio.text = me.bio;
     _city.text = me.cityState;
     _tags = List.of(me.tags);
+  }
+
+  bool _uploadingPhoto = false;
+
+  /// Picks a photo and makes it the avatar on the spot: the upload writes
+  /// the URL onto the profile, so the new face shows before Save.
+  Future<void> _changePhoto() async {
+    if (_uploadingPhoto) return;
+    final source = await choosePhotoSource(context);
+    if (source == null || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final file = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1200,
+      );
+      if (file == null) return;
+      setState(() => _uploadingPhoto = true);
+      final bytes = await file.readAsBytes();
+      final repo = ref.read(profileRepositoryProvider);
+      final url = await repo.uploadAvatar(
+        bytes,
+        contentType: pickedContentType(file),
+      );
+      await repo.updateProfile(ProfileEdit(avatarUrl: url));
+      messenger.showSnackBar(const SnackBar(content: Text('Photo updated.')));
+    } on RepositoryException catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(describeError(error).body)),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not get that photo: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
   }
 
   Future<void> _save() async {
@@ -160,13 +200,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 Avatar(me, size: AvatarSize.lg),
                 const SizedBox(height: 9),
                 TextButton(
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Photo upload arrives with storage.'),
-                    ),
-                  ),
+                  onPressed: _uploadingPhoto ? null : _changePhoto,
                   child: Text(
-                    'Change photo',
+                    _uploadingPhoto ? 'Uploading…' : 'Change photo',
                     style: TextStyle(
                       fontFamily: kBodyFont,
                       fontSize: 12.5,

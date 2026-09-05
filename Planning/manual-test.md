@@ -36,9 +36,9 @@
 
 ## J4 · Existing seller (already a vendor in Shipturtle)
 
-1. Create a Profile with the email you use in Shipturtle (`grace-s+seller2@…`) → confirm the email → finish setup.
-2. Edit profile → **Sell with us** → **Check my seller status**. *Pass:* "You now sell as <vendor>"; back on the profile the **Products** tab is there with the vendor's products, and Edit profile shows the seller rows. No code, no restart.
-3. If it says the email is not on the vendor list: the email in Shipturtle differs, or the company has no products yet (so no vendor string exists to grant). Fix the email in Shipturtle or add a product there, then tap again. **I have a claim code** on the same page is the manual way in.
+1. Create a Profile with the email you use in Shipturtle (`grace-s+seller2@…`) → confirm the email → finish setup. **Change photo** on Edit profile asks Take a photo / Choose from your photos and the new face shows at once (the emulator's camera gives a test scene; the gallery may be empty).
+2. Edit profile → **Sell with us** → **Check my seller status**. *Pass:* "You now sell as <brand>", where the brand is the company's **Brand name** in Shipturtle (the vendor string Shopify uses); back on the profile the **Products** tab is there, and Edit profile shows the seller rows. No code, no restart, no waiting: the check asks Shipturtle fresh every time, so a vendor approved a minute ago passes.
+3. If it says the email is not on the vendor list: the email on the Shipturtle vendor user differs from the one you signed up with. Fix it in Shipturtle, then tap again. A company with no brand name and no products yet cannot be granted; give it a brand name in Shipturtle. **I have a claim code** on the same page is the manual way in.
 4. Products tab → **Add a product** → photo (Take a photo works on the emulator; Choose from your photos needs pictures in the gallery), title, price, quantity, Category, a collection → **Add to my shop**. *Pass:* Under review modal; the draft with an **Under review** chip; in Shopify a Draft product under your vendor.
 5. Shopify admin → set it **Active**. *Pass:* chip turns **Live**; product buyable in the app.
 6. **Edit** on a product → change price/stock → Save changes. *Pass:* "Saved to the store", variants intact in Shopify.
@@ -47,7 +47,7 @@
 ## J5 · New seller (not in Shipturtle yet)
 
 1. As a confirmed buyer: Edit profile → **Sell with us** → **Apply on our website**. *Pass:* the store's Become a vendor page opens in the browser. Fill it in there.
-2. You (Little Blue Market) approve the vendor in Shipturtle, on a company whose vendor user has the applicant's email and whose products carry one vendor string.
+2. You (Little Blue Market) approve the vendor in Shipturtle. The company needs a **Brand name** (that becomes their vendor string on Shopify) and a vendor user with the applicant's email. No products are needed first.
 3. The applicant: Sell with us → **Check my seller status**. *Pass:* "You now sell as <vendor>"; Products tab appears. Then J4 steps 4–7 work for them.
 4. Six hours later at the latest the same grant would have happened on its own (the roster sweep), so a seller who never taps the button still becomes one.
 
@@ -66,7 +66,7 @@
 ## J8 · Search and Near me
 
 1. Search → `snowboard` → real products. `balm mint` (out of order) → the lip balm. A word that is only in a product's **description** → that product (descriptions are searched too). `zzzz` → "Nothing for zzzz" with **Did you mean** chips. Tap a chip → results or a collection.
-2. **Near me** on the emulator: first set a location (the emulator's ⋯ → Location → pick a point, e.g. Detroit → Set location), then Market → **Near me**. A "Finding where you are…" note shows while it looks; the first time Android asks for permission. *Pass:* "Near Current location", and results narrow to sellers whose profile City is nearby. With no fix on the phone it uses your own profile City; with neither it stays off and says to add a City in Edit profile.
+2. **Near me** on the emulator: first set a location (the emulator's ⋯ → Location → pick a point, e.g. Detroit → Set location; or Claude runs `adb emu geo fix -83.0458 42.3314`), then Market → **Near me**. The first time Android asks for permission. *Pass:* "Near Current location" within a few seconds, and results narrow to sellers whose profile City is nearby. With no fix on the phone it uses your own profile City; with neither it stays off, says so, and the message has an **Add my city** button. A slow fix is not an error any more: nothing red appears for it.
 
 ## J9 · Community and messages
 

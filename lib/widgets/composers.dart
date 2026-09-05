@@ -11,6 +11,7 @@ import '../state/session.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
+import 'photo_source.dart';
 import 'primitives.dart';
 import 'product_art.dart';
 import 'sheets.dart';
@@ -346,9 +347,11 @@ class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
   String _photoType = 'image/jpeg';
 
   Future<void> _pickPhoto() async {
+    final source = await choosePhotoSource(context);
+    if (source == null || !mounted) return;
     try {
       final file = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
+        source: source,
         imageQuality: 85,
         maxWidth: 2000,
       );
@@ -357,11 +360,7 @@ class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
       if (!mounted) return;
       setState(() {
         _photo = bytes;
-        _photoType =
-            file.mimeType ??
-            (file.name.toLowerCase().endsWith('.png')
-                ? 'image/png'
-                : 'image/jpeg');
+        _photoType = pickedContentType(file);
       });
     } catch (error) {
       if (!mounted) return;
