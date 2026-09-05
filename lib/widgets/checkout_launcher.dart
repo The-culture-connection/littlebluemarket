@@ -31,7 +31,10 @@ class UrlCheckoutLauncher implements CheckoutLauncher {
       // No in-app tab available. On Android that usually means Chrome has
       // never been opened on this device (its first-run screens block the
       // tab service). Say so in debug, so it is not mistaken for a bug.
-      final external = await launchUrl(url, mode: LaunchMode.externalApplication);
+      final external = await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
       if (external) {
         DevErrorSink.report(
           StateError(

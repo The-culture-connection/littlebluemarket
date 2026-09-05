@@ -7,6 +7,7 @@ import 'formatting.dart';
 // genuinely separate concerns; this just spares 30 call sites the churn.
 export 'address.dart';
 export 'cart.dart';
+export 'collection.dart';
 export 'comment.dart';
 export 'diagnostics.dart';
 export 'formatting.dart';
@@ -132,6 +133,7 @@ class Product {
     required this.likes,
     required this.commentCount,
     this.imageUrls = const [],
+    this.collectionHandles = const [],
     this.lat,
     this.lng,
     this.freeShipping = false,
@@ -167,6 +169,10 @@ class Product {
   /// Photographs, in the order they appear in the detail slideshow. An
   /// `asset://` scheme means a bundled demo image; anything else is a URL.
   final List<String> imageUrls;
+
+  /// The store collections this product is filed under, by handle — the real
+  /// taxonomy ("bath-beauty-wellness", "ally-owned"). Sorted.
+  final List<String> collectionHandles;
 
   /// Line art, for listings without a photograph.
   final ProductGlyph? glyph;
@@ -215,6 +221,7 @@ class Product {
     likes: likes ?? this.likes,
     commentCount: commentCount ?? this.commentCount,
     imageUrls: imageUrls,
+    collectionHandles: collectionHandles,
     lat: lat,
     lng: lng,
     freeShipping: freeShipping,

@@ -5,6 +5,7 @@ import 'auth/auth_service.dart';
 import 'firebase/firebase_auth_service.dart';
 import 'firebase/firebase_bootstrap.dart';
 import 'firebase/firestore_catalog_repository.dart';
+import 'firebase/firestore_collection_repository.dart';
 import 'firebase/firestore_diagnostics_repository.dart';
 import 'firebase/firestore_messaging_repository.dart';
 import 'firebase/firestore_profile_repository.dart';
@@ -80,6 +81,17 @@ final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
     Backend.live => FirestoreCatalogRepository(
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),
+    ),
+  };
+});
+
+final collectionRepositoryProvider = Provider<CollectionRepository>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => FixtureCollectionRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
+    Backend.live => FirestoreCollectionRepository(
+      firestore: ref.watch(firestoreProvider),
     ),
   };
 });

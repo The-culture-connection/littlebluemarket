@@ -34,6 +34,23 @@ class HealthReport {
   bool get allOk => checks.every((c) => c.ok);
 }
 
+/// Where the catalog import has got to.
+@immutable
+class BackfillProgress {
+  const BackfillProgress({
+    required this.processed,
+    required this.total,
+    required this.done,
+  });
+
+  /// Products mirrored by this call.
+  final int processed;
+
+  /// Products mirrored so far across the whole run.
+  final int total;
+  final bool done;
+}
+
 /// Who the phone thinks it is, from the token and the profile.
 @immutable
 class AuthFacts {

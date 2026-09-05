@@ -122,7 +122,18 @@ abstract final class FirestoreMappers {
     likes: integer(data['likeCount']),
     commentCount: integer(data['commentCount']),
     imageUrls: strings(data['imageUrls']),
+    collectionHandles: strings(data['collectionHandles']),
   );
+
+  static Collection collection(String handle, Map<String, dynamic> data) =>
+      Collection(
+        handle: handle,
+        title: str(data['title'], handle),
+        productCount: integer(data['productCount']),
+        imageUrl: data['imageUrl'] is String
+            ? data['imageUrl'] as String
+            : null,
+      );
 
   static Variant variant(Map<String, dynamic> data) => Variant(
     str(data['name'], 'Default'),

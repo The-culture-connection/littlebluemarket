@@ -288,6 +288,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // The store's collections, mirrored by the backend. The real taxonomy.
+    match /collections/{handle} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // --------------------------------------------------------------- internal
 
     // The Admin token cache and anything else the functions keep to

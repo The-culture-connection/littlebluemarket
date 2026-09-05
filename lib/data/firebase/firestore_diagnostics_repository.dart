@@ -79,4 +79,44 @@ class FirestoreDiagnosticsRepository implements DiagnosticsRepository {
       isLinked: linked,
     );
   }, operation: 'auth getIdTokenResult');
+
+  @override
+  Future<void> claimAdmin() => guardFirestore(() async {
+    await _functions
+        .httpsCallable('adminClaimSelf')
+        .call<Map<String, dynamic>>(const {});
+    // The claim lives on the token; force a fresh one so the facts card and
+    // the next admin call both see it without a sign-out.
+    await _auth.currentUser?.getIdToken(true);
+  }, operation: 'callable adminClaimSelf');
+
+  @override
+  Future<int> syncCollections() => guardFirestore(() async {
+    final result = await _functions
+        .httpsCallable(
+          'adminSyncCollections',
+          options: HttpsCallableOptions(timeout: const Duration(seconds: 120)),
+        )
+        .call<Map<String, dynamic>>(const {});
+    return FirestoreMappers.integer(result.data['count']);
+  }, operation: 'callable adminSyncCollections');
+
+  @override
+  Future<BackfillProgress> backfillCatalog({bool reset = false}) =>
+      guardFirestore(() async {
+        final result = await _functions
+            .httpsCallable(
+              'adminBackfillCatalog',
+              options: HttpsCallableOptions(
+                timeout: const Duration(seconds: 310),
+              ),
+            )
+            .call<Map<String, dynamic>>({'reset': reset});
+        final data = result.data;
+        return BackfillProgress(
+          processed: FirestoreMappers.integer(data['processed']),
+          total: FirestoreMappers.integer(data['total']),
+          done: FirestoreMappers.boolean(data['done']),
+        );
+      }, operation: 'callable adminBackfillCatalog');
 }

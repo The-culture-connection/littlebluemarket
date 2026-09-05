@@ -159,6 +159,7 @@ abstract final class Fx {
   static const products = <String, Product>{
     'p1': Product(
       id: 'p1',
+      collectionHandles: ['bath-beauty-wellness', 'bipoc-owned', 'woman-owned'],
       title: 'Cocoa Mint Lip Balm',
       priceCents: 800,
       sellerId: 'kali',
@@ -178,6 +179,7 @@ abstract final class Fx {
     ),
     'p2': Product(
       id: 'p2',
+      collectionHandles: ['ally-owned', 'art-creative-goods', 'lgbtq-owned'],
       title: 'Wildflower Sticker Pack — 5 designs',
       priceCents: 1200,
       sellerId: 'rae',
@@ -198,6 +200,7 @@ abstract final class Fx {
     ),
     'p3': Product(
       id: 'p3',
+      collectionHandles: ['apparel-accessories', 'woman-owned'],
       title: '“What Would Dolly Do?” Dad Hat',
       priceCents: 2800,
       sellerId: 'holler',
@@ -218,6 +221,7 @@ abstract final class Fx {
     ),
     'p4': Product(
       id: 'p4',
+      collectionHandles: ['bath-beauty-wellness', 'bipoc-owned', 'woman-owned'],
       title: 'Lip Balm Flight — all five flavors',
       priceCents: 3400,
       sellerId: 'kali',
@@ -237,6 +241,7 @@ abstract final class Fx {
     ),
     'p5': Product(
       id: 'p5',
+      collectionHandles: ['ally-owned', 'art-creative-goods', 'lgbtq-owned'],
       title: 'Rainbow Bouquet Sticker — single',
       priceCents: 500,
       sellerId: 'rae',
@@ -256,6 +261,7 @@ abstract final class Fx {
     ),
     'p6': Product(
       id: 'p6',
+      collectionHandles: ['bipoc-owned', 'services', 'woman-owned'],
       title: 'Brand photography — half day',
       priceCents: 45000,
       sellerId: 'ama',
@@ -648,6 +654,34 @@ abstract final class Fx {
   static ProductSpec spec(String id) => specs[id] ?? specs['p1']!;
 
   // ------------------------------------------------------------ search etc.
+
+  /// The store's collections, as the mirror would hold them. Initiatives and
+  /// categories alike; product counts are what the demo products add up to.
+  static const collections = <Collection>[
+    Collection(handle: 'ally-owned', title: 'Ally Owned', productCount: 2),
+    Collection(
+      handle: 'apparel-accessories',
+      title: 'Apparel & Accessories',
+      productCount: 1,
+    ),
+    Collection(
+      handle: 'art-creative-goods',
+      title: 'Art & Creative Goods',
+      productCount: 2,
+    ),
+    Collection(
+      handle: 'bath-beauty-wellness',
+      title: 'Bath, Beauty & Wellness',
+      productCount: 2,
+    ),
+    Collection(handle: 'bipoc-owned', title: 'BIPOC Owned', productCount: 3),
+    Collection(handle: 'lgbtq-owned', title: 'LGBTQ+ Owned', productCount: 2),
+    Collection(handle: 'services', title: 'Services', productCount: 1),
+    Collection(handle: 'woman-owned', title: 'Woman Owned', productCount: 4),
+    // An empty collection on the store: a heading with nothing under it, so
+    // the rail hides it.
+    Collection(handle: 'gift-guide', title: 'Gift Guide', productCount: 0),
+  ];
 
   static const tags = <TagCount>[
     TagCount('#WomanOwned', 2412),

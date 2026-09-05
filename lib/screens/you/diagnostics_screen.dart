@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
 import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
@@ -81,6 +82,9 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> {
           const SizedBox(height: 18),
           const SectionHead('Store link'),
           const _LinkCard(),
+          const SizedBox(height: 18),
+          const SectionHead('Admin · the catalog'),
+          _AdminCard(onClaimed: _refreshFacts),
           const SizedBox(height: 18),
           const SectionHead('The backend'),
           LbmCard(
@@ -207,6 +211,154 @@ class _LinkCardState extends ConsumerState<_LinkCard> {
                   ],
                 );
               },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The three admin actions: claim the flag, mirror the collections, import
+/// the catalog. Each says what it did in one line, and a failure shows the
+/// backend's own message — "not on the admin list" tells the person exactly
+/// which console document to edit.
+class _AdminCard extends ConsumerStatefulWidget {
+  const _AdminCard({required this.onClaimed});
+
+  final VoidCallback onClaimed;
+
+  @override
+  ConsumerState<_AdminCard> createState() => _AdminCardState();
+}
+
+class _AdminCardState extends ConsumerState<_AdminCard> {
+  bool _busy = false;
+  String? _status;
+  Object? _error;
+
+  Future<void> _run(String working, Future<String> Function() action) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+      _status = working;
+    });
+    try {
+      final result = await action();
+      if (mounted) setState(() => _status = result);
+    } catch (error) {
+      if (mounted) setState(() => _error = error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  DiagnosticsRepository get _repo => ref.read(diagnosticsRepositoryProvider);
+
+  Future<String> _claim() async {
+    await _repo.claimAdmin();
+    widget.onClaimed();
+    return 'Admin claim granted to this account.';
+  }
+
+  Future<String> _sync() async {
+    final count = await _repo.syncCollections();
+    return 'Synced $count collections. Pull the Market feed to refresh.';
+  }
+
+  Future<String> _backfill({required bool reset}) async {
+    var progress = await _repo.backfillCatalog(reset: reset);
+    while (!progress.done) {
+      if (mounted) {
+        setState(() => _status = 'Importing… ${progress.total} so far');
+      }
+      progress = await _repo.backfillCatalog();
+    }
+    return 'Imported ${progress.total} products. Done.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return LbmCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Admins only. Claim admin works when this account\'s confirmed '
+            'email is listed in Firestore: collection _internal → document admins '
+            '(field "emails"). Sync mirrors the store\'s collections; '
+            'Backfill imports every product, in pages, and can be run again '
+            'safely.',
+            style: LbmText.tiny.copyWith(color: c.ink2),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              PillButton(
+                'Claim admin',
+                small: true,
+                expand: false,
+                onPressed: _busy ? null : () => _run('Claiming…', _claim),
+              ),
+              PillButton(
+                'Sync collections',
+                small: true,
+                expand: false,
+                style: PillStyle.quiet,
+                onPressed: _busy ? null : () => _run('Syncing…', _sync),
+              ),
+              PillButton(
+                'Backfill catalog',
+                small: true,
+                expand: false,
+                style: PillStyle.quiet,
+                onPressed: _busy
+                    ? null
+                    : () => _run('Importing…', () => _backfill(reset: false)),
+              ),
+              PillButton(
+                'Backfill from the start',
+                small: true,
+                expand: false,
+                style: PillStyle.ghost,
+                onPressed: _busy
+                    ? null
+                    : () => _run(
+                        'Importing from the start…',
+                        () => _backfill(reset: true),
+                      ),
+              ),
+            ],
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            LbmErrorCard(error: _error!),
+          ] else if (_status != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (_busy) ...[
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: Text(
+                    _status!,
+                    style: LbmText.tiny.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: _busy ? c.ink2 : c.sage,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ],

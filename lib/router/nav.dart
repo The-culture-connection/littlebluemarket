@@ -34,6 +34,9 @@ extension LbmNavigation on BuildContext {
 
   void goToCart() => _pushInBranch('/cart');
 
+  /// Everything filed under one store collection, by handle.
+  void goToCollection(String handle) => _pushInBranch('/collection/$handle');
+
   /// Search results for a query, usually a hashtag.
   void goToResults(String query) =>
       _pushInBranch('/results?q=${Uri.encodeComponent(query)}');

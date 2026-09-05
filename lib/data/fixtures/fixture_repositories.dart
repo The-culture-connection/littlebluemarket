@@ -92,6 +92,35 @@ class FixtureCatalogRepository implements CatalogRepository {
       _backend._delayed(Fx.tags.take(limit).toList());
 }
 
+class FixtureCollectionRepository implements CollectionRepository {
+  FixtureCollectionRepository(this._backend);
+
+  final FixtureBackend _backend;
+
+  @override
+  Future<List<Collection>> collections() {
+    final sorted = Fx.collections.where((c) => c.productCount > 0).toList()
+      ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    return _backend._delayed(sorted);
+  }
+
+  @override
+  Future<Collection> collection(String handle) {
+    for (final c in Fx.collections) {
+      if (c.handle == handle) return _backend._delayed(c);
+    }
+    throw NotFoundException('collection', handle);
+  }
+
+  @override
+  Future<Page<Product>> productsInCollection(String handle, {String? cursor}) {
+    final items = Fx.products.values
+        .where((p) => p.collectionHandles.contains(handle))
+        .toList();
+    return _backend._delayed(Page(items: items));
+  }
+}
+
 class FixtureSearchRepository implements SearchRepository {
   FixtureSearchRepository(this._backend);
 
@@ -1083,6 +1112,9 @@ class FixtureDiagnosticsRepository implements DiagnosticsRepository {
   final AuthService _auth;
   final String backend;
 
+  /// Flipped by [claimAdmin], so the demo Diagnostics screen behaves.
+  bool _admin = false;
+
   @override
   Future<HealthReport> healthCheck() async => HealthReport(
     project: 'fixtures',
@@ -1110,7 +1142,28 @@ class FixtureDiagnosticsRepository implements DiagnosticsRepository {
       isAnonymous: user?.isAnonymous ?? false,
       emailVerified: user?.emailVerified ?? false,
       isSeller: user != null && !user.isAnonymous && user.uid == 'maya',
+      isAdmin: _admin,
       isLinked: user != null && !user.isAnonymous,
     );
   }
+
+  @override
+  Future<void> claimAdmin() async {
+    final user = _auth.currentUser;
+    if (user == null || user.isAnonymous) {
+      throw const PermissionException('Sign in first.');
+    }
+    _admin = true;
+  }
+
+  @override
+  Future<int> syncCollections() async => Fx.collections.length;
+
+  @override
+  Future<BackfillProgress> backfillCatalog({bool reset = false}) async =>
+      BackfillProgress(
+        processed: Fx.products.length,
+        total: Fx.products.length,
+        done: true,
+      );
 }

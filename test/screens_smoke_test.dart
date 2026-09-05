@@ -16,6 +16,8 @@ const _routes = <String, String>{
   'marketplace feed': '/market',
   'search': '/market/search',
   'search results': '/market/results?q=%23PlasticFree',
+  'collection': '/market/collection/ally-owned',
+  'collection (empty)': '/market/collection/gift-guide',
   'search results (keyword)': '/market/results?q=lip%20balm',
   'search results (empty)': '/market/results?q=zzzzzz',
   'post detail': '/market/post/post_p3',

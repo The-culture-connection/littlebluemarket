@@ -1,10 +1,11 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 
-import { forgetVendorCache, resolveSellerUid } from './vendors.ts';
-import { normalizeVendorName } from './sellers.ts';
+import { productCollectionHandles } from './collections.ts';
 import { geohash } from './geohash.ts';
 import { toCents } from './orders.ts';
+import { normalizeVendorName } from './sellers.ts';
+import { forgetVendorCache, resolveSellerUid } from './vendors.ts';
 
 /**
  * The catalog mirror.
@@ -16,100 +17,211 @@ import { toCents } from './orders.ts';
  *
  * Nothing here is the source of truth for price or stock at the moment of
  * sale; the cart re-reads those live. The mirror is for browsing.
+ *
+ * Two roads lead here and must produce the same document: the REST-shaped
+ * product webhook, and the GraphQL-shaped catalog backfill. `productFromGraphQL`
+ * turns the second into the first, and `catalogDocFor` is pure so a test can
+ * prove the two arrive at byte-identical fields.
  */
-export async function mirrorProduct(payload: Record<string, any>): Promise<void> {
-  const db = getFirestore();
+
+/** The REST-shaped product payload, as Shopify's product webhooks send it. */
+export interface RestProduct {
+  id: string | number;
+  title?: string;
+  body_html?: string;
+  vendor?: string;
+  product_type?: string;
+  tags?: string;
+  status?: string;
+  created_at?: string;
+  images?: Array<{ src: string }>;
+  variants?: Array<{
+    id: string | number;
+    title?: string;
+    price?: string | number;
+    available?: boolean;
+    inventory_quantity?: number;
+  }>;
+  /** Not on webhooks; the backfill carries it, the webhook path fetches it. */
+  collectionHandles?: string[];
+}
+
+/** One product as the Admin GraphQL `products` query returns it. */
+export interface GraphQLProduct {
+  id: string;
+  title: string;
+  descriptionHtml: string;
+  vendor: string;
+  productType: string;
+  tags: string[];
+  status: string;
+  createdAt: string;
+  images: { nodes: Array<{ url: string }> };
+  variants: {
+    nodes: Array<{
+      id: string;
+      title: string;
+      price: string;
+      availableForSale: boolean;
+      inventoryQuantity: number | null;
+    }>;
+  };
+  collections: { nodes: Array<{ handle: string }> };
+}
+
+const tail = (gid: string) => gid.split('/').pop() ?? gid;
+
+/** The shape adapter: GraphQL in, the webhook's REST shape out. */
+export function productFromGraphQL(node: GraphQLProduct): RestProduct {
+  return {
+    id: tail(node.id),
+    title: node.title,
+    body_html: node.descriptionHtml,
+    vendor: node.vendor,
+    product_type: node.productType,
+    tags: node.tags.join(', '),
+    status: node.status.toLowerCase(),
+    created_at: node.createdAt,
+    images: node.images.nodes.map((i) => ({ src: i.url })),
+    variants: node.variants.nodes.map((v) => ({
+      id: tail(v.id),
+      title: v.title,
+      price: v.price,
+      available: v.availableForSale,
+      inventory_quantity: v.inventoryQuantity ?? undefined,
+    })),
+    collectionHandles: node.collections.nodes.map((c) => c.handle),
+  };
+}
+
+export interface SellerFacts {
+  uid: string;
+  cityState?: string;
+  handleLower?: string;
+  lat?: number;
+  lng?: number;
+}
+
+/**
+ * The two documents the mirror writes for a product, computed from the
+ * payload alone. Pure, so the webhook and backfill paths are provably equal.
+ */
+export function catalogDocFor(
+  payload: RestProduct,
+  seller: SellerFacts | undefined,
+  collectionHandles: string[],
+): { doc: Record<string, unknown>; spec: Record<string, unknown> } {
   const id = String(payload.id);
-
-  const sellerUid = await resolveSellerUid({
-    vendor: payload.vendor,
-    productId: id,
-  });
-
-  const variants = (payload.variants ?? []) as Array<Record<string, any>>;
+  const title = String(payload.title ?? 'Untitled');
+  const variants = payload.variants ?? [];
   const first = variants[0];
-  const images = (payload.images ?? []) as Array<Record<string, any>>;
 
-  // Tags arrive as a comma-separated string. Only the hashtag-shaped ones are
-  // initiative tags; the rest are the seller's own housekeeping.
+  // Tags arrive as a comma-separated string. The hashtag-shaped ones are
+  // initiative tags, which the post/search vocabulary uses; every tag is
+  // kept as `productTags`, because real store tags ("feminist gift") are
+  // how sellers describe things and none of them start with '#'.
   const allTags = String(payload.tags ?? '')
     .split(',')
     .map((t) => t.trim())
     .filter(Boolean);
   const initiativeTags = allTags.filter((t) => t.startsWith('#'));
 
-  const seller = sellerUid
-    ? (await db.collection('users').doc(sellerUid).get()).data()
-    : undefined;
+  const lat = seller?.lat;
+  const lng = seller?.lng;
 
-  const lat = seller?.lat as number | undefined;
-  const lng = seller?.lng as number | undefined;
-
-  await db.collection('catalog').doc(id).set(
-    {
-      title: String(payload.title ?? 'Untitled'),
+  return {
+    doc: {
+      title,
       description: stripHtml(String(payload.body_html ?? '')),
       priceCents: first ? toCents(first.price) : 0,
-      sellerId: sellerUid,
+      sellerId: seller?.uid ?? '',
       // The raw Shopify vendor string, and its normalised form. This is the
       // join key: when a vendor claims their shop later, every product
       // carrying their name is re-attributed by `backfillSellerForVendor`.
-      // Without it a product mirrored before its seller signed up stayed
-      // orphaned forever.
       vendorName: String(payload.vendor ?? ''),
       vendorKey: normalizeVendorName(String(payload.vendor ?? '')),
       type: String(payload.product_type ?? ''),
       typeSlug: slug(String(payload.product_type ?? '')),
       tags: initiativeTags,
-      imageUrls: images.map((image) => String(image.src)).filter(Boolean),
-      cityState: (seller?.cityState as string | undefined) ?? '',
+      productTags: allTags,
+      // The store's real taxonomy. `product_type` is "physical" across the
+      // live store and categorises nothing.
+      collectionHandles: [...collectionHandles].sort(),
+      imageUrls: (payload.images ?? []).map((image) => String(image.src)).filter(Boolean),
+      cityState: seller?.cityState ?? '',
       // Copied from the seller so the radius search has something to scan;
       // a listing with no coordinates is simply not in a radius result.
       lat: lat ?? null,
       lng: lng ?? null,
       geohash: lat !== undefined && lng !== undefined ? geohash(lat, lng) : null,
-      sellerHandleLower: (seller?.handleLower as string | undefined) ?? '',
-      titleLower: String(payload.title ?? '').toLowerCase(),
+      sellerHandleLower: seller?.handleLower ?? '',
+      titleLower: title.toLowerCase(),
       // One entry per word, so "snowboard" finds "The Complete Snowboard".
-      // Firestore has no substring match; array-contains on words is the
-      // closest honest thing.
-      titleWords: titleWords(String(payload.title ?? '')),
+      titleWords: titleWords(title),
       active: payload.status === 'active',
       shopifyProductId: id,
+      createdAt: payload.created_at ? new Date(payload.created_at) : null,
+    },
+    spec: {
+      subtitle: String(payload.product_type ?? ''),
+      lead: '',
+      rows: [],
+      shipping: [],
+      returns: '',
+      variants: variants.map((variant) => ({
+        name: String(variant.title ?? 'Default'),
+        variantId: String(variant.id ?? ''),
+        priceCents: toCents(variant.price),
+        availableForSale: variant.available !== false,
+        quantityAvailable:
+          typeof variant.inventory_quantity === 'number' ? variant.inventory_quantity : null,
+      })),
+    },
+  };
+}
+
+/** Mirrors one product. Webhook and backfill both end here. */
+export async function mirrorProduct(payload: RestProduct): Promise<void> {
+  const db = getFirestore();
+  const id = String(payload.id);
+
+  const sellerUid = await resolveSellerUid({ vendor: payload.vendor, productId: id });
+  const sellerData = sellerUid
+    ? (await db.collection('users').doc(sellerUid).get()).data()
+    : undefined;
+  const seller: SellerFacts | undefined = sellerUid
+    ? {
+        uid: sellerUid,
+        cityState: sellerData?.cityState as string | undefined,
+        handleLower: sellerData?.handleLower as string | undefined,
+        lat: sellerData?.lat as number | undefined,
+        lng: sellerData?.lng as number | undefined,
+      }
+    : undefined;
+
+  // Webhooks do not carry collections; the backfill does.
+  let handles = payload.collectionHandles;
+  if (!handles) {
+    try {
+      handles = await productCollectionHandles(id);
+    } catch (error) {
+      logger.warn("Could not read a product's collections", { id, error: String(error) });
+      handles = [];
+    }
+  }
+
+  const { doc, spec } = catalogDocFor(payload, seller, handles);
+  const ref = db.collection('catalog').doc(id);
+  await ref.set(
+    {
+      ...doc,
+      createdAt: doc.createdAt ?? FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
-      createdAt: payload.created_at
-        ? new Date(payload.created_at)
-        : FieldValue.serverTimestamp(),
     },
     { merge: true },
   );
-
   // The spec table is a subdocument so a feed read does not carry it.
-  await db
-    .collection('catalog')
-    .doc(id)
-    .collection('spec')
-    .doc('detail')
-    .set(
-      {
-        subtitle: String(payload.product_type ?? ''),
-        lead: '',
-        rows: [],
-        shipping: [],
-        returns: '',
-        variants: variants.map((variant) => ({
-          name: String(variant.title ?? 'Default'),
-          variantId: String(variant.id ?? ''),
-          priceCents: toCents(variant.price),
-          availableForSale: variant.available !== false,
-          quantityAvailable:
-            typeof variant.inventory_quantity === 'number'
-              ? variant.inventory_quantity
-              : null,
-        })),
-      },
-      { merge: true },
-    );
+  await ref.collection('spec').doc('detail').set(spec, { merge: true });
 
   logger.info('Mirrored a product', { id, sellerUid: sellerUid || '(none)' });
 }

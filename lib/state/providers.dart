@@ -55,6 +55,33 @@ final sellerProductsProvider = FutureProvider.family<List<Product>, String>((
   return page.items;
 });
 
+// -------------------------------------------------------------- collections
+
+/// Every non-empty collection on the store, for the feed rail.
+final collectionsProvider = FutureProvider<List<Collection>>((ref) {
+  ref.keepCached();
+  return ref.watch(collectionRepositoryProvider).collections();
+});
+
+final collectionProvider = FutureProvider.family<Collection, String>((
+  ref,
+  handle,
+) {
+  ref.keepCached();
+  return ref.watch(collectionRepositoryProvider).collection(handle);
+});
+
+/// The first page of a collection, newest first.
+final collectionProductsProvider = FutureProvider.family<List<Product>, String>(
+  (ref, handle) async {
+    ref.keepCached();
+    final page = await ref
+        .watch(collectionRepositoryProvider)
+        .productsInCollection(handle);
+    return page.items;
+  },
+);
+
 final popularTagsProvider = FutureProvider<List<TagCount>>((ref) {
   ref.keepCached();
   return ref.watch(catalogRepositoryProvider).popularTags();

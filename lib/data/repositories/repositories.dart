@@ -50,6 +50,18 @@ abstract interface class CatalogRepository {
   Future<List<TagCount>> popularTags({int limit = 8});
 }
 
+/// The store's collections — its real taxonomy — and what is filed under
+/// each. Read-only on the phone; the backend mirrors them.
+abstract interface class CollectionRepository {
+  /// Every non-empty collection, in title order.
+  Future<List<Collection>> collections();
+
+  /// Throws [NotFoundException] for an unknown handle.
+  Future<Collection> collection(String handle);
+
+  Future<Page<Product>> productsInCollection(String handle, {String? cursor});
+}
+
 /// Query, facets, and the radius filter.
 abstract interface class SearchRepository {
   Future<SearchResults> search(SearchFilters filters, {String? cursor});
@@ -217,6 +229,18 @@ abstract interface class FulfillmentRepository {
 abstract interface class DiagnosticsRepository {
   Future<HealthReport> healthCheck();
   Future<AuthFacts> authFacts();
+
+  /// Admin-only, all three. The backend refuses anyone without the claim.
+
+  /// Grants the caller the admin claim when their verified email is on the
+  /// allowlist the project owner keeps in Firestore.
+  Future<void> claimAdmin();
+
+  /// Mirrors the store's collections; returns how many.
+  Future<int> syncCollections();
+
+  /// One page of the catalog import. Call until [BackfillProgress.done].
+  Future<BackfillProgress> backfillCatalog({bool reset = false});
 }
 
 /// A profile edit. Only the fields a person may change themselves — notably

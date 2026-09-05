@@ -18,7 +18,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | CP-A4 — A seller's existing products appear on their profile | ✅ Done, passed by Grace |
 | CP-A5 — Shipturtle roster probe, automatic vendor detection by email | ✅ Done, proven by the backend health check (roster at /api/v1/users) |
 | Stage 3 — Buying: add to cart, checkout in-app, order lands | ✅ Done, passed by Grace |
-| Stage 4 — The real catalog: admin claim, collections, backfill, browse an initiative | ⬜ Not started |
+| Stage 4 — The real catalog: admin claim, collections, backfill, browse an initiative | 🟡 Built and deployed 2026-09-05, ready for Grace to test |
 | Stage 5 — A seller adds a product | ⬜ Not started |
 | Stage 6 — Approval, edits, "Total sales" | ⬜ Not started |
 | Stage 7 — Cart replaces like, cart posts, reviews | ⬜ Not started |
@@ -256,10 +256,44 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 ### Stage 4 — The real catalog (Phase 4)
 
-- [ ] **CP-C0 Admin claim without a key.** `adminClaimSelf` callable grants `admin: true` only if the caller's verified email is in `_internal/config/admins.emails`, a document only a project owner can write. **Grace:** Firestore console → create `_internal/config/admins` with `emails: ["grace-s@the-culture-connection.com"]` → Diagnostics → "Claim admin". **Pass:** Diagnostics `admin: true`.
-- [ ] **CP-C1 Collections mirror.** `syncCollections` (scheduled + callable) → `collections/{handle}` with id, title, handle, image. **Grace:** Diagnostics → "Sync collections". **Pass:** count matches the dev store's Collections page.
-- [ ] **CP-C2 Catalog backfill.** `backfillCatalog` via `bulkOperationRunQuery`, one shape adapter so REST webhooks and GraphQL bulk yield byte-identical documents (unit-tested), resume cursor, and the two `mirrorProduct` fixes (category from collections; keep non-`#` tags). Admin-only. **Grace:** Diagnostics → "Backfill catalog", twice. **Pass:** document count equals the store's product count both times; Market feed and search show real products.
-- [ ] **CP-C3 Browse an initiative.** `Collection` model + `CollectionRepository` + fixture; initiative chips read real collections. **Grace:** tap "Ally Owned". **Pass:** real products.
+**Built and deployed to `little-blue-610e5` on 2026-09-05. Ready for Grace to test.** The boxes below get ticked as each step passes on the phone.
+
+**What changed, in plain words.** The app now knows the store's *collections* — the categories ("Bath, Beauty & Wellness") and the identity ones ("Ally Owned", "Woman Owned", "BIPOC Owned") that the store actually files products under. The Market feed gets a **Browse the shop** row of chips; tapping one opens a grid of everything in that collection. Behind the scenes, the whole catalog can be imported in one go from Diagnostics instead of touching products one at a time, and the two roads a product can take into the app (a webhook, or the import) are proven by a test to produce the same document.
+
+**Claude built:**
+
+- `functions/src/admin.ts` — `adminClaimSelf` grants `admin: true` only when the caller's *verified* email is listed in the Firestore document `_internal/admins` (field `emails`, an array of strings). No service-account key anywhere: only a project owner can write that document, and clients can never read it. Every admin callable checks the claim (`requireAdmin`).
+- `functions/src/collections.ts` — `adminSyncCollections` (callable) and `syncCollectionsScheduled` (every 12 hours) mirror every collection to `collections/{handle}` with id, title, handle, image and product count.
+- `functions/src/backfill.ts` — `adminBackfillCatalog` imports the catalog in resumable pages (100 products per call); progress lives in `_internal/catalogBackfill` so an interrupted run resumes, and a finished run starts over cleanly. The Diagnostics button keeps calling until it says done.
+- `functions/src/catalog.ts` — one pure `catalogDocFor` plus a GraphQL→REST shape adapter, so the webhook path and the import path write byte-identical documents (asserted in `catalog.test.ts`). Every product now carries `collectionHandles` (webhooks fetch them, the import carries them) and `productTags` (all tags, not only the `#` ones).
+- Rules: `collections/{handle}` public read, no client writes (rules test added). Index: `catalog` on `collectionHandles` + `createdAt`.
+- Flutter: `Collection` model, `CollectionRepository` (Firestore + fixture), `Product.collectionHandles`, the **Browse the shop** rail on the feed, `/market/collection/:handle` (three-across grid, pull to refresh), and an **Admin · the catalog** card on Diagnostics with Claim admin / Sync collections / Backfill catalog / Backfill from the start.
+
+- [ ] **CP-C0 Admin claim without a key.**
+  **Grace does (once, Firebase console):** open https://console.firebase.google.com/project/little-blue-610e5/firestore → **Start collection** (or **+ Start collection** at the top of the left column).
+  1. Collection ID: `_internal` → Next.
+  2. Document ID: `admins`.
+  3. Field: `emails` · Type: **array** · click **+** to add one element · type **string** · value `grace-s@the-culture-connection.com` (the email of the app account you will claim from; exact spelling, any case).
+  4. Save. The left column now shows `_internal` → `admins`.
+
+  **Then in the app:** `scripts\run-live.ps1` → sign in as that email. (If there is no app account with your own `grace-s@…` address yet, **Create a Profile** with it and confirm the email as in CP-A1.) You → Edit profile → Diagnostics (dev) → **Claim admin**.
+  **Pass:** the card says "Admin claim granted to this account." and the facts card at the top shows **Admin claim: yes** (tap Refresh if it still says no).
+  **If it fails:** "is not on the admin list" → the document is not at `_internal/admins`, or the email string differs; re-check steps 1–3. "Confirm your email address first" → Edit profile → Confirm your email, then try again. Anything else → Copy for Claude.
+
+- [ ] **CP-C1 Collections mirror.**
+  **Grace does:** Diagnostics → **Sync collections**.
+  **Pass:** "Synced N collections", where N equals the number of collections on the dev store's admin (Products → Collections). Firestore console shows a `collections` collection with one document per handle. Pull the Market feed down to refresh: a **Browse the shop** row of chips appears under the hashtags (only collections that have at least one product are shown).
+  **If it fails:** "Admins only" → CP-C0 first. Anything else → Copy for Claude.
+
+- [ ] **CP-C2 Catalog backfill.**
+  **Grace does:** Diagnostics → **Backfill catalog**. Wait for "Imported N products. Done." Then tap it again.
+  **Pass:** both runs end with the same N, and N equals the product count on the dev store (Products page, all statuses). Firestore → `catalog` has N documents, and any one of them has `collectionHandles` and `productTags` fields. Search **snowboard** still finds products.
+  **If it fails:** stops partway → tap Backfill catalog again; it resumes. Wrong count → **Backfill from the start**, then paste the card's message. Anything red → Copy for Claude.
+
+- [ ] **CP-C3 Browse an initiative.**
+  **Grace does:** Market → pull to refresh → tap a chip in **Browse the shop** (e.g. "Ally Owned" or "Woman Owned", whichever exists on the dev store) → tap a product in the grid → Add to cart.
+  **Pass:** the collection screen shows its product count and a grid of real products with photos and prices, newest first; the product opens; add to cart works as in Stage 3.
+  **If it fails:** empty grid although the store has products in that collection → Backfill did not run after Sync, or the collection's products are all drafts; run Backfill catalog again. Chip row missing → CP-C1.
 
 ### Stage 5 — A seller adds a product (Phase 5)
 
@@ -298,7 +332,7 @@ Stage 0 → Stage 1 → CP-A1 → (CP-A2 and CP-A3 independent) → CP-A4 needs 
 - Firebase console: Email/Password + Anonymous ON (doctor check 10 tells you if not); Blaze confirmed.
 - Dev Shopify admin: one test customer + one paid order (CP-A2); confirm the app scopes `write_products, write_inventory, write_publications, read_customers, read_orders, read_fulfillments, write_fulfillments`.
 - Shipturtle on the dev store: your test vendor's user email = `+seller1`; the docs link from Dashboard → API integration (CP-A5).
-- Firestore console: the `vendorClaims` document the script prints (CP-A3); the `_internal/config/admins` document (CP-C0).
+- Firestore console: the `vendorClaims` document the script prints (CP-A3); the `_internal/admins` document (CP-C0).
 - Approving listings in Shipturtle (CP-R1).
 
 ---

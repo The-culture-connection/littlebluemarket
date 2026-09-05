@@ -13,6 +13,7 @@ import '../../widgets/primitives.dart';
 import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
+import 'collection_screen.dart';
 
 /// The marketplace feed.
 ///
@@ -93,6 +94,8 @@ class FeedScreen extends ConsumerWidget {
           padding: EdgeInsets.zero,
           children: [
             if (isGuest) const GuestBanner(),
+            // The store's real taxonomy. Hidden until collections are mirrored.
+            const CollectionRail(),
             LbmAsync<List<Post>>(
               feed,
               skeleton: const PostCardSkeleton(),

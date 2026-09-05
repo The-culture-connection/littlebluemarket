@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onRequest } from 'firebase-functions/v2/https';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 
@@ -15,6 +16,7 @@ import {
 import {
   backfillSellerForVendor,
   mirrorProduct,
+  type RestProduct,
   removeMirroredProduct,
 } from './catalog.ts';
 import {
@@ -29,6 +31,9 @@ import { normalizeOrder, recordFulfillment, recordPaidOrder } from './orders.ts'
 import { addTracking } from './fulfillment.ts';
 import { linkStoreAccounts } from './linking.ts';
 import { withLoudErrors } from './errors.ts';
+import { claimAdmin, requireAdmin } from './admin.ts';
+import { syncCollections } from './collections.ts';
+import { backfillCatalogPage } from './backfill.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { claimVendor, revokeVendor } from './sellers.ts';
 import { verifyShopifyHmac, webhookHmacHeader, webhookTopic } from './webhooks.ts';
@@ -225,6 +230,53 @@ export const resolveSellerForVendorName = onDocumentWritten(
   },
 );
 
+// ------------------------------------------------------------------ admin
+//
+// Admin-only work: the catalog import and the collection sync. The claim is
+// granted from a Firestore allowlist only a project owner can write.
+
+export const adminClaimSelf = onCall(
+  withLoudErrors('adminClaimSelf', async (request) => {
+    const uid = requireUid(request.auth);
+    return claimAdmin(
+      uid,
+      request.auth?.token?.email,
+      request.auth?.token?.email_verified === true,
+    );
+  }),
+);
+
+export const adminSyncCollections = onCall(
+  { secrets: [SHOPIFY_CLIENT_SECRET], timeoutSeconds: 120 },
+  withLoudErrors('adminSyncCollections', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    return { count: await syncCollections() };
+  }),
+);
+
+/** One resumable page of the catalog import. The app calls it until done. */
+export const adminBackfillCatalog = onCall(
+  { secrets: [SHOPIFY_CLIENT_SECRET], timeoutSeconds: 300, memory: '512MiB' },
+  withLoudErrors('adminBackfillCatalog', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const { cursor, reset } = request.data ?? {};
+    return backfillCatalogPage(
+      typeof cursor === 'string' ? cursor : null,
+      { reset: reset === true },
+    );
+  }),
+);
+
+/** Collections change rarely; twice a day keeps the picker honest. */
+export const syncCollectionsScheduled = onSchedule(
+  { schedule: 'every 12 hours', secrets: [SHOPIFY_CLIENT_SECRET] },
+  async () => {
+    await syncCollections();
+  },
+);
+
 // ------------------------------------------------------------ diagnostics
 
 /**
@@ -298,7 +350,7 @@ export const shopifyWebhook = onRequest(
 
         case 'products/create':
         case 'products/update':
-          await mirrorProduct(payload);
+          await mirrorProduct(payload as RestProduct);
           break;
 
         case 'products/delete':

@@ -368,3 +368,13 @@ describe('the catalog mirror is public, including its subdocuments', () => {
     await assertFails(member('maya').doc('catalog/p1/spec/detail').set({ variants: [] }));
   });
 });
+
+describe('collections are public and function-written', () => {
+  test('anyone can read a collection, nobody can write one', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('collections/ally-owned').set({ title: 'Ally Owned' });
+    });
+    await assertSucceeds(guest().doc('collections/ally-owned').get());
+    await assertFails(member('maya').doc('collections/ally-owned').set({ title: 'x' }));
+  });
+});
