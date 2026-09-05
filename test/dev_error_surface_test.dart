@@ -37,7 +37,9 @@ Future<ProviderContainer> _pumpApp(
       child: const LittleBlueMarketApp(),
     ),
   );
-  await tester.pump();
+  // A signed-in member now lands on the Market, whose skeletons animate;
+  // settle them so no timer outlives the test.
+  await tester.pumpAndSettle();
   return container;
 }
 

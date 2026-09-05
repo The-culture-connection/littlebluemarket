@@ -94,6 +94,16 @@ GoRouter buildRouter(Ref ref) {
       final session = async.value!;
       final path = state.uri.path;
 
+      // Someone the phone already knows does not land on Welcome again.
+      // Firebase keeps the sign-in across launches; without this the app
+      // opened on the Sign in button every time, which read as "it forgot
+      // me". Guests who chose "continue as a guest" once are known too.
+      if (path == '/' || path == '/welcome') {
+        if (session is MemberSession) return '/market';
+        if (session is OnboardingSession) return '/setup';
+        if (session is GuestSession && session.uid != null) return '/market';
+      }
+
       // The onboarding routes decide their own next step.
       if (path == '/' ||
           path.startsWith('/welcome') ||
@@ -241,11 +251,19 @@ GoRouter buildRouter(Ref ref) {
 class _SessionListenable extends ChangeNotifier {
   _SessionListenable(Ref ref) {
     ref.listen(sessionProvider, (previous, next) {
-      if (previous?.value.runtimeType != next.value.runtimeType) {
-        notifyListeners();
-      }
+      if (_kind(previous?.value) != _kind(next.value)) notifyListeners();
     });
   }
+
+  /// The session's *kind*, not its contents. A guest gaining an anonymous
+  /// uid counts as a change (it is what sends a returning guest past
+  /// Welcome); a member's profile counters changing does not.
+  static String _kind(Session? session) => switch (session) {
+    GuestSession(:final uid) => uid == null ? 'stranger' : 'guest',
+    OnboardingSession() => 'onboarding',
+    MemberSession() => 'member',
+    null => 'loading',
+  };
 }
 
 final routerProvider = Provider<GoRouter>((ref) => buildRouter(ref));
