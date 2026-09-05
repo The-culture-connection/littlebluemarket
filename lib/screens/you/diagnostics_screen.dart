@@ -79,6 +79,9 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> {
             },
           ),
           const SizedBox(height: 18),
+          const SectionHead('Store link'),
+          const _LinkCard(),
+          const SizedBox(height: 18),
           const SectionHead('The backend'),
           LbmCard(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -123,6 +126,86 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> {
                   );
                 }
                 return _ReportCard(report: report);
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Runs the store link by hand and says what it found.
+///
+/// The session does this on its own for a verified, unlinked account; this
+/// button exists so a person can force it and *see* the answer instead of
+/// wondering whether it ran.
+class _LinkCard extends ConsumerStatefulWidget {
+  const _LinkCard();
+
+  @override
+  ConsumerState<_LinkCard> createState() => _LinkCardState();
+}
+
+class _LinkCardState extends ConsumerState<_LinkCard> {
+  Future<LinkResult>? _link;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return LbmCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Asks the backend to match this account to the store by its '
+            'confirmed email: the Shopify customer, past orders, and the '
+            'Shipturtle vendor. Runs on its own after sign-up; this repeats it.',
+            style: LbmText.tiny.copyWith(color: c.ink2),
+          ),
+          const SizedBox(height: 12),
+          PillButton(
+            _link == null ? 'Link my store account now' : 'Run again',
+            onPressed: () => setState(() {
+              _link = ref.read(profileRepositoryProvider).linkStoreAccounts();
+            }),
+          ),
+          if (_link != null) ...[
+            const SizedBox(height: 12),
+            FutureBuilder<LinkResult>(
+              future: _link,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return LbmErrorCard(error: snapshot.error!);
+                }
+                final r = snapshot.data;
+                if (r == null) {
+                  return Text(
+                    'Asking…',
+                    style: LbmText.tiny.copyWith(color: c.ink3),
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Fact(
+                      'Shopify customer',
+                      r.linkedCustomer ? 'found' : 'none with this email',
+                      good: r.linkedCustomer,
+                    ),
+                    _Fact(
+                      'Past orders',
+                      r.alreadyLinked
+                          ? 'already copied on an earlier link'
+                          : '${r.backfilledOrders} orders, ${r.backfilledItems} items',
+                    ),
+                    _Fact(
+                      'Shipturtle vendor',
+                      r.linkedVendor ? 'matched' : 'none with this email',
+                    ),
+                  ],
+                );
               },
             ),
           ],

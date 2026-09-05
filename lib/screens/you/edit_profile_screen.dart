@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/repositories/dev_error_sink.dart';
 import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
+import '../../router/app_router.dart';
 import '../../state/providers.dart';
 import '../../state/session.dart';
 import '../../theme/app_theme.dart';
@@ -246,9 +247,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               title: const Text('Sign out'),
               subtitle: const Text('Back to the welcome screen'),
               onTap: () async {
+                // Navigate on the next tick, after the sign-out has settled:
+                // routing inside the auth stream's callback rebuilt providers
+                // while this screen was being torn down.
+                final router = ref.read(routerProvider);
                 await ref.read(sessionProvider.notifier).signOut();
-                if (!context.mounted) return;
-                context.go('/welcome');
+                await Future<void>.delayed(Duration.zero);
+                router.go('/welcome');
               },
             ),
           ),
