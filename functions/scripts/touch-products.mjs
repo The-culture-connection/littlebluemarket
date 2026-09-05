@@ -71,22 +71,28 @@ async function main() {
   }
 
   console.log(`Store ${ctx.domain}: ${products.length} product(s)${vendor ? ` for vendor "${vendor}"` : ''}.`);
+  // Shopify only fires products/update when something actually changed, so a
+  // save with identical fields is silent. Add a marker tag, then take it away:
+  // two real edits, two webhooks, and the product ends up exactly as it was.
+  const MARKER = 'lbm-touch';
   let useLegacy = false;
   let touched = 0;
-  for (const product of products) {
-    const attempt = async () => {
-      if (!useLegacy) {
-        try {
-          return await adminGraphQL(ctx, UPDATE, { product: { id: product.id, tags: product.tags } });
-        } catch (error) {
-          if (!/ProductUpdateInput|Unknown argument/.test(String(error.message))) throw error;
-          useLegacy = true;
-        }
+  const update = async (id, tags) => {
+    if (!useLegacy) {
+      try {
+        return await adminGraphQL(ctx, UPDATE, { product: { id, tags } });
+      } catch (error) {
+        if (!/ProductUpdateInput|Unknown argument/.test(String(error.message))) throw error;
+        useLegacy = true;
       }
-      return adminGraphQL(ctx, UPDATE_LEGACY, { input: { id: product.id, tags: product.tags } });
-    };
-    const data = await attempt();
-    const errors = data.productUpdate.userErrors;
+    }
+    return adminGraphQL(ctx, UPDATE_LEGACY, { input: { id, tags } });
+  };
+  for (const product of products) {
+    const original = product.tags.filter((t) => t !== MARKER);
+    const first = await update(product.id, [...original, MARKER]);
+    const second = await update(product.id, original);
+    const errors = [...first.productUpdate.userErrors, ...second.productUpdate.userErrors];
     if (errors.length) {
       console.log(`  FAILED  ${product.title} — ${errors.map((e) => e.message).join('; ')}`);
     } else {
@@ -95,7 +101,7 @@ async function main() {
     }
   }
   console.log(
-    `\nTouched ${touched} of ${products.length}. Shopify now sends products/update for each; ` +
+    `\nTouched ${touched} of ${products.length}. Shopify sends two products/update webhooks for each; ` +
       'give it ~30 s, then `npm run doctor` shows the catalog count (Firebase console → Firestore → catalog).',
   );
 }
