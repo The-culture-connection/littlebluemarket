@@ -13,7 +13,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | Stage 0 — Unblock the repo, preflight doctor, launchers, scopes, webhooks, catalog mirror | ✅ Done, passed by Grace |
 | Stage 1 — Loud failures: dev error strip, Copy for Claude, Diagnostics screen, backend health check, security pass | ✅ Done, passed by Grace |
 | CP-A1 — Sign up as a buyer, email confirmed without a restart | ✅ Done, passed by Grace |
-| CP-A2 — Existing Shopify customer signs in and sees past orders | 🟡 Built and deployed, waiting for your test |
+| CP-A2 — Existing Shopify customer signs in and sees past orders | ✅ Done, passed by Grace |
 | CP-A3 — Seller claim code → seller mode without a restart, Products tab | 🟡 Built and deployed, waiting for your test (code LBM-TEST-0001) |
 | CP-A4 — A seller's existing products appear on their profile | 🟡 Built and deployed, waiting for your test |
 | CP-A5 — Shipturtle roster probe, automatic vendor detection by email | 🟡 Built and deployed (roster found at /api/v1/users), waiting for your test |
@@ -196,7 +196,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
   **Grace does:** `run-live.ps1` → Create a Profile → `+buyer1` → open the mail, click the link → back in the app tap "I've confirmed it" (or wait 5 s) → Continue → handle → Create a profile.
   **Pass:** Market with a You tab; Diagnostics shows `emailVerified: true`, `seller: false`; the account has a green tick in the Firebase console.
   **If it fails:** `auth operation-not-allowed` → doctor check 10. Never flips to confirmed → paste the Diagnostics facts card. No email → check Spam, then Authentication → Templates.
-- [ ] **CP-A2 An existing Shopify customer signs in and sees their orders.** *(built 2026-09-05; ready to test)*
+- [x] **CP-A2 An existing Shopify customer signs in and sees their orders.** *(passed by Grace 2026-09-05; needed the protected customer *fields* grant in the Dev Dashboard)*
   **Claude builds:** `linkStoreAccounts` once-only (skip when `backfilledAt` exists); purchase ids `${orderId}_${lineId}` from `lineItems.nodes.id` to match `orders.ts:230`; `vendor` passed through `resolveSellerUid({vendor, productId})` instead of `sellerId: ''`; response gains `backfilledOrders/backfilledItems`. Flutter: `ProfileRepository.linkStoreAccounts()` (fixture returns a canned result), `Person.isLinked` (`linkedAt != null`); `SessionNotifier` fires it once when it sees a verified, unlinked member (errors go to the sink); Profile opens on "Bought" after a successful link.
   **Grace does (once, dev Shopify admin):** Customers → Add customer `+customer1` → Save. Orders → Create order → add a product that `touch-products` mirrored → that customer → Collect payment → Mark as paid → Create order. In the app: sign out (add the row to Edit Profile if missing), Create a Profile with `+customer1`, confirm as in CP-A1.
   **Pass:** You tab opens on "Bought" showing that product with a "Received" badge; Diagnostics `isLinked: true`.
