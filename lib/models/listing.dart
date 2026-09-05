@@ -117,8 +117,31 @@ class ProductCategory {
   final bool isLeaf;
 }
 
-/// What the Add product form hands to the repository. Single variant for
-/// now; variants arrive with the edit path.
+/// One variant's edit: its store id and what the seller changed.
+@immutable
+class VariantEdit {
+  const VariantEdit({
+    required this.variantId,
+    required this.priceCents,
+    required this.quantity,
+    this.sku,
+  });
+
+  final String variantId;
+  final int priceCents;
+  final int quantity;
+  final String? sku;
+
+  Map<String, Object?> toMap() => {
+    'variantId': variantId,
+    'priceCents': priceCents,
+    'quantity': quantity,
+    if (sku != null) 'sku': sku,
+  };
+}
+
+/// What the Add product form hands to the repository. A new product has one
+/// variant; an edit may carry one entry per existing variant.
 @immutable
 class ListingDraft {
   const ListingDraft({
@@ -133,6 +156,7 @@ class ListingDraft {
     this.collectionHandles = const [],
     this.tags = const [],
     this.category,
+    this.variants,
   });
 
   final String title;
@@ -146,6 +170,10 @@ class ListingDraft {
   final List<String> collectionHandles;
   final List<String> tags;
   final ProductCategory? category;
+
+  /// Per-variant price and stock, edit only. Null means "the top-level
+  /// price and quantity apply to the first variant".
+  final List<VariantEdit>? variants;
 
   /// The rules' and the function's field names, exactly.
   Map<String, Object?> toMap() => {
@@ -163,6 +191,7 @@ class ListingDraft {
     'tags': tags,
     if (category != null) 'categoryId': category!.id,
     if (category != null) 'categoryName': category!.fullName,
+    if (variants != null) 'variants': [for (final v in variants!) v.toMap()],
   };
 }
 

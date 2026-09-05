@@ -165,7 +165,59 @@ export function updateMutations(
     },
   });
 
-  const variant = product.variants.nodes[0];
+  // Per-variant edits from the form, matched to the store's variants by
+  // id. Without them the top-level price and quantity apply to the first
+  // variant, as before.
+  const edits = Array.isArray(draft.variants)
+    ? (draft.variants as Array<Record<string, unknown>>).filter((v) => typeof v.variantId === 'string')
+    : [];
+  if (edits.length) {
+    const byId = new Map(product.variants.nodes.map((v) => [v.id.split('/').pop() ?? v.id, v]));
+    const bulk: Array<Record<string, unknown>> = [];
+    const stock: Array<Record<string, unknown>> = [];
+    for (const edit of edits) {
+      const node = byId.get(String(edit.variantId));
+      if (!node) continue;
+      bulk.push({
+        id: node.id,
+        ...(typeof edit.priceCents === 'number' ? { price: dollars(edit.priceCents) } : {}),
+        ...(typeof edit.sku === 'string' ? { inventoryItem: { sku: edit.sku } } : {}),
+      });
+      if (locationId && typeof edit.quantity === 'number') {
+        const current = node.inventoryItem.inventoryLevel?.quantities.find((q) => q.name === 'available')?.quantity;
+        stock.push({
+          inventoryItemId: node.inventoryItem.id,
+          locationId,
+          quantity: edit.quantity,
+          ...(typeof current === 'number' ? { changeFromQuantity: current } : {}),
+        });
+      }
+    }
+    if (bulk.length) {
+      out.push({
+        name: 'productVariantsBulkUpdate',
+        query: `mutation Variants($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+          productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+            productVariants { id } userErrors { field message }
+          }
+        }`,
+        variables: { productId, variants: bulk },
+      });
+    }
+    if (stock.length) {
+      out.push({
+        name: 'inventorySetQuantities',
+        query: `mutation Stock($input: InventorySetQuantitiesInput!) {
+          inventorySetQuantities(input: $input) {
+            inventoryAdjustmentGroup { id } userErrors { field message }
+          }
+        }`,
+        variables: { input: { name: 'available', reason: 'correction', quantities: stock } },
+      });
+    }
+  }
+
+  const variant = edits.length ? undefined : product.variants.nodes[0];
   if (variant) {
     out.push({
       name: 'productVariantsBulkUpdate',
@@ -261,7 +313,7 @@ async function fetchStoreProduct(
     `query Product($id: ID!${locationId ? ', $loc: ID!' : ''}) {
       product(id: $id) {
         id
-        variants(first: 1) { nodes { id inventoryItem { id ${level} } } }
+        variants(first: 100) { nodes { id inventoryItem { id ${level} } } }
         collections(first: 50) { nodes { id } }
       }
     }`,

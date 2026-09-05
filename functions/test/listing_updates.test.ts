@@ -82,6 +82,40 @@ test('an edit never calls productSet, and touches only what it names', () => {
   assert.deepEqual(mutations[4].variables, { id: 'gid://shopify/Collection/old', productIds: ['gid://shopify/Product/777'] });
 });
 
+test('per-variant edits update every variant in place, still never productSet', () => {
+  const two: StoreProduct = {
+    ...product,
+    variants: {
+      nodes: [
+        { id: 'gid://shopify/ProductVariant/1', inventoryItem: { id: 'gid://shopify/InventoryItem/11', inventoryLevel: { quantities: [{ name: 'available', quantity: 5 }] } } },
+        { id: 'gid://shopify/ProductVariant/2', inventoryItem: { id: 'gid://shopify/InventoryItem/22', inventoryLevel: { quantities: [{ name: 'available', quantity: 9 }] } } },
+      ],
+    },
+  };
+  const mutations = updateMutations(
+    'L1',
+    { ...draft, variants: [
+      { variantId: '1', priceCents: 3000, quantity: 4 },
+      { variantId: '2', priceCents: 3500, quantity: 0, sku: 'FALL-M' },
+      { variantId: 'ghost', priceCents: 1, quantity: 1 },
+    ] },
+    two,
+    'gid://shopify/Location/9',
+    ['gid://shopify/Collection/old', 'gid://shopify/Collection/keep'],
+  );
+  const names = mutations.map((m) => m.name);
+  assert.equal(names.includes('productSet'), false);
+  assert.deepEqual(names, ['productUpdate', 'productVariantsBulkUpdate', 'inventorySetQuantities']);
+  assert.deepEqual(mutations[1].variables.variants, [
+    { id: 'gid://shopify/ProductVariant/1', price: '30.00' },
+    { id: 'gid://shopify/ProductVariant/2', price: '35.00', inventoryItem: { sku: 'FALL-M' } },
+  ]);
+  assert.deepEqual((mutations[2].variables.input as any).quantities, [
+    { inventoryItemId: 'gid://shopify/InventoryItem/11', locationId: 'gid://shopify/Location/9', quantity: 4, changeFromQuantity: 5 },
+    { inventoryItemId: 'gid://shopify/InventoryItem/22', locationId: 'gid://shopify/Location/9', quantity: 0, changeFromQuantity: 9 },
+  ]);
+});
+
 test('no location means no stock write, and untracked stock is left alone', () => {
   const noLocation = updateMutations('L1', draft, product, null, []).map((m) => m.name);
   assert.equal(noLocation.includes('inventorySetQuantities'), false);

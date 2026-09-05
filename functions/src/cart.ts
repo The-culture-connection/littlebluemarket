@@ -272,7 +272,9 @@ export async function beginCheckout(
  */
 export async function liveVariants(productId: string): Promise<
   Array<{
+    variantId: string;
     name: string;
+    sku: string | null;
     priceCents: number;
     availableForSale: boolean;
     quantityAvailable: number | null;
@@ -282,7 +284,7 @@ export async function liveVariants(productId: string): Promise<
     'query Variants($id: ID!) {',
     '  product(id: $id) {',
     '    variants(first: 50) {',
-    '      nodes { title price availableForSale inventoryQuantity }',
+    '      nodes { id title sku price availableForSale inventoryQuantity }',
     '    }',
     '  }',
     '}',
@@ -292,7 +294,9 @@ export async function liveVariants(productId: string): Promise<
     product: {
       variants: {
         nodes: Array<{
+          id: string;
           title: string;
+          sku: string | null;
           price: string;
           availableForSale: boolean;
           inventoryQuantity: number | null;
@@ -306,7 +310,10 @@ export async function liveVariants(productId: string): Promise<
   }
 
   return result.product.variants.nodes.map((variant) => ({
+    // The seller's edit screen needs the id to change each one in place.
+    variantId: variant.id.split('/').pop() ?? variant.id,
     name: variant.title,
+    sku: variant.sku ?? null,
     priceCents: toCents(variant.price),
     availableForSale: variant.availableForSale,
     quantityAvailable: variant.inventoryQuantity,

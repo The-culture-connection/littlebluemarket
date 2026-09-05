@@ -144,6 +144,11 @@ abstract final class FirestoreMappers {
         ? null
         : integer(data['quantityAvailable']),
     availabilityNote: data['availabilityNote'] as String?,
+    variantId:
+        data['variantId'] is String && (data['variantId'] as String).isNotEmpty
+        ? data['variantId'] as String
+        : null,
+    sku: data['sku'] is String ? data['sku'] as String : null,
   );
 
   static SpecRow specRow(Map<String, dynamic> data) =>

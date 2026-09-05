@@ -268,10 +268,17 @@ class Variant {
     this.availableForSale = true,
     this.quantityAvailable,
     this.availabilityNote,
+    this.variantId,
+    this.sku,
   });
 
   final String name;
   final int priceCents;
+
+  /// The store's id for this variant, when the read came from the store.
+  /// The seller's edit screen needs it to change each one in place.
+  final String? variantId;
+  final String? sku;
   final bool availableForSale;
   final int? quantityAvailable;
 

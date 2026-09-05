@@ -82,6 +82,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _tags = TextEditingController();
   final _photos = <_PickedPhoto>[];
   final _existingUrls = <String>[];
+
+  /// Edit mode only: the store's variants, each with its own price and
+  /// quantity field. Empty until they load, or when the product has one.
+  final _variantRows = <_VariantRow>[];
+  bool _variantsLoading = false;
   final _collections = <String>{};
   final _categoryQuery = TextEditingController();
   List<ProductCategory> _categoryHits = const [];
@@ -122,10 +127,39 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       }
     }
     _categoryQuery.addListener(_onCategoryTyped);
+    if (existing?.onStore ?? false) _loadVariants(existing!.shopifyProductId!);
+  }
+
+  /// Reads the store's variants so a product with several can be edited
+  /// per variant. A single-variant product keeps the plain price field.
+  Future<void> _loadVariants(String productId) async {
+    setState(() => _variantsLoading = true);
+    try {
+      final variants = await ref
+          .read(catalogRepositoryProvider)
+          .liveVariants(productId);
+      if (!mounted) return;
+      final withIds = variants.where((v) => v.variantId != null).toList();
+      setState(() {
+        _variantsLoading = false;
+        if (withIds.length > 1) {
+          _variantRows.addAll(withIds.map(_VariantRow.from));
+        }
+      });
+    } on RepositoryException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _variantsLoading = false;
+        _error = describeError(error).body;
+      });
+    }
   }
 
   @override
   void dispose() {
+    for (final row in _variantRows) {
+      row.dispose();
+    }
     _categoryQuery
       ..removeListener(_onCategoryTyped)
       ..dispose();
@@ -193,9 +227,24 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   static String _guessType(String name) =>
       name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
 
+  bool get _perVariant => _variantRows.isNotEmpty;
+
   /// The checks that need no network, before anything is uploaded.
   String? _validate() {
     if (_title.text.trim().isEmpty) return 'Give it a title.';
+    if (_perVariant) {
+      for (final row in _variantRows) {
+        final cents = parseDollars(row.price.text);
+        if (cents == null || cents <= 0) {
+          return 'Set a price above \$0 for "${row.name}".';
+        }
+        final quantity = int.tryParse(row.quantity.text.trim());
+        if (quantity == null || quantity < 0) {
+          return 'Quantity for "${row.name}" must be a whole number, zero or more.';
+        }
+      }
+      return null;
+    }
     final cents = parseDollars(_price.text);
     if (cents == null) return 'Enter the price as dollars, like 12 or 12.50.';
     if (cents <= 0) return 'Set a price above \$0.';
@@ -237,11 +286,25 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
       // 2. The draft, under the seller's own uid.
       setState(() => _stage = 'Saving the draft…');
+      final variantEdits = _perVariant
+          ? [
+              for (final row in _variantRows)
+                VariantEdit(
+                  variantId: row.variantId,
+                  priceCents: parseDollars(row.price.text)!,
+                  quantity: int.parse(row.quantity.text.trim()),
+                ),
+            ]
+          : null;
       final draft = ListingDraft(
         title: _title.text,
         description: _description.text,
-        priceCents: parseDollars(_price.text)!,
-        quantity: int.parse(_quantity.text.trim()),
+        // With per-variant rows the first one is the headline price.
+        priceCents:
+            variantEdits?.first.priceCents ?? parseDollars(_price.text)!,
+        quantity:
+            variantEdits?.first.quantity ?? int.parse(_quantity.text.trim()),
+        variants: variantEdits,
         sku: _sku.text,
         imageUrls: urls,
         collectionHandles: _collections.toList()..sort(),
@@ -376,31 +439,78 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   readOnly: _busy,
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: LbmField(
-                        label: 'Price (USD)',
-                        controller: _price,
-                        hintText: '12.50',
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        readOnly: _busy,
+                if (_perVariant) ...[
+                  Text(
+                    'This product has ${_variantRows.length} variants. Each '
+                    'has its own price and stock below.',
+                    style: LbmText.tiny.copyWith(color: c.ink2),
+                  ),
+                  for (final row in _variantRows) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      row.name,
+                      style: LbmText.tiny.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: c.ink,
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: LbmField(
-                        label: 'Quantity',
-                        controller: _quantity,
-                        keyboardType: TextInputType.number,
-                        readOnly: _busy,
-                      ),
+                    const SizedBox(height: 6),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: LbmField(
+                            label: 'Price (USD)',
+                            controller: row.price,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            readOnly: _busy,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: LbmField(
+                            label: 'Quantity',
+                            controller: row.quantity,
+                            keyboardType: TextInputType.number,
+                            readOnly: _busy,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ),
+                ] else if (_variantsLoading)
+                  Text(
+                    'Reading the variants from the store…',
+                    style: LbmText.tiny.copyWith(color: c.ink3),
+                  )
+                else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: LbmField(
+                          label: 'Price (USD)',
+                          controller: _price,
+                          hintText: '12.50',
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          readOnly: _busy,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: LbmField(
+                          label: 'Quantity',
+                          controller: _quantity,
+                          keyboardType: TextInputType.number,
+                          readOnly: _busy,
+                        ),
+                      ),
+                    ],
+                  ),
                 const SizedBox(height: 12),
                 LbmField(
                   label: 'SKU (optional)',
@@ -563,6 +673,36 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         ],
       ),
     );
+  }
+}
+
+/// One variant's fields on the edit form.
+class _VariantRow {
+  _VariantRow({
+    required this.variantId,
+    required this.name,
+    required int priceCents,
+    required int? quantity,
+  }) : price = TextEditingController(
+         text: (priceCents / 100).toStringAsFixed(2),
+       ),
+       quantity = TextEditingController(text: (quantity ?? 0).toString());
+
+  factory _VariantRow.from(Variant v) => _VariantRow(
+    variantId: v.variantId!,
+    name: v.name,
+    priceCents: v.priceCents,
+    quantity: v.quantityAvailable,
+  );
+
+  final String variantId;
+  final String name;
+  final TextEditingController price;
+  final TextEditingController quantity;
+
+  void dispose() {
+    price.dispose();
+    quantity.dispose();
   }
 }
 

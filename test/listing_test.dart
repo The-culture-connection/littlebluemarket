@@ -198,6 +198,19 @@ void main() {
         'gid://shopify/TaxonomyCategory/aa-1-13',
       );
       expect(withCategory['categoryName'], contains('Sweatshirts'));
+      expect(withCategory.containsKey('variants'), isFalse);
+      final withVariants = const ListingDraft(
+        title: 'Hat',
+        priceCents: 500,
+        variants: [
+          VariantEdit(variantId: '1', priceCents: 500, quantity: 3),
+          VariantEdit(variantId: '2', priceCents: 700, quantity: 0, sku: 'M'),
+        ],
+      ).toMap();
+      expect(withVariants['variants'], [
+        {'variantId': '1', 'priceCents': 500, 'quantity': 3},
+        {'variantId': '2', 'priceCents': 700, 'quantity': 0, 'sku': 'M'},
+      ]);
       expect(map.containsKey('status'), isFalse);
       expect(map.containsKey('sellerUid'), isFalse);
     });

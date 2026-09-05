@@ -344,7 +344,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 - `functions/src/listing_updates.ts` — `sellerRefreshListings` (one store query for up to 50 submitted/live listings, rate-limited to one look per listing per minute; ACTIVE → Live, DRAFT → Under review, archived or gone → Not approved with a reason) and `sellerUpdateListing` (`productUpdate` + `productVariantsBulkUpdate` + `inventorySetQuantities` + collection add/remove; a test asserts `productSet` is never among the mutations). The approval push side in the mirror was already in from Stage 5.
 - `orders.ts` writes `grossSalesCents` (and keeps `revenueCents` in step until cutover); rules lock both; the app reads the new field and falls back to the old one for older profiles. Label: **Total sales**.
 - Rules: a listing's content stays editable at every status except mid-send; the outcome fields stay the function's. Rules tests updated.
-- Flutter: `SellerRepository.updateListing` / `refreshListings` (Firestore + fixture), `/you/edit-product/:id` reusing the Add form in edit mode (photos read-only for now), the drafts panel shows every app-made product with Edit, Retry routes to update or publish depending on whether the product exists on the store, and pull-to-refresh on the profile calls the store.
+- Flutter: `SellerRepository.updateListing` / `refreshListings` (Firestore + fixture), `/you/edit-product/:id` reusing the Add form in edit mode (photos read-only for now; a multi-variant product gets a price and quantity row per variant, read live from the store and written back by variant id), the drafts panel shows every app-made product with Edit, Retry routes to update or publish depending on whether the product exists on the store, and pull-to-refresh on the profile calls the store.
 
 - [x] **CP-R1 Approval flips the chip.** *(passed by Grace 2026-09-05)*
   **Grace does:** as the seller, add a product (Stage 5) → the chip says **Under review**. In the Shopify admin → Products → that product → Status **Active** → Save. Back in the app, watch the chip.
@@ -352,7 +352,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
   **If it fails:** chip stuck on Under review after a minute and a pull → `firebase functions:log --only sellerRefreshListings --project dev`, paste the last lines.
 
 - [ ] **CP-R2 Edit and restock without losing variants.**
-  **Grace does (Shopify admin, once):** open one of the seller's app-made products and add a second variant (Variants → Add options like Size: S, M). Save. In the app: Products tab → that product's **Edit** → change the price to a new number and the quantity to a new number → **Save changes**.
+  **Grace does (Shopify admin, once):** open one of the seller's app-made products and add a second variant (Variants → Add options like Size: S, M). Save. In the app: Products tab → that product's **Edit** → the form reads the variants from the store and shows a price and quantity field for **each** → change them → **Save changes**. (A single-variant product keeps the plain price and quantity fields.)
   **Pass:** "Saved to the store." In the Shopify admin the product still has **both** variants; the first variant shows the new price; Inventory shows the new quantity at the store's location. The seller's grid shows the new price after a pull.
   **If it fails:** "The store refused the change (…)" → paste it. A variant vanished → tell Claude immediately; that is the one thing this stage promises never happens.
 
