@@ -74,10 +74,11 @@ test('an edit never calls productSet, and touches only what it names', () => {
     { inventoryItemId: 'gid://shopify/InventoryItem/11', locationId: 'gid://shopify/Location/9', quantity: 40, changeFromQuantity: 70 },
   ]);
 
-  // Without a known current figure the set is unconditional.
+  // The store requires the current count on every line; a variant with no
+  // count at this location gets no stock write at all rather than a guess.
   const blind = { ...product, variants: { nodes: [{ id: 'gid://shopify/ProductVariant/1', inventoryItem: { id: 'gid://shopify/InventoryItem/11' } }] } };
-  const blindStock = updateMutations('L1', draft, blind, 'gid://shopify/Location/9', [])[2].variables.input as any;
-  assert.equal('changeFromQuantity' in blindStock.quantities[0], false);
+  const blindNames = updateMutations('L1', draft, blind, 'gid://shopify/Location/9', []).map((m) => m.name);
+  assert.equal(blindNames.includes('inventorySetQuantities'), false);
 
   assert.deepEqual(mutations[3].variables, { id: 'gid://shopify/Collection/new', productIds: ['gid://shopify/Product/777'] });
   assert.deepEqual(mutations[4].variables, { id: 'gid://shopify/Collection/old', productIds: ['gid://shopify/Product/777'] });

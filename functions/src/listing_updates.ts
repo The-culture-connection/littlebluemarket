@@ -191,13 +191,19 @@ export function updateMutations(
         ...(typeof edit.sku === 'string' ? { inventoryItem: { sku: edit.sku } } : {}),
       });
       if (locationId && typeof edit.quantity === 'number') {
+        // The store requires the current count on every line (a
+        // compare-and-set). A variant never stocked at this location has no
+        // count to compare against, so its stock is left for the store's
+        // own screen and the result says stock was not fully set.
         const current = node.inventoryItem.inventoryLevel?.quantities.find((q) => q.name === 'available')?.quantity;
-        stock.push({
-          inventoryItemId: node.inventoryItem.id,
-          locationId,
-          quantity: edit.quantity,
-          ...(typeof current === 'number' ? { changeFromQuantity: current } : {}),
-        });
+        if (typeof current === 'number') {
+          stock.push({
+            inventoryItemId: node.inventoryItem.id,
+            locationId,
+            quantity: edit.quantity,
+            changeFromQuantity: current,
+          });
+        }
       }
     }
     if (bulk.length) {
@@ -256,7 +262,7 @@ export function updateMutations(
       const current = variant.inventoryItem.inventoryLevel?.quantities.find(
         (q) => q.name === 'available',
       )?.quantity;
-      out.push({
+      if (typeof current === 'number') out.push({
         name: 'inventorySetQuantities',
         query: `mutation Stock($input: InventorySetQuantitiesInput!) {
           inventorySetQuantities(input: $input) @idempotent(key: "${randomUUID()}") {
@@ -272,7 +278,7 @@ export function updateMutations(
                 inventoryItemId: variant.inventoryItem.id,
                 locationId,
                 quantity: draft.quantity,
-                ...(typeof current === 'number' ? { changeFromQuantity: current } : {}),
+                changeFromQuantity: current,
               },
             ],
           },
