@@ -61,10 +61,9 @@ export async function linkStoreAccounts(
   const alreadyLinked = Boolean(existing.linkedAt);
 
   // Stored so the order pipeline can attribute a website order by email.
-  await user.set(
-    { emailLower: email, linkedAt: FieldValue.serverTimestamp() },
-    { merge: true },
-  );
+  //  is stamped at the end, after the lookups: a failed attempt
+  // must not look linked, or the app stops retrying.
+  await user.set({ emailLower: email }, { merge: true });
 
   let customerId =
     typeof existing.shopifyCustomerId === 'string' ? existing.shopifyCustomerId : null;
@@ -96,6 +95,8 @@ export async function linkStoreAccounts(
     }
   }
 
+  await user.set({ linkedAt: FieldValue.serverTimestamp() }, { merge: true });
+
   logger.info('Linked a store account', {
     uid,
     linkedCustomer: Boolean(customerId),
@@ -125,9 +126,21 @@ async function findShopifyCustomer(
     '}',
   ].join('\n');
 
-  const result = await graphql<{
-    customers: { nodes: Array<{ id: string; email: string | null }> };
-  }>(query, { query: `email:${email}` });
+  let result: { customers: { nodes: Array<{ id: string; email: string | null }> } };
+  try {
+    result = await graphql(query, { query: `email:${email}` });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/protected customer data|not approved to use/i.test(message)) {
+      throw new Error(
+        'Shopify will not show customer emails to this app yet. Fix: Dev ' +
+          'Dashboard -> the app -> Configuration -> Protected customer data ' +
+          'access -> request the Name, Email, Phone and Address fields, save, ' +
+          'then try again. (' + message + ')',
+      );
+    }
+    throw error;
+  }
 
   const matches = result.customers.nodes.filter(
     (node) => node.email?.toLowerCase() === email,

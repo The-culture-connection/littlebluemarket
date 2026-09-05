@@ -158,6 +158,24 @@ export function defaultProbes(): Probe[] {
       },
     },
     {
+      name: 'customerData',
+      fix: 'Shopify Dev Dashboard -> the app -> Configuration -> Protected customer data access -> under "Protected customer fields" request Name, Email, Phone and Address (reason: app functionality), save. Without the Email field, linking a sign-in to a store customer and attributing website orders both fail.',
+      run: async () => {
+        try {
+          await adminGraphQL<{ customers: { nodes: Array<{ id: string; email: string | null }> } }>(
+            '{ customers(first: 1) { nodes { id email } } }',
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (/protected customer data|not approved to use/i.test(message)) {
+            throw new Error('the app may not read customer emails yet: ' + message);
+          }
+          throw error;
+        }
+        return { summary: 'customer email field readable' };
+      },
+    },
+    {
       name: 'storefrontToken',
       fix: 'firebase functions:secrets:set SHOPIFY_STOREFRONT_PRIVATE_TOKEN --project dev',
       run: async () => {

@@ -188,6 +188,18 @@ async function main() {
           fail('shopify admin', error.message, 'see the message above; then re-run the doctor');
         }
       }
+      if (ctx) {
+        try {
+          await adminGraphQL(ctx, '{ customers(first: 1) { nodes { id email } } }');
+          pass('customer data', 'the app may read customer emails (protected customer fields granted)');
+        } catch (error) {
+          if (/protected customer data|not approved to use/i.test(error.message)) {
+            fail('customer data', 'Shopify refuses to show customer emails to the app', 'Dev Dashboard -> the app -> Configuration -> Protected customer data access -> "Protected customer fields": request Name, Email, Phone, Address (reason: app functionality), save. Linking sign-ins to store customers and attributing website orders need this.');
+          } else {
+            warn('customer data', error.message.slice(0, 140));
+          }
+        }
+      }
       const storefrontToken = process.env.SHOPIFY_STOREFRONT_PRIVATE_TOKEN || secretValue('SHOPIFY_STOREFRONT_PRIVATE_TOKEN', projectId);
       if (!storefrontToken) {
         fail('shopify storefront', 'could not read SHOPIFY_STOREFRONT_PRIVATE_TOKEN from Secret Manager', `firebase functions:secrets:set SHOPIFY_STOREFRONT_PRIVATE_TOKEN --project ${alias}`);
