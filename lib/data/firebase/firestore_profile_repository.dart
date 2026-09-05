@@ -30,7 +30,8 @@ class FirestoreProfileRepository implements ProfileRepository {
   /// Null while signed out. Every write checks it rather than assuming.
   final String? uid;
 
-  CollectionReference<Map<String, dynamic>> get _users => _db.collection('users');
+  CollectionReference<Map<String, dynamic>> get _users =>
+      _db.collection('users');
 
   String get _requireUid {
     final id = uid;
@@ -136,20 +137,18 @@ class FirestoreProfileRepository implements ProfileRepository {
   }, operation: 'firestore users/{uid} updateProfile');
 
   @override
-  Future<String> uploadAvatar(
-    List<int> bytes, {
-    required String contentType,
-  }) => guardFirestore(() async {
-    final id = _requireUid;
-    final ref = _storage.ref('avatars/$id/profile.jpg');
-    await ref.putData(
-      Uint8List.fromList(bytes),
-      SettableMetadata(contentType: contentType),
-    );
-    final url = await ref.getDownloadURL();
-    await _users.doc(id).set({'avatarUrl': url}, SetOptions(merge: true));
-    return url;
-  });
+  Future<String> uploadAvatar(List<int> bytes, {required String contentType}) =>
+      guardFirestore(() async {
+        final id = _requireUid;
+        final ref = _storage.ref('avatars/$id/profile.jpg');
+        await ref.putData(
+          Uint8List.fromList(bytes),
+          SettableMetadata(contentType: contentType),
+        );
+        final url = await ref.getDownloadURL();
+        await _users.doc(id).set({'avatarUrl': url}, SetOptions(merge: true));
+        return url;
+      });
 
   @override
   Future<bool> handleAvailable(String handle) => guardFirestore(() async {
@@ -176,9 +175,7 @@ class FirestoreProfileRepository implements ProfileRepository {
         // documents no client may write.
         final result = await _functions
             .httpsCallable('sellerClaimVendor')
-            .call<Map<String, dynamic>>({
-              'claimCode': claimCode.trim(),
-            });
+            .call<Map<String, dynamic>>({'claimCode': claimCode.trim()});
 
         final data = result.data;
 
@@ -196,8 +193,30 @@ class FirestoreProfileRepository implements ProfileRepository {
       }, operation: 'callable sellerClaimVendor');
 
   @override
+  Future<LinkResult> linkStoreAccounts() => guardFirestore(() async {
+    _requireUid;
+    // No arguments: the function reads the email from the verified token,
+    // never from the request. A client-supplied address would let anyone
+    // inherit a stranger's order history.
+    final result = await _functions
+        .httpsCallable('linkAccounts')
+        .call<Map<String, dynamic>>(const {});
+    final data = result.data;
+    return LinkResult(
+      linkedCustomer: FirestoreMappers.boolean(data['linkedCustomer']),
+      linkedVendor: FirestoreMappers.boolean(data['linkedVendor']),
+      backfilledOrders: FirestoreMappers.integer(data['backfilledOrders']),
+      backfilledItems: FirestoreMappers.integer(data['backfilledItems']),
+      alreadyLinked: FirestoreMappers.boolean(data['alreadyLinked']),
+    );
+  }, operation: 'callable linkAccounts');
+
+  @override
   Future<List<Address>> addresses() => guardFirestore(() async {
-    final snapshot = await _users.doc(_requireUid).collection('addresses').get();
+    final snapshot = await _users
+        .doc(_requireUid)
+        .collection('addresses')
+        .get();
     return snapshot.docs
         .map((doc) => FirestoreMappers.address(doc.id, doc.data()))
         .toList();
@@ -211,7 +230,9 @@ class FirestoreProfileRepository implements ProfileRepository {
     if (address.isDefault) {
       // Exactly one default, so clearing the others is part of the same write.
       final batch = _db.batch();
-      final existing = await collection.where('isDefault', isEqualTo: true).get();
+      final existing = await collection
+          .where('isDefault', isEqualTo: true)
+          .get();
       for (final doc in existing.docs) {
         batch.update(doc.reference, {'isDefault': false});
       }

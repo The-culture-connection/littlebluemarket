@@ -186,6 +186,12 @@ abstract interface class ProfileRepository {
   /// mean genuinely different things and three of them are actionable.
   Future<SellerGrant> requestSellerStatus(String claimCode);
 
+  /// Matches this account to the store by its **verified** email: the
+  /// existing customer record and past orders, and the vendor record if the
+  /// email belongs to one. The session calls it once per account; it is
+  /// idempotent on the backend, so a retry costs nothing.
+  Future<LinkResult> linkStoreAccounts();
+
   Future<List<Address>> addresses();
   Future<void> saveAddress(Address address);
   Future<void> deleteAddress(String id);
@@ -216,7 +222,13 @@ abstract interface class DiagnosticsRepository {
 /// A profile edit. Only the fields a person may change themselves — notably
 /// not revenue or purchase counts, which only the order pipeline may write.
 class ProfileEdit {
-  const ProfileEdit({this.name, this.handle, this.bio, this.tags, this.avatarUrl});
+  const ProfileEdit({
+    this.name,
+    this.handle,
+    this.bio,
+    this.tags,
+    this.avatarUrl,
+  });
 
   final String? name;
   final String? handle;

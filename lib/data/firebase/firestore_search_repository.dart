@@ -124,7 +124,10 @@ class FirestoreSearchRepository implements SearchRepository {
       case SearchScope.productType:
         base = base.where('typeSlug', isEqualTo: _slug(query));
       case SearchScope.sellers:
-        base = base.where('sellerHandleLower', isEqualTo: lower.replaceFirst('@', ''));
+        base = base.where(
+          'sellerHandleLower',
+          isEqualTo: lower.replaceFirst('@', ''),
+        );
       case SearchScope.keywords:
       case SearchScope.all:
         if (query.startsWith('#')) {
@@ -146,7 +149,8 @@ class FirestoreSearchRepository implements SearchRepository {
 
     // A multi-word query also takes titles that start with the whole phrase,
     // which one word above cannot express.
-    if ((filters.scope == SearchScope.keywords || filters.scope == SearchScope.all) &&
+    if ((filters.scope == SearchScope.keywords ||
+            filters.scope == SearchScope.all) &&
         !query.startsWith('#') &&
         lower.contains(' ')) {
       final byPrefix = await _catalog

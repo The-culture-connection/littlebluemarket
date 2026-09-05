@@ -125,6 +125,11 @@ async function seed() {
     const seller = peopleById.get(sellerId);
     batch.set(db.collection('catalog').doc(id), {
       title, titleLower: title.toLowerCase(),
+      titleWords: [...new Set(title.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean))],
+      // The join key, as mirrorProduct writes it: the seller's display name
+      // stands in for the Shopify vendor string on the demo backend.
+      vendorName: seller.name,
+      vendorKey: seller.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
       description, priceCents, sellerId, type,
       typeSlug: type.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       tags, rating, ratingCount,

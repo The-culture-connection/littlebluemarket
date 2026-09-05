@@ -45,21 +45,48 @@ void main() {
     final now = DateTime(2026, 6, 15, 12);
 
     test('collapses the first minute to "now"', () {
-      expect(Fmt.relative(now.subtract(const Duration(seconds: 30)), now: now), 'now');
+      expect(
+        Fmt.relative(now.subtract(const Duration(seconds: 30)), now: now),
+        'now',
+      );
     });
 
     test('steps through the units', () {
-      expect(Fmt.relative(now.subtract(const Duration(minutes: 4)), now: now), '4m');
-      expect(Fmt.relative(now.subtract(const Duration(hours: 6)), now: now), '6h');
-      expect(Fmt.relative(now.subtract(const Duration(days: 3)), now: now), '3d');
-      expect(Fmt.relative(now.subtract(const Duration(days: 14)), now: now), '2w');
-      expect(Fmt.relative(now.subtract(const Duration(days: 60)), now: now), '2mo');
-      expect(Fmt.relative(now.subtract(const Duration(days: 400)), now: now), '1y');
+      expect(
+        Fmt.relative(now.subtract(const Duration(minutes: 4)), now: now),
+        '4m',
+      );
+      expect(
+        Fmt.relative(now.subtract(const Duration(hours: 6)), now: now),
+        '6h',
+      );
+      expect(
+        Fmt.relative(now.subtract(const Duration(days: 3)), now: now),
+        '3d',
+      );
+      expect(
+        Fmt.relative(now.subtract(const Duration(days: 14)), now: now),
+        '2w',
+      );
+      expect(
+        Fmt.relative(now.subtract(const Duration(days: 60)), now: now),
+        '2mo',
+      );
+      expect(
+        Fmt.relative(now.subtract(const Duration(days: 400)), now: now),
+        '1y',
+      );
     });
 
     test('does not report 7 days as a week boundary artefact', () {
-      expect(Fmt.relative(now.subtract(const Duration(days: 7)), now: now), '1w');
-      expect(Fmt.relative(now.subtract(const Duration(days: 6)), now: now), '6d');
+      expect(
+        Fmt.relative(now.subtract(const Duration(days: 7)), now: now),
+        '1w',
+      );
+      expect(
+        Fmt.relative(now.subtract(const Duration(days: 6)), now: now),
+        '6d',
+      );
     });
   });
 
@@ -69,17 +96,29 @@ void main() {
     final now = DateTime(2026, 6, 15, 15);
 
     test('uses durations inside a day', () {
-      expect(Fmt.inboxAge(now.subtract(const Duration(minutes: 2)), now: now), '2m');
-      expect(Fmt.inboxAge(now.subtract(const Duration(hours: 1)), now: now), '1h');
+      expect(
+        Fmt.inboxAge(now.subtract(const Duration(minutes: 2)), now: now),
+        '2m',
+      );
+      expect(
+        Fmt.inboxAge(now.subtract(const Duration(hours: 1)), now: now),
+        '1h',
+      );
     });
 
     test('names yesterday', () {
-      expect(Fmt.inboxAge(now.subtract(const Duration(days: 1)), now: now), 'Yesterday');
+      expect(
+        Fmt.inboxAge(now.subtract(const Duration(days: 1)), now: now),
+        'Yesterday',
+      );
     });
 
     test('names the weekday inside a week', () {
       // Four days before Monday 15 June 2026 is Thursday.
-      expect(Fmt.inboxAge(now.subtract(const Duration(days: 4)), now: now), 'Thu');
+      expect(
+        Fmt.inboxAge(now.subtract(const Duration(days: 4)), now: now),
+        'Thu',
+      );
     });
 
     test('falls back to a date past a week', () {
@@ -103,11 +142,23 @@ void main() {
   });
 
   group('model labels', () {
-    test('a variant reports low stock as "left" and high stock as "in stock"', () {
-      expect(const Variant('a', 800, quantityAvailable: 3).stockLabel, '3 left');
-      expect(const Variant('a', 800, quantityAvailable: 6).stockLabel, '6 left');
-      expect(const Variant('a', 800, quantityAvailable: 9).stockLabel, '9 in stock');
-    });
+    test(
+      'a variant reports low stock as "left" and high stock as "in stock"',
+      () {
+        expect(
+          const Variant('a', 800, quantityAvailable: 3).stockLabel,
+          '3 left',
+        );
+        expect(
+          const Variant('a', 800, quantityAvailable: 6).stockLabel,
+          '6 left',
+        );
+        expect(
+          const Variant('a', 800, quantityAvailable: 9).stockLabel,
+          '9 in stock',
+        );
+      },
+    );
 
     test('an unknown quantity is just "In stock"', () {
       expect(const Variant('a', 800).stockLabel, 'In stock');
@@ -115,13 +166,20 @@ void main() {
 
     test('a note wins over any count', () {
       expect(
-        const Variant('a', 45000, availabilityNote: 'Sept 18, 24 open').stockLabel,
+        const Variant(
+          'a',
+          45000,
+          availabilityNote: 'Sept 18, 24 open',
+        ).stockLabel,
         'Sept 18, 24 open',
       );
     });
 
     test('sold out is reported even with stock unknown', () {
-      expect(const Variant('a', 800, availableForSale: false).stockLabel, 'Sold out');
+      expect(
+        const Variant('a', 800, availableForSale: false).stockLabel,
+        'Sold out',
+      );
     });
 
     test('a product without a viewer location omits the distance', () {

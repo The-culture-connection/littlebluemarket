@@ -601,7 +601,11 @@ abstract final class Fx {
       variants: [
         Variant('Rainbow on black', 500),
         Variant('Rainbow on white', 500),
-        Variant('Ten-pack for your shop', 3800, availabilityNote: 'For stockists'),
+        Variant(
+          'Ten-pack for your shop',
+          3800,
+          availabilityNote: 'For stockists',
+        ),
       ],
       shipping: [
         SpecRow('Processing', '2–3 business days'),

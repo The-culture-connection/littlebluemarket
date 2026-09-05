@@ -1,4 +1,4 @@
-﻿// A visual reference, not part of the test suite.
+// A visual reference, not part of the test suite.
 //
 // Renders every screen in both themes with the real bundled fonts and writes
 // them to test/shots/. Deliberately named without the `_test` suffix so
@@ -123,7 +123,10 @@ void main() {
     // Let the bundled photographs decode.
     await tester.runAsync(() async {
       for (final asset in Fx.demoPhotoAssets) {
-        await precacheImage(AssetImage(asset), tester.element(find.byType(MaterialApp)));
+        await precacheImage(
+          AssetImage(asset),
+          tester.element(find.byType(MaterialApp)),
+        );
       }
       await precacheImage(
         const AssetImage(Fx.cart),
@@ -140,7 +143,10 @@ void main() {
   }
 
   _shots.forEach((name, location) {
-    testWidgets('$name light', (t) => shoot(t, name, location, Brightness.light));
+    testWidgets(
+      '$name light',
+      (t) => shoot(t, name, location, Brightness.light),
+    );
   });
   _shots.forEach((name, location) {
     testWidgets('$name dark', (t) => shoot(t, name, location, Brightness.dark));
@@ -170,4 +176,3 @@ void main() {
     );
   });
 }
-

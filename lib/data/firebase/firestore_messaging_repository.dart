@@ -79,30 +79,29 @@ class FirestoreMessagingRepository implements MessagingRepository {
   }
 
   @override
-  Future<String> conversationWith(String personId) =>
-      guardFirestore(() async {
-        final me = _requireUid;
-        if (personId == me) {
-          throw const ValidationException('You cannot message yourself');
-        }
+  Future<String> conversationWith(String personId) => guardFirestore(() async {
+    final me = _requireUid;
+    if (personId == me) {
+      throw const ValidationException('You cannot message yourself');
+    }
 
-        // The id is derived from the sorted pair, so this is a lookup rather
-        // than a search — and two people messaging each other at the same
-        // moment cannot create two threads.
-        final id = Conversation.idFor(me, personId);
-        final doc = _conversations.doc(id);
+    // The id is derived from the sorted pair, so this is a lookup rather
+    // than a search — and two people messaging each other at the same
+    // moment cannot create two threads.
+    final id = Conversation.idFor(me, personId);
+    final doc = _conversations.doc(id);
 
-        if (!(await doc.get()).exists) {
-          await doc.set({
-            'participantIds': [me, personId]..sort(),
-            'preview': '',
-            'unread': {me: 0, personId: 0},
-            'lastMessageAt': FieldValue.serverTimestamp(),
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
-        return id;
+    if (!(await doc.get()).exists) {
+      await doc.set({
+        'participantIds': [me, personId]..sort(),
+        'preview': '',
+        'unread': {me: 0, personId: 0},
+        'lastMessageAt': FieldValue.serverTimestamp(),
+        'createdAt': FieldValue.serverTimestamp(),
       });
+    }
+    return id;
+  });
 
   @override
   Stream<List<Message>> watchConversation(String conversationId) =>
@@ -134,10 +133,7 @@ class FirestoreMessagingRepository implements MessagingRepository {
     final participants = FirestoreMappers.strings(
       snapshot.data()?['participantIds'],
     );
-    final other = participants.firstWhere(
-      (id) => id != me,
-      orElse: () => me,
-    );
+    final other = participants.firstWhere((id) => id != me, orElse: () => me);
 
     // The message and the thread summary move together, so the inbox can never
     // show a preview for a message that failed to write.

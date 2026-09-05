@@ -60,9 +60,11 @@ final fixtureStoreProvider = Provider<FixtureStore>((ref) {
 });
 
 final fixtureBackendProvider = Provider<FixtureBackend>((ref) {
+  final auth = ref.watch(authServiceProvider);
   return FixtureBackend(
     store: ref.watch(fixtureStoreProvider),
     latency: ref.watch(fixtureLatencyProvider),
+    auth: auth is FixtureAuthService ? auth : null,
   );
 });
 
@@ -72,7 +74,9 @@ final fixtureBackendProvider = Provider<FixtureBackend>((ref) {
 
 final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
-    Backend.fixtures => FixtureCatalogRepository(ref.watch(fixtureBackendProvider)),
+    Backend.fixtures => FixtureCatalogRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
     Backend.live => FirestoreCatalogRepository(
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),
@@ -82,7 +86,9 @@ final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
 
 final searchRepositoryProvider = Provider<SearchRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
-    Backend.fixtures => FixtureSearchRepository(ref.watch(fixtureBackendProvider)),
+    Backend.fixtures => FixtureSearchRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
     Backend.live => FirestoreSearchRepository(
       firestore: ref.watch(firestoreProvider),
       uid: ref.watch(_uidProvider),
@@ -92,7 +98,9 @@ final searchRepositoryProvider = Provider<SearchRepository>((ref) {
 
 final commerceRepositoryProvider = Provider<CommerceRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
-    Backend.fixtures => FixtureCommerceRepository(ref.watch(fixtureBackendProvider)),
+    Backend.fixtures => FixtureCommerceRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
     Backend.live => CommerceProxyRepository(
       functions: ref.watch(firebaseFunctionsProvider),
       firestore: ref.watch(firestoreProvider),
@@ -103,7 +111,9 @@ final commerceRepositoryProvider = Provider<CommerceRepository>((ref) {
 
 final socialRepositoryProvider = Provider<SocialRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
-    Backend.fixtures => FixtureSocialRepository(ref.watch(fixtureBackendProvider)),
+    Backend.fixtures => FixtureSocialRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
     Backend.live => FirestoreSocialRepository(
       firestore: ref.watch(firestoreProvider),
       uid: ref.watch(_uidProvider),
@@ -113,7 +123,9 @@ final socialRepositoryProvider = Provider<SocialRepository>((ref) {
 
 final messagingRepositoryProvider = Provider<MessagingRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
-    Backend.fixtures => FixtureMessagingRepository(ref.watch(fixtureBackendProvider)),
+    Backend.fixtures => FixtureMessagingRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
     Backend.live => FirestoreMessagingRepository(
       firestore: ref.watch(firestoreProvider),
       uid: ref.watch(_uidProvider),
@@ -123,7 +135,9 @@ final messagingRepositoryProvider = Provider<MessagingRepository>((ref) {
 
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
-    Backend.fixtures => FixtureProfileRepository(ref.watch(fixtureBackendProvider)),
+    Backend.fixtures => FixtureProfileRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
     Backend.live => FirestoreProfileRepository(
       firestore: ref.watch(firestoreProvider),
       storage: ref.watch(firebaseStorageProvider),
@@ -136,8 +150,9 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
 
 final fulfillmentRepositoryProvider = Provider<FulfillmentRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
-    Backend.fixtures =>
-      FixtureFulfillmentRepository(ref.watch(fixtureBackendProvider)),
+    Backend.fixtures => FixtureFulfillmentRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
     Backend.live => FulfillmentProxyRepository(
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),

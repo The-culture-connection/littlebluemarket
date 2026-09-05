@@ -1,7 +1,8 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 
-import { resolveSellerUid } from './vendors.ts';
+import { forgetVendorCache, resolveSellerUid } from './vendors.ts';
+import { normalizeVendorName } from './sellers.ts';
 import { geohash } from './geohash.ts';
 import { toCents } from './orders.ts';
 
@@ -50,6 +51,13 @@ export async function mirrorProduct(payload: Record<string, any>): Promise<void>
       description: stripHtml(String(payload.body_html ?? '')),
       priceCents: first ? toCents(first.price) : 0,
       sellerId: sellerUid,
+      // The raw Shopify vendor string, and its normalised form. This is the
+      // join key: when a vendor claims their shop later, every product
+      // carrying their name is re-attributed by `backfillSellerForVendor`.
+      // Without it a product mirrored before its seller signed up stayed
+      // orphaned forever.
+      vendorName: String(payload.vendor ?? ''),
+      vendorKey: normalizeVendorName(String(payload.vendor ?? '')),
       type: String(payload.product_type ?? ''),
       typeSlug: slug(String(payload.product_type ?? '')),
       tags: initiativeTags,
@@ -104,6 +112,48 @@ export async function mirrorProduct(payload: Record<string, any>): Promise<void>
     );
 
   logger.info('Mirrored a product', { id, sellerUid: sellerUid || '(none)' });
+}
+
+/**
+ * Re-attributes every mirrored product carrying a vendor name to the account
+ * that now holds it — or to nobody, when the grant was revoked.
+ *
+ * Runs from the Firestore trigger on `sellers/{uid}`, so a seller who claims
+ * their shop sees their existing products on their profile within seconds,
+ * without anyone re-touching the catalog.
+ */
+export async function backfillSellerForVendor(
+  uid: string,
+  vendorName: string,
+  active: boolean,
+): Promise<number> {
+  const db = getFirestore();
+  const key = normalizeVendorName(vendorName);
+  if (!key) return 0;
+
+  const snapshot = await db.collection('catalog').where('vendorKey', '==', key).get();
+  const sellerId = active ? uid : '';
+  let updated = 0;
+  // Firestore batches cap at 500 writes; 400 leaves room.
+  for (let i = 0; i < snapshot.docs.length; i += 400) {
+    const batch = db.batch();
+    for (const doc of snapshot.docs.slice(i, i + 400)) {
+      if (doc.data().sellerId === sellerId) continue;
+      batch.set(doc.ref, { sellerId }, { merge: true });
+      updated += 1;
+    }
+    await batch.commit();
+  }
+
+  forgetVendorCache();
+  logger.info("Re-attributed a vendor's products", {
+    uid,
+    vendorName,
+    active,
+    matched: snapshot.size,
+    updated,
+  });
+  return updated;
 }
 
 /**

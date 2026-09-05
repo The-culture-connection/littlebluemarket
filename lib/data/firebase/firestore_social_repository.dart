@@ -30,10 +30,12 @@ class FirestoreSocialRepository implements SocialRepository {
     return id;
   }
 
-  CollectionReference<Map<String, dynamic>> get _posts => _db.collection('posts');
+  CollectionReference<Map<String, dynamic>> get _posts =>
+      _db.collection('posts');
   CollectionReference<Map<String, dynamic>> get _catalog =>
       _db.collection('catalog');
-  CollectionReference<Map<String, dynamic>> get _forums => _db.collection('forums');
+  CollectionReference<Map<String, dynamic>> get _forums =>
+      _db.collection('forums');
   CollectionReference<Map<String, dynamic>> get _threads =>
       _db.collection('threads');
 
@@ -57,9 +59,7 @@ class FirestoreSocialRepository implements SocialRepository {
   @override
   Future<Page<Post>> feedPage({String? cursor, int limit = 20}) =>
       guardFirestore(() async {
-        var query = _posts
-            .orderBy('createdAt', descending: true)
-            .limit(limit);
+        var query = _posts.orderBy('createdAt', descending: true).limit(limit);
         if (cursor != null) {
           final anchor = await _posts.doc(cursor).get();
           if (anchor.exists) query = query.startAfterDocument(anchor);
@@ -76,7 +76,9 @@ class FirestoreSocialRepository implements SocialRepository {
   ///
   /// Both are batched across the page rather than fetched per card, so a
   /// twenty-post feed is three round trips instead of forty-one.
-  Future<List<Post>> _hydrate(QuerySnapshot<Map<String, dynamic>> snapshot) async {
+  Future<List<Post>> _hydrate(
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) async {
     if (snapshot.docs.isEmpty) return const [];
 
     final productIds = <String>{
@@ -264,39 +266,34 @@ class FirestoreSocialRepository implements SocialRepository {
       'likeCount': 0,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    batch.update(_posts.doc(postId), {
-      'commentCount': FieldValue.increment(1),
-    });
+    batch.update(_posts.doc(postId), {'commentCount': FieldValue.increment(1)});
     await batch.commit();
   });
 
   @override
-  Future<void> setCommentLike(String commentId, bool liked) =>
-      guardFirestore(() async {
-        final me = _requireUid;
-        // Comment ids are unique across posts, so a collection-group lookup
-        // finds the one document without needing its parent post id.
-        final found = await _db
-            .collectionGroup('comments')
-            .where(FieldPath.documentId, isEqualTo: commentId)
-            .limit(1)
-            .get();
-        if (found.docs.isEmpty) throw NotFoundException('comment', commentId);
+  Future<void> setCommentLike(String commentId, bool liked) => guardFirestore(
+    () async {
+      final me = _requireUid;
+      // Comment ids are unique across posts, so a collection-group lookup
+      // finds the one document without needing its parent post id.
+      final found = await _db
+          .collectionGroup('comments')
+          .where(FieldPath.documentId, isEqualTo: commentId)
+          .limit(1)
+          .get();
+      if (found.docs.isEmpty) throw NotFoundException('comment', commentId);
 
-        final comment = found.docs.first.reference;
-        final like = comment.collection('likes').doc(me);
+      final comment = found.docs.first.reference;
+      final like = comment.collection('likes').doc(me);
 
-        await _db.runTransaction((tx) async {
-          final existing = await tx.get(like);
-          if (existing.exists == liked) return;
-          liked
-              ? tx.set(like, {'uid': me})
-              : tx.delete(like);
-          tx.update(comment, {
-            'likeCount': FieldValue.increment(liked ? 1 : -1),
-          });
-        });
+      await _db.runTransaction((tx) async {
+        final existing = await tx.get(like);
+        if (existing.exists == liked) return;
+        liked ? tx.set(like, {'uid': me}) : tx.delete(like);
+        tx.update(comment, {'likeCount': FieldValue.increment(liked ? 1 : -1)});
       });
+    },
+  );
 
   // --------------------------------------------------------------- reviews
 
@@ -307,8 +304,9 @@ class FirestoreSocialRepository implements SocialRepository {
       .orderBy('createdAt', descending: true)
       .snapshots()
       .map(
-        (snapshot) =>
-            snapshot.docs.map((doc) => FirestoreMappers.review(doc.data())).toList(),
+        (snapshot) => snapshot.docs
+            .map((doc) => FirestoreMappers.review(doc.data()))
+            .toList(),
       )
       .guarded();
 
@@ -392,12 +390,11 @@ class FirestoreSocialRepository implements SocialRepository {
       .guarded();
 
   @override
-  Stream<Forum> watchForum(String id) =>
-      _forums.doc(id).snapshots().map((doc) {
-        final data = doc.data();
-        if (data == null) throw NotFoundException('forum', id);
-        return FirestoreMappers.forum(doc.id, data);
-      }).guarded();
+  Stream<Forum> watchForum(String id) => _forums.doc(id).snapshots().map((doc) {
+    final data = doc.data();
+    if (data == null) throw NotFoundException('forum', id);
+    return FirestoreMappers.forum(doc.id, data);
+  }).guarded();
 
   @override
   Future<String> createForum(NewForum draft) => guardFirestore(() async {
@@ -438,9 +435,7 @@ class FirestoreSocialRepository implements SocialRepository {
           if (existing.exists == joined) return;
 
           joined
-              ? tx.set(membership, {
-                  'joinedAt': FieldValue.serverTimestamp(),
-                })
+              ? tx.set(membership, {'joinedAt': FieldValue.serverTimestamp()})
               : tx.delete(membership);
           tx.update(forum, {
             'memberCount': FieldValue.increment(joined ? 1 : -1),
@@ -547,5 +542,4 @@ class FirestoreSocialRepository implements SocialRepository {
     });
     await batch.commit();
   });
-
 }

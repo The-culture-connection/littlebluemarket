@@ -166,8 +166,7 @@ class SearchResults {
 
   /// True only when nothing at all matched. Screens need this because a real
   /// backend genuinely returns nothing, which the fixture search never did.
-  bool get isEmpty =>
-      products.isEmpty && sellers.isEmpty && reviews.isEmpty;
+  bool get isEmpty => products.isEmpty && sellers.isEmpty && reviews.isEmpty;
 
   bool get hasMore => cursor != null;
 

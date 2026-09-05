@@ -152,6 +152,103 @@ void main() {
     expect(await container.read(sessionProvider.notifier).reloadUser(), isNull);
   });
 
+  test(
+    'a verified, unlinked member is linked to the store exactly once',
+    () async {
+      // The backend is idempotent, but the session stream re-emits on every
+      // profile change; the call must not follow it.
+      final container = _container();
+      container.read(sessionProvider.notifier).signIn();
+      var session = await _settle(container, (s) => s is MemberSession);
+      // On fixtures the link is instant, so only the outcome is asserted.
+
+      session = await _settle(
+        container,
+        (s) => s is MemberSession && s.profile.isLinked,
+      );
+      expect((session as MemberSession).profile.isLinked, isTrue);
+
+      // A later profile edit re-emits the session; linking is not repeated.
+      await container
+          .read(profileRepositoryProvider)
+          .updateProfile(const ProfileEdit(bio: 'Still linked.'));
+      session = await _settle(
+        container,
+        (s) => s is MemberSession && s.profile.bio == 'Still linked.',
+      );
+      final again = await container
+          .read(profileRepositoryProvider)
+          .linkStoreAccounts();
+      expect(
+        again.alreadyLinked,
+        isTrue,
+        reason: 'the fixture records the first link',
+      );
+    },
+  );
+
+  test(
+    'seller status follows the identity, and a grant flips it live',
+    () async {
+      // dee is a buyer in the fixtures. Claiming a shop must make the session a
+      // seller without a restart, the way a forced token refresh does on the
+      // live backend.
+      final container = ProviderContainer(
+        overrides: [
+          authServiceProvider.overrideWith((ref) {
+            final service = FixtureAuthService(demoUid: 'dee');
+            ref.onDispose(service.dispose);
+            return service;
+          }),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.listen(sessionProvider, (_, _) {});
+
+      container.read(sessionProvider.notifier).signIn();
+      await _settle(container, (s) => s is MemberSession);
+      expect(container.read(isSellerProvider), isFalse);
+
+      final grant = await container
+          .read(profileRepositoryProvider)
+          .requestSellerStatus('GWYNSTONE');
+      expect(grant.vendorName, 'Gwynstone');
+
+      await _settle(container, (s) => s is MemberSession && s.isSeller);
+      expect(container.read(isSellerProvider), isTrue);
+    },
+  );
+
+  test('the profile document alone does not make a seller', () async {
+    // Selling is a grant on the token. A document that says isSeller with no
+    // claim behind it is the display mirror for other people's profiles, and
+    // must not unlock seller surfaces for the account itself.
+    final container = ProviderContainer(
+      overrides: [
+        authServiceProvider.overrideWith((ref) {
+          final service = FixtureAuthService(demoUid: 'dee');
+          ref.onDispose(service.dispose);
+          return service;
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.listen(sessionProvider, (_, _) {});
+    container.read(sessionProvider.notifier).signIn();
+    await _settle(container, (s) => s is MemberSession);
+
+    final store = container.read(fixtureStoreProvider);
+    final people = {...store.people.value};
+    people['dee'] = people['dee']!.copyWith(isSeller: true);
+    store.people.value = people;
+
+    await _settle(
+      container,
+      (s) => s is MemberSession && s.profile.bio == people['dee']!.bio,
+    );
+    expect(container.read(isSellerProvider), isFalse);
+  });
+
   test('the theme override is not part of the session', () {
     // It used to be, which made the router re-run its redirect on every
     // dark-mode toggle.

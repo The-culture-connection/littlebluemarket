@@ -59,9 +59,7 @@ void main() {
     test('returns nothing when nothing matches', () async {
       // The prototype fell back to ['p1','p4'], which is why no screen ever
       // needed an empty state.
-      final results = await search.search(
-        const SearchFilters(query: 'zzzzzz'),
-      );
+      final results = await search.search(const SearchFilters(query: 'zzzzzz'));
       expect(results.isEmpty, isTrue);
     });
 
@@ -159,15 +157,18 @@ void main() {
       expect(cart.lines.single.unitPriceCents, 700);
     });
 
-    test('adding the same variant twice increments rather than duplicating', () async {
-      await commerce.addLine(productId: 'p1', variantId: 'Cocoa Mint');
-      final cart = await commerce.addLine(
-        productId: 'p1',
-        variantId: 'Cocoa Mint',
-      );
-      expect(cart.lines.length, 1);
-      expect(cart.lines.single.quantity, 2);
-    });
+    test(
+      'adding the same variant twice increments rather than duplicating',
+      () async {
+        await commerce.addLine(productId: 'p1', variantId: 'Cocoa Mint');
+        final cart = await commerce.addLine(
+          productId: 'p1',
+          variantId: 'Cocoa Mint',
+        );
+        expect(cart.lines.length, 1);
+        expect(cart.lines.single.quantity, 2);
+      },
+    );
 
     test('two variants of one product are two lines', () async {
       await commerce.addLine(productId: 'p1', variantId: 'Cocoa Mint');
@@ -187,8 +188,14 @@ void main() {
     });
 
     test('changing the cart invalidates the quote', () async {
-      var cart = await commerce.addLine(productId: 'p1', variantId: 'Cocoa Mint');
-      backend.store.cart.value = cart.copyWith(shippingCents: 560, taxCents: 40);
+      var cart = await commerce.addLine(
+        productId: 'p1',
+        variantId: 'Cocoa Mint',
+      );
+      backend.store.cart.value = cart.copyWith(
+        shippingCents: 560,
+        taxCents: 40,
+      );
       expect(backend.store.cart.value.totalCents, isNotNull);
 
       cart = await commerce.addLine(productId: 'p2', variantId: 'Pack of 5');
@@ -293,7 +300,10 @@ void main() {
 
     test('creating a forum makes you its first member', () async {
       final id = await social.createForum(
-        const NewForum(title: 'Refill Programs', description: 'Vessel returns.'),
+        const NewForum(
+          title: 'Refill Programs',
+          description: 'Vessel returns.',
+        ),
       );
       final forum = await social.watchForum(id).first;
       expect(forum.memberCount, 1);
@@ -311,7 +321,10 @@ void main() {
       final before = await social.watchForum('f2').first;
       await social.setForumMembership('f2', true);
       await social.setForumMembership('f2', true);
-      expect((await social.watchForum('f2').first).memberCount, before.memberCount + 1);
+      expect(
+        (await social.watchForum('f2').first).memberCount,
+        before.memberCount + 1,
+      );
     });
 
     test('a new thread raises its forum thread count', () async {
@@ -324,15 +337,18 @@ void main() {
       expect(await social.watchThreads('f3').first, hasLength(1));
     });
 
-    test('thread comments belong to their thread, not to every thread', () async {
-      // The prototype rendered one global comment list under every thread.
-      expect(await social.watchThreadComments('t1').first, isNotEmpty);
-      expect(await social.watchThreadComments('t2').first, isEmpty);
+    test(
+      'thread comments belong to their thread, not to every thread',
+      () async {
+        // The prototype rendered one global comment list under every thread.
+        expect(await social.watchThreadComments('t1').first, isNotEmpty);
+        expect(await social.watchThreadComments('t2').first, isEmpty);
 
-      await social.addThreadComment(threadId: 't2', text: 'Same here.');
-      expect(await social.watchThreadComments('t2').first, hasLength(1));
-      expect(await social.watchThreadComments('t3').first, isEmpty);
-    });
+        await social.addThreadComment(threadId: 't2', text: 'Same here.');
+        expect(await social.watchThreadComments('t2').first, hasLength(1));
+        expect(await social.watchThreadComments('t3').first, isEmpty);
+      },
+    );
 
     test('an unknown forum throws', () {
       expect(
@@ -362,7 +378,10 @@ void main() {
       expect(withKali, isNot(withRae));
 
       await messaging.send(conversationId: withKali, text: 'On my way.');
-      expect(await messaging.watchConversation(withRae).first, isNot(contains('On my way.')));
+      expect(
+        await messaging.watchConversation(withRae).first,
+        isNot(contains('On my way.')),
+      );
       expect(
         (await messaging.watchConversation(withKali).first).last.text,
         'On my way.',
@@ -415,60 +434,65 @@ void main() {
       expect(await profiles.handleAvailable(me.handle), isTrue);
     });
 
-  group('claiming a shop', () {
-    late FixtureStore store;
-    late FixtureProfileRepository buyer;
+    group('claiming a shop', () {
+      late FixtureStore store;
+      late FixtureProfileRepository buyer;
 
-    setUp(() {
-      store = FixtureStore(currentUid: 'dee');
-      buyer = FixtureProfileRepository(FixtureBackend(store: store));
-      addTearDown(store.dispose);
-    });
+      setUp(() {
+        store = FixtureStore(currentUid: 'dee');
+        buyer = FixtureProfileRepository(FixtureBackend(store: store));
+        addTearDown(store.dispose);
+      });
 
-    test('a valid code grants selling, and names the shop', () async {
-      expect((await buyer.person('dee')).isSeller, isFalse);
+      test('a valid code grants selling, and names the shop', () async {
+        expect((await buyer.person('dee')).isSeller, isFalse);
 
-      final grant = await buyer.requestSellerStatus('gwynstone');
+        final grant = await buyer.requestSellerStatus('gwynstone');
 
-      expect(grant.vendorName, 'Gwynstone');
-      expect((await buyer.person('dee')).isSeller, isTrue);
-    });
+        expect(grant.vendorName, 'Gwynstone');
+        expect((await buyer.person('dee')).isSeller, isTrue);
+      });
 
-    test('an unknown code grants nothing', () async {
-      await expectLater(
-        buyer.requestSellerStatus('nope'),
-        throwsA(isA<ValidationException>()),
-      );
+      test('an unknown code grants nothing', () async {
+        await expectLater(
+          buyer.requestSellerStatus('nope'),
+          throwsA(isA<ValidationException>()),
+        );
 
-      // The point of the whole phase: a refused claim must leave the account
-      // exactly as it was. `becomeSeller()` is gone, so this is the only way
-      // in, and it has to fail closed.
-      expect((await buyer.person('dee')).isSeller, isFalse);
-    });
+        // The point of the whole phase: a refused claim must leave the account
+        // exactly as it was. `becomeSeller()` is gone, so this is the only way
+        // in, and it has to fail closed.
+        expect((await buyer.person('dee')).isSeller, isFalse);
+      });
 
-    test('each failure says something different', () async {
-      // Three of these are actionable in different ways — ask for a new code,
-      // get in touch, check for typos — so a single "something went wrong"
-      // would be the wrong call.
-      final messages = <String>{};
-      for (final code in ['USED-CODE', 'EXPIRED-CODE', 'TAKEN-CODE', 'junk']) {
-        try {
-          await buyer.requestSellerStatus(code);
-          fail('$code should not have been accepted');
-        } on ValidationException catch (error) {
-          messages.add(error.message);
+      test('each failure says something different', () async {
+        // Three of these are actionable in different ways — ask for a new code,
+        // get in touch, check for typos — so a single "something went wrong"
+        // would be the wrong call.
+        final messages = <String>{};
+        for (final code in [
+          'USED-CODE',
+          'EXPIRED-CODE',
+          'TAKEN-CODE',
+          'junk',
+        ]) {
+          try {
+            await buyer.requestSellerStatus(code);
+            fail('$code should not have been accepted');
+          } on ValidationException catch (error) {
+            messages.add(error.message);
+          }
         }
-      }
-      expect(messages, hasLength(4));
-    });
+        expect(messages, hasLength(4));
+      });
 
-    test('the code is not case or whitespace sensitive', () async {
-      // People paste these out of an email. Refusing a trailing space would
-      // be a support ticket, not a security boundary.
-      final grant = await buyer.requestSellerStatus('  GwYnStOnE  ');
-      expect(grant.vendorName, 'Gwynstone');
+      test('the code is not case or whitespace sensitive', () async {
+        // People paste these out of an email. Refusing a trailing space would
+        // be a support ticket, not a security boundary.
+        final grant = await buyer.requestSellerStatus('  GwYnStOnE  ');
+        expect(grant.vendorName, 'Gwynstone');
+      });
     });
-  });
 
     test('an address round-trips', () async {
       const address = Address(

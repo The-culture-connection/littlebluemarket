@@ -53,13 +53,11 @@ class _NewForumScreenState extends ConsumerState<NewForumScreen> {
     });
 
     try {
-      final id = await ref.read(socialRepositoryProvider).createForum(
-        NewForum(
-          title: _name.text,
-          description: _about.text,
-          tags: _tags,
-        ),
-      );
+      final id = await ref
+          .read(socialRepositoryProvider)
+          .createForum(
+            NewForum(title: _name.text, description: _about.text, tags: _tags),
+          );
       if (!mounted) return;
       // Straight into the forum you just made, where you are the first member.
       context.pushReplacement('/community/forums/$id');
@@ -168,11 +166,7 @@ class _NewForumScreenState extends ConsumerState<NewForumScreen> {
                   'Threads with a vote column, a title, and nested comments — '
                   'the same shape as Vendor Corner. You moderate the ones you '
                   'create.',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    height: 1.55,
-                    color: c.ink2,
-                  ),
+                  style: TextStyle(fontSize: 12.5, height: 1.55, color: c.ink2),
                 ),
               ],
             ),

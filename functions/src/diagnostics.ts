@@ -10,6 +10,7 @@ import {
   SHOPIFY_STORE_DOMAIN,
 } from './config.ts';
 import { adminGraphQL } from './shopify/token.ts';
+import { probeShipturtle } from './shipturtle_api.ts';
 import { storefrontGraphQL } from './shopify/storefront.ts';
 
 /**
@@ -199,6 +200,11 @@ export function defaultProbes(): Probe[] {
           data: { scopes: claims.scopes, exp: exp?.toISOString() },
         };
       },
+    },
+    {
+      name: 'shipturtleProbe',
+      fix: 'scripts/probe-shipturtle finds the roster endpoint; set SHIPTURTLE_VENDORS_PATH in functions/.env.<project-id> and redeploy',
+      run: probeShipturtle,
     },
     {
       name: 'authProviders',

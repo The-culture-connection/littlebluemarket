@@ -90,7 +90,11 @@ abstract final class DevErrorSink {
     } catch (_) {
       // Strings and numbers cannot carry an Expando; report them anyway.
     }
-    final entry = DevErrorReport(error: error, stack: stack, operation: operation);
+    final entry = DevErrorReport(
+      error: error,
+      stack: stack,
+      operation: operation,
+    );
     _recent.add(entry);
     if (_recent.length > capacity) _recent.removeAt(0);
     if (!_controller.isClosed) _controller.add(entry);

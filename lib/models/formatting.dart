@@ -63,8 +63,14 @@ abstract final class Fmt {
     if (d.inMinutes < 60) return '${d.inMinutes}m';
     if (d.inHours < 24) return '${d.inHours}h';
 
-    final startOfToday = DateTime(reference.year, reference.month, reference.day);
-    final daysApart = startOfToday.difference(DateTime(t.year, t.month, t.day)).inDays;
+    final startOfToday = DateTime(
+      reference.year,
+      reference.month,
+      reference.day,
+    );
+    final daysApart = startOfToday
+        .difference(DateTime(t.year, t.month, t.day))
+        .inDays;
     if (daysApart == 1) return 'Yesterday';
     if (daysApart < 7) return _weekdays[t.weekday - 1];
     return '${t.day} ${_months[t.month - 1]}';
@@ -84,15 +90,7 @@ abstract final class Fmt {
     return '${miles.round()} mi';
   }
 
-  static const _weekdays = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
+  static const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   static const _months = [
     'Jan',

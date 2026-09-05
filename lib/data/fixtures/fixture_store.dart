@@ -37,7 +37,10 @@ class Watchable<T> {
     out = StreamController<T>(
       onListen: () {
         out.add(_value);
-        subscription = _controller.stream.listen(out.add, onError: out.addError);
+        subscription = _controller.stream.listen(
+          out.add,
+          onError: out.addError,
+        );
       },
       onCancel: () => subscription?.cancel(),
     );

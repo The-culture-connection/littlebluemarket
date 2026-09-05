@@ -20,13 +20,19 @@ import 'fixture_store.dart';
 /// [latency] exists so loading states are actually exercised in the demo. It
 /// must be zero under test, or every `pumpAndSettle` pays for it.
 class FixtureBackend {
-  FixtureBackend({FixtureStore? store, this.latency = Duration.zero})
+  FixtureBackend({FixtureStore? store, this.latency = Duration.zero, this.auth})
     : store = store ?? FixtureStore();
 
   final FixtureStore store;
   final Duration latency;
 
-  String get uid => store.currentUid;
+  /// The demo identity, so a fixture grant can flip the seller flag the way
+  /// the real backend mints a claim. Null in tests that build a backend alone.
+  final FixtureAuthService? auth;
+
+  /// Whoever the identity says is signed in; the store's demo user when no
+  /// identity is wired (tests that build a backend on its own).
+  String get uid => auth?.currentUser?.uid ?? store.currentUid;
 
   Future<T> _delayed<T>(T value) async {
     if (latency > Duration.zero) await Future<void>.delayed(latency);
@@ -61,10 +67,7 @@ class FixtureCatalogRepository implements CatalogRepository {
   Future<List<Product>> productsByIds(List<String> ids) {
     // Missing ids are skipped rather than fatal: a stale reference in a feed
     // should cost one card, not the whole screen.
-    return _backend._delayed([
-      for (final id in ids)
-        ?Fx.products[id],
-    ]);
+    return _backend._delayed([for (final id in ids) ?Fx.products[id]]);
   }
 
   @override
@@ -110,8 +113,9 @@ class FixtureSearchRepository implements SearchRepository {
         p.title.toLowerCase().contains(q) ||
             p.description.toLowerCase().contains(q),
       SearchScope.productType => p.type.toLowerCase().contains(q),
-      SearchScope.sellers => _handleOf(p).toLowerCase().contains(q) ||
-          _nameOf(p).toLowerCase().contains(q),
+      SearchScope.sellers =>
+        _handleOf(p).toLowerCase().contains(q) ||
+            _nameOf(p).toLowerCase().contains(q),
       SearchScope.all =>
         p.tags.any((t) => t.toLowerCase() == q) ||
             p.title.toLowerCase().contains(q) ||
@@ -172,7 +176,9 @@ class FixtureSearchRepository implements SearchRepository {
       case SortOrder.nearest:
         final origin = filters.origin;
         if (origin != null) {
-          sorted.sort((a, b) => _distance(a, origin).compareTo(_distance(b, origin)));
+          sorted.sort(
+            (a, b) => _distance(a, origin).compareTo(_distance(b, origin)),
+          );
         }
       case SortOrder.newest:
       case SortOrder.relevance:
@@ -625,7 +631,9 @@ class FixtureSocialRepository implements SocialRepository {
   @override
   Future<String> createForum(NewForum draft) async {
     final title = draft.title.trim();
-    if (title.isEmpty) throw const ValidationException('Name your forum', field: 'title');
+    if (title.isEmpty) {
+      throw const ValidationException('Name your forum', field: 'title');
+    }
 
     final id = _store.newId('forum_');
     _store.forums.value = [
@@ -659,7 +667,10 @@ class FixtureSocialRepository implements SocialRepository {
             id: forum.id,
             title: forum.title,
             description: forum.description,
-            memberCount: (forum.memberCount + (joined ? 1 : -1)).clamp(0, 1 << 30),
+            memberCount: (forum.memberCount + (joined ? 1 : -1)).clamp(
+              0,
+              1 << 30,
+            ),
             threadCount: forum.threadCount,
             tint: forum.tint,
           )
@@ -673,7 +684,9 @@ class FixtureSocialRepository implements SocialRepository {
       _store.joinedForums.stream.map((joined) => joined.contains(forumId));
 
   @override
-  Stream<List<ForumThread>> watchThreads(String forumId) => _store.threads.stream
+  Stream<List<ForumThread>> watchThreads(String forumId) => _store
+      .threads
+      .stream
       .map((threads) => threads.where((t) => t.forumId == forumId).toList());
 
   @override
@@ -689,7 +702,10 @@ class FixtureSocialRepository implements SocialRepository {
   Future<String> createThread(NewThread draft) async {
     final title = draft.title.trim();
     if (title.isEmpty) {
-      throw const ValidationException('Give your thread a title', field: 'title');
+      throw const ValidationException(
+        'Give your thread a title',
+        field: 'title',
+      );
     }
     final id = _store.newId('thread_');
     _store.threads.value = [
@@ -761,7 +777,6 @@ class FixtureSocialRepository implements SocialRepository {
           thread,
     ];
   }
-
 }
 
 class FixtureMessagingRepository implements MessagingRepository {
@@ -772,8 +787,8 @@ class FixtureMessagingRepository implements MessagingRepository {
   FixtureStore get _store => _backend.store;
 
   @override
-  Stream<List<Message>> watchChatroom({int limit = 100}) => _store.chatroom.stream
-      .map((messages) => messages.take(limit).toList());
+  Stream<List<Message>> watchChatroom({int limit = 100}) =>
+      _store.chatroom.stream.map((messages) => messages.take(limit).toList());
 
   @override
   Future<void> sendToChatroom(String text) async {
@@ -883,10 +898,8 @@ class FixtureProfileRepository implements ProfileRepository {
   }
 
   @override
-  Future<List<Person>> people(List<String> ids) => _backend._delayed([
-    for (final id in ids)
-      ?_store.people.value[id],
-  ]);
+  Future<List<Person>> people(List<String> ids) =>
+      _backend._delayed([for (final id in ids) ?_store.people.value[id]]);
 
   @override
   Future<List<Person>> searchPeople(String query, {int limit = 10}) {
@@ -974,7 +987,27 @@ class FixtureProfileRepository implements ProfileRepository {
     if (current == null) throw const UnauthenticatedException();
     people[_backend.uid] = current.copyWith(isSeller: true);
     _store.people.value = people;
+    // The real backend mints a `seller` claim; the demo one flips the same
+    // flag on the identity, so the session sees the grant the same way.
+    _backend.auth?.grantSeller(_backend.uid);
     return const SellerGrant(vendorName: 'Gwynstone');
+  }
+
+  @override
+  Future<LinkResult> linkStoreAccounts() async {
+    final people = {..._store.people.value};
+    final current = people[_backend.uid];
+    if (current == null) throw const UnauthenticatedException();
+    final already = current.isLinked;
+    people[_backend.uid] = current.copyWith(isLinked: true);
+    _store.people.value = people;
+    return LinkResult(
+      linkedCustomer: true,
+      linkedVendor: current.isSeller,
+      backfilledOrders: already ? 0 : 2,
+      backfilledItems: already ? 0 : 3,
+      alreadyLinked: already,
+    );
   }
 
   @override
@@ -996,8 +1029,9 @@ class FixtureProfileRepository implements ProfileRepository {
 
   @override
   Future<void> deleteAddress(String id) async {
-    _store.addresses.value =
-        _store.addresses.value.where((a) => a.id != id).toList();
+    _store.addresses.value = _store.addresses.value
+        .where((a) => a.id != id)
+        .toList();
   }
 }
 

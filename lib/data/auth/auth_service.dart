@@ -104,6 +104,13 @@ class FixtureAuthService implements AuthService {
 
   final String demoUid;
 
+  /// Who is a seller on the demo backend, seeded from the fixture people.
+  /// The real service reads a token claim; this is the stand-in.
+  final Set<String> _sellers = {
+    for (final person in Fx.people.values)
+      if (person.isSeller) person.id,
+  };
+
   AuthUser? _user;
   final _controller = StreamController<AuthUser?>.broadcast();
 
@@ -130,7 +137,10 @@ class FixtureAuthService implements AuthService {
     out = StreamController<AuthUser?>(
       onListen: () {
         out.add(_user);
-        subscription = _controller.stream.listen(out.add, onError: out.addError);
+        subscription = _controller.stream.listen(
+          out.add,
+          onError: out.addError,
+        );
       },
       onCancel: () => subscription?.cancel(),
     );
@@ -169,7 +179,12 @@ class FixtureAuthService implements AuthService {
 
     // Verified on this backend, so the fixture flow reaches the same screens
     // a verified account would. Only the real service can prove an address.
-    final user = AuthUser(uid: demoUid, email: email, emailVerified: true);
+    final user = AuthUser(
+      uid: demoUid,
+      email: email,
+      emailVerified: true,
+      isSeller: _sellers.contains(demoUid),
+    );
     _emit(user);
     return user;
   }
@@ -199,9 +214,32 @@ class FixtureAuthService implements AuthService {
       );
     }
 
-    final user = AuthUser(uid: demoUid, email: email, emailVerified: true);
+    final user = AuthUser(
+      uid: demoUid,
+      email: email,
+      emailVerified: true,
+      isSeller: _sellers.contains(demoUid),
+    );
     _emit(user);
     return user;
+  }
+
+  /// The demo equivalent of a granted `seller` claim: re-emits the identity
+  /// with the flag on, which is what the session watches.
+  void grantSeller(String uid) {
+    _sellers.add(uid);
+    final current = _user;
+    if (current != null && current.uid == uid) {
+      _emit(
+        AuthUser(
+          uid: current.uid,
+          email: current.email,
+          isAnonymous: current.isAnonymous,
+          emailVerified: current.emailVerified,
+          isSeller: true,
+        ),
+      );
+    }
   }
 
   @override
@@ -227,7 +265,14 @@ class FixtureAuthService implements AuthService {
   ///
   /// Real sign-in goes through [signInWithPassword].
   void signInAsDemoUser() {
-    _emit(AuthUser(uid: demoUid, email: 'demo@example.com', emailVerified: true));
+    _emit(
+      AuthUser(
+        uid: demoUid,
+        email: 'demo@example.com',
+        emailVerified: true,
+        isSeller: _sellers.contains(demoUid),
+      ),
+    );
   }
 
   void dispose() => _controller.close();

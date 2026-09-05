@@ -19,11 +19,7 @@ class DevErrorEntry {
   final String backend;
 
   String get headline {
-    return [
-      report.typeName,
-      ?report.code,
-      ?report.operation,
-    ].join(' · ');
+    return [report.typeName, ?report.code, ?report.operation].join(' · ');
   }
 }
 

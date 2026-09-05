@@ -72,9 +72,8 @@ List<RouteBase> _sharedRoutes() => [
   ),
   GoRoute(
     path: 'results',
-    builder: (context, state) => ResultsScreen(
-      query: state.uri.queryParameters['q'] ?? '#PlasticFree',
-    ),
+    builder: (context, state) =>
+        ResultsScreen(query: state.uri.queryParameters['q'] ?? '#PlasticFree'),
   ),
   GoRoute(path: 'search', builder: (context, state) => const SearchScreen()),
   GoRoute(path: 'cart', builder: (context, state) => const CartScreen()),
@@ -139,9 +138,8 @@ GoRouter buildRouter(Ref ref) {
       // only matters when linking a shop record later.
       GoRoute(
         path: '/signin',
-        builder: (context, state) => EmailScreen(
-          creating: state.uri.queryParameters['create'] == '1',
-        ),
+        builder: (context, state) =>
+            EmailScreen(creating: state.uri.queryParameters['create'] == '1'),
       ),
       GoRoute(
         path: '/verify',

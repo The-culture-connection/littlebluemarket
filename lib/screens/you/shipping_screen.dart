@@ -148,11 +148,13 @@ class _ManageSalesState extends ConsumerState<_ManageSales> {
 
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(fulfillmentRepositoryProvider).addTracking(
-        orderId: _orderId.text.trim(),
-        trackingNumber: _tracking.text.trim(),
-        carrier: _carrier,
-      );
+      await ref
+          .read(fulfillmentRepositoryProvider)
+          .addTracking(
+            orderId: _orderId.text.trim(),
+            trackingNumber: _tracking.text.trim(),
+            carrier: _carrier,
+          );
       if (!mounted) return;
       _orderId.clear();
       _tracking.clear();
@@ -203,9 +205,7 @@ class _ManageSalesState extends ConsumerState<_ManageSales> {
                 for (final carrier in _carriers)
                   LbmChip(
                     carrier,
-                    style: carrier == _carrier
-                        ? ChipStyle.on
-                        : ChipStyle.quiet,
+                    style: carrier == _carrier ? ChipStyle.on : ChipStyle.quiet,
                     onTap: () => setState(() => _carrier = carrier),
                   ),
               ],

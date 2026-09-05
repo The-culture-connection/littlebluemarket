@@ -99,7 +99,8 @@ class _ChatroomScreenState extends ConsumerState<ChatroomScreen> {
                   padding: const EdgeInsets.all(14),
                   itemCount: messages.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 14),
-                  itemBuilder: (context, i) => _ChatBubble(message: messages[i]),
+                  itemBuilder: (context, i) =>
+                      _ChatBubble(message: messages[i]),
                 ),
               ),
             ),

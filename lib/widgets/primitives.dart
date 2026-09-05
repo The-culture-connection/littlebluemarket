@@ -70,7 +70,10 @@ class SectionHead extends StatelessWidget {
           : Row(
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
-              children: [Expanded(child: text), trailing!],
+              children: [
+                Expanded(child: text),
+                trailing!,
+              ],
             ),
     );
   }
@@ -150,17 +153,11 @@ class ListRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: borderRadius,
-        border: divided
-            ? Border(top: BorderSide(color: c.skyWash))
-            : null,
+        border: divided ? Border(top: BorderSide(color: c.skyWash)) : null,
       ),
       child: Material(
         type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: borderRadius,
-          child: row,
-        ),
+        child: InkWell(onTap: onTap, borderRadius: borderRadius, child: row),
       ),
     );
     return content;
@@ -499,12 +496,7 @@ enum AvatarSize {
 
 /// A person's avatar: their initials on their own tint.
 class Avatar extends StatelessWidget {
-  const Avatar(
-    this.person, {
-    super.key,
-    this.size = AvatarSize.md,
-    this.onTap,
-  });
+  const Avatar(this.person, {super.key, this.size = AvatarSize.md, this.onTap});
 
   final Person person;
   final AvatarSize size;
@@ -648,12 +640,8 @@ class LbmField extends StatelessWidget {
     final c = context.c;
     final radius = pill ? LbmRadius.pillR : LbmRadius.fieldR;
 
-    final fill = onDark
-        ? Colors.white.withValues(alpha: 0.16)
-        : c.surface;
-    final border = onDark
-        ? Colors.white.withValues(alpha: 0.34)
-        : c.skyMist;
+    final fill = onDark ? Colors.white.withValues(alpha: 0.16) : c.surface;
+    final border = onDark ? Colors.white.withValues(alpha: 0.34) : c.skyMist;
     final ink = onDark ? LbmConst.onWelcome : c.ink;
     final hintInk = onDark
         ? LbmConst.onWelcome.withValues(alpha: 0.66)

@@ -11,6 +11,7 @@ export 'comment.dart';
 export 'diagnostics.dart';
 export 'formatting.dart';
 export 'geo.dart';
+export 'link_result.dart';
 export 'message.dart';
 export 'order.dart';
 export 'page.dart';
@@ -36,6 +37,7 @@ class Person {
     required this.posts,
     this.isSeller = true,
     this.avatarUrl,
+    this.isLinked = false,
   });
 
   final String id;
@@ -66,6 +68,10 @@ class Person {
   /// [tint].
   final String? avatarUrl;
 
+  /// Whether the backend has matched this account to the store (customer
+  /// record, past orders, vendor id). Set by `linkAccounts`, never by the app.
+  final bool isLinked;
+
   String get revenueLabel => Fmt.money(revenueCents);
 
   /// Up to two initials, for the avatar.
@@ -86,6 +92,7 @@ class Person {
     int? posts,
     bool? isSeller,
     String? avatarUrl,
+    bool? isLinked,
   }) => Person(
     id: id,
     name: name ?? this.name,
@@ -98,6 +105,7 @@ class Person {
     posts: posts ?? this.posts,
     isSeller: isSeller ?? this.isSeller,
     avatarUrl: avatarUrl ?? this.avatarUrl,
+    isLinked: isLinked ?? this.isLinked,
   );
 }
 

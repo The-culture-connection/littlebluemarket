@@ -14,12 +14,7 @@ import 'primitives.dart';
 /// `pumpAndSettle`, and an animation that never completes hangs every one of
 /// them. A one-shot fade reads as alive and always settles.
 class LbmSkeleton extends StatelessWidget {
-  const LbmSkeleton({
-    super.key,
-    this.width,
-    this.height = 14,
-    this.radius = 7,
-  });
+  const LbmSkeleton({super.key, this.width, this.height = 14, this.radius = 7});
 
   const LbmSkeleton.block({super.key, this.width, required this.height})
     : radius = LbmRadius.image;

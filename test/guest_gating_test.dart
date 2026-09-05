@@ -61,9 +61,7 @@ void main() {
     expect(find.text('You'), findsNothing);
   });
 
-  testWidgets('a guest gets the gate instead of the community', (
-    tester,
-  ) async {
+  testWidgets('a guest gets the gate instead of the community', (tester) async {
     await _pumpApp(tester, guest: true);
 
     await tester.tap(find.text('Sign up to unlock'));

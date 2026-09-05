@@ -70,7 +70,21 @@ export const SHOPIFY_API_VERSION = defineString('SHOPIFY_API_VERSION', {
 export const SHOPIFY_CLIENT_ID = defineString('SHOPIFY_CLIENT_ID');
 
 export const SHIPTURTLE_BASE_URL = defineString('SHIPTURTLE_BASE_URL', {
-  default: 'https://api.shipturtle.com',
+  default: 'https://api-v2.shipturtle.com',
+});
+
+/**
+ * The path that lists the merchant's vendors and their user emails, found by
+ * `scripts/shipturtle-probe.mjs`. Empty means "not configured": vendor
+ * linking then falls back to claim codes and merchant-written mappings.
+ */
+export const SHIPTURTLE_VENDORS_PATH = defineString('SHIPTURTLE_VENDORS_PATH', {
+  default: '',
+});
+
+/** How the token travels: `Authorization` (Bearer), `x-api-key`, or `access-token`. */
+export const SHIPTURTLE_AUTH_HEADER = defineString('SHIPTURTLE_AUTH_HEADER', {
+  default: 'Authorization',
 });
 
 /** Every secret a function might need, for the ones that touch everything. */

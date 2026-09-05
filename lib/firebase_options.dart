@@ -65,5 +65,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'little-blue-610e5.firebasestorage.app',
     iosBundleId: 'com.littleblue.market',
   );
-
 }

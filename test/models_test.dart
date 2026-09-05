@@ -36,11 +36,15 @@ void main() {
     });
 
     test('withholds a total until shipping and tax are quoted', () {
-      final quoteless = const Cart(id: 'c', lines: []).copyWith(lines: [_line()]);
+      final quoteless = const Cart(
+        id: 'c',
+        lines: [],
+      ).copyWith(lines: [_line()]);
       expect(
         quoteless.totalCents,
         isNull,
-        reason: 'inventing a total that checkout then contradicts loses the sale',
+        reason:
+            'inventing a total that checkout then contradicts loses the sale',
       );
 
       final quoted = quoteless.copyWith(shippingCents: 560, taxCents: 48);
@@ -60,7 +64,10 @@ void main() {
 
     test('finds a line by variant, not by product', () {
       final cart = const Cart(id: 'c', lines: []).copyWith(
-        lines: [_line(variantId: 'v1'), _line(id: 'l2', variantId: 'v2')],
+        lines: [
+          _line(variantId: 'v1'),
+          _line(id: 'l2', variantId: 'v2'),
+        ],
       );
       expect(cart.lineFor('v2')?.id, 'l2');
       expect(cart.lineFor('nope'), isNull);
@@ -92,7 +99,8 @@ void main() {
       expect(
         near.isGeoConstrained,
         isFalse,
-        reason: 'near me with nowhere to measure from would filter everything out',
+        reason:
+            'near me with nowhere to measure from would filter everything out',
       );
       expect(
         near
@@ -140,7 +148,10 @@ void main() {
 
   group('Conversation', () {
     test('derives the same id whichever way round the pair is given', () {
-      expect(Conversation.idFor('maya', 'kali'), Conversation.idFor('kali', 'maya'));
+      expect(
+        Conversation.idFor('maya', 'kali'),
+        Conversation.idFor('kali', 'maya'),
+      );
     });
 
     test('names the other participant', () {
@@ -219,4 +230,3 @@ void main() {
     });
   });
 }
-

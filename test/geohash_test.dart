@@ -71,16 +71,22 @@ void main() {
       final ranges = Geohash.coverRanges(detroit.lat, detroit.lng, 20);
       final hash = Geohash.encode(detroit.lat, detroit.lng);
       final covered = ranges.any(
-        (range) => hash.compareTo(range.$1) >= 0 && hash.compareTo(range.$2) < 0,
+        (range) =>
+            hash.compareTo(range.$1) >= 0 && hash.compareTo(range.$2) < 0,
       );
-      expect(covered, isTrue, reason: 'the centre must be inside its own cover');
+      expect(
+        covered,
+        isTrue,
+        reason: 'the centre must be inside its own cover',
+      );
     });
 
     test('covers a neighbour four miles away at a 20 mile radius', () {
       final ranges = Geohash.coverRanges(detroit.lat, detroit.lng, 20);
       final hash = Geohash.encode(hamtramck.lat, hamtramck.lng);
       final covered = ranges.any(
-        (range) => hash.compareTo(range.$1) >= 0 && hash.compareTo(range.$2) < 0,
+        (range) =>
+            hash.compareTo(range.$1) >= 0 && hash.compareTo(range.$2) < 0,
       );
       expect(covered, isTrue);
     });

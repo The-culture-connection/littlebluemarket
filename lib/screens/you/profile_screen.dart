@@ -14,6 +14,7 @@ import '../../widgets/product_art.dart';
 import '../../widgets/profile_identity.dart';
 import '../../widgets/composers.dart';
 import '../../widgets/screen.dart';
+import '../../widgets/seller_products_grid.dart';
 import '../../widgets/skeleton.dart';
 import '../market/results_screen.dart';
 
@@ -34,10 +35,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final me = ref.watch(meProvider);
-    final unread = ref.watch(inboxProvider).value?.fold<int>(
-      0,
-      (sum, conversation) => sum + conversation.unread,
-    );
+    final unread = ref
+        .watch(inboxProvider)
+        .value
+        ?.fold<int>(0, (sum, conversation) => sum + conversation.unread);
 
     if (me == null) {
       return const LbmScreen(
@@ -92,16 +93,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ],
           ),
+          // A seller gets their shop first. The labels are shorter when there
+          // are three, so the pill row survives large text.
           SegmentedTabs(
-            labels: const ['Posted', 'Bought & received'],
+            labels: me.isSeller
+                ? const ['Products', 'Posted', 'Bought']
+                : const ['Posted', 'Bought & received'],
             selected: _tab,
             onChanged: (i) => setState(() => _tab = i),
           ),
           // The tab now actually switches the grid. It was tracked and ignored.
-          if (_tab == 0)
-            _PostedGrid(personId: me.id)
-          else
-            const _PurchasesGrid(),
+          switch ((me.isSeller, _tab)) {
+            (true, 0) => SellerProductsGrid(sellerId: me.id, own: true),
+            (true, 1) || (false, 0) => _PostedGrid(personId: me.id),
+            _ => const _PurchasesGrid(),
+          },
           const Puff(),
           const SizedBox(height: 20),
         ],
@@ -134,7 +140,10 @@ class _PostedGrid extends ConsumerWidget {
           final post = posts[i];
           final productId = post.subjectProductId;
           if (productId == null) {
-            return _TextCell(post: post, onTap: () => context.goToPost(post.id));
+            return _TextCell(
+              post: post,
+              onTap: () => context.goToPost(post.id),
+            );
           }
           return _ProductCell(
             productId: productId,
@@ -225,8 +234,7 @@ class _ProductCell extends ConsumerWidget {
       product,
       skeleton: const LbmSkeleton.block(height: double.infinity),
       errorBuilder: (_, _) => const LbmSkeleton.block(height: double.infinity),
-      data: (product) =>
-          GridCell(product: product, badge: badge, onTap: onTap),
+      data: (product) => GridCell(product: product, badge: badge, onTap: onTap),
     );
   }
 }

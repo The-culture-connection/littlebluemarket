@@ -70,8 +70,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   LbmChip(
                     option.label,
                     style: option == scope ? ChipStyle.on : ChipStyle.quiet,
-                    onTap: () =>
-                        ref.read(searchFiltersProvider.notifier).setScope(option),
+                    onTap: () => ref
+                        .read(searchFiltersProvider.notifier)
+                        .setScope(option),
                   ),
               ],
             ),
@@ -93,10 +94,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             recents,
             skeleton: const ListRowSkeleton(rows: 3, withAvatar: false),
             isEmpty: (recents) => recents.isEmpty,
-            empty: const LbmEmpty(
-              title: 'Nothing searched yet',
-              compact: true,
-            ),
+            empty: const LbmEmpty(title: 'Nothing searched yet', compact: true),
             data: (recents) => Column(
               children: [
                 LbmCard(

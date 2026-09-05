@@ -155,13 +155,15 @@ class _NewThreadComposerState extends ConsumerState<NewThreadComposer> {
 
     final navigator = Navigator.of(context);
     try {
-      await ref.read(socialRepositoryProvider).createThread(
-        NewThread(
-          forumId: widget.forumId,
-          title: _title.text,
-          body: _body.text,
-        ),
-      );
+      await ref
+          .read(socialRepositoryProvider)
+          .createThread(
+            NewThread(
+              forumId: widget.forumId,
+              title: _title.text,
+              body: _body.text,
+            ),
+          );
       navigator.pop();
     } on RepositoryException catch (error) {
       if (!mounted) return;

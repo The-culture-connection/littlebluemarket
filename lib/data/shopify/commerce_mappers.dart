@@ -92,8 +92,8 @@ abstract final class CommerceMappers {
   static OrderStatus orderStatus(Object? value) =>
       switch (FirestoreMappers.str(value)) {
         'paid' => OrderStatus.paid,
-        'partially_fulfilled' || 'partiallyFulfilled' =>
-          OrderStatus.partiallyFulfilled,
+        'partially_fulfilled' ||
+        'partiallyFulfilled' => OrderStatus.partiallyFulfilled,
         'fulfilled' || 'shipped' => OrderStatus.fulfilled,
         'cancelled' || 'canceled' => OrderStatus.cancelled,
         'refunded' || 'partially_refunded' => OrderStatus.refunded,

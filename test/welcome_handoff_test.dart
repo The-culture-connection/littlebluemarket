@@ -37,16 +37,17 @@ Widget _harness({bool playIntro = true}) {
 /// moves when the animation is taken away.
 Rect _rectOf(WidgetTester tester, String asset) {
   final finder = find.byWidgetPredicate(
-    (w) => w is Image && w.image is AssetImage && (w.image as AssetImage).assetName == asset,
+    (w) =>
+        w is Image &&
+        w.image is AssetImage &&
+        (w.image as AssetImage).assetName == asset,
   );
   expect(finder, findsOneWidget, reason: 'expected exactly one $asset');
   return tester.getRect(finder);
 }
 
 void main() {
-  testWidgets('the still and the GIF are laid out identically', (
-    tester,
-  ) async {
+  testWidgets('the still and the GIF are laid out identically', (tester) async {
     await tester.pumpWidget(_harness());
     await tester.pump();
 

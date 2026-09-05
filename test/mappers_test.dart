@@ -26,10 +26,7 @@ void main() {
     });
 
     test('a list with junk in it keeps only the strings', () {
-      expect(
-        FirestoreMappers.strings(['#a', 7, null, '#b']),
-        ['#a', '#b'],
-      );
+      expect(FirestoreMappers.strings(['#a', 7, null, '#b']), ['#a', '#b']);
     });
 
     test('an unresolved server timestamp does not throw', () {
@@ -49,7 +46,10 @@ void main() {
     });
 
     test('the avatar tint is derived and stable', () {
-      expect(FirestoreMappers.tintFor('maya'), FirestoreMappers.tintFor('maya'));
+      expect(
+        FirestoreMappers.tintFor('maya'),
+        FirestoreMappers.tintFor('maya'),
+      );
       expect(
         FirestoreMappers.tintFor('maya'),
         isNot(FirestoreMappers.tintFor('kali')),
@@ -87,8 +87,10 @@ void main() {
 
     test('an unknown kind is skipped rather than guessed at', () {
       expect(
-        FirestoreMappers.post('p', {...base, 'kind': 'something-new'},
-            likedByMe: false),
+        FirestoreMappers.post('p', {
+          ...base,
+          'kind': 'something-new',
+        }, likedByMe: false),
         isNull,
       );
     });
@@ -96,29 +98,35 @@ void main() {
     test('a listing without its product is skipped', () {
       // Better one missing card than a card claiming to be about nothing.
       expect(
-        FirestoreMappers.post('p', {...base, 'kind': 'listing'},
-            likedByMe: false),
+        FirestoreMappers.post('p', {
+          ...base,
+          'kind': 'listing',
+        }, likedByMe: false),
         isNull,
       );
     });
 
     test('a review maps without needing a product', () {
-      final post = FirestoreMappers.post(
-        'p',
-        {...base, 'kind': 'review', 'productId': 'p1', 'rating': 5, 'text': 'x'},
-        likedByMe: true,
-      );
+      final post = FirestoreMappers.post('p', {
+        ...base,
+        'kind': 'review',
+        'productId': 'p1',
+        'rating': 5,
+        'text': 'x',
+      }, likedByMe: true);
       expect(post, isA<ReviewPost>());
       expect(post!.likedByMe, isTrue);
       expect(post.subjectProductId, 'p1');
     });
 
     test('an out-of-range rating is clamped', () {
-      final post = FirestoreMappers.post(
-        'p',
-        {...base, 'kind': 'review', 'productId': 'p1', 'rating': 9, 'text': 'x'},
-        likedByMe: false,
-      );
+      final post = FirestoreMappers.post('p', {
+        ...base,
+        'kind': 'review',
+        'productId': 'p1',
+        'rating': 9,
+        'text': 'x',
+      }, likedByMe: false);
       expect((post! as ReviewPost).rating, 5);
     });
   });
@@ -130,14 +138,8 @@ void main() {
         'preview': 'hi',
         'unread': {'maya': 2, 'kali': 0},
       };
-      expect(
-        FirestoreMappers.conversation('c', data, uid: 'maya').unread,
-        2,
-      );
-      expect(
-        FirestoreMappers.conversation('c', data, uid: 'kali').unread,
-        0,
-      );
+      expect(FirestoreMappers.conversation('c', data, uid: 'maya').unread, 2);
+      expect(FirestoreMappers.conversation('c', data, uid: 'kali').unread, 0);
     });
   });
 
@@ -172,22 +174,27 @@ void main() {
       expect(cart.totalCents, 600);
     });
 
-    test('the provider status matrix flattens to something a screen can use', () {
-      expect(CommerceMappers.orderStatus('paid'), OrderStatus.paid);
-      expect(
-        CommerceMappers.orderStatus('partially_fulfilled'),
-        OrderStatus.partiallyFulfilled,
-      );
-      expect(CommerceMappers.orderStatus('canceled'), OrderStatus.cancelled);
-      expect(
-        CommerceMappers.orderStatus('partially_refunded'),
-        OrderStatus.refunded,
-      );
-      // Anything unrecognised is pending, not a crash.
-      expect(CommerceMappers.orderStatus('on_hold_pending_review'),
-          OrderStatus.pending);
-      expect(CommerceMappers.orderStatus(null), OrderStatus.pending);
-    });
+    test(
+      'the provider status matrix flattens to something a screen can use',
+      () {
+        expect(CommerceMappers.orderStatus('paid'), OrderStatus.paid);
+        expect(
+          CommerceMappers.orderStatus('partially_fulfilled'),
+          OrderStatus.partiallyFulfilled,
+        );
+        expect(CommerceMappers.orderStatus('canceled'), OrderStatus.cancelled);
+        expect(
+          CommerceMappers.orderStatus('partially_refunded'),
+          OrderStatus.refunded,
+        );
+        // Anything unrecognised is pending, not a crash.
+        expect(
+          CommerceMappers.orderStatus('on_hold_pending_review'),
+          OrderStatus.pending,
+        );
+        expect(CommerceMappers.orderStatus(null), OrderStatus.pending);
+      },
+    );
 
     test('an order credits each seller only for their own lines', () {
       final order = CommerceMappers.order('o1', const {

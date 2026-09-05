@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
+import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onRequest } from 'firebase-functions/v2/https';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 
@@ -11,7 +12,11 @@ import {
   SHOPIFY_WEBHOOK_SECRET,
   SHIPTURTLE_WEBHOOK_SECRET,
 } from './config.ts';
-import { mirrorProduct, removeMirroredProduct } from './catalog.ts';
+import {
+  backfillSellerForVendor,
+  mirrorProduct,
+  removeMirroredProduct,
+} from './catalog.ts';
 import {
   addLine,
   beginCheckout,
@@ -189,6 +194,37 @@ export const sellerRevokeVendor = onCall(withLoudErrors('sellerRevokeVendor', as
   return { revoked: true };
 }));
 
+// -------------------------------------------------------------- the grant
+
+/**
+ * When a seller's grant lands (or is revoked), every mirrored product that
+ * carries their vendor name is re-attributed. This is what makes "sign in and
+ * your shop is already there" true for a catalog mirrored before the seller
+ * ever opened the app.
+ */
+export const resolveSellerForVendorName = onDocumentWritten(
+  'sellers/{uid}',
+  async (event) => {
+    const before = event.data?.before?.data() as
+      | { shopifyVendorName?: string; revokedAt?: unknown }
+      | undefined;
+    const after = event.data?.after?.data() as
+      | { shopifyVendorName?: string; revokedAt?: unknown }
+      | undefined;
+    const uid = event.params.uid;
+
+    const name = after?.shopifyVendorName ?? before?.shopifyVendorName;
+    if (!name) return;
+
+    const revokedNow = Boolean(after?.revokedAt) || !after;
+    const revokedBefore = Boolean(before?.revokedAt) || !before;
+    const nameChanged = before?.shopifyVendorName !== after?.shopifyVendorName;
+    if (!nameChanged && revokedNow === revokedBefore) return;
+
+    await backfillSellerForVendor(uid, name, !revokedNow);
+  },
+);
+
 // ------------------------------------------------------------ diagnostics
 
 /**
@@ -293,9 +329,9 @@ export const shopifyWebhook = onRequest(
  * A counter per tag rather than a count query, because Firestore charges for
  * every document a count reads and this is on the first screen of the app.
  */
-export const onPostWritten = require('firebase-functions/v2/firestore').onDocumentWritten(
+export const onPostWritten = onDocumentWritten(
   'posts/{postId}',
-  async (event: any) => {
+  async (event) => {
     const before = event.data?.before?.data() as { tags?: string[] } | undefined;
     const after = event.data?.after?.data() as { tags?: string[] } | undefined;
 

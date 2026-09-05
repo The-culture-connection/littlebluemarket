@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/auth/auth_service.dart';
 import '../data/providers.dart';
+import '../data/repositories/dev_error_sink.dart';
 import '../data/repositories/repositories.dart';
 import '../models/models.dart';
 
@@ -62,10 +63,23 @@ final class MemberSession extends Session {
   final bool emailVerified;
 
   /// Drives the seller half of Edit Profile, the storefront, and revenue.
+  ///
+  /// The session builds [profile] with `isSeller` taken from the token's
+  /// `seller` claim, which is what rules and callables actually check. The
+  /// document field is only a display mirror for *other* people's profiles.
   bool get isSeller => profile.isSeller;
 }
 
 class SessionNotifier extends StreamNotifier<Session> {
+  /// Accounts this run has already asked the backend to link. Once per
+  /// account per launch: the backend is idempotent, but a session stream that
+  /// re-emits on every profile change must not re-call it each time.
+  final _linkAttempted = <String>{};
+
+  /// Accounts whose token was refreshed once because the profile said seller
+  /// and the token did not. Once, so a fixture backend cannot loop.
+  final _reloadedFor = <String>{};
+
   @override
   Stream<Session> build() {
     final auth = ref.watch(authServiceProvider);
@@ -81,13 +95,40 @@ class SessionNotifier extends StreamNotifier<Session> {
         if (person == null) {
           return OnboardingSession(uid: user.uid, email: user.email ?? '');
         }
+
+        _linkOnce(user, person, profiles);
+        _repairSellerDrift(user, person);
+
         return MemberSession(
           uid: user.uid,
-          profile: person,
+          // Seller status is the token's claim, not the document's field.
+          profile: person.copyWith(isSeller: user.isSeller),
           emailVerified: user.emailVerified,
         );
       });
     });
+  }
+
+  /// A verified account that the store has never heard of gets linked: past
+  /// orders backfilled, vendor id recorded. Fire-and-forget; a failure is
+  /// reported to the dev sink and retried on the next launch.
+  void _linkOnce(AuthUser user, Person person, ProfileRepository profiles) {
+    if (!user.emailVerified || person.isLinked) return;
+    if (!_linkAttempted.add(user.uid)) return;
+    unawaited(
+      profiles.linkStoreAccounts().catchError((Object error, StackTrace stack) {
+        DevErrorSink.report(error, stack, 'callable linkAccounts (auto)');
+        return const LinkResult();
+      }),
+    );
+  }
+
+  /// The profile document says seller but the token does not: a grant landed
+  /// while this token was in the pocket. One forced refresh closes the gap.
+  void _repairSellerDrift(AuthUser user, Person person) {
+    if (!person.isSeller || user.isSeller) return;
+    if (!_reloadedFor.add(user.uid)) return;
+    unawaited(_auth.reloadUser().catchError((Object _) => null));
   }
 
   AuthService get _auth => ref.read(authServiceProvider);

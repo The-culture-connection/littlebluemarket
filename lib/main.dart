@@ -54,12 +54,7 @@ Future<void> main() async {
     await initializeFirebase(useEmulators: useFirebaseEmulators);
   }
 
-  runApp(
-    ProviderScope(
-      retry: lbmRetry,
-      child: const LittleBlueMarketApp(),
-    ),
-  );
+  runApp(ProviderScope(retry: lbmRetry, child: const LittleBlueMarketApp()));
 }
 
 /// Resolves an asset image and completes once its first frame is available.

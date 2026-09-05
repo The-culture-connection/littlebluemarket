@@ -31,7 +31,10 @@ RepositoryException translateFirestoreError(
         error.message ?? 'Not allowed',
         cause: error,
       ),
-      'not-found' => NotFoundException('record', error.details?.toString() ?? '?'),
+      'not-found' => NotFoundException(
+        'record',
+        error.details?.toString() ?? '?',
+      ),
       'invalid-argument' || 'failed-precondition' => ValidationException(
         error.message ?? 'That did not work',
         cause: error,
@@ -54,7 +57,8 @@ RepositoryException translateFirestoreError(
       ),
       'not-found' => NotFoundException('record', error.plugin),
       // Firestore reports an offline read this way when the cache misses.
-      'unavailable' || 'network-request-failed' => OfflineException(cause: error),
+      'unavailable' ||
+      'network-request-failed' => OfflineException(cause: error),
       'resource-exhausted' => RateLimitException(cause: error),
       'unauthenticated' => const UnauthenticatedException(),
       _ => BackendException(

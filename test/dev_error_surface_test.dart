@@ -76,7 +76,10 @@ void main() {
       await tester.pump();
 
       expect(find.text('Copy for Claude'), findsOneWidget);
-      expect(find.textContaining('BackendException · internal'), findsOneWidget);
+      expect(
+        find.textContaining('BackendException · internal'),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
   }
@@ -94,8 +97,12 @@ void main() {
         return null;
       },
     );
-    addTearDown(() => tester.binding.defaultBinaryMessenger
-        .setMockMethodCallHandler(SystemChannels.platform, null));
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
 
     DevErrorSink.report(
       const ValidationException('Enter your claim code.'),

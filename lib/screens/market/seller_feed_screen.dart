@@ -8,9 +8,9 @@ import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/profile_identity.dart';
 import '../../widgets/screen.dart';
+import '../../widgets/seller_products_grid.dart';
 import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
-import 'results_screen.dart';
 
 /// The public view of a profile.
 ///
@@ -73,55 +73,11 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
                 onChanged: (i) => setState(() => _tab = i),
               ),
             if (person.isSeller && _tab == 0)
-              _StorefrontGrid(sellerId: person.id)
+              SellerProductsGrid(sellerId: person.id)
             else
               _ReviewsWritten(personId: person.id),
             const SizedBox(height: 26),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StorefrontGrid extends ConsumerWidget {
-  const _StorefrontGrid({required this.sellerId});
-
-  final String sellerId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final products = ref.watch(sellerProductsProvider(sellerId));
-
-    return LbmAsync<List<Product>>(
-      products,
-      skeleton: const GridSkeleton(count: 6),
-      onRetry: () => ref.invalidate(sellerProductsProvider(sellerId)),
-      isEmpty: (products) => products.isEmpty,
-      // No padding and no borrowed listings. The prototype filled an empty
-      // storefront with another seller's products, then duplicated the list to
-      // fill out the grid.
-      empty: const LbmEmpty(
-        title: 'Nothing listed yet',
-        body: 'This storefront is still being set up.',
-      ),
-      data: (products) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 7,
-            crossAxisSpacing: 7,
-          ),
-          itemCount: products.length,
-          itemBuilder: (context, i) => GridCell(
-            product: products[i],
-            badge: products[i].price,
-            onTap: () => context.goToProduct(products[i].id),
-          ),
         ),
       ),
     );
@@ -143,10 +99,7 @@ class _ReviewsWritten extends ConsumerWidget {
       data: (all) {
         final reviews = all.whereType<ReviewPost>().toList();
         if (reviews.isEmpty) {
-          return const LbmEmpty(
-            title: 'No reviews written yet',
-            compact: true,
-          );
+          return const LbmEmpty(title: 'No reviews written yet', compact: true);
         }
         return Column(
           children: [

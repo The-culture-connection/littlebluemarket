@@ -161,8 +161,11 @@ class _FactsCard extends StatelessWidget {
           _Fact('Account', facts.uid ?? 'signed out'),
           _Fact('Email', facts.email ?? '-'),
           _Fact('Guest', facts.isAnonymous ? 'yes' : 'no'),
-          _Fact('Email verified', facts.emailVerified ? 'yes' : 'no',
-              good: facts.emailVerified),
+          _Fact(
+            'Email verified',
+            facts.emailVerified ? 'yes' : 'no',
+            good: facts.emailVerified,
+          ),
           _Fact('Seller claim', facts.isSeller ? 'yes' : 'no'),
           _Fact('Admin claim', facts.isAdmin ? 'yes' : 'no'),
           _Fact('Linked to the store', facts.isLinked ? 'yes' : 'not yet'),
@@ -174,8 +177,7 @@ class _FactsCard extends StatelessWidget {
                 small: true,
                 expand: false,
                 style: PillStyle.quiet,
-                onPressed: () =>
-                    Clipboard.setData(ClipboardData(text: _text)),
+                onPressed: () => Clipboard.setData(ClipboardData(text: _text)),
               ),
               const SizedBox(width: 6),
               PillButton(
@@ -216,10 +218,7 @@ class _Fact extends StatelessWidget {
         children: [
           SizedBox(
             width: 128,
-            child: Text(
-              label,
-              style: LbmText.tiny.copyWith(color: c.ink2),
-            ),
+            child: Text(label, style: LbmText.tiny.copyWith(color: c.ink2)),
           ),
           Expanded(
             child: Text(
@@ -247,8 +246,12 @@ class _ReportCard extends StatelessWidget {
       ..writeln('project: ${report.project}')
       ..writeln('at:      ${report.at.toIso8601String()}');
     for (final check in report.checks) {
-      buffer.writeln('${check.ok ? 'PASS' : 'FAIL'}  ${check.name}: ${check.summary}');
-      if (!check.ok && check.fix != null) buffer.writeln('      fix -> ${check.fix}');
+      buffer.writeln(
+        '${check.ok ? 'PASS' : 'FAIL'}  ${check.name}: ${check.summary}',
+      );
+      if (!check.ok && check.fix != null) {
+        buffer.writeln('      fix -> ${check.fix}');
+      }
     }
     buffer.writeln('--------------------------------------------');
     return buffer.toString();

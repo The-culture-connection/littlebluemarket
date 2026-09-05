@@ -353,8 +353,9 @@ class _CommentComposer extends ConsumerWidget {
 
     return Composer(
       hintText: 'Add a comment',
-      onSend: (text) =>
-          ref.read(socialRepositoryProvider).addComment(postId: postId, text: text),
+      onSend: (text) => ref
+          .read(socialRepositoryProvider)
+          .addComment(postId: postId, text: text),
     );
   }
 }

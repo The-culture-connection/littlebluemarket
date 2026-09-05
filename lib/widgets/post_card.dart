@@ -73,7 +73,9 @@ class PostActionBar extends StatelessWidget {
       child: Row(
         children: [
           _ActionIcon(
-            icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            icon: liked
+                ? Icons.favorite_rounded
+                : Icons.favorite_border_rounded,
             label: liked ? 'Unlike' : 'Like',
             tint: liked ? context.c.accentDeep : null,
             onTap: onLike,
@@ -348,11 +350,8 @@ class _Actions extends ConsumerWidget {
       onComment: () => context.goToPost(post.id),
       onAddToCart: id == null
           ? null
-          : () => requireProfile(
-              context,
-              ref,
-              () => addToCart(context, ref, id),
-            ),
+          : () =>
+                requireProfile(context, ref, () => addToCart(context, ref, id)),
     );
   }
 }
@@ -393,9 +392,7 @@ class _PostHead extends StatelessWidget {
                 Row(
                   children: [
                     Icon(
-                      isListing
-                          ? Icons.place_outlined
-                          : Icons.schedule_rounded,
+                      isListing ? Icons.place_outlined : Icons.schedule_rounded,
                       size: 13,
                       color: c.ink3,
                     ),

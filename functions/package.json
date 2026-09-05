@@ -22,7 +22,9 @@
     "webhooks:check": "node scripts/register-webhooks.mjs --project dev --check",
     "touch-products": "node scripts/touch-products.mjs --project dev",
     "seed": "node scripts/seed.mjs",
-    "verify:security": "firebase emulators:exec --only firestore \"node scripts/verify-security.mjs\""
+    "verify:security": "firebase emulators:exec --only firestore \"node scripts/verify-security.mjs\"",
+    "claim-code": "node scripts/claim-code-hash.mjs",
+    "probe:shipturtle": "node scripts/shipturtle-probe.mjs --project dev"
   },
   "dependencies": {
     "firebase-admin": "^13.0.2",

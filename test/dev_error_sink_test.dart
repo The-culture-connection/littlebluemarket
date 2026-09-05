@@ -61,7 +61,9 @@ void main() {
 
   test('the stream delivers each report to a listener', () async {
     final seen = <String?>[];
-    final subscription = DevErrorSink.stream.listen((r) => seen.add(r.operation));
+    final subscription = DevErrorSink.stream.listen(
+      (r) => seen.add(r.operation),
+    );
     DevErrorSink.report(const OfflineException(), null, 'a');
     DevErrorSink.report(const RateLimitException(), null, 'b');
     await Future<void>.delayed(Duration.zero);

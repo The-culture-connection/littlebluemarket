@@ -124,20 +124,24 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
-      await ref.read(socialRepositoryProvider).addReview(
-        NewReview(
-          productId: picked.productId,
-          rating: _rating,
-          text: _text.text.trim(),
-          purchaseId: picked.id,
-        ),
-      );
+      await ref
+          .read(socialRepositoryProvider)
+          .addReview(
+            NewReview(
+              productId: picked.productId,
+              rating: _rating,
+              text: _text.text.trim(),
+              purchaseId: picked.id,
+            ),
+          );
       navigator.pop();
       messenger.showSnackBar(const SnackBar(content: Text('Review posted')));
     } on RepositoryException catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(content: Text(describeError(error).body)));
+      messenger.showSnackBar(
+        SnackBar(content: Text(describeError(error).body)),
+      );
     }
   }
 
@@ -272,7 +276,9 @@ class _StarPicker extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(3),
                 child: Icon(
-                  star <= rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                  star <= rating
+                      ? Icons.star_rounded
+                      : Icons.star_outline_rounded,
                   size: 30,
                   color: star <= rating ? c.accent : c.ink3,
                 ),
@@ -340,18 +346,22 @@ class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
-      await ref.read(socialRepositoryProvider).createPost(
-        NewPost.shoutout(
-          text: _text.text.trim(),
-          aboutSellerId: _mentioned?.id,
-        ),
-      );
+      await ref
+          .read(socialRepositoryProvider)
+          .createPost(
+            NewPost.shoutout(
+              text: _text.text.trim(),
+              aboutSellerId: _mentioned?.id,
+            ),
+          );
       navigator.pop();
       messenger.showSnackBar(const SnackBar(content: Text('Shoutout posted')));
     } on RepositoryException catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(content: Text(describeError(error).body)));
+      messenger.showSnackBar(
+        SnackBar(content: Text(describeError(error).body)),
+      );
     }
   }
 
@@ -447,19 +457,25 @@ class _ListingComposerState extends ConsumerState<ListingComposer> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
-      await ref.read(socialRepositoryProvider).createPost(
-        NewPost.listing(
-          productId: picked.id,
-          caption: _caption.text.trim().isEmpty ? null : _caption.text.trim(),
-          tags: picked.tags,
-        ),
-      );
+      await ref
+          .read(socialRepositoryProvider)
+          .createPost(
+            NewPost.listing(
+              productId: picked.id,
+              caption: _caption.text.trim().isEmpty
+                  ? null
+                  : _caption.text.trim(),
+              tags: picked.tags,
+            ),
+          );
       navigator.pop();
       messenger.showSnackBar(const SnackBar(content: Text('Posted')));
     } on RepositoryException catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(content: Text(describeError(error).body)));
+      messenger.showSnackBar(
+        SnackBar(content: Text(describeError(error).body)),
+      );
     }
   }
 

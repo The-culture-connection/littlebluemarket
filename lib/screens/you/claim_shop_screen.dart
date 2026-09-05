@@ -61,7 +61,8 @@ class _ClaimShopScreenState extends ConsumerState<ClaimShopScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('You are now selling as ${grant.vendorName}.')),
       );
-      context.pop();
+      // Land on the profile, where the Products tab has just appeared.
+      context.go('/you');
     } on RepositoryException catch (error) {
       if (!mounted) return;
       setState(() => _error = describeError(error).body);

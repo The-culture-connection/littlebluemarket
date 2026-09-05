@@ -29,9 +29,8 @@ class ForumsScreen extends ConsumerWidget {
           icon: Icons.keyboard_arrow_up_rounded,
           iconSize: 22,
           tooltip: 'Back to chat',
-          onPressed: () => context.canPop()
-              ? context.pop()
-              : context.go('/community'),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/community'),
         ),
         actions: [
           CircleIconButton(

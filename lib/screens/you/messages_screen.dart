@@ -79,9 +79,7 @@ class _ConversationRow extends ConsumerWidget {
         leading: Avatar(person),
         title: Text(person.name),
         subtitle: Text(
-          conversation.preview.isEmpty
-              ? 'Say hello'
-              : conversation.preview,
+          conversation.preview.isEmpty ? 'Say hello' : conversation.preview,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),

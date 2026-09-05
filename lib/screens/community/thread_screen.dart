@@ -242,9 +242,7 @@ class _Comment extends ConsumerWidget {
                         ),
                         TextSpan(
                           text: ' · ${comment.age}',
-                          style: const TextStyle(
-                            fontFeatures: kTabularFigures,
-                          ),
+                          style: const TextStyle(fontFeatures: kTabularFigures),
                         ),
                       ],
                     ),
@@ -263,4 +261,3 @@ class _Comment extends ConsumerWidget {
     );
   }
 }
-

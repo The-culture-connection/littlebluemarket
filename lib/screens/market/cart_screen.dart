@@ -194,7 +194,9 @@ class _SummaryState extends ConsumerState<_Summary> {
 
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final handoff = await ref.read(commerceRepositoryProvider).beginCheckout();
+      final handoff = await ref
+          .read(commerceRepositoryProvider)
+          .beginCheckout();
       if (!mounted) return;
       setState(() => _working = false);
       // Nothing here claims the purchase succeeded. The app cannot observe a

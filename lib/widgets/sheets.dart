@@ -162,7 +162,7 @@ bool requireSeller(BuildContext context, WidgetRef ref, VoidCallback action) {
   if (!ref.read(isSellerProvider)) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Turn on selling in Edit profile to list your work.'),
+        content: Text('Claim your shop in Edit profile to list your work.'),
       ),
     );
     return false;

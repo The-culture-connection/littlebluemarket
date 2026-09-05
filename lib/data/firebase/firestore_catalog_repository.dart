@@ -68,10 +68,7 @@ class FirestoreCatalogRepository implements CatalogRepository {
 
         // Ordered to match the request, and ids that no longer exist are
         // skipped: a stale reference costs one card, not the screen.
-        return [
-          for (final id in ids)
-            ?found[id],
-        ];
+        return [for (final id in ids) ?found[id]];
       }, operation: 'firestore catalog productsByIds');
 
   @override

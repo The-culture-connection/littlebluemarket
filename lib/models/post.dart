@@ -71,7 +71,8 @@ final class ListingPost extends Post {
   @override
   String? get subjectProductId => product.id;
 
-  String get body => caption ?? '${product.title} — ${product.shortDescription}.';
+  String get body =>
+      caption ?? '${product.title} — ${product.shortDescription}.';
 }
 
 /// A buyer reviewing something they actually bought.

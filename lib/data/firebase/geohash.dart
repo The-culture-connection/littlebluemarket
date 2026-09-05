@@ -78,7 +78,8 @@ abstract final class Geohash {
     // correct at the boundaries — including the poles and the date line —
     // which those tables get wrong if you write them from memory.
     final latStep = _boxHeightMiles(precision);
-    final lngStep = latStep / math.max(math.cos(lat * math.pi / 180).abs(), 0.01);
+    final lngStep =
+        latStep / math.max(math.cos(lat * math.pi / 180).abs(), 0.01);
 
     final hashes = <String>{centre};
     for (final dLat in [-1, 0, 1]) {
@@ -91,9 +92,7 @@ abstract final class Geohash {
       }
     }
 
-    return [
-      for (final hash in hashes.toList()..sort()) (hash, '$hash~'),
-    ];
+    return [for (final hash in hashes.toList()..sort()) (hash, '$hash~')];
   }
 
   /// How many characters keep the box comfortably larger than the radius.

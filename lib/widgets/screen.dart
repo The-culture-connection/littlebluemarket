@@ -27,7 +27,13 @@ class LbmScreen extends StatelessWidget {
       color: context.c.paper,
       child: SafeArea(
         bottom: false,
-        child: Column(children: [?appBar, Expanded(child: child), ?bottom]),
+        child: Column(
+          children: [
+            ?appBar,
+            Expanded(child: child),
+            ?bottom,
+          ],
+        ),
       ),
     );
   }
@@ -68,7 +74,8 @@ class LbmAppBar extends StatelessWidget {
         iconSize: 20,
         tooltip: 'Back',
         onPressed:
-            onBack ?? () => context.canPop() ? context.pop() : context.go('/market'),
+            onBack ??
+            () => context.canPop() ? context.pop() : context.go('/market'),
       );
     }
 
@@ -91,10 +98,7 @@ class LbmAppBar extends StatelessWidget {
         children: [
           if (lead != null) ...[lead, const SizedBox(width: 10)],
           Expanded(child: titleChild),
-          for (final action in actions) ...[
-            const SizedBox(width: 10),
-            action,
-          ],
+          for (final action in actions) ...[const SizedBox(width: 10), action],
         ],
       ),
     );

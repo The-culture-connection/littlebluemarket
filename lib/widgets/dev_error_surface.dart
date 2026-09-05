@@ -137,8 +137,9 @@ class _ErrorStripState extends ConsumerState<_ErrorStrip> {
                           small: true,
                           expand: false,
                           style: PillStyle.ghost,
-                          onPressed: () =>
-                              ref.read(devErrorsProvider.notifier).dismissLatest(),
+                          onPressed: () => ref
+                              .read(devErrorsProvider.notifier)
+                              .dismissLatest(),
                         ),
                       ],
                     ),

@@ -133,7 +133,8 @@ class _Results extends StatelessWidget {
             margin: const EdgeInsets.symmetric(horizontal: 14),
             child: RowStack(
               children: [
-                for (final person in results.sellers) _SellerRow(person: person),
+                for (final person in results.sellers)
+                  _SellerRow(person: person),
               ],
             ),
           ),
@@ -145,7 +146,10 @@ class _Results extends StatelessWidget {
             child: RowStack(
               children: [
                 for (final hit in results.reviews)
-                  _TaggedReviewRow(productId: hit.productId, review: hit.review),
+                  _TaggedReviewRow(
+                    productId: hit.productId,
+                    review: hit.review,
+                  ),
               ],
             ),
           ),

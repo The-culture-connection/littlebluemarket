@@ -64,7 +64,9 @@ void main() {
       expect(find.byType(LbmErrorCard), findsNothing);
     });
 
-    testWidgets('renders the empty state instead of empty content', (tester) async {
+    testWidgets('renders the empty state instead of empty content', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _host(
           LbmAsync<List<String>>(
@@ -110,7 +112,9 @@ void main() {
       expect(retried, 1);
     });
 
-    testWidgets('offers no retry when there is nothing to retry', (tester) async {
+    testWidgets('offers no retry when there is nothing to retry', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _host(
           LbmAsync<String>(

@@ -74,6 +74,7 @@ abstract final class FirestoreMappers {
     posts: integer(data['postCount']),
     isSeller: boolean(data['isSeller']),
     avatarUrl: data['avatarUrl'] as String?,
+    isLinked: data['linkedAt'] != null,
   );
 
   /// A deterministic avatar colour from a uid.

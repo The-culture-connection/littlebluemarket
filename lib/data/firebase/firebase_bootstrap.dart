@@ -13,9 +13,7 @@ import '../../firebase_options.dart';
 /// Called from `main` only when the app is built for the live backend, so a
 /// fixture build neither needs configuration nor pays the start-up cost.
 Future<void> initializeFirebase({bool useEmulators = false}) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   if (useEmulators) {
     // The emulator host differs on an Android emulator, which cannot see the
