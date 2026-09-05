@@ -17,7 +17,7 @@
 2. **Confirm your email** screen appears. Do not tap anything yet. Open the mail, click the link, come back. Within 5 s the screen says **Confirmed. Thank you.** (or tap **I've confirmed it**). *Pass:* it never skips this screen on its own.
 3. Continue → **Set up your profile** → handle, bio → Create. *Pass:* Market feed with a **You** tab; no "Confirm your email" banner on the feed.
 4. **Cold-start check:** force-close the app mid-way (after step 1, before step 2) and reopen. *Pass:* it opens on the Confirm your email screen, not the market.
-5. **Unconfirmed member check:** sign out, Create a Profile with `grace-s+buyer3@…`, tap **Continue for now** on the confirm screen, finish setup. *Pass:* the feed shows a **Confirm your email** card with **I've confirmed it** and **Resend**; buying, posting and commenting still work; Edit profile → Start selling says confirm first.
+5. **Unconfirmed member check:** sign out, Create a Profile with `grace-s+buyer3@…`, tap **Continue for now** on the confirm screen, finish setup. *Pass:* the feed shows a **Confirm your email** card with **I've confirmed it** and **Resend**; buying, posting and commenting still work; Edit profile → Sell with us keeps "Check my seller status" disabled until the email is confirmed.
 6. Edit profile → **City, State** = `Detroit, MI` → Save. *Pass:* saved; Diagnostics shows nothing red. (This powers Near me later.)
 
 ## J2 · Existing customer (has bought on the website before)
