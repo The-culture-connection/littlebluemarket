@@ -189,6 +189,32 @@ export function catalogDocFor(
   };
 }
 
+/**
+ * The feed entry a live product makes for itself.
+ *
+ * The feed is a stream of posts, and a marketplace whose sellers have not
+ * posted yet is an empty screen. So a product that is active on the store
+ * and attributed to a seller posts itself, once, as that seller. The id is
+ * derived from the product, so a re-mirror updates rather than duplicates,
+ * and the counters are left to the social functions.
+ */
+export function autoPostFor(
+  productId: string,
+  sellerUid: string,
+  doc: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    kind: 'listing',
+    authorId: sellerUid,
+    productId,
+    tags: Array.isArray(doc.tags) ? doc.tags : [],
+    auto: true,
+    createdAt: doc.createdAt instanceof Date ? doc.createdAt : FieldValue.serverTimestamp(),
+    likeCount: FieldValue.increment(0),
+    commentCount: FieldValue.increment(0),
+  };
+}
+
 /** Mirrors one product. Webhook and backfill both end here. */
 export async function mirrorProduct(payload: RestProduct): Promise<void> {
   const db = getFirestore();
@@ -231,6 +257,16 @@ export async function mirrorProduct(payload: RestProduct): Promise<void> {
   );
   // The spec table is a subdocument so a feed read does not carry it.
   await ref.collection('spec').doc('detail').set(spec, { merge: true });
+
+  // A live, attributed product is a feed entry. One that is no longer live
+  // keeps its post: comments on it are still real, and the card reads the
+  // product's own state.
+  if (doc.active === true && sellerUid) {
+    await db
+      .collection('posts')
+      .doc(`listing_${id}`)
+      .set(autoPostFor(id, sellerUid, doc), { merge: true });
+  }
 
   // Approval, push side. A product the app created carries its listing id;
   // the merchant approving it (DRAFT -> ACTIVE in the store) is what flips

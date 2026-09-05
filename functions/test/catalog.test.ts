@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import {
+  autoPostFor,
   catalogDocFor,
   listingIdFromTags,
   productFromGraphQL,
@@ -104,4 +105,15 @@ test('the spec keeps every variant with availability and stock', () => {
     { name: 'Ice', variantId: '1', priceCents: 69995, availableForSale: true, quantityAvailable: 3 },
     { name: 'Dawn', variantId: '2', priceCents: 69995, availableForSale: false, quantityAvailable: 0 },
   ]);
+});
+
+test('a live, attributed product posts itself as its seller, with its initiative tags', () => {
+  const { doc } = catalogDocFor(rest, { uid: 'kali' }, []);
+  const post = autoPostFor('15858163777696', 'kali', doc) as any;
+  assert.equal(post.kind, 'listing');
+  assert.equal(post.authorId, 'kali');
+  assert.equal(post.productId, '15858163777696');
+  assert.deepEqual(post.tags, ['#WomanOwned']);
+  assert.equal(post.auto, true);
+  assert.equal(post.createdAt instanceof Date, true);
 });
