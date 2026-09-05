@@ -159,7 +159,7 @@ async function main() {
   } else {
     // 5. secrets exist ----------------------------------------------------
     const config = readFileSync(join(FUNCTIONS_DIR, 'src', 'config.ts'), 'utf8');
-    const secretNames = [...config.matchAll(/defineSecret\('([A-Z0-9_]+)'\)/g)].map((m) => m[1]);
+    const secretNames = [...config.matchAll(/defineSecret\(\s*'([A-Z0-9_]+)'/g)].map((m) => m[1]);
     const absent = secretNames.filter((n) => !secretExists(n, projectId));
     if (absent.length) fail('secrets', `missing in Secret Manager: ${absent.join(', ')}`, absent.map((n) => `firebase functions:secrets:set ${n} --project ${alias}`).join('  |  '));
     else pass('secrets', `all ${secretNames.length} exist (${secretNames.join(', ')})`);
@@ -255,7 +255,9 @@ async function main() {
           record(check.ok ? 'PASS' : 'FAIL', `  ${check.name}`, check.summary, check.fix);
         }
       } catch (error) {
-        fail('backend health', error.message, 'firebase functions:log --only diagnosticsHealthCheck --project ' + alias);
+        fail('backend health', error.message, /401|403/.test(error.message)
+          ? 'the function refused the call. If the body below is HTML, Cloud Run IAM is blocking public invocation: in Google Cloud Console -> Cloud Run -> diagnosticsHealthCheck -> Security, allow unauthenticated invocations (Firebase callables check the Firebase token themselves). Otherwise: firebase functions:log --only diagnosticsHealthCheck --project ' + alias
+          : 'firebase functions:log --only diagnosticsHealthCheck --project ' + alias);
       }
     } else if (!live || !live.includes('diagnosticsHealthCheck')) {
       skip('backend health', 'diagnosticsHealthCheck is not deployed yet (lands in Stage 1)');
