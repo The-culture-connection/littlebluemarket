@@ -251,27 +251,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ],
           const SizedBox(height: 16),
           if (me.isSeller) const _SellerRows() else const _BuyerRows(),
-          if (ref.watch(isAdminProvider)) ...[
-            const SizedBox(height: 12),
-            LbmCard(
-              child: ListRow(
-                leading: Icon(
-                  Icons.verified_user_outlined,
-                  color: c.accentDeep,
-                ),
-                title: const Text('Seller applications'),
-                subtitle: const Text(
-                  'Approve or decline people who applied to sell',
-                ),
-                trailing: Icon(
-                  Icons.chevron_right_rounded,
-                  size: 22,
-                  color: c.ink3,
-                ),
-                onTap: () => context.push('/you/applications'),
-              ),
-            ),
-          ],
           const SizedBox(height: 12),
           LbmCard(
             child: ListRow(
@@ -376,16 +355,17 @@ class _BuyerRowsState extends ConsumerState<_BuyerRows> {
           ),
           const _AddressesRow(),
           ListRow(
-            title: const Text('Start selling'),
-            subtitle: const Text('I have a claim code'),
+            title: const Text('Sell with us'),
+            subtitle: const Text(
+              'Already a vendor, applying, or holding a claim code',
+            ),
             trailing: Icon(
               Icons.chevron_right_rounded,
               size: 22,
               color: c.ink3,
             ),
-            onTap: () => context.push('/you/claim-shop'),
+            onTap: () => context.push('/you/sell'),
           ),
-          const _ApplyRow(),
         ],
       ),
     );
@@ -411,27 +391,6 @@ class _AddressesRow extends ConsumerWidget {
       }),
       trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
       onTap: () => context.push('/you/shipping'),
-    );
-  }
-}
-
-/// The way in without a code: apply, and see where it stands.
-class _ApplyRow extends ConsumerWidget {
-  const _ApplyRow();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.c;
-    final application = ref.watch(myApplicationProvider).value;
-    return ListRow(
-      title: const Text('Apply to sell'),
-      subtitle: Text(
-        application == null
-            ? 'No code? Tell us about your shop'
-            : application.status.label,
-      ),
-      trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
-      onTap: () => context.push('/you/apply'),
     );
   }
 }

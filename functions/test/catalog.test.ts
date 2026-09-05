@@ -119,3 +119,11 @@ test('a live, attributed product posts itself as its seller, with its initiative
   assert.equal(post.auto, true);
   assert.equal(post.createdAt instanceof Date, true);
 });
+
+test('search words cover the description, not only the title', () => {
+  const { doc } = catalogDocFor(rest, undefined, []);
+  const words = doc.searchWords as string[];
+  assert.ok(words.includes('snowboard'));
+  assert.ok(words.includes('sturdy'));
+  assert.ok(words.includes('fast'));
+});

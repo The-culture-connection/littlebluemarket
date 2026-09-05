@@ -195,6 +195,11 @@ export function catalogDocFor(
       titleLower: title.toLowerCase(),
       // One entry per word, so "snowboard" finds "The Complete Snowboard".
       titleWords: titleWords(title),
+      // Every word of the title, description and type, so search finds a
+      // product by what it says about itself, not only by its name.
+      searchWords: titleWords(
+        `${title} ${stripHtml(String(payload.body_html ?? ''))} ${String(payload.product_type ?? '')}`,
+      ).slice(0, 300),
       active: payload.status === 'active',
       shopifyProductId: id,
       createdAt: payload.created_at ? new Date(payload.created_at) : null,

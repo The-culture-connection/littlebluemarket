@@ -229,18 +229,12 @@ abstract interface class ProfileRepository {
   /// One person by their handle, or null. For @-mentions.
   Future<Person?> personByHandle(String handle);
 
-  /// Applying to sell without a claim code. Once per account.
-  Future<void> applyToSell(SellerApplicationDraft draft);
-  Stream<SellerApplication?> watchMyApplication();
+  /// "Check my seller status": asks the backend to match this confirmed
+  /// email against the Shipturtle roster and grant selling if it can.
+  Future<SellerSyncResult> syncSellerStatus();
 
-  /// Admin only: the queue, and the answer.
-  Stream<List<SellerApplication>> watchApplications();
-  Future<void> decideApplication(
-    String uid, {
-    required bool approve,
-    String? vendorName,
-    String? reason,
-  });
+  /// The links that differ between the dev store and the real one.
+  Future<AppConfig> appConfig();
 
   Future<List<Address>> addresses();
   Future<void> saveAddress(Address address);

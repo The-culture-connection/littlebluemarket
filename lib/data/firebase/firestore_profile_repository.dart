@@ -271,67 +271,40 @@ class FirestoreProfileRepository implements ProfileRepository {
     return FirestoreMappers.person(doc.id, doc.data());
   }, operation: 'firestore users personByHandle');
 
-  CollectionReference<Map<String, dynamic>> get _applications =>
-      _db.collection('sellerApplications');
-
   @override
-  Future<void> applyToSell(SellerApplicationDraft draft) =>
-      guardFirestore(() async {
-        final id = _requireUid;
-        final email = _auth.currentUser?.email ?? '';
-        // Once, own, with the token's email: exactly what the rules allow.
-        await _applications.doc(id).set({
-          'status': 'submitted',
-          'appliedEmail': email,
-          'shopName': draft.shopName.trim(),
-          'storeUrl': draft.storeUrl.trim(),
-          'vendorEmail': draft.vendorEmail.trim().toLowerCase(),
-          'note': draft.note.trim(),
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }, operation: 'firestore sellerApplications apply');
-
-  @override
-  Stream<SellerApplication?> watchMyApplication() {
-    final id = uid;
-    if (id == null) return Stream.value(null);
-    return _applications
-        .doc(id)
-        .snapshots()
-        .map(
-          (doc) => doc.data() == null
-              ? null
-              : FirestoreMappers.application(doc.id, doc.data()!),
+  Future<SellerSyncResult> syncSellerStatus() => guardFirestore(() async {
+    final result = await _functions
+        .httpsCallable(
+          'sellerSyncMe',
+          options: HttpsCallableOptions(timeout: const Duration(seconds: 120)),
         )
-        .guarded(operation: 'firestore sellerApplications mine');
-  }
+        .call<Map<String, dynamic>>(const {});
+    final data = result.data;
+    return SellerSyncResult(
+      status: switch (FirestoreMappers.str(data['status'])) {
+        'granted' => SellerSyncStatus.granted,
+        'alreadySeller' => SellerSyncStatus.alreadySeller,
+        'undecided' => SellerSyncStatus.undecided,
+        _ => SellerSyncStatus.notFound,
+      },
+      vendorName: data['vendorName'] is String
+          ? data['vendorName'] as String
+          : null,
+      note: data['note'] is String ? data['note'] as String : null,
+    );
+  }, operation: 'callable sellerSyncMe');
 
   @override
-  Stream<List<SellerApplication>> watchApplications() => _applications
-      .where('status', isEqualTo: 'submitted')
-      .orderBy('createdAt', descending: true)
-      .limit(50)
-      .snapshots()
-      .map(
-        (snapshot) => [
-          for (final doc in snapshot.docs)
-            FirestoreMappers.application(doc.id, doc.data()),
-        ],
-      )
-      .guarded(operation: 'firestore sellerApplications queue');
-
-  @override
-  Future<void> decideApplication(
-    String uid, {
-    required bool approve,
-    String? vendorName,
-    String? reason,
-  }) => guardFirestore(() async {
-    await _functions.httpsCallable('adminDecideApplication').call({
-      'uid': uid,
-      'approve': approve,
-      'vendorName': ?vendorName,
-      'reason': ?reason,
-    });
-  }, operation: 'callable adminDecideApplication');
+  Future<AppConfig> appConfig() => guardFirestore(() async {
+    final result = await _functions
+        .httpsCallable('appConfig')
+        .call<Map<String, dynamic>>(const {});
+    return AppConfig(
+      registrationUrl: FirestoreMappers.str(result.data['registrationUrl']),
+      shipturtleUrl: FirestoreMappers.str(
+        result.data['shipturtleUrl'],
+        'https://app.shipturtle.com/',
+      ),
+    );
+  }, operation: 'callable appConfig');
 }

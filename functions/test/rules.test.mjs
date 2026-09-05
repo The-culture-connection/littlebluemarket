@@ -478,26 +478,6 @@ describe("counters are the functions' to move", () => {
   });
 });
 
-describe('seller applications', () => {
-  test('a member applies once with their own token email; the outcome is not theirs', async () => {
-    const app = { status: 'submitted', appliedEmail: 'dee@example.com', shopName: 'Dee Makes' };
-    await assertSucceeds(memberWithEmail('dee', 'dee@example.com').doc('sellerApplications/dee').set(app));
-    await assertFails(memberWithEmail('dee', 'dee@example.com').doc('sellerApplications/dee').update({ status: 'approved' }));
-    await assertFails(memberWithEmail('dee', 'dee@example.com').doc('sellerApplications/kali').set({ ...app, appliedEmail: 'x@example.com' }));
-    await assertFails(memberWithEmail('rae', 'rae@example.com').doc('sellerApplications/rae').set({ ...app, appliedEmail: 'someone-else@example.com' }));
-    await assertFails(memberWithEmail('rae', 'rae@example.com').doc('sellerApplications/rae').set({ ...app, status: 'approved' }));
-  });
-
-  test('applications are readable by the applicant and by an admin, nobody else', async () => {
-    await env.withSecurityRulesDisabled(async (admin) => {
-      await admin.firestore().doc('sellerApplications/dee').set({ status: 'submitted', appliedEmail: 'dee@example.com' });
-    });
-    await assertSucceeds(memberWithEmail('dee', 'dee@example.com').doc('sellerApplications/dee').get());
-    await assertSucceeds(adminUser().doc('sellerApplications/dee').get());
-    await assertFails(member('maya').doc('sellerApplications/dee').get());
-  });
-});
-
 describe('notifications and coordinates', () => {
   test('you read and mark your own notifications; nothing else', async () => {
     await env.withSecurityRulesDisabled(async (admin) => {
@@ -516,5 +496,12 @@ describe('notifications and coordinates', () => {
     });
     await assertSucceeds(member('maya').doc('users/maya').update({ cityState: 'Detroit, MI' }));
     await assertFails(member('maya').doc('users/maya').update({ lat: 1, lng: 2 }));
+  });
+});
+
+describe('starting a conversation', () => {
+  test('a member may look for a thread that does not exist yet, but not list others\' threads', async () => {
+    await assertSucceeds(member('maya').doc('conversations/kali_maya').get());
+    await assertFails(member('rae').collection('conversations').where('participantIds', 'array-contains', 'maya').get());
   });
 });

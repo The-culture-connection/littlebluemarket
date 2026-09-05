@@ -36,35 +36,27 @@
 
 ## J4 · Existing seller (already a vendor in Shipturtle)
 
-*Two ways in. A claim code is the manual one; the roster is the automatic one.*
-
-**A. Roster (automatic, Stage 8).**
-1. In Shipturtle, make sure the vendor's user email is `grace-s+seller2@…` and the company's products carry one vendor string.
-2. In the app, Create a Profile with that email → confirm → finish setup.
-3. *Pass:* within a minute the profile shows the **Products** tab with that vendor's products; Edit profile shows Payouts & bank / Sales & shipping. Diagnostics → **Link my store account now** reports "granted as <vendor>" if you want to see it in words. If it reports a reason instead (no products yet, two companies on one email, string already claimed), that reason is the truth and the way in is B or J5.
-
-**B. Claim code (manual).**
-1. From the repo: `cd functions && npm run shipturtle:vendors` → note the vendor string for the seller's company. `scripts/issue-claim-code.ps1 -Vendor "<that string>" -Email grace-s+seller3@…` → create the printed Firestore document.
-2. In the app as `+seller3`: Edit profile → **Start selling** → the code → Claim my shop. *Pass:* "You are now selling as <vendor>"; Products tab appears; no restart.
-
-**Then, as the seller:**
-3. Products tab → **Add a product** → photo, title, price, quantity, Category (type "sweat", pick one), a collection chip → **Add to my shop**. *Pass:* Under review modal; the draft on the Products tab with an **Under review** chip; in Shopify a Draft product under the right vendor.
-4. Shopify admin → set it **Active**. *Pass:* the chip turns **Live** within seconds; the product is in the feed and buyable (it is published to the app's channel automatically).
-5. **Edit** on a product → change price/stock → Save changes. *Pass:* "Saved to the store", both variants intact in Shopify.
-6. Post from the profile: **Post → A good or a service** → pick a product → caption with `@` + a buyer's handle → Post it. *Pass:* the post is in the feed; the mentioned buyer sees a bell badge and the notification.
+1. Create a Profile with the email you use in Shipturtle (`grace-s+seller2@…`) → confirm the email → finish setup.
+2. Edit profile → **Sell with us** → **Check my seller status**. *Pass:* "You now sell as <vendor>"; back on the profile the **Products** tab is there with the vendor's products, and Edit profile shows the seller rows. No code, no restart.
+3. If it says the email is not on the vendor list: the email in Shipturtle differs, or the company has no products yet (so no vendor string exists to grant). Fix the email in Shipturtle or add a product there, then tap again. **I have a claim code** on the same page is the manual way in.
+4. Products tab → **Add a product** → photo (Take a photo works on the emulator; Choose from your photos needs pictures in the gallery), title, price, quantity, Category, a collection → **Add to my shop**. *Pass:* Under review modal; the draft with an **Under review** chip; in Shopify a Draft product under your vendor.
+5. Shopify admin → set it **Active**. *Pass:* chip turns **Live**; product buyable in the app.
+6. **Edit** on a product → change price/stock → Save changes. *Pass:* "Saved to the store", variants intact in Shopify.
+7. Post → A good or a service → pick a product → caption with `@` + a buyer's handle → Post it. *Pass:* in the feed; the buyer gets a bell notification.
 
 ## J5 · New seller (not in Shipturtle yet)
 
-1. As a confirmed member with no shop (`+buyer2`): Edit profile → **Apply to sell** → shop name, link, note → Send my application. *Pass:* the status card reads **Under review**; Edit profile's Apply row says Under review; sending again is refused.
-2. As the admin (`grace-s@…`): Edit profile → **Seller applications** → the application → **Approve…** → vendor string (the one the shop will sell as on the store; for a brand-new shop choose it now, e.g. the shop name) → Approve and grant. *Pass:* "<shop> now sells as …".
-3. Back as the applicant: pull down on the profile. *Pass:* Products tab appears, Edit profile shows the seller rows, Apply to sell shows **Approved**. Then J4 steps 3–6 work for them.
-4. **Decline path:** a second applicant → Decline… with a reason. *Pass:* their status card shows "Not approved: <reason>".
+1. As a confirmed buyer: Edit profile → **Sell with us** → **Apply on our website**. *Pass:* the store's Become a vendor page opens in the browser. Fill it in there.
+2. You (Little Blue Market) approve the vendor in Shipturtle, on a company whose vendor user has the applicant's email and whose products carry one vendor string.
+3. The applicant: Sell with us → **Check my seller status**. *Pass:* "You now sell as <vendor>"; Products tab appears. Then J4 steps 4–7 work for them.
+4. Six hours later at the latest the same grant would have happened on its own (the roster sweep), so a seller who never taps the button still becomes one.
 
 ## J6 · Shipping
 
-1. **Vendor ships from Shipturtle:** in the Shipturtle vendor panel, add tracking to an app order. Wait up to 15 minutes, or You → Packages → **Sending** → **Check with Shipturtle**. *Pass:* buyer's **Receiving** shows the tracking and a progress bar; the seller's Sending card shows "Shipturtle: payout pending".
-2. **Seller ships from the app:** You → Packages → **Manage sales** → order number, tracking, courier → Add tracking. *Pass:* "Tracking added"; buyer's Receiving shows it. With the two fulfilment-order scopes granted, Shopify shows the order Fulfilled too.
-3. **Delivered:** ask Claude to run `npm run replay-order -- --order <number> --deliver`. *Pass:* Receiving shows **Delivered**; the feed shows **How was it?**; Bought tab tap → Write a review.
+1. **Buyers** hear from the store by email. You → Packages shows "Check your email for shipping updates" and, below, anything with tracking under **On its way to you**.
+2. **Sellers** manage shipping in Shipturtle: You → Packages → **Open Shipturtle** opens the vendor dashboard. Add tracking to an app order there.
+3. Within 15 minutes the buyer's Packages screen shows the tracking with a progress bar. (The pull runs every 15 minutes on its own.)
+4. **Delivered:** ask Claude to run `npm run replay-order -- --order <number> --deliver`. *Pass:* Packages shows **Delivered**; the feed shows **How was it?**; the Bought tab tap offers Write a review.
 
 ## J7 · Reviews
 
@@ -73,8 +65,8 @@
 
 ## J8 · Search and Near me
 
-1. Search → `snowboard` → real products. `balm mint` (out of order) → the lip balm. `zzzz` → "Nothing for zzzz" with **Did you mean** chips (hashtags, collections). Tap a chip → results or a collection.
-2. **Near me:** on the emulator, set a location (⋯ → Location → e.g. Detroit) → Market → **Near me**. *Pass:* the first time, Android asks for location permission; results narrow to sellers whose city is nearby (a seller must have saved a City in Edit profile, which the backend turns into a point). Deny the permission → the toggle falls back to your own profile city; with no city either it stays off and a message says what to add.
+1. Search → `snowboard` → real products. `balm mint` (out of order) → the lip balm. A word that is only in a product's **description** → that product (descriptions are searched too). `zzzz` → "Nothing for zzzz" with **Did you mean** chips. Tap a chip → results or a collection.
+2. **Near me** on the emulator: first set a location (the emulator's ⋯ → Location → pick a point, e.g. Detroit → Set location), then Market → **Near me**. A "Finding where you are…" note shows while it looks; the first time Android asks for permission. *Pass:* "Near Current location", and results narrow to sellers whose profile City is nearby. With no fix on the phone it uses your own profile City; with neither it stays off and says to add a City in Edit profile.
 
 ## J9 · Community and messages
 

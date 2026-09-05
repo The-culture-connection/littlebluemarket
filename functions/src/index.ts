@@ -13,6 +13,7 @@ import {
   SHOPIFY_WEBHOOK_SECRET,
   SHIPTURTLE_WEBHOOK_SECRET,
   SHIPTURTLE_API_KEY,
+  REGISTRATION_URL,
 } from './config.ts';
 import {
   backfillSellerForVendor,
@@ -40,7 +41,6 @@ import { backfillCatalogPage } from './backfill.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
 import { syncVendorRoster } from './roster_grant.ts';
-import { decideApplication, parseDecision } from './applications.ts';
 import { geocodeProfileIfNeeded } from './geocode.ts';
 import { mentionsToNotify, notify } from './notifications.ts';
 import { syncShipturtleOrders } from './shipturtle_orders.ts';
@@ -260,16 +260,37 @@ export const sellerSearchCategories = onCall(
   }),
 );
 
+/** Links that differ between the dev store and the real one. No account needed. */
+export const appConfig = onCall(
+  withLoudErrors('appConfig', async () => ({
+    registrationUrl: REGISTRATION_URL.value().trim(),
+    shipturtleUrl: 'https://app.shipturtle.com/',
+  })),
+);
+
 /**
- * Stage 9: an admin answers a seller application. Approving makes the same
- * grant a claim code would, as the vendor string the admin names.
+ * "Check my seller status": the same link the session runs on its own,
+ * done on demand and answered in words. A verified email on the Shipturtle
+ * roster becomes a grant; anything else says why not.
  */
-export const adminDecideApplication = onCall(
-  withLoudErrors('adminDecideApplication', async (request) => {
-    const adminUid = requireUid(request.auth);
-    requireAdmin(request.auth?.token);
-    const data = (request.data ?? {}) as Record<string, unknown>;
-    return decideApplication(adminUid, String(data.uid ?? ''), parseDecision(data));
+export const sellerSyncMe = onCall(
+  { secrets: [SHOPIFY_CLIENT_SECRET, SHIPTURTLE_API_KEY], timeoutSeconds: 120 },
+  withLoudErrors('sellerSyncMe', async (request) => {
+    const uid = requireUid(request.auth);
+    const email = request.auth?.token?.email;
+    const verified = request.auth?.token?.email_verified === true;
+    if (typeof email !== 'string' || !verified) {
+      throw new HttpsError('failed-precondition', 'Confirm your email address first.');
+    }
+    const db = getFirestore();
+    const seller = await db.collection('sellers').doc(uid).get();
+    if (seller.exists && !seller.data()?.revokedAt) {
+      return { status: 'alreadySeller', vendorName: String(seller.data()?.shopifyVendorName ?? '') };
+    }
+    const result = await linkStoreAccounts(uid, email.trim().toLowerCase());
+    if (result.grantedVendor) return { status: 'granted', vendorName: result.grantedVendor };
+    if (result.linkedVendor) return { status: 'undecided', note: result.grantNote ?? 'On the roster, but no single vendor string could be decided.' };
+    return { status: 'notFound' };
   }),
 );
 

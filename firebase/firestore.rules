@@ -279,8 +279,12 @@ service cloud.firestore {
     }
 
     match /conversations/{conversationId} {
-      // A thread is readable only by its two participants.
-      allow read: if signedIn()
+      // A thread is readable only by its two participants. A single get on a
+      // thread that does not exist yet is allowed: the app looks before it
+      // creates, and there is nothing in a missing document to leak.
+      allow get: if signedIn()
+        && (resource == null || request.auth.uid in existing().participantIds);
+      allow list: if signedIn()
         && request.auth.uid in existing().participantIds;
       allow create: if member()
         && request.auth.uid in incoming().participantIds
@@ -355,19 +359,6 @@ service cloud.firestore {
       allow delete: if seller()
         && isSelf(existing().sellerUid)
         && existing().status in ['draft', 'failed'];
-    }
-
-    // ----------------------------------------------------- seller applications
-
-    // Applying to sell: once, your own, with the address your token carries.
-    // The outcome is the admin's to write, through a function.
-    match /sellerApplications/{uid} {
-      allow read: if isSelf(uid) || admin();
-      allow create: if member()
-        && isSelf(uid)
-        && incoming().status == 'submitted'
-        && incoming().appliedEmail == request.auth.token.email;
-      allow update, delete: if false;
     }
 
     // The store's collections, mirrored by the backend. The real taxonomy.

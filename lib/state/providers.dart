@@ -109,13 +109,11 @@ final unreadNotificationsProvider = Provider<int>((ref) {
       0;
 });
 
-/// Applying to sell: mine, and (admin) the queue.
-final myApplicationProvider = StreamProvider<SellerApplication?>((ref) {
-  return ref.watch(profileRepositoryProvider).watchMyApplication();
-});
-
-final applicationsProvider = StreamProvider<List<SellerApplication>>((ref) {
-  return ref.watch(profileRepositoryProvider).watchApplications();
+/// Links that differ between the dev store and the real one. Kept for the
+/// life of the app: they do not change while it runs.
+final appConfigProvider = FutureProvider<AppConfig>((ref) {
+  ref.keepCached();
+  return ref.watch(profileRepositoryProvider).appConfig();
 });
 
 final popularTagsProvider = FutureProvider<List<TagCount>>((ref) {

@@ -81,22 +81,6 @@ abstract final class FirestoreMappers {
     lng: data['lng'] == null ? null : decimal(data['lng']),
   );
 
-  static SellerApplication application(String id, Map<String, dynamic> data) =>
-      SellerApplication(
-        uid: id,
-        status: ApplicationStatus.parse(data['status'] as String?),
-        shopName: str(data['shopName'], 'A shop'),
-        appliedEmail: str(data['appliedEmail']),
-        storeUrl: str(data['storeUrl']),
-        vendorEmail: str(data['vendorEmail']),
-        note: str(data['note']),
-        vendorName: data['vendorName'] is String
-            ? data['vendorName'] as String
-            : null,
-        reason: data['reason'] is String ? data['reason'] as String : null,
-        createdAt: time(data['createdAt']),
-      );
-
   static AppNotification notification(String id, Map<String, dynamic> data) =>
       AppNotification(
         id: id,

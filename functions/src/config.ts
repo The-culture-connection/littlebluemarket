@@ -83,6 +83,12 @@ export const SHIPTURTLE_VENDORS_PATH = defineString('SHIPTURTLE_VENDORS_PATH', {
 });
 
 /**
+ * Where a new seller applies, on the website. Differs between the dev store
+ * and the real one, so it lives in the env, not the app.
+ */
+export const REGISTRATION_URL = defineString('REGISTRATION_URL', { default: '' });
+
+/**
  * The location a seller's stock is written to: the one that fulfils online
  * orders (the shop's main location). The numeric id, e.g. 121092407456.
  * Empty means "work it out" — see `locations.ts`.

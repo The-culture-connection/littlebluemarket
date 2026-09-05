@@ -1081,69 +1081,33 @@ class FixtureProfileRepository implements ProfileRepository {
   }
 
   @override
-  Future<void> applyToSell(SellerApplicationDraft draft) async {
-    final uid = _backend.uid;
-    if (_store.applications.value.containsKey(uid)) {
-      throw const ValidationException('You have already applied.');
-    }
-    _store.applications.value = {
-      ..._store.applications.value,
-      uid: SellerApplication(
-        uid: uid,
-        status: ApplicationStatus.submitted,
-        shopName: draft.shopName,
-        appliedEmail: _backend.auth?.currentUser?.email ?? 'maya@example.com',
-        storeUrl: draft.storeUrl,
-        vendorEmail: draft.vendorEmail,
-        note: draft.note,
-        createdAt: DateTime.now(),
-      ),
-    };
-  }
-
-  @override
-  Stream<SellerApplication?> watchMyApplication() =>
-      _store.applications.stream.map((all) => all[_backend.uid]);
-
-  @override
-  Stream<List<SellerApplication>> watchApplications() =>
-      _store.applications.stream.map(
-        (all) => all.values
-            .where((a) => a.status == ApplicationStatus.submitted)
-            .toList(),
+  Future<SellerSyncResult> syncSellerStatus() async {
+    final people = {..._store.people.value};
+    final me = people[_backend.uid];
+    if (me == null) throw const UnauthenticatedException();
+    if (me.isSeller) {
+      return const SellerSyncResult(
+        status: SellerSyncStatus.alreadySeller,
+        vendorName: 'Gwynstone',
       );
+    }
+    // The demo roster knows everyone: the check grants.
+    people[_backend.uid] = me.copyWith(isSeller: true);
+    _store.people.value = people;
+    _backend.auth?.grantSeller(_backend.uid);
+    return const SellerSyncResult(
+      status: SellerSyncStatus.granted,
+      vendorName: 'Gwynstone',
+    );
+  }
 
   @override
-  Future<void> decideApplication(
-    String uid, {
-    required bool approve,
-    String? vendorName,
-    String? reason,
-  }) async {
-    final all = {..._store.applications.value};
-    final existing = all[uid];
-    if (existing == null) throw NotFoundException('application', uid);
-    all[uid] = SellerApplication(
-      uid: uid,
-      status: approve ? ApplicationStatus.approved : ApplicationStatus.declined,
-      shopName: existing.shopName,
-      appliedEmail: existing.appliedEmail,
-      storeUrl: existing.storeUrl,
-      vendorEmail: existing.vendorEmail,
-      note: existing.note,
-      vendorName: approve ? vendorName : null,
-      reason: approve ? null : reason,
-      createdAt: existing.createdAt,
-    );
-    _store.applications.value = all;
-    if (approve) {
-      final people = {..._store.people.value};
-      final person = people[uid];
-      if (person != null) people[uid] = person.copyWith(isSeller: true);
-      _store.people.value = people;
-      _backend.auth?.grantSeller(uid);
-    }
-  }
+  Future<AppConfig> appConfig() => _backend._delayed(
+    const AppConfig(
+      registrationUrl: 'https://example.com/pages/sell-with-us',
+      shipturtleUrl: 'https://app.shipturtle.com/',
+    ),
+  );
 
   @override
   Future<String> uploadAvatar(List<int> bytes, {required String contentType}) =>
