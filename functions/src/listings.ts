@@ -110,7 +110,7 @@ export function productSetInput(
             : {}),
         },
         ...(locationId && trackQuantity
-          ? { inventoryQuantities: [{ locationId, quantity }] }
+          ? { inventoryQuantities: [{ locationId, name: 'available', quantity }] }
           : {}),
       },
     ],

@@ -58,7 +58,7 @@ test('the productSet input is a DRAFT under the seller\'s vendor name, never the
   assert.equal(variant.compareAtPrice, '10.00');
   assert.equal(variant.sku, 'BALM-01');
   assert.equal(variant.inventoryPolicy, 'DENY');
-  assert.deepEqual(variant.inventoryQuantities, [{ locationId: 'gid://shopify/Location/9', quantity: 12 }]);
+  assert.deepEqual(variant.inventoryQuantities, [{ locationId: 'gid://shopify/Location/9', name: 'available', quantity: 12 }]);
   assert.deepEqual(variant.inventoryItem.measurement, { weight: { unit: 'GRAMS', value: 20 } });
   assert.equal(variant.inventoryItem.tracked, true);
 });
