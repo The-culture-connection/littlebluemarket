@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../data/repositories/dev_error_sink.dart';
+
 /// Opens the store's hosted checkout.
 ///
 /// Behind an interface so the buy flow is testable: a widget test cannot open
@@ -22,8 +24,26 @@ class UrlCheckoutLauncher implements CheckoutLauncher {
   Future<bool> open(Uri url) async {
     try {
       if (await launchUrl(url, mode: LaunchMode.inAppBrowserView)) return true;
-      // No in-app browser available (rare): hand it to the default browser.
-      return await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      // Fall through to the external browser.
+    }
+    try {
+      // No in-app tab available. On Android that usually means Chrome has
+      // never been opened on this device (its first-run screens block the
+      // tab service). Say so in debug, so it is not mistaken for a bug.
+      final external = await launchUrl(url, mode: LaunchMode.externalApplication);
+      if (external) {
+        DevErrorSink.report(
+          StateError(
+            'Checkout opened in the external browser because no in-app tab '
+            'was available. On an emulator: open Chrome once and dismiss its '
+            'welcome screens, then retry.',
+          ),
+          null,
+          'checkout launcher (fallback)',
+        );
+      }
+      return external;
     } catch (_) {
       return false;
     }
