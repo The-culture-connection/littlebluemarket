@@ -100,7 +100,7 @@ class _ProductHeader extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${detail.seller.name} · ${product.price}',
+                  '${detail.seller?.name ?? 'Little Blue Market'} · ${product.price}',
                   style: LbmText.tiny.copyWith(color: c.ink2),
                 ),
                 const SizedBox(height: 4),

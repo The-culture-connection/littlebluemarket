@@ -1,4 +1,3 @@
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/providers.dart';
@@ -31,7 +30,10 @@ final productProvider = FutureProvider.family<Product, String>((ref, id) {
   return ref.watch(catalogRepositoryProvider).product(id);
 });
 
-final productSpecProvider = FutureProvider.family<ProductSpec, String>((ref, id) {
+final productSpecProvider = FutureProvider.family<ProductSpec, String>((
+  ref,
+  id,
+) {
   ref.keepCached();
   return ref.watch(catalogRepositoryProvider).spec(id);
 });
@@ -42,14 +44,16 @@ final productsByIdsProvider =
       return ref.watch(catalogRepositoryProvider).productsByIds(ids);
     });
 
-final sellerProductsProvider =
-    FutureProvider.family<List<Product>, String>((ref, sellerId) async {
-      ref.keepCached();
-      final page = await ref
-          .watch(catalogRepositoryProvider)
-          .productsBySeller(sellerId);
-      return page.items;
-    });
+final sellerProductsProvider = FutureProvider.family<List<Product>, String>((
+  ref,
+  sellerId,
+) async {
+  ref.keepCached();
+  final page = await ref
+      .watch(catalogRepositoryProvider)
+      .productsBySeller(sellerId);
+  return page.items;
+});
 
 final popularTagsProvider = FutureProvider<List<TagCount>>((ref) {
   ref.keepCached();
@@ -63,31 +67,51 @@ final popularTagsProvider = FutureProvider<List<TagCount>>((ref) {
 typedef ProductDetail = ({
   Product product,
   ProductSpec spec,
-  Person seller,
+
+  /// Null when the shop behind this product has not joined the app yet —
+  /// the normal state for a mirrored catalog until its vendors claim their
+  /// shops. A product page must still open.
+  Person? seller,
   RatingSummary rating,
 });
 
-final productDetailProvider =
-    FutureProvider.family<ProductDetail, String>((ref, id) async {
-      ref.keepCached();
-      final catalog = ref.watch(catalogRepositoryProvider);
-      final profiles = ref.watch(profileRepositoryProvider);
-      final social = ref.watch(socialRepositoryProvider);
+final productDetailProvider = FutureProvider.family<ProductDetail, String>((
+  ref,
+  id,
+) async {
+  ref.keepCached();
+  final catalog = ref.watch(catalogRepositoryProvider);
+  final profiles = ref.watch(profileRepositoryProvider);
+  final social = ref.watch(socialRepositoryProvider);
 
-      final product = await catalog.product(id);
-      final results = await (
-        catalog.spec(id),
-        profiles.person(product.sellerId),
-        social.watchRating(id).first,
-      ).wait;
+  final product = await catalog.product(id);
+  final results = await (
+    catalog.spec(id),
+    _sellerOrNull(profiles, product.sellerId),
+    social.watchRating(id).first,
+  ).wait;
 
-      return (
-        product: product,
-        spec: results.$1,
-        seller: results.$2,
-        rating: results.$3,
-      );
-    });
+  return (
+    product: product,
+    spec: results.$1,
+    seller: results.$2,
+    rating: results.$3,
+  );
+});
+
+/// The seller behind a product, or null when there is none to show: an empty
+/// id (unclaimed vendor) or a profile that no longer exists.
+Future<Person?> _sellerOrNull(
+  ProfileRepository profiles,
+  String sellerId,
+) async {
+  if (sellerId.isEmpty) return null;
+  try {
+    return await profiles.person(sellerId);
+  } on NotFoundException {
+    return null;
+  }
+}
 
 /// The variant someone has picked, per product.
 ///
@@ -129,15 +153,24 @@ final postsByProvider = FutureProvider.family<List<Post>, String>((ref, id) {
   return ref.watch(socialRepositoryProvider).postsBy(id);
 });
 
-final commentsProvider = StreamProvider.family<List<Comment>, String>((ref, postId) {
+final commentsProvider = StreamProvider.family<List<Comment>, String>((
+  ref,
+  postId,
+) {
   return ref.watch(socialRepositoryProvider).watchComments(postId);
 });
 
-final reviewsProvider = StreamProvider.family<List<Review>, String>((ref, productId) {
+final reviewsProvider = StreamProvider.family<List<Review>, String>((
+  ref,
+  productId,
+) {
   return ref.watch(socialRepositoryProvider).watchReviews(productId);
 });
 
-final ratingProvider = StreamProvider.family<RatingSummary, String>((ref, productId) {
+final ratingProvider = StreamProvider.family<RatingSummary, String>((
+  ref,
+  productId,
+) {
   return ref.watch(socialRepositoryProvider).watchRating(productId);
 });
 
@@ -226,18 +259,22 @@ final inboxProvider = StreamProvider<List<Conversation>>((ref) {
   return ref.watch(messagingRepositoryProvider).watchInbox();
 });
 
-final conversationProvider =
-    StreamProvider.family<List<Message>, String>((ref, conversationId) {
-      return ref
-          .watch(messagingRepositoryProvider)
-          .watchConversation(conversationId);
-    });
+final conversationProvider = StreamProvider.family<List<Message>, String>((
+  ref,
+  conversationId,
+) {
+  return ref
+      .watch(messagingRepositoryProvider)
+      .watchConversation(conversationId);
+});
 
-final conversationIdProvider =
-    FutureProvider.family<String, String>((ref, personId) {
-      ref.keepCached();
-      return ref.watch(messagingRepositoryProvider).conversationWith(personId);
-    });
+final conversationIdProvider = FutureProvider.family<String, String>((
+  ref,
+  personId,
+) {
+  ref.keepCached();
+  return ref.watch(messagingRepositoryProvider).conversationWith(personId);
+});
 
 // ---------------------------------------------------------------- community
 
@@ -253,7 +290,10 @@ final forumMembershipProvider = StreamProvider.family<bool, String>((ref, id) {
   return ref.watch(socialRepositoryProvider).watchForumMembership(id);
 });
 
-final threadsProvider = StreamProvider.family<List<ForumThread>, String>((ref, forumId) {
+final threadsProvider = StreamProvider.family<List<ForumThread>, String>((
+  ref,
+  forumId,
+) {
   return ref.watch(socialRepositoryProvider).watchThreads(forumId);
 });
 

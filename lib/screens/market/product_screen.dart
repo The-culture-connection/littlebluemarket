@@ -32,8 +32,7 @@ class ProductScreen extends ConsumerWidget {
         detail,
         skeleton: const ProductDetailSkeleton(),
         onRetry: () => ref.invalidate(productDetailProvider(productId)),
-        data: (detail) =>
-            _Body(productId: productId, detail: detail),
+        data: (detail) => _Body(productId: productId, detail: detail),
       ),
     );
   }
@@ -61,156 +60,167 @@ class _Body extends ConsumerWidget {
     final variant = spec.variants.isEmpty ? null : spec.variants[selected];
 
     return ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          LbmCard(
-            margin: const EdgeInsets.symmetric(horizontal: 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                  child: ProductGallery(
-                    product: product,
-                    borderRadius: LbmRadius.imageR,
-                  ),
+      padding: EdgeInsets.zero,
+      children: [
+        LbmCard(
+          margin: const EdgeInsets.symmetric(horizontal: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                child: ProductGallery(
+                  product: product,
+                  borderRadius: LbmRadius.imageR,
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Wrap(
-                        spacing: 7,
-                        runSpacing: 7,
-                        children: [
-                          LbmChip(
-                            product.type,
-                            style: ChipStyle.quiet,
-                            fontSize: 11,
-                          ),
-                          LbmChip(
-                            spec.subtitle,
-                            style: ChipStyle.quiet,
-                            fontSize: 11,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 9),
-                      Text(
-                        product.title,
-                        style: LbmText.display.copyWith(
-                          fontSize: 23,
-                          color: c.ink,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
+                      children: [
+                        LbmChip(
+                          product.type,
+                          style: ChipStyle.quiet,
+                          fontSize: 11,
                         ),
+                        LbmChip(
+                          spec.subtitle,
+                          style: ChipStyle.quiet,
+                          fontSize: 11,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 9),
+                    Text(
+                      product.title,
+                      style: LbmText.display.copyWith(
+                        fontSize: 23,
+                        color: c.ink,
                       ),
-                      const SizedBox(height: 9),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Stars(product.rating, size: 12),
-                              const SizedBox(width: 7),
-                              Text(
-                                product.rating.toStringAsFixed(1),
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: c.ink,
-                                ),
+                    ),
+                    const SizedBox(height: 9),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Stars(product.rating, size: 12),
+                            const SizedBox(width: 7),
+                            Text(
+                              product.rating.toStringAsFixed(1),
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: c.ink,
                               ),
-                            ],
-                          ),
-                          InlineLink(
-                            '${product.ratingCount} reviews',
-                            fontSize: 11.5,
-                            onTap: () => context.goToReviews(productId),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 9),
-                      Text(
-                        product.description,
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 1.55,
-                          color: c.ink2,
+                            ),
+                          ],
                         ),
+                        InlineLink(
+                          '${product.ratingCount} reviews',
+                          fontSize: 11.5,
+                          onTap: () => context.goToReviews(productId),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 9),
+                    Text(
+                      product.description,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.55,
+                        color: c.ink2,
                       ),
-                      const SizedBox(height: 9),
-                      TagChips(
-                        product.tags,
-                        onTap: (tag) => context.goToResults(tag),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 9),
+                    TagChips(
+                      product.tags,
+                      onTap: (tag) => context.goToResults(tag),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-
-          const SectionHead('Options'),
-          LbmCard(
-            margin: const EdgeInsets.symmetric(horizontal: 14),
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Column(
-              children: [
-                for (var i = 0; i < spec.variants.length; i++)
-                  _VariantRow(
-                    variant: spec.variants[i],
-                    selected: i == selected,
-                    onTap: () => ref
-                        .read(selectedVariantsProvider.notifier)
-                        .select(productId, i),
-                  ),
-              ],
-            ),
-          ),
-
-          const SectionHead('Details'),
-          LbmCard(
-            margin: const EdgeInsets.symmetric(horizontal: 14),
-            child: RowStack(
-              children: [
-                for (final row in spec.rows) _SpecRowTile(row: row),
-              ],
-            ),
-          ),
-
-          const SectionHead('What buyers rated it'),
-          _RatingBreakdown(product: product, rating: detail.rating),
-
-          const SectionHead('Shipping & pickup'),
-          LbmCard(
-            margin: const EdgeInsets.symmetric(horizontal: 14),
-            child: RowStack(
-              children: [
-                for (final row in spec.shipping) _ShippingRowTile(row: row),
-              ],
-            ),
-          ),
-
-          const SectionHead('Returns & guarantee'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: c.skyMist,
-                borderRadius: LbmRadius.cardR,
               ),
-              child: Text(
-                spec.returns,
-                style: TextStyle(fontSize: 13.5, height: 1.55, color: c.ink),
-              ),
+            ],
+          ),
+        ),
+
+        const SectionHead('Options'),
+        LbmCard(
+          margin: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            children: [
+              for (var i = 0; i < spec.variants.length; i++)
+                _VariantRow(
+                  variant: spec.variants[i],
+                  selected: i == selected,
+                  onTap: () => ref
+                      .read(selectedVariantsProvider.notifier)
+                      .select(productId, i),
+                ),
+            ],
+          ),
+        ),
+
+        const SectionHead('Details'),
+        LbmCard(
+          margin: const EdgeInsets.symmetric(horizontal: 14),
+          child: RowStack(
+            children: [for (final row in spec.rows) _SpecRowTile(row: row)],
+          ),
+        ),
+
+        const SectionHead('What buyers rated it'),
+        _RatingBreakdown(product: product, rating: detail.rating),
+
+        const SectionHead('Shipping & pickup'),
+        LbmCard(
+          margin: const EdgeInsets.symmetric(horizontal: 14),
+          child: RowStack(
+            children: [
+              for (final row in spec.shipping) _ShippingRowTile(row: row),
+            ],
+          ),
+        ),
+
+        const SectionHead('Returns & guarantee'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Container(
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              color: c.skyMist,
+              borderRadius: LbmRadius.cardR,
+            ),
+            child: Text(
+              spec.returns,
+              style: TextStyle(fontSize: 13.5, height: 1.55, color: c.ink),
             ),
           ),
+        ),
 
-          const SectionHead('Sold by'),
+        const SectionHead('Sold by'),
+        // A mirrored product whose shop has not joined the app yet has no
+        // profile to show. Say so rather than crash or invent one.
+        if (seller == null)
+          LbmCard(
+            margin: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Text(
+              'This shop has not joined the app yet. You can still buy; '
+              'the seller will appear here once they claim their shop.',
+              style: TextStyle(fontSize: 13, height: 1.5, color: c.ink2),
+            ),
+          )
+        else ...[
           LbmCard(
             margin: const EdgeInsets.symmetric(horizontal: 14),
             child: ListRow(
@@ -264,71 +274,69 @@ class _Body extends ConsumerWidget {
             child: PillButton(
               'Ask a question',
               style: PillStyle.ghost,
-              onPressed: () => requireProfile(
-                context,
-                ref,
-                () => context.goToDm(seller.id),
-              ),
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 26),
-            child: Row(
-              children: [
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        spec.lead,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: LbmText.xtiny.copyWith(color: c.ink2),
-                      ),
-                      Text(
-                        product.price,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: LbmText.display.copyWith(
-                          fontSize: 22,
-                          color: c.ink,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                CircleIconButton(
-                  icon: Icons.add_shopping_cart_rounded,
-                  tooltip: 'Add to cart',
-                  onPressed: () => requireProfile(
-                    context,
-                    ref,
-                    () => addToCart(
-                      context,
-                      ref,
-                      productId,
-                      variantId: variant?.name,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: PillButton(
-                    isGuest ? 'Buy · sign up' : 'Buy',
-                    onPressed: () => requireProfile(
-                      context,
-                      ref,
-                      () => showBuySheet(context, product, variant: variant),
-                    ),
-                  ),
-                ),
-              ],
+              onPressed: () =>
+                  requireProfile(context, ref, () => context.goToDm(seller.id)),
             ),
           ),
         ],
+
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 26),
+          child: Row(
+            children: [
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      spec.lead,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: LbmText.xtiny.copyWith(color: c.ink2),
+                    ),
+                    Text(
+                      product.price,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: LbmText.display.copyWith(
+                        fontSize: 22,
+                        color: c.ink,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              CircleIconButton(
+                icon: Icons.add_shopping_cart_rounded,
+                tooltip: 'Add to cart',
+                onPressed: () => requireProfile(
+                  context,
+                  ref,
+                  () => addToCart(
+                    context,
+                    ref,
+                    productId,
+                    variantId: variant?.name,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: PillButton(
+                  isGuest ? 'Buy · sign up' : 'Buy',
+                  onPressed: () => requireProfile(
+                    context,
+                    ref,
+                    () => showBuySheet(context, product, variant: variant),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -356,10 +364,7 @@ class _VariantRow extends StatelessWidget {
           onTap: onTap,
           child: Container(
             color: selected ? c.skyWash : null,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 11,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             child: Row(
               children: [
                 Container(
@@ -478,10 +483,7 @@ class _ShippingRowTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Text(
-              row.label,
-              style: LbmText.tiny.copyWith(color: c.ink2),
-            ),
+            child: Text(row.label, style: LbmText.tiny.copyWith(color: c.ink2)),
           ),
           const SizedBox(width: 12),
           Flexible(
