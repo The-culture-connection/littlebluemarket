@@ -39,6 +39,8 @@ scripts\run-fixtures.ps1        # no backend, demo data (-Chrome to run in the b
 scripts\run-emulators.ps1       # local Firebase emulators, seeded
 scripts\deploy-dev.ps1          # test-all -> deploy functions+rules+indexes+storage -> register webhooks -> doctor
 
+# In Git Bash (MINGW64) backslashes do not work: use the .sh twins, e.g. scripts/doctor.sh, scripts/run-live.sh
+
 flutter analyze                 # must be clean — zero issues, not "only warnings"
 flutter test                    # 311 Flutter tests; 39 more in functions/
 flutter test test/visual_check.dart --update-goldens   # regenerate test/shots/ after intentional UI changes
