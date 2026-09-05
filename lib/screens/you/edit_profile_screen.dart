@@ -239,6 +239,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ],
           const SizedBox(height: 16),
           if (me.isSeller) const _SellerRows() else const _BuyerRows(),
+          const SizedBox(height: 12),
+          LbmCard(
+            child: ListRow(
+              leading: Icon(Icons.logout_rounded, color: c.ink3),
+              title: const Text('Sign out'),
+              subtitle: const Text('Back to the welcome screen'),
+              onTap: () async {
+                await ref.read(sessionProvider.notifier).signOut();
+                if (!context.mounted) return;
+                context.go('/welcome');
+              },
+            ),
+          ),
           // The hidden dev screen. Not in release builds, not under test.
           if (kDebugMode && !kUnderFlutterTest) ...[
             const SizedBox(height: 12),
