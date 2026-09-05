@@ -6,6 +6,7 @@ import '../router/nav.dart';
 import '../screens/market/results_screen.dart';
 import '../state/providers.dart';
 import 'async.dart';
+import 'primitives.dart';
 import 'skeleton.dart';
 
 /// A seller's products, three across.
@@ -40,11 +41,19 @@ class SellerProductsGrid extends ConsumerWidget {
       // storefront with another seller's products, then duplicated the list to
       // fill out the grid.
       empty: own
-          ? const LbmEmpty(
+          ? LbmEmpty(
               title: 'No products yet',
               body:
-                  'They arrive from your store on their own once your '
-                  'shop is claimed. Pull down to check again.',
+                  'They arrive from your store on their own a few seconds '
+                  'after your shop is claimed.',
+              action: PillButton(
+                'Check again',
+                small: true,
+                expand: false,
+                style: PillStyle.quiet,
+                onPressed: () =>
+                    ref.invalidate(sellerProductsProvider(sellerId)),
+              ),
             )
           : const LbmEmpty(
               title: 'Nothing listed yet',

@@ -67,50 +67,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ],
       ),
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          ProfileIdentity(
-            person: me,
-            actions: [
-              Row(
-                children: [
-                  Expanded(
-                    child: PillButton(
-                      'Edit profile',
-                      style: PillStyle.ghost,
-                      onPressed: () => context.push('/you/edit'),
+      // Pull to refresh re-reads every grid. The products one matters most:
+      // right after a shop is claimed the backend takes a few seconds to
+      // attribute the catalog, and a cached empty answer would otherwise
+      // stick until the next launch.
+      child: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(sellerProductsProvider(me.id));
+          ref.invalidate(postsByProvider(me.id));
+          ref.invalidate(purchasesProvider);
+          await Future<void>.delayed(const Duration(milliseconds: 400));
+        },
+        child: ListView(
+          padding: EdgeInsets.zero,
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            ProfileIdentity(
+              person: me,
+              actions: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: PillButton(
+                        'Edit profile',
+                        style: PillStyle.ghost,
+                        onPressed: () => context.push('/you/edit'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  PillButton(
-                    'Post',
-                    icon: Icons.add_rounded,
-                    expand: false,
-                    onPressed: () => showNewPostSheet(context, ref),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          // A seller gets their shop first. The labels are shorter when there
-          // are three, so the pill row survives large text.
-          SegmentedTabs(
-            labels: me.isSeller
-                ? const ['Products', 'Posted', 'Bought']
-                : const ['Posted', 'Bought & received'],
-            selected: _tab,
-            onChanged: (i) => setState(() => _tab = i),
-          ),
-          // The tab now actually switches the grid. It was tracked and ignored.
-          switch ((me.isSeller, _tab)) {
-            (true, 0) => SellerProductsGrid(sellerId: me.id, own: true),
-            (true, 1) || (false, 0) => _PostedGrid(personId: me.id),
-            _ => const _PurchasesGrid(),
-          },
-          const Puff(),
-          const SizedBox(height: 20),
-        ],
+                    const SizedBox(width: 10),
+                    PillButton(
+                      'Post',
+                      icon: Icons.add_rounded,
+                      expand: false,
+                      onPressed: () => showNewPostSheet(context, ref),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            // A seller gets their shop first. The labels are shorter when there
+            // are three, so the pill row survives large text.
+            SegmentedTabs(
+              labels: me.isSeller
+                  ? const ['Products', 'Posted', 'Bought']
+                  : const ['Posted', 'Bought & received'],
+              selected: _tab,
+              onChanged: (i) => setState(() => _tab = i),
+            ),
+            // The tab now actually switches the grid. It was tracked and ignored.
+            switch ((me.isSeller, _tab)) {
+              (true, 0) => SellerProductsGrid(sellerId: me.id, own: true),
+              (true, 1) || (false, 0) => _PostedGrid(personId: me.id),
+              _ => const _PurchasesGrid(),
+            },
+            const Puff(),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
