@@ -1106,6 +1106,134 @@ class FixtureFulfillmentRepository implements FulfillmentRepository {
 
 /// Diagnostics on the demo backend: every check passes bar one, and the facts
 /// come from the fixture identity, so the screen renders in tests and demos.
+/// The demo seller path: draft → submitting → submitted, or failed with the
+/// same messages the function would give, so the retry button and every
+/// status chip are testable before a function exists.
+class FixtureSellerRepository implements SellerRepository {
+  FixtureSellerRepository(this._backend);
+
+  final FixtureBackend _backend;
+  int _next = 1;
+
+  FixtureStore get _store => _backend.store;
+
+  bool get _isSeller {
+    final user = _backend.auth?.currentUser;
+    if (user != null) return user.isSeller;
+    return _store.people.value[_backend.uid]?.isSeller ?? false;
+  }
+
+  @override
+  Stream<List<Listing>> watchListings() => _store.listings.stream.map(
+    (all) => all.where((l) => l.sellerUid == _backend.uid).toList(),
+  );
+
+  @override
+  Future<String> saveDraft(ListingDraft draft, {String? id}) async {
+    if (!_isSeller) {
+      throw const PermissionException('You are not set up to sell yet.');
+    }
+    final listings = [..._store.listings.value];
+    final index = id == null ? -1 : listings.indexWhere((l) => l.id == id);
+    final existing = index == -1 ? null : listings[index];
+    if (existing != null && !existing.status.editable) {
+      throw const PermissionException(
+        'That product has already been sent for review.',
+      );
+    }
+    final listingId = id ?? 'L${_next++}';
+    final saved = Listing(
+      id: listingId,
+      sellerUid: _backend.uid,
+      status: existing?.status ?? ListingStatus.draft,
+      title: draft.title.trim(),
+      description: draft.description.trim(),
+      priceCents: draft.priceCents,
+      quantity: draft.quantity,
+      sku: draft.sku,
+      imageUrls: draft.imageUrls,
+      collectionHandles: draft.collectionHandles,
+      tags: draft.tags,
+      error: existing?.error,
+      shopifyProductId: existing?.shopifyProductId,
+      updatedAt: DateTime.now(),
+    );
+    if (index == -1) {
+      listings.insert(0, saved);
+    } else {
+      listings[index] = saved;
+    }
+    _store.listings.value = listings;
+    return _backend._delayed(listingId);
+  }
+
+  @override
+  Future<String> uploadListingPhoto(
+    List<int> bytes, {
+    required String contentType,
+  }) => _backend._delayed('asset://assets/images/logo-cart.png');
+
+  @override
+  Future<PublishResult> publishListing(String listingId) async {
+    if (!_isSeller) {
+      throw const PermissionException('You are not set up to sell yet.');
+    }
+    final listings = [..._store.listings.value];
+    final index = listings.indexWhere((l) => l.id == listingId);
+    if (index == -1) throw NotFoundException('listing', listingId);
+    final listing = listings[index];
+    if (listing.sellerUid != _backend.uid) {
+      throw const PermissionException('That draft is not yours.');
+    }
+    if (!listing.status.editable) {
+      throw const ValidationException(
+        'That product has already been sent for review.',
+      );
+    }
+
+    // The same refusals the function gives, in the same words.
+    final problem = listing.title.isEmpty
+        ? 'Give it a title.'
+        : listing.priceCents <= 0
+        ? 'Set a price above \$0.'
+        : listing.imageUrls.isEmpty
+        ? 'Add at least one photo.'
+        : null;
+    if (problem != null) {
+      listings[index] = listing.copyWith(
+        status: ListingStatus.failed,
+        error: problem,
+        updatedAt: DateTime.now(),
+      );
+      _store.listings.value = listings;
+      throw ValidationException(problem);
+    }
+
+    // A retry adopts the product the first attempt made.
+    final productId = listing.shopifyProductId ?? 'fx-${listing.id}';
+    listings[index] = listing.copyWith(
+      status: ListingStatus.submitted,
+      shopifyProductId: productId,
+      clearError: true,
+      updatedAt: DateTime.now(),
+    );
+    _store.listings.value = listings;
+    return _backend._delayed(
+      PublishResult(
+        shopifyProductId: productId,
+        adopted: listing.shopifyProductId != null,
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteDraft(String id) async {
+    _store.listings.value = _store.listings.value
+        .where((l) => l.id != id || !l.status.editable)
+        .toList();
+  }
+}
+
 class FixtureDiagnosticsRepository implements DiagnosticsRepository {
   FixtureDiagnosticsRepository(this._auth, {required this.backend});
 

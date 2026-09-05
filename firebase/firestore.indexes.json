@@ -164,6 +164,21 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "_comment": "A seller's own drafts, newest first.",
+      "collectionGroup": "listings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sellerUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

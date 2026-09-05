@@ -226,6 +226,29 @@ abstract interface class FulfillmentRepository {
 /// The dev Diagnostics screen: who the phone thinks it is, and whether the
 /// backend can reach what it needs. Debug builds only; nothing a screen
 /// depends on.
+/// The seller write path. Drafts are the seller's own documents; publishing
+/// hands the backend an id and nothing else.
+abstract interface class SellerRepository {
+  /// The signed-in seller's drafts, newest first. Empty when signed out.
+  Stream<List<Listing>> watchListings();
+
+  /// Creates a draft, or updates the content of an existing one. Returns the
+  /// id. Status and the outcome fields are never written from here.
+  Future<String> saveDraft(ListingDraft draft, {String? id});
+
+  /// Uploads one product photo and returns its public URL.
+  Future<String> uploadListingPhoto(
+    List<int> bytes, {
+    required String contentType,
+  });
+
+  /// Sends the draft to the store as a product under review. Safe to call
+  /// again after a failure: the backend adopts what it already made.
+  Future<PublishResult> publishListing(String listingId);
+
+  Future<void> deleteDraft(String id);
+}
+
 abstract interface class DiagnosticsRepository {
   Future<HealthReport> healthCheck();
   Future<AuthFacts> authFacts();

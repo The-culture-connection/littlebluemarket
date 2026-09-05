@@ -38,6 +38,7 @@ const _routes = <String, String>{
   'create a forum': '/community/new-forum',
   'your profile': '/you',
   'edit profile': '/you/edit',
+  'add a product': '/you/add-product',
   'claim a shop': '/you/claim-shop',
   'diagnostics (dev)': '/you/diagnostics',
   'shipping': '/you/shipping',

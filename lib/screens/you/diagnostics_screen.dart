@@ -266,6 +266,20 @@ class _AdminCardState extends ConsumerState<_AdminCard> {
     return 'Synced $count collections. Pull the Market feed to refresh.';
   }
 
+  /// CP-P4: a buyer must be refused before anything reaches the store. The
+  /// id does not exist, so a seller gets "no longer exists" instead — also
+  /// informative.
+  Future<String> _tryPublish() async {
+    try {
+      await ref
+          .read(sellerRepositoryProvider)
+          .publishListing('diagnostics-probe');
+      return 'Unexpected: the backend accepted a publish for a missing draft.';
+    } on RepositoryException catch (error) {
+      return 'Backend answered: ${error.runtimeType} · ${error.message}';
+    }
+  }
+
   Future<String> _backfill({required bool reset}) async {
     var progress = await _repo.backfillCatalog(reset: reset);
     while (!progress.done) {
@@ -319,6 +333,15 @@ class _AdminCardState extends ConsumerState<_AdminCard> {
                 onPressed: _busy
                     ? null
                     : () => _run('Importing…', () => _backfill(reset: false)),
+              ),
+              PillButton(
+                'Try publish',
+                small: true,
+                expand: false,
+                style: PillStyle.ghost,
+                onPressed: _busy
+                    ? null
+                    : () => _run('Asking the backend…', _tryPublish),
               ),
               PillButton(
                 'Backfill from the start',

@@ -54,6 +54,13 @@ const member = (uid = 'maya') =>
     firebase: { sign_in_provider: 'password' },
   }).firestore();
 
+/** A granted seller: a member whose token carries the seller claim. */
+const seller = (uid = 'kali') =>
+  env.authenticatedContext(uid, {
+    seller: true,
+    firebase: { sign_in_provider: 'password' },
+  }).firestore();
+
 /** A guest: signed in anonymously, so they hold a uid but are not a member. */
 const guest = () =>
   env.authenticatedContext('anon', {
@@ -376,5 +383,34 @@ describe('collections are public and function-written', () => {
     });
     await assertSucceeds(guest().doc('collections/ally-owned').get());
     await assertFails(member('maya').doc('collections/ally-owned').set({ title: 'x' }));
+  });
+});
+
+describe("listings are the seller's own drafts", () => {
+  const draft = { sellerUid: 'kali', status: 'draft', title: 'Balm', priceCents: 800 };
+
+  test('a seller creates a draft; a plain member cannot', async () => {
+    await assertSucceeds(seller('kali').doc('listings/L1').set(draft));
+    await assertFails(member('maya').doc('listings/L2').set({ ...draft, sellerUid: 'maya' }));
+  });
+
+  test('a draft cannot be born submitted or with a product id', async () => {
+    await assertFails(seller('kali').doc('listings/L3').set({ ...draft, status: 'submitted' }));
+    await assertFails(seller('kali').doc('listings/L4').set({ ...draft, shopifyProductId: '1' }));
+  });
+
+  test('the outcome fields are the function\'s; the seller edits content only', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('listings/L5').set(draft);
+      await admin.firestore().doc('listings/L6').set({ ...draft, status: 'submitted', shopifyProductId: '9' });
+    });
+    await assertSucceeds(seller('kali').doc('listings/L5').update({ title: 'Better balm' }));
+    await assertFails(seller('kali').doc('listings/L5').update({ status: 'live' }));
+    await assertFails(seller('kali').doc('listings/L5').update({ shopifyProductId: '2' }));
+    // Once submitted, nothing is editable until the store answers.
+    await assertFails(seller('kali').doc('listings/L6').update({ title: 'x' }));
+    // Nobody else reads it.
+    await assertFails(member('maya').doc('listings/L5').get());
+    await assertSucceeds(seller('kali').doc('listings/L5').get());
   });
 });

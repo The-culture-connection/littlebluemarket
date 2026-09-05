@@ -14,6 +14,7 @@ import '../../widgets/product_art.dart';
 import '../../widgets/profile_identity.dart';
 import '../../widgets/composers.dart';
 import '../../widgets/screen.dart';
+import '../../widgets/seller_drafts.dart';
 import '../../widgets/seller_products_grid.dart';
 import '../../widgets/skeleton.dart';
 import '../market/results_screen.dart';
@@ -116,7 +117,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             // The tab now actually switches the grid. It was tracked and ignored.
             switch ((me.isSeller, _tab)) {
-              (true, 0) => SellerProductsGrid(sellerId: me.id, own: true),
+              (true, 0) => Column(
+                children: [
+                  const SellerDraftsPanel(),
+                  SellerProductsGrid(sellerId: me.id, own: true),
+                ],
+              ),
               (true, 1) || (false, 0) => _PostedGrid(personId: me.id),
               _ => const _PurchasesGrid(),
             },

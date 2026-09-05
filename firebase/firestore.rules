@@ -28,6 +28,13 @@ service cloud.firestore {
       return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
 
+    // The seller claim, minted only by the grant. Paired with the
+    // server-side three-fact check; here it keeps a buyer from even writing
+    // a draft.
+    function seller() {
+      return member() && request.auth.token.seller == true;
+    }
+
     function isSelf(uid) {
       return signedIn() && request.auth.uid == uid;
     }
@@ -286,6 +293,27 @@ service cloud.firestore {
     match /hashtags/{tag} {
       allow read: if true;
       allow write: if false;
+    }
+
+    // ------------------------------------------------------------- listings
+
+    // A seller's own drafts: the only place product content is client-writable,
+    // and deliberately not `catalog/`. The outcome fields belong to the
+    // publish function.
+    match /listings/{listingId} {
+      allow read: if isSelf(existing().sellerUid);
+      allow create: if seller()
+        && isSelf(incoming().sellerUid)
+        && incoming().status == 'draft'
+        && !('shopifyProductId' in incoming())
+        && !('submittedAt' in incoming());
+      allow update: if seller()
+        && isSelf(existing().sellerUid)
+        && untouched(['sellerUid', 'shopifyProductId', 'status', 'submittedAt', 'approvedAt', 'stockSet'])
+        && existing().status in ['draft', 'failed', 'rejected'];
+      allow delete: if seller()
+        && isSelf(existing().sellerUid)
+        && existing().status in ['draft', 'failed'];
     }
 
     // The store's collections, mirrored by the backend. The real taxonomy.

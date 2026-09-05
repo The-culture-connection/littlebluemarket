@@ -13,6 +13,7 @@ export 'diagnostics.dart';
 export 'formatting.dart';
 export 'geo.dart';
 export 'link_result.dart';
+export 'listing.dart';
 export 'message.dart';
 export 'order.dart';
 export 'page.dart';

@@ -86,6 +86,7 @@ class FixtureStore {
   final addresses = Watchable<List<Address>>([]);
   late final sending = Watchable<List<Shipment>>([...Fx.sending]);
   late final receiving = Watchable<List<Shipment>>([...Fx.receiving]);
+  final listings = Watchable<List<Listing>>([]);
 
   /// Post ids this viewer has liked.
   final likedPosts = <String>{};
@@ -286,6 +287,7 @@ class FixtureStore {
       addresses,
       sending,
       receiving,
+      listings,
     ]) {
       w.dispose();
     }

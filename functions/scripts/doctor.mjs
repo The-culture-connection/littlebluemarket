@@ -45,6 +45,8 @@ const PRODUCTION_DOMAIN = 'little-blue-cart-dev.myshopify.com';
 const REQUIRED_SCOPES = [
   'read_products', 'write_products', 'read_inventory', 'write_inventory', 'write_publications',
   'read_customers', 'read_orders', 'read_fulfillments', 'write_fulfillments',
+  // Stage 5: the opening stock on a seller's new product needs the shop location.
+  'read_locations',
 ];
 function hasScope(granted, scope) {
   return granted.includes(scope) || granted.includes(scope.replace(/^read_/, 'write_'));

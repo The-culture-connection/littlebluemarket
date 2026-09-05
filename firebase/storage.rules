@@ -37,6 +37,16 @@ service firebase.storage {
         && underSize(10);
     }
 
+    // Product photos for a seller's draft. Public read is required, not a
+    // choice: Shopify fetches the image from this URL server-side.
+    match /listings/{uid}/{file} {
+      allow read: if true;
+      allow write: if signedIn()
+        && request.auth.uid == uid
+        && isImage()
+        && underSize(10);
+    }
+
     match /{path=**} {
       allow read, write: if false;
     }

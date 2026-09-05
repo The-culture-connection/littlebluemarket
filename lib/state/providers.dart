@@ -82,6 +82,11 @@ final collectionProductsProvider = FutureProvider.family<List<Product>, String>(
   },
 );
 
+/// The signed-in seller's drafts and submissions, live.
+final listingsProvider = StreamProvider<List<Listing>>((ref) {
+  return ref.watch(sellerRepositoryProvider).watchListings();
+});
+
 final popularTagsProvider = FutureProvider<List<TagCount>>((ref) {
   ref.keepCached();
   return ref.watch(catalogRepositoryProvider).popularTags();

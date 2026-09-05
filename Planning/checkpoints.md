@@ -19,7 +19,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | CP-A5 — Shipturtle roster probe, automatic vendor detection by email | ✅ Done, proven by the backend health check (roster at /api/v1/users) |
 | Stage 3 — Buying: add to cart, checkout in-app, order lands | ✅ Done, passed by Grace |
 | Stage 4 — The real catalog: admin claim, collections, backfill, browse an initiative | ✅ Done, passed by Grace (2026-09-05) |
-| Stage 5 — A seller adds a product | ⬜ Not started |
+| Stage 5 — A seller adds a product | 🟡 Built and deployed 2026-09-05, ready for Grace to test |
 | Stage 6 — Approval, edits, "Total sales" | ⬜ Not started |
 | Stage 7 — Cart replaces like, cart posts, reviews | ⬜ Not started |
 | Stage 8 — Shipturtle: payouts, approval status, fulfilment push | ⬜ Not started |
@@ -298,10 +298,36 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 ### Stage 5 — A seller adds a product (Phase 5)
 
-- [ ] **CP-P1 Draft → Under review.** `SellerRepository` (pure Dart) + `Listing` (int cents) + fixture; composer product section (single variant); images to `listings/{uid}/{file}` (public-read Storage rule); `listings/` rules; `sellerPublishListing` with the three-fact check, server-side re-read, `submitting` guard, `app.draft_id` idempotency, one `productSet` with `inventoryQuantities`, mirror seed; the **Under review** modal. **Grace:** Products → Add → title, price, one photo → Add. **Pass:** modal; in Shopify the product is **Draft** with vendor = your vendor.
-- [ ] **CP-P2 Retry is safe.** Force-close mid-spinner, reopen, retry. **Pass:** one product.
-- [ ] **CP-P3 Bad input refused before Shopify.** Price 0; no photo. **Pass:** a message naming the field; nothing in Shopify.
-- [ ] **CP-P4 A non-seller is refused.** As `+buyer1`: no Add button; Diagnostics "try publish" reports `permission-denied`.
+**Built and deployed to `little-blue-610e5` on 2026-09-05. Ready for Grace to test.** After every deploy, quit the app and run `scripts/run-live.sh` (Git Bash) or `scripts\run-live.ps1` (PowerShell) again so the phone gets the new build.
+
+**What changed, in plain words.** A seller now has an **Add a product** button at the top of their Products tab. The form takes photos, a title, a description, a price, a quantity, an optional SKU and tags, and the collections it belongs to. Tapping **Add to my shop** uploads the photos, saves a draft, and sends it to the store as a *draft product under review*: it is **not** in the shop until Little Blue Market approves it in Shipturtle, and a modal says exactly that. The draft stays on the Products tab with an **Under review** chip. If anything fails, the chip says **Needs attention** with the reason and a Retry button, and retrying never makes a second product.
+
+**Claude built:**
+
+- `functions/src/listings.ts` — `sellerPublishListing`: the client sends only the draft id; the function runs the three-fact seller check, re-reads every value from the draft, validates it in plain words, claims the draft with a `submitting` guard, and creates the product with one `productSet` as **DRAFT** under the vendor name from `sellers/{uid}` (never the request). Opening stock is set inline when the shop location can be read (needs the `read_locations` scope; without it the product is still created and the app says stock was not set). Every product it creates carries the tag `lbm:<listingId>` and a `lbm.draft_id` metafield; a retry searches for that tag and adopts the existing product. The mirror is seeded immediately so the product shows up under the seller as soon as it is approved.
+- Rules: `listings/{id}` readable and content-editable by its owner only; `status`, `shopifyProductId` and `submittedAt` are the function's. Storage: `listings/{uid}/{file}` public read (Shopify fetches the image), owner write, images only, 10 MB. Index: `listings` by `sellerUid` + `updatedAt`. Rules tests added.
+- Flutter: `Listing` / `ListingDraft` models (cents from the first keystroke; `parseDollars`), `SellerRepository` (Firestore + fixture), the `/you/add-product` screen with `image_picker`, the drafts panel on the Products tab with status chips and Retry, the Under review modal, and a **Try publish** button on Diagnostics for CP-P4.
+- Doctor: `read_locations` added to the required scopes.
+
+**One-time (Shopify admin, dev store):** the app needs the **read_locations** scope for opening stock. Shopify admin → Settings → Apps and sales channels → Develop apps → the Little Blue app → Configuration → Admin API integration → tick **read_locations** → Save. If the app is a Partner-dashboard app instead, add the scope there and reinstall. `scripts/doctor.sh` shows `shopify scopes` PASS when it is done. Without it, products are still created, just without stock.
+
+- [ ] **CP-P1 Draft → Under review.**
+  **Grace does:** as `+seller1` (the claimed seller) → You → Products tab → **Add a product** → Add photos (pick one from the emulator's gallery; if it is empty, open the emulator's Camera app once and take a picture, or drag a JPG onto the emulator window) → title, price (e.g. 12.50), quantity → tap a collection chip → **Add to my shop**.
+  **Pass:** the button walks through Uploading photos → Saving the draft → Sending it to the store, then the **Under review** modal appears; Got it lands on the Products tab where the draft shows with an **Under review** chip. In the Shopify admin → Products, the product exists as **Draft** with **Vendor** = your vendor string, the photo attached, and a tag `lbm:…`. In Shipturtle, it appears in the approval queue within its next sync.
+  **If it fails:** a red card on the form names the reason; tap Copy for Claude if it is not plain. "You are not set up to sell yet" → sign in as the seller account (Diagnostics → Seller claim: yes). "The store refused it: …" → paste the whole message.
+
+- [ ] **CP-P2 Retry is safe.**
+  **Grace does:** fill the form again with a new title → tap **Add to my shop** → the moment it says "Sending it to the store…", swipe the app away (recent apps → swipe up) → reopen with `run-live` → Products tab.
+  **Pass:** the draft is there as **Under review** or **Needs attention**. If it says Needs attention, tap **Retry**: it becomes Under review. Shopify admin → Products shows **one** product with that title, not two.
+  **If it fails:** two products in Shopify → paste the two products' tags (each has an `lbm:…` tag; if the tags differ, the second attempt did not reuse the id, tell Claude).
+
+- [ ] **CP-P3 Bad input refused before Shopify.**
+  **Grace does:** Add a product → price `0` → Add to my shop. Then price `5` but no photo → Add to my shop.
+  **Pass:** "Set a price above $0." and "Add at least one photo." appear on the form, nothing is uploaded, and Shopify's product count does not change.
+
+- [ ] **CP-P4 A non-seller is refused.**
+  **Grace does:** sign out, sign in as `+buyer1` → You: no Products tab and no Add button. Edit profile → Diagnostics → **Try publish**.
+  **Pass:** the card reads "Backend answered: PermissionException · You are not set up to sell yet." (As a seller the same button says the probe draft no longer exists, which is also correct.)
 
 ### Stage 6 — Approval, edits, honest numbers (Phase 6)
 

@@ -10,6 +10,7 @@ import 'firebase/firestore_diagnostics_repository.dart';
 import 'firebase/firestore_messaging_repository.dart';
 import 'firebase/firestore_profile_repository.dart';
 import 'firebase/firestore_search_repository.dart';
+import 'firebase/firestore_seller_repository.dart';
 import 'firebase/firestore_social_repository.dart';
 import 'shopify/commerce_proxy_repository.dart';
 import 'shopify/fulfillment_proxy_repository.dart';
@@ -155,6 +156,20 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
       storage: ref.watch(firebaseStorageProvider),
       functions: ref.watch(firebaseFunctionsProvider),
       auth: ref.watch(firebaseAuthProvider),
+      uid: ref.watch(_uidProvider),
+    ),
+  };
+});
+
+final sellerRepositoryProvider = Provider<SellerRepository>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => FixtureSellerRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
+    Backend.live => FirestoreSellerRepository(
+      firestore: ref.watch(firestoreProvider),
+      storage: ref.watch(firebaseStorageProvider),
+      functions: ref.watch(firebaseFunctionsProvider),
       uid: ref.watch(_uidProvider),
     ),
   };

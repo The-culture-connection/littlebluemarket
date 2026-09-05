@@ -36,6 +36,7 @@ import { syncCollections } from './collections.ts';
 import { backfillCatalogPage } from './backfill.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { claimVendor, revokeVendor } from './sellers.ts';
+import { publishListing } from './listings.ts';
 import { verifyShopifyHmac, webhookHmacHeader, webhookTopic } from './webhooks.ts';
 import {
   authenticateShipTurtleWebhook,
@@ -179,6 +180,21 @@ export const sellerClaimVendor = onCall(withLoudErrors('sellerClaimVendor', asyn
   const claimCode = String((request.data ?? {}).claimCode ?? '');
   return claimVendor(uid, email.trim().toLowerCase(), claimCode);
 }));
+
+/**
+ * Journey B: a seller's draft goes to the store as a DRAFT product, for the
+ * merchant's approval queue. The client sends only the listing id; every
+ * value is re-read from the draft, and the vendor name comes from
+ * `sellers/{uid}`.
+ */
+export const sellerPublishListing = onCall(
+  { secrets: [SHOPIFY_CLIENT_SECRET], timeoutSeconds: 120 },
+  withLoudErrors('sellerPublishListing', async (request) => {
+    const uid = requireUid(request.auth);
+    const listingId = String((request.data ?? {}).listingId ?? '');
+    return publishListing(uid, request.auth?.token, listingId);
+  }),
+);
 
 /**
  * Takes it away again. Admin only.
