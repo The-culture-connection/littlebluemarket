@@ -45,9 +45,12 @@ const PRODUCTION_DOMAIN = 'little-blue-cart-dev.myshopify.com';
 const REQUIRED_SCOPES = [
   'read_products', 'write_products', 'read_inventory', 'write_inventory', 'write_publications',
   'read_customers', 'read_orders', 'read_fulfillments', 'write_fulfillments',
-  // Stage 5: the opening stock on a seller's new product needs the shop location.
-  'read_locations',
 ];
+/** Wanted, not required: without these one feature degrades and says so. */
+const OPTIONAL_SCOPES = {
+  // Stage 5: the opening stock on a seller's new product needs the shop location.
+  read_locations: "a seller's new product is created without its opening stock",
+};
 function hasScope(granted, scope) {
   return granted.includes(scope) || granted.includes(scope.replace(/^read_/, 'write_'));
 }
@@ -188,6 +191,11 @@ async function main() {
               'Shopify Dev Dashboard -> Apps -> the app -> Configuration -> Access scopes: add them, save/release, then reinstall the app on the dev store. Without them Shopify refuses every webhook topic and every product read.');
           } else {
             pass('shopify scopes', `all ${REQUIRED_SCOPES.length} required scopes granted`);
+          }
+          for (const [scope, effect] of Object.entries(OPTIONAL_SCOPES)) {
+            if (hasScope(granted, scope)) continue;
+            warn('shopify scopes', `optional scope ${scope} not granted: ${effect}`,
+              `Shopify Dev Dashboard -> Apps -> the app -> Configuration -> Access scopes: add ${scope}, save/release, then reinstall the app on the dev store.`);
           }
         } catch (error) {
           fail('shopify admin', error.message, 'see the message above; then re-run the doctor');
