@@ -1226,6 +1226,33 @@ class FixtureSellerRepository implements SellerRepository {
     );
   }
 
+  static const _categories = [
+    ProductCategory(
+      id: 'gid://shopify/TaxonomyCategory/aa-1-13',
+      name: 'Sweatshirts',
+      fullName: 'Apparel & Accessories > Clothing > Sweatshirts',
+    ),
+    ProductCategory(
+      id: 'gid://shopify/TaxonomyCategory/hb-1-2',
+      name: 'Lip Balms',
+      fullName: 'Health & Beauty > Personal Care > Cosmetics > Lip Balms',
+    ),
+    ProductCategory(
+      id: 'gid://shopify/TaxonomyCategory/ae-2-1',
+      name: 'Stickers',
+      fullName: 'Arts & Entertainment > Hobbies & Creative Arts > Stickers',
+    ),
+  ];
+
+  @override
+  Future<List<ProductCategory>> searchCategories(String query) async {
+    final q = query.trim().toLowerCase();
+    if (q.length < 2) return const [];
+    return _backend._delayed(
+      _categories.where((c) => c.fullName.toLowerCase().contains(q)).toList(),
+    );
+  }
+
   @override
   Future<void> deleteDraft(String id) async {
     _store.listings.value = _store.listings.value

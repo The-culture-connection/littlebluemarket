@@ -118,6 +118,11 @@ export function productSetInput(
       contentType: 'IMAGE',
     })),
     ...(collectionIds.length ? { collections: collectionIds } : {}),
+    // Shopify's standard product taxonomy ("Apparel & Accessories > Clothing >
+    // Shirts & Tops"). Picked from a search on the form; the id is a GID.
+    ...(typeof draft.categoryId === 'string' && draft.categoryId.startsWith('gid://shopify/TaxonomyCategory/')
+      ? { category: draft.categoryId }
+      : {}),
     metafields: [
       {
         namespace: 'lbm',
@@ -140,6 +145,31 @@ export async function findExistingProduct(
   );
   const first = data.products.nodes[0];
   return first ? first.id.split('/').pop() ?? null : null;
+}
+
+export interface CategoryHit {
+  id: string;
+  name: string;
+  fullName: string;
+  isLeaf: boolean;
+}
+
+/** Shopify's product taxonomy, searched by name. Any signed-in seller. */
+export async function searchCategories(
+  rawQuery: string,
+  graphql: GraphQL = adminGraphQL,
+): Promise<CategoryHit[]> {
+  const query = rawQuery.trim();
+  if (query.length < 2) return [];
+  const data = await graphql<{
+    taxonomy: { categories: { nodes: CategoryHit[] } };
+  }>(
+    `query Categories($q: String!) {
+      taxonomy { categories(first: 8, search: $q) { nodes { id name fullName isLeaf } } }
+    }`,
+    { q: query },
+  );
+  return data.taxonomy.categories.nodes;
 }
 
 /** The mirrored collections' Shopify ids for the handles a draft picked. */

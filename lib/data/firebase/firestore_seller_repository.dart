@@ -116,6 +116,27 @@ class FirestoreSellerRepository implements SellerRepository {
       }, operation: 'callable sellerPublishListing');
 
   @override
+  Future<List<ProductCategory>> searchCategories(String query) =>
+      guardFirestore(() async {
+        if (query.trim().length < 2) return const [];
+        final result = await _functions
+            .httpsCallable('sellerSearchCategories')
+            .call<Map<String, dynamic>>({'query': query.trim()});
+        final rows = result.data['categories'];
+        return [
+          if (rows is List)
+            for (final row in rows)
+              if (row is Map)
+                ProductCategory(
+                  id: FirestoreMappers.str(row['id']),
+                  name: FirestoreMappers.str(row['name']),
+                  fullName: FirestoreMappers.str(row['fullName']),
+                  isLeaf: FirestoreMappers.boolean(row['isLeaf'], true),
+                ),
+        ];
+      }, operation: 'callable sellerSearchCategories');
+
+  @override
   Future<void> deleteDraft(String id) => guardFirestore(
     () => _listings.doc(id).delete(),
     operation: 'firestore listings delete',

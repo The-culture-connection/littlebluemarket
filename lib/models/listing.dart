@@ -91,6 +91,23 @@ class Listing {
   );
 }
 
+/// One entry of Shopify's standard product taxonomy, e.g.
+/// "Apparel & Accessories > Clothing > Sweatshirts".
+@immutable
+class ProductCategory {
+  const ProductCategory({
+    required this.id,
+    required this.name,
+    required this.fullName,
+    this.isLeaf = true,
+  });
+
+  final String id;
+  final String name;
+  final String fullName;
+  final bool isLeaf;
+}
+
 /// What the Add product form hands to the repository. Single variant for
 /// now; variants arrive with the edit path.
 @immutable
@@ -106,6 +123,7 @@ class ListingDraft {
     this.imageUrls = const [],
     this.collectionHandles = const [],
     this.tags = const [],
+    this.category,
   });
 
   final String title;
@@ -118,6 +136,7 @@ class ListingDraft {
   final List<String> imageUrls;
   final List<String> collectionHandles;
   final List<String> tags;
+  final ProductCategory? category;
 
   /// The rules' and the function's field names, exactly.
   Map<String, Object?> toMap() => {
@@ -133,6 +152,8 @@ class ListingDraft {
     'imageUrls': imageUrls,
     'collectionHandles': collectionHandles,
     'tags': tags,
+    if (category != null) 'categoryId': category!.id,
+    if (category != null) 'categoryName': category!.fullName,
   };
 }
 

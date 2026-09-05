@@ -36,7 +36,7 @@ import { syncCollections } from './collections.ts';
 import { backfillCatalogPage } from './backfill.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
-import { publishListing } from './listings.ts';
+import { publishListing, searchCategories } from './listings.ts';
 import { verifyShopifyHmac, webhookHmacHeader, webhookTopic } from './webhooks.ts';
 import {
   authenticateShipTurtleWebhook,
@@ -206,6 +206,16 @@ export const adminSetSellerVendor = onCall(
     requireAdmin(request.auth?.token);
     const { uid, vendorName } = request.data ?? {};
     return reassignVendor(String(uid ?? ''), String(vendorName ?? ''), adminUid);
+  }),
+);
+
+/** Shopify's product taxonomy, for the Category field on the Add form. */
+export const sellerSearchCategories = onCall(
+  { secrets: [SHOPIFY_CLIENT_SECRET] },
+  withLoudErrors('sellerSearchCategories', async (request) => {
+    requireUid(request.auth);
+    const query = String((request.data ?? {}).query ?? '');
+    return { categories: await searchCategories(query) };
   }),
 );
 

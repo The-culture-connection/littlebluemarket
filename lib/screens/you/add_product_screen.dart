@@ -43,6 +43,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _tags = TextEditingController();
   final _photos = <_PickedPhoto>[];
   final _collections = <String>{};
+  final _categoryQuery = TextEditingController();
+  List<ProductCategory> _categoryHits = const [];
+  ProductCategory? _category;
+  int _categorySearch = 0;
 
   bool _busy = false;
   String _stage = '';
@@ -53,11 +57,50 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   String? _draftId;
 
   @override
+  void initState() {
+    super.initState();
+    _categoryQuery.addListener(_onCategoryTyped);
+  }
+
+  @override
   void dispose() {
+    _categoryQuery
+      ..removeListener(_onCategoryTyped)
+      ..dispose();
     for (final c in [_title, _description, _price, _quantity, _sku, _tags]) {
       c.dispose();
     }
     super.dispose();
+  }
+
+  /// Searches the store's taxonomy as the seller types. The last answer
+  /// wins, so a slow early reply cannot overwrite a fast later one.
+  Future<void> _onCategoryTyped() async {
+    final query = _categoryQuery.text.trim();
+    if (_category != null && query == _category!.fullName) return;
+    final ticket = ++_categorySearch;
+    if (query.length < 2) {
+      if (_categoryHits.isNotEmpty) setState(() => _categoryHits = const []);
+      return;
+    }
+    try {
+      final hits = await ref
+          .read(sellerRepositoryProvider)
+          .searchCategories(query);
+      if (!mounted || ticket != _categorySearch) return;
+      setState(() => _categoryHits = hits);
+    } on RepositoryException {
+      // A failed suggestion is not an error worth a card; the field still
+      // works without one.
+    }
+  }
+
+  void _pickCategory(ProductCategory category) {
+    setState(() {
+      _category = category;
+      _categoryHits = const [];
+      _categoryQuery.text = category.fullName;
+    });
   }
 
   Future<void> _pickPhotos() async {
@@ -138,6 +181,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         sku: _sku.text,
         imageUrls: urls,
         collectionHandles: _collections.toList()..sort(),
+        category: _category,
         tags: _tags.text
             .split(',')
             .map((t) => t.trim())
@@ -278,6 +322,70 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   hintText: 'gift, handmade',
                   readOnly: _busy,
                 ),
+              ],
+            ),
+          ),
+          const SectionHead('Category'),
+          LbmCard(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  "The store's product category, e.g. Sweatshirts or Lip "
+                  'Balms. Start typing and pick one.',
+                  style: LbmText.tiny.copyWith(color: c.ink2),
+                ),
+                const SizedBox(height: 10),
+                LbmField(
+                  label: 'Category (optional)',
+                  controller: _categoryQuery,
+                  hintText: 'sweatshirt',
+                  readOnly: _busy,
+                ),
+                if (_category != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: LbmChip(_category!.name, style: ChipStyle.on),
+                      ),
+                      const SizedBox(width: 8),
+                      PillButton(
+                        'Clear',
+                        small: true,
+                        expand: false,
+                        style: PillStyle.ghost,
+                        onPressed: _busy
+                            ? null
+                            : () => setState(() {
+                                _category = null;
+                                _categoryQuery.clear();
+                              }),
+                      ),
+                    ],
+                  ),
+                ],
+                if (_categoryHits.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  LbmCard(
+                    color: c.skyWash,
+                    child: RowStack(
+                      children: [
+                        for (final hit in _categoryHits)
+                          ListRow(
+                            title: Text(hit.name),
+                            subtitle: Text(
+                              hit.fullName,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () => _pickCategory(hit),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

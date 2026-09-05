@@ -246,6 +246,10 @@ abstract interface class SellerRepository {
   /// again after a failure: the backend adopts what it already made.
   Future<PublishResult> publishListing(String listingId);
 
+  /// Shopify's product taxonomy, by name. Empty for queries under two
+  /// characters.
+  Future<List<ProductCategory>> searchCategories(String query);
+
   Future<void> deleteDraft(String id);
 }
 

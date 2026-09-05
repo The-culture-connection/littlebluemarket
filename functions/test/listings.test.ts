@@ -5,6 +5,7 @@ import {
   draftTag,
   findExistingProduct,
   productSetInput,
+  searchCategories,
   validateDraft,
 } from '../src/listings.ts';
 
@@ -62,6 +63,20 @@ test('the productSet input is a DRAFT under the seller\'s vendor name, never the
   assert.deepEqual(variant.inventoryQuantities, [{ locationId: 'gid://shopify/Location/9', name: 'available', quantity: 12 }]);
   assert.deepEqual(variant.inventoryItem.measurement, { weight: { unit: 'GRAMS', value: 20 } });
   assert.equal(variant.inventoryItem.tracked, true);
+});
+
+test('a picked category goes to Shopify as its taxonomy id; anything else is ignored', async () => {
+  const withCategory = productSetInput('L1', { ...draft, categoryId: 'gid://shopify/TaxonomyCategory/aa-1-13' }, 'Gwynstone', null) as any;
+  assert.equal(withCategory.category, 'gid://shopify/TaxonomyCategory/aa-1-13');
+  const junk = productSetInput('L1', { ...draft, categoryId: 'Sweatshirts' }, 'Gwynstone', null) as any;
+  assert.equal('category' in junk, false);
+
+  // Short queries never hit the store; real ones pass through.
+  assert.deepEqual(await searchCategories('s', async () => { throw new Error('should not be called'); }), []);
+  const hits = await searchCategories('sweat', async <T>() => ({
+    taxonomy: { categories: { nodes: [{ id: 'gid://shopify/TaxonomyCategory/aa-1-13', name: 'Sweatshirts', fullName: 'Apparel & Accessories > Clothing > Sweatshirts', isLeaf: true }] } },
+  }) as T);
+  assert.equal(hits[0].name, 'Sweatshirts');
 });
 
 test('without a location the product is still created, just without opening stock', () => {

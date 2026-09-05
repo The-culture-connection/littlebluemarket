@@ -132,6 +132,13 @@ void main() {
       );
     });
 
+    test('category search is by name and ignores one-letter queries', () async {
+      expect(await repo.searchCategories('s'), isEmpty);
+      final hits = await repo.searchCategories('sweat');
+      expect(hits.single.name, 'Sweatshirts');
+      expect(hits.single.id, startsWith('gid://shopify/TaxonomyCategory/'));
+    });
+
     test('the draft map uses the backend\'s field names', () {
       final map = good.toMap();
       expect(map['title'], 'Cocoa Mint Lip Balm');
@@ -141,6 +148,21 @@ void main() {
       expect(map['productType'], 'physical');
       expect(map['collectionHandles'], ['bath-beauty-wellness']);
       expect(map.containsKey('sku'), isFalse);
+      expect(map.containsKey('categoryId'), isFalse);
+      final withCategory = ListingDraft(
+        title: 'Hat',
+        priceCents: 500,
+        category: const ProductCategory(
+          id: 'gid://shopify/TaxonomyCategory/aa-1-13',
+          name: 'Sweatshirts',
+          fullName: 'Apparel & Accessories > Clothing > Sweatshirts',
+        ),
+      ).toMap();
+      expect(
+        withCategory['categoryId'],
+        'gid://shopify/TaxonomyCategory/aa-1-13',
+      );
+      expect(withCategory['categoryName'], contains('Sweatshirts'));
       expect(map.containsKey('status'), isFalse);
       expect(map.containsKey('sellerUid'), isFalse);
     });
