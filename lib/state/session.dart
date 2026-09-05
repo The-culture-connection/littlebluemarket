@@ -46,11 +46,20 @@ final class OnboardingSession extends Session {
 
 @immutable
 final class MemberSession extends Session {
-  const MemberSession({required this.uid, required this.profile});
+  const MemberSession({
+    required this.uid,
+    required this.profile,
+    this.emailVerified = false,
+  });
 
   @override
   final String uid;
   final Person profile;
+
+  /// Whether the address has been confirmed. Until it has, linking a shop
+  /// customer or claiming a vendor is refused server-side, so the app says so
+  /// before the person hits that wall.
+  final bool emailVerified;
 
   /// Drives the seller half of Edit Profile, the storefront, and revenue.
   bool get isSeller => profile.isSeller;
@@ -72,12 +81,21 @@ class SessionNotifier extends StreamNotifier<Session> {
         if (person == null) {
           return OnboardingSession(uid: user.uid, email: user.email ?? '');
         }
-        return MemberSession(uid: user.uid, profile: person);
+        return MemberSession(
+          uid: user.uid,
+          profile: person,
+          emailVerified: user.emailVerified,
+        );
       });
     });
   }
 
   AuthService get _auth => ref.read(authServiceProvider);
+
+  /// Asks the provider whether anything changed about this account — the
+  /// email got verified, a claim was granted. The session updates itself
+  /// through the auth stream; the return value is for the screen that asked.
+  Future<AuthUser?> reloadUser() => _auth.reloadUser();
 
   Future<void> signUp({required String email, required String password}) =>
       _auth.signUpWithPassword(email: email, password: password);

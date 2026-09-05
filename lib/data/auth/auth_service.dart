@@ -18,6 +18,7 @@ class AuthUser {
     this.email,
     this.isAnonymous = false,
     this.emailVerified = false,
+    this.isSeller = false,
   });
 
   final String uid;
@@ -31,6 +32,10 @@ class AuthUser {
   /// record. Linking on an unverified address would let anyone claim a
   /// stranger's order history.
   final bool emailVerified;
+
+  /// The `seller` custom claim on the token — the thing rules and callables
+  /// actually check. Read from the token, never from a document.
+  final bool isSeller;
 }
 
 /// Identity. The one thing the app cannot be lazy about.
@@ -66,6 +71,14 @@ abstract interface class AuthService {
 
   /// Re-sends the verification mail to the signed-in account.
   Future<void> sendEmailVerification();
+
+  /// Re-reads the account from the provider and refreshes its token.
+  ///
+  /// Nothing pushes "the email is now verified" or "a claim was granted" to
+  /// the phone: the token it holds says what it said when it was minted, for
+  /// up to an hour. This is how the app asks. Returns the fresh user, or null
+  /// when nobody is signed in.
+  Future<AuthUser?> reloadUser();
 
   /// Sends a reset link. Deliberately silent about whether the address is
   /// known: saying so turns this screen into a way to enumerate accounts.
@@ -193,6 +206,11 @@ class FixtureAuthService implements AuthService {
 
   @override
   Future<void> sendEmailVerification() async {}
+
+  /// Fixture accounts are always verified, so this is a read of what is
+  /// already there — the same thing the real service does on a quiet day.
+  @override
+  Future<AuthUser?> reloadUser() async => _user;
 
   @override
   Future<void> sendPasswordReset(String email) async => _checkEmail(email);

@@ -18,8 +18,10 @@ Future<Session> _settle(
     if (session != null && test(session)) return session;
     await Future<void>.delayed(Duration.zero);
   }
-  fail('session never satisfied the condition: '
-      '${container.read(sessionProvider)}');
+  fail(
+    'session never satisfied the condition: '
+    '${container.read(sessionProvider)}',
+  );
 }
 
 ProviderContainer _container() {
@@ -121,6 +123,33 @@ void main() {
 
     expect(container.read(isSellerProvider), isFalse);
     expect(container.read(isGuestProvider), isFalse);
+  });
+
+  test(
+    'reloading the account keeps a member signed in and reports them',
+    () async {
+      // On the live backend this re-reads emailVerified and the seller claim;
+      // on fixtures it is a read of what is there. Either way the session must
+      // not blink.
+      final container = _container();
+      container.read(sessionProvider.notifier).signIn();
+      await _settle(container, (s) => s is MemberSession);
+
+      final user = await container.read(sessionProvider.notifier).reloadUser();
+      expect(user, isNotNull);
+      expect(user!.emailVerified, isTrue);
+      expect(container.read(sessionProvider).value, isA<MemberSession>());
+      expect(
+        (container.read(sessionProvider).value! as MemberSession).emailVerified,
+        isTrue,
+      );
+    },
+  );
+
+  test('reloading while signed out is a no-op', () async {
+    final container = _container();
+    await _settle(container, (s) => s is GuestSession);
+    expect(await container.read(sessionProvider.notifier).reloadUser(), isNull);
   });
 
   test('the theme override is not part of the session', () {

@@ -209,7 +209,9 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
         // The account exists and is signed in; the address is not yet proven.
         // That only blocks linking a shop record, so it is a notice rather
         // than a gate.
-        context.push('/verify?email=${Uri.encodeComponent(_email.text)}&create=1');
+        context.push(
+          '/verify?email=${Uri.encodeComponent(_email.text)}&create=1',
+        );
       } else {
         await session.signInWithPassword(
           email: _email.text,
@@ -284,7 +286,9 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
-              color: LbmConst.onWelcome.withValues(alpha: _error != null ? 1 : 0.8),
+              color: LbmConst.onWelcome.withValues(
+                alpha: _error != null ? 1 : 0.8,
+              ),
             ),
           ),
         ],
@@ -375,13 +379,55 @@ class VerifyScreen extends ConsumerStatefulWidget {
 
 class _VerifyScreenState extends ConsumerState<VerifyScreen> {
   Timer? _resendTimer;
+  Timer? _pollTimer;
   int _resendIn = 30;
   String? _error;
+  String? _notice;
+  bool _verified = false;
+  bool _checking = false;
+
+  /// How often the screen quietly asks whether the link has been clicked, so
+  /// someone who confirms on the same phone sees it flip on its own.
+  static const _pollEvery = Duration(seconds: 5);
 
   @override
   void initState() {
     super.initState();
     _startResendCountdown();
+    _pollTimer = Timer.periodic(_pollEvery, (_) => _check(quiet: true));
+  }
+
+  /// Re-reads the account. Nothing pushes "verified" to the phone; the
+  /// token it holds says what it said when it was minted, so the app has
+  /// to ask. [quiet] is the timer: it reports success and stays silent
+  /// about anything else.
+  Future<void> _check({bool quiet = false}) async {
+    if (_checking || _verified) return;
+    _checking = true;
+    try {
+      final user = await ref.read(sessionProvider.notifier).reloadUser();
+      if (!mounted) return;
+      if (user?.emailVerified == true) {
+        _pollTimer?.cancel();
+        setState(() {
+          _verified = true;
+          _error = null;
+          _notice = 'Confirmed. Thank you.';
+        });
+      } else if (!quiet) {
+        setState(() {
+          _notice = null;
+          _error =
+              'Not confirmed yet. Open the link in the email '
+              '(check Spam), then tap again.';
+        });
+      }
+    } on RepositoryException catch (error) {
+      if (!mounted || quiet) return;
+      setState(() => _error = describeError(error).body);
+    } finally {
+      _checking = false;
+    }
   }
 
   void _startResendCountdown() {
@@ -397,6 +443,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
   @override
   void dispose() {
     _resendTimer?.cancel();
+    _pollTimer?.cancel();
     super.dispose();
   }
 
@@ -404,7 +451,10 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
     try {
       await ref.read(sessionProvider.notifier).sendEmailVerification();
       if (!mounted) return;
-      setState(() => _error = null);
+      setState(() {
+        _error = null;
+        _notice = 'Sent again. Give it a minute.';
+      });
       _startResendCountdown();
     } on RepositoryException catch (error) {
       if (!mounted) return;
@@ -428,14 +478,16 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
           'We sent a link to ${widget.email}. Open it when you get a moment — '
           "you'll need it before your shop orders can be linked to this profile.",
       fields: [
-        if (_error != null) ...[
+        if (_error != null || _notice != null) ...[
           Text(
-            _error!,
+            _error ?? _notice!,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
-              color: LbmConst.onWelcome,
+              color: LbmConst.onWelcome.withValues(
+                alpha: _error != null ? 1 : 0.85,
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -454,7 +506,18 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
         ),
       ],
       actions: [
-        _SlateButton(label: 'Continue', onPressed: _continue),
+        // Two buttons on purpose. Confirming is what unlocks linking a shop
+        // account later; continuing is always allowed, because slow mail
+        // must not strand anyone at the door.
+        if (_verified)
+          _SlateButton(label: 'Continue', onPressed: _continue)
+        else ...[
+          _SlateButton(
+            label: _checking ? 'Checking…' : "I've confirmed it",
+            onPressed: _checking ? null : () => _check(),
+          ),
+          _QuietAction('Continue for now', onPressed: _continue),
+        ],
       ],
     );
   }
@@ -495,12 +558,14 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     try {
       // The handle and bio are written, not discarded. The prototype collected
       // both and threw them away.
-      await ref.read(sessionProvider.notifier).createProfile(
-        ProfileEdit(
-          handle: _handle.text.trim().isEmpty ? null : _handle.text.trim(),
-          bio: _bio.text.trim().isEmpty ? null : _bio.text.trim(),
-        ),
-      );
+      await ref
+          .read(sessionProvider.notifier)
+          .createProfile(
+            ProfileEdit(
+              handle: _handle.text.trim().isEmpty ? null : _handle.text.trim(),
+              bio: _bio.text.trim().isEmpty ? null : _bio.text.trim(),
+            ),
+          );
       if (!mounted) return;
       context.go('/market');
     } on RepositoryException catch (error) {

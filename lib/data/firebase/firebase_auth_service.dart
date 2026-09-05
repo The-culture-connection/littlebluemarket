@@ -25,22 +25,66 @@ class FirebaseAuthService implements AuthService {
 
   final fb.FirebaseAuth _auth;
 
-  AuthUser? _wrap(fb.User? user) {
+  AuthUser? _wrap(fb.User? user, {bool isSeller = false}) {
     if (user == null) return null;
     return AuthUser(
       uid: user.uid,
       email: user.email,
       isAnonymous: user.isAnonymous,
       emailVerified: user.emailVerified,
+      isSeller: isSeller,
     );
+  }
+
+  /// The user plus the `seller` claim from the token the phone is holding.
+  /// The cached token is read (no network), so this is cheap.
+  Future<AuthUser?> _wrapWithClaims(fb.User? user) async {
+    if (user == null) return null;
+    var isSeller = false;
+    try {
+      final token = await user.getIdTokenResult();
+      isSeller = token.claims?['seller'] == true;
+    } catch (_) {
+      // Offline, or a token that could not be read: not a seller for now.
+    }
+    return _wrap(user, isSeller: isSeller);
   }
 
   @override
   AuthUser? get currentUser => _wrap(_auth.currentUser);
 
+  /// Token-driven, not sign-in-driven.
+  ///
+  /// `authStateChanges` only fires when the *user* changes. A verified email
+  /// or a granted `seller` claim changes the token, not the user, so nothing
+  /// downstream would ever hear about it. `idTokenChanges` fires for both,
+  /// and for the forced refresh [reloadUser] makes. The `distinct` keeps the
+  /// hourly silent refresh from re-emitting an identical user.
   @override
   Stream<AuthUser?> authStateChanges() =>
-      _auth.authStateChanges().map(_wrap);
+      _auth.idTokenChanges().asyncMap(_wrapWithClaims).distinct(_sameUser);
+
+  static bool _sameUser(AuthUser? a, AuthUser? b) =>
+      a?.uid == b?.uid &&
+      a?.emailVerified == b?.emailVerified &&
+      a?.isSeller == b?.isSeller &&
+      a?.isAnonymous == b?.isAnonymous;
+
+  @override
+  Future<AuthUser?> reloadUser() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+    try {
+      // `reload` re-reads the account (emailVerified lives there); the forced
+      // token refresh picks up any claim granted since the last mint. Both
+      // fan out through idTokenChanges, so the session updates itself.
+      await user.reload();
+      await user.getIdToken(true);
+      return _wrapWithClaims(_auth.currentUser);
+    } on fb.FirebaseAuthException catch (error) {
+      throw _translate(error);
+    }
+  }
 
   @override
   Future<AuthUser> signUpWithPassword({
@@ -123,6 +167,7 @@ class FirebaseAuthService implements AuthService {
       throw _translate(error);
     }
   }
+
   @override
   Future<void> continueAsGuest() async {
     // A guest still gets a uid, so security rules can require one and a cart

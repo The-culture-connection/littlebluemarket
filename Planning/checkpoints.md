@@ -84,7 +84,7 @@ Each checkpoint: **Goal** · **Claude builds** · **Grace does** · **Pass looks
 
 Test identities (write them in a note outside the repo): `grace-s+buyer1@the-culture-connection.com`, `grace-s+customer1@…`, `grace-s+seller1@…`. Verification mail comes from `noreply@little-blue-610e5.firebaseapp.com` and often lands in Spam.
 
-### Stage 0 — Unblock the repo (one session, no features)
+### Stage 0 — Unblock the repo (one session, no features) — ✅ passed by Grace 2026-09-05
 
 **Goal:** analyze, tests, doctor, and the deployed backend all agree, and the live app shows real dev-store products.
 
@@ -130,7 +130,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 **Pass looks like:** doctor all PASS/WARN/MANUAL; the corner badge (Stage 1, if landed) or the debug banner says live; the product appears with its real photo and price; Firebase console → Firestore shows `catalog` documents.
 **If it fails:** paste the doctor output. No search results → paste the `touch-products` output (M must be ≥ N).
 
-### Stage 1 — Make failures loud (before any feature work)
+### Stage 1 — Make failures loud (before any feature work) — ✅ passed by Grace 2026-09-05 (backend health all green)
 
 **Goal:** when anything breaks on the phone, you see *what*, *where*, and *what to paste*.
 
@@ -168,7 +168,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 ### Stage 2 — Accounts and roles, verified by you (the missing wiring + Phase 3)
 
-- [ ] **CP-A1 Sign up as a buyer and become verified without a restart.**
+- [ ] **CP-A1 Sign up as a buyer and become verified without a restart.** *(built 2026-09-05; waiting for Grace's pass)*
   **Claude builds:** `AuthService.reloadUser()` (`user.reload()` then `getIdToken(true)`), `AuthUser.isSeller` from `getIdTokenResult().claims['seller']`; `FirebaseAuthService.authStateChanges()` becomes `idTokenChanges()` mapped with claims and `.distinct()` on `(uid, emailVerified, isSeller)` so hourly refreshes do not re-emit; `VerifyScreen` gains "I've confirmed it" (reload; "Confirmed." or "Not confirmed yet. Open the link in the email (check Spam), then tap again.") plus a 5-second poll while the screen is open; `MemberSession.emailVerified`, and an Edit Profile row "Confirm your email" until it is true.
   **Grace does:** `run-live.ps1` → Create a Profile → `+buyer1` → open the mail, click the link → back in the app tap "I've confirmed it" (or wait 5 s) → Continue → handle → Create a profile.
   **Pass:** Market with a You tab; Diagnostics shows `emailVerified: true`, `seller: false`; the account has a green tick in the Firebase console.

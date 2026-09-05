@@ -63,14 +63,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     try {
       // Actually persisted. The prototype's Save just popped.
-      await ref.read(profileRepositoryProvider).updateProfile(
-        ProfileEdit(
-          name: _name.text.trim(),
-          handle: _handle.text.trim(),
-          bio: _bio.text.trim(),
-          tags: _tags,
-        ),
-      );
+      await ref
+          .read(profileRepositoryProvider)
+          .updateProfile(
+            ProfileEdit(
+              name: _name.text.trim(),
+              handle: _handle.text.trim(),
+              bio: _bio.text.trim(),
+              tags: _tags,
+            ),
+          );
       if (!mounted) return;
       context.canPop() ? context.pop() : context.go('/you');
     } on RepositoryException catch (error) {
@@ -97,6 +99,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Widget build(BuildContext context) {
     final c = context.c;
     final me = ref.watch(meProvider);
+    final session = ref.watch(sessionProvider).value;
+    final unverified = session is MemberSession && !session.emailVerified;
 
     if (me == null) {
       return const LbmScreen(
@@ -121,6 +125,30 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(14, 4, 14, 26),
         children: [
+          // Said here, before the wall: linking a shop account and claiming
+          // a vendor both refuse an unconfirmed address.
+          if (unverified) ...[
+            LbmCard(
+              child: ListRow(
+                leading: Icon(Icons.mark_email_unread_outlined, color: c.clay),
+                title: const Text('Confirm your email'),
+                subtitle: const Text(
+                  'Needed before your shop orders can link to this profile',
+                ),
+                trailing: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 22,
+                  color: c.ink3,
+                ),
+                onTap: () {
+                  final email =
+                      ref.read(authServiceProvider).currentUser?.email ?? '';
+                  context.push('/verify?email=${Uri.encodeComponent(email)}');
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           Center(
             child: Column(
               children: [
@@ -169,9 +197,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   tag,
                   style: ChipStyle.initiative,
                   trailingIcon: Icons.close_rounded,
-                  onTap: () => setState(
-                    () => _tags = [...?_tags]..remove(tag),
-                  ),
+                  onTap: () => setState(() => _tags = [...?_tags]..remove(tag)),
                 ),
             ],
           ),

@@ -76,6 +76,21 @@ void main() {
     });
   }
 
+  testWidgets('the confirm screen offers a check and a way past it', (
+    tester,
+  ) async {
+    await _pumpAt(tester, '/verify?email=someone%40example.com&create=1');
+    // Nobody is signed in here, so the check cannot succeed; the button and
+    // the escape hatch must both exist regardless.
+    expect(find.text("I've confirmed it"), findsOneWidget);
+    expect(find.text('Continue for now'), findsOneWidget);
+
+    await tester.tap(find.text("I've confirmed it"));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Not confirmed yet'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('the password field is obscured on both auth screens', (
     tester,
   ) async {
