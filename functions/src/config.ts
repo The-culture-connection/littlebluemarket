@@ -54,6 +54,20 @@ export const SHIPTURTLE_WEBHOOK_SECRET = defineSecret(
   'SHIPTURTLE_WEBHOOK_SECRET',
 );
 
+/**
+ * littlebluecart.com (WordPress + WooCommerce), Stage 10. All three are made
+ * on the *staging* site for the dev project and again on the live site at
+ * cutover. Declared above [ALL_SECRETS] for the same reason as the one above.
+ *
+ * A WordPress Application Password for an administrator: looking a member up
+ * by email (`/wp/v2/users?search=…&context=edit`) needs `list_users`.
+ */
+export const WP_APP_PASSWORD = defineSecret('WP_APP_PASSWORD');
+
+/** A WooCommerce REST key pair with Read permission: a customer's orders. */
+export const WC_CONSUMER_KEY = defineSecret('WC_CONSUMER_KEY');
+export const WC_CONSUMER_SECRET = defineSecret('WC_CONSUMER_SECRET');
+
 // ------------------------------------------------------------------- config
 
 export const SHOPIFY_STORE_DOMAIN = defineString('SHOPIFY_STORE_DOMAIN');
@@ -131,4 +145,10 @@ export const ALL_SECRETS = [
   SHOPIFY_WEBHOOK_SECRET,
   SHIPTURTLE_API_KEY,
   SHIPTURTLE_WEBHOOK_SECRET,
+  WP_APP_PASSWORD,
+  WC_CONSUMER_KEY,
+  WC_CONSUMER_SECRET,
 ];
+
+/** The three the directory functions need; nothing else. */
+export const WP_SECRETS = [WP_APP_PASSWORD, WC_CONSUMER_KEY, WC_CONSUMER_SECRET];

@@ -29,7 +29,8 @@
     "inspect:product": "node scripts/inspect-product.mjs --project dev",
     "move-stock": "node scripts/move-stock.mjs --project dev",
     "peek": "node scripts/peek.mjs --project dev",
-    "replay-order": "node scripts/replay-order.mjs --project dev"
+    "replay-order": "node scripts/replay-order.mjs --project dev",
+    "wp:probe": "node scripts/wp-probe.mjs --project dev"
   },
   "dependencies": {
     "firebase-admin": "^13.0.2",

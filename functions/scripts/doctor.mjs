@@ -44,19 +44,39 @@ const PRODUCTION_DOMAIN = 'little-blue-cart-dev.myshopify.com';
 /** The live WordPress directory. Dev must talk to its Cloudways staging copy, never to this. */
 const PRODUCTION_WP_HOST = 'littlebluecart.com';
 
-/** A public WordPress REST call; no credential, so nothing to leak. */
-async function wpJson(url) {
-  const res = await fetch(url, { headers: { accept: 'application/json' }, redirect: 'follow' });
+/**
+ * One WordPress REST call. `authorization` is a Basic header built in memory
+ * from a value read out of Secret Manager; it never reaches a message or the
+ * console. Returns the JSON and the `X-WP-Total` header.
+ */
+async function wpFetchJson(url, authorization) {
+  const headers = { accept: 'application/json' };
+  if (authorization) headers.authorization = authorization;
+  const res = await fetch(url, { headers, redirect: 'follow' });
   const text = await res.text();
   if (!res.ok) {
-    const hint = text.trimStart().startsWith('<') ? '(an HTML page: a password box or a firewall)' : text.slice(0, 120);
+    let hint = text.slice(0, 120);
+    if (text.trimStart().startsWith('<')) hint = '(an HTML page: a password box or a firewall)';
+    else {
+      try {
+        const j = JSON.parse(text);
+        if (j && (j.code || j.message)) hint = `${j.code ?? ''} ${j.message ?? ''}`.trim();
+      } catch { /* not JSON */ }
+    }
     throw new Error(`HTTP ${res.status} ${hint}`);
   }
   try {
-    return JSON.parse(text);
+    const total = Number.parseInt(res.headers.get('x-wp-total') ?? '', 10);
+    return { json: JSON.parse(text), total: Number.isFinite(total) ? total : null };
   } catch {
     throw new Error(`HTTP ${res.status} but the body is not JSON (${text.slice(0, 80)})`);
   }
+}
+async function wpJson(url) {
+  return (await wpFetchJson(url)).json;
+}
+function basicAuth(user, secret) {
+  return `Basic ${Buffer.from(`${user}:${secret}`, 'utf8').toString('base64')}`;
 }
 /** What the backend needs; Shopify's write_x implies read_x. */
 const REQUIRED_SCOPES = [
@@ -177,6 +197,7 @@ async function main() {
   // 4b. wordpress: the directory's staging copy ---------------------------------
   const wpBase = String(params.WP_BASE_URL ?? '').trim().replace(/\/+$/, '');
   let wpHost = '';
+  let wpPublicOk = false;
   try {
     wpHost = wpBase ? new URL(wpBase).host : '';
   } catch {
@@ -197,7 +218,10 @@ async function main() {
       const one = Array.isArray(listings) && listings.length === 1;
       if (missingNs.length) fail('wordpress', `${wpHost} answers but has no ${missingNs.join(', ')} (WooCommerce off, or the REST API is filtered)`, 'on the staging site: Plugins -> WooCommerce active; a security plugin may be hiding the REST API');
       else if (!one) fail('wordpress', `${wpHost} answers but /wp/v2/vendors_dir_ltg returned no listing (Directories Pro off, or the listing type is not in the REST API)`, 'on the staging site: Plugins -> Directories Pro active, then re-run');
-      else pass('wordpress', `staging reachable · ${index.name ?? wpHost} · listings public`);
+      else {
+        pass('wordpress', `staging reachable · ${index.name ?? wpHost} · listings public`);
+        wpPublicOk = true;
+      }
     } catch (error) {
       const m = String(error.message);
       fail('wordpress', `${wpHost}: ${m.slice(0, 160)}`, /401|403|password/i.test(m)
@@ -220,6 +244,47 @@ async function main() {
     const absent = secretNames.filter((n) => !secretExists(n, projectId));
     if (absent.length) fail('secrets', `missing in Secret Manager: ${absent.join(', ')}`, absent.map((n) => `firebase functions:secrets:set ${n} --project ${alias}`).join('  |  '));
     else pass('secrets', `all ${secretNames.length} exist (${secretNames.join(', ')})`);
+
+    // 5b. wordpress credentials + woocommerce (Stage 10) ---------------------
+    if (!wpPublicOk) {
+      skip('wp credentials', 'needs the wordpress line above to pass');
+      skip('woocommerce', 'needs the wordpress line above to pass');
+    } else {
+      const appUser = String(params.WP_APP_USER ?? '').trim();
+      const appPassword = absent.includes('WP_APP_PASSWORD') ? '' : (process.env.WP_APP_PASSWORD || secretValue('WP_APP_PASSWORD', projectId));
+      if (!appUser) {
+        warn('wp credentials', `WP_APP_USER empty in ${envRel}: linking directory accounts is off`, 'CP-D1: put your WordPress administrator login in WP_APP_USER (the user the Application Password belongs to)');
+      } else if (!appPassword) {
+        skip('wp credentials', 'WP_APP_PASSWORD is not in Secret Manager yet (see the secrets line)');
+      } else {
+        try {
+          const { json: me } = await wpFetchJson(`${wpBase}/wp-json/wp/v2/users/me?context=edit`, basicAuth(appUser, appPassword));
+          const roles = Array.isArray(me.roles) ? me.roles : [];
+          if (!roles.includes('administrator')) fail('wp credentials', `app password works but "${me.slug}" has roles [${roles.join(', ')}]`, 'looking members up by email needs an administrator: make the Application Password under your administrator user and set WP_APP_USER to that login');
+          else pass('wp credentials', `app password works · user ${me.slug} · administrator`);
+        } catch (error) {
+          const m = String(error.message);
+          fail('wp credentials', `${wpHost}: ${m.slice(0, 160)}`, /401/.test(m)
+            ? `wrong Application Password or wrong WP_APP_USER, or Application Passwords is switched off by a security plugin: staging wp-admin -> Users -> ${appUser} -> Profile -> Application Passwords -> Add New, then npm run secrets:dev -- WP_APP_PASSWORD`
+            : /403/.test(m) ? 'a firewall or security plugin strips the Authorization header on staging; allow /wp-json/ for it' : 'paste this line to Claude');
+        }
+      }
+      const wcKey = absent.includes('WC_CONSUMER_KEY') ? '' : (process.env.WC_CONSUMER_KEY || secretValue('WC_CONSUMER_KEY', projectId));
+      const wcSecret = absent.includes('WC_CONSUMER_SECRET') ? '' : (process.env.WC_CONSUMER_SECRET || secretValue('WC_CONSUMER_SECRET', projectId));
+      if (!wcKey || !wcSecret) {
+        skip('woocommerce', 'WC_CONSUMER_KEY / WC_CONSUMER_SECRET not in Secret Manager yet (see the secrets line)');
+      } else {
+        try {
+          const { total } = await wpFetchJson(`${wpBase}/wp-json/wc/v3/orders?per_page=1`, basicAuth(wcKey, wcSecret));
+          pass('woocommerce', `key works · ${total ?? '?'} orders`);
+        } catch (error) {
+          const m = String(error.message);
+          fail('woocommerce', `${wpHost}: ${m.slice(0, 160)}`, /401|woocommerce_rest_cannot_view/.test(m)
+            ? 'the key is not Read, or key and secret come from different pairs: staging WooCommerce -> Settings -> Advanced -> REST API -> Add key (Read), then npm run secrets:dev -- WC_CONSUMER_KEY and npm run secrets:dev -- WC_CONSUMER_SECRET'
+            : 'paste this line to Claude');
+        }
+      }
+    }
 
     // 6/7. shopify reachable -----------------------------------------------
     let ctx = null;

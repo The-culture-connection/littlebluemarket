@@ -12,6 +12,18 @@ import {
 import { adminGraphQL } from './shopify/token.ts';
 import { probeShipturtle } from './shipturtle_api.ts';
 import { storefrontGraphQL } from './shopify/storefront.ts';
+import {
+  credentialsFromParams,
+  isLiveWpHost,
+  wcGet,
+  wpConfigured,
+  wpFetch,
+  wpGet,
+  wpHost,
+} from './wordpress.ts';
+
+/** The dev project; the one that must never talk to the live directory. */
+const DEV_PROJECT = 'little-blue-610e5';
 
 /**
  * The backend health check.
@@ -268,6 +280,42 @@ export function defaultProbes(): Probe[] {
         const real = content.includes('money is never client-writable');
         if (!real) throw new Error(`deployed rules are not the repo rules (sha ${sha.slice(0, 12)})`);
         return { summary: `deployed rules sha ${sha.slice(0, 12)} (the repo's file)`, data: { sha } };
+      },
+    },
+    {
+      name: 'wordpress',
+      fix: 'Stage 10: WP_BASE_URL = the Cloudways staging URL in functions/.env.<project-id>; WP_APP_USER = the administrator login; firebase functions:secrets:set WP_APP_PASSWORD --project dev (an Application Password of that administrator); redeploy',
+      run: async () => {
+        if (!wpConfigured()) throw new Error('WP_BASE_URL is empty (directory features are off)');
+        const host = wpHost();
+        if (projectId() === DEV_PROJECT && isLiveWpHost(host)) {
+          throw new Error(`WP_BASE_URL is the LIVE site (${host}) on the dev project`);
+        }
+        const pub = await wpFetch<unknown[]>('wp/v2/vendors_dir_ltg', { auth: 'none', query: { per_page: 1 } });
+        const listings = pub.total ?? (Array.isArray(pub.data) ? pub.data.length : 0);
+        const creds = credentialsFromParams();
+        if (!creds.appUser) throw new Error(`${host} reachable · ${listings} listings public · WP_APP_USER is empty`);
+        if (!creds.appPassword) throw new Error(`${host} reachable · ${listings} listings public · WP_APP_PASSWORD is empty`);
+        const me = await wpGet<{ slug?: string; roles?: string[] }>('wp/v2/users/me', { context: 'edit' });
+        const roles = me.roles ?? [];
+        if (!roles.includes('administrator')) {
+          throw new Error(`app password works but "${me.slug}" has roles [${roles.join(', ')}]; looking members up by email needs an administrator`);
+        }
+        return {
+          summary: `app password works · user ${me.slug} · administrator · ${listings} listings public · ${host}`,
+          data: { host, listings, user: me.slug },
+        };
+      },
+    },
+    {
+      name: 'woocommerce',
+      fix: 'On the staging site: WooCommerce -> Settings -> Advanced -> REST API -> Add key (Read); then firebase functions:secrets:set WC_CONSUMER_KEY --project dev and firebase functions:secrets:set WC_CONSUMER_SECRET --project dev; redeploy',
+      run: async () => {
+        if (!wpConfigured()) throw new Error('WP_BASE_URL is empty (directory features are off)');
+        const creds = credentialsFromParams();
+        if (!creds.wcKey || !creds.wcSecret) throw new Error('WC_CONSUMER_KEY / WC_CONSUMER_SECRET is empty (website orders are off)');
+        const page = await wcGet<unknown[]>('orders', { per_page: 1 });
+        return { summary: `key works · ${page.total ?? '?'} orders`, data: { orders: page.total } };
       },
     },
     {
