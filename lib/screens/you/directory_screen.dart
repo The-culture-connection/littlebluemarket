@@ -81,6 +81,36 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
     }
   }
 
+  /// "Use my directory listing": the profile takes the listing's name,
+  /// handle, bio, hashtags and City, State. On demand only after the first
+  /// link, so later edits are never replaced silently.
+  Future<void> _applyProfile() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _result = null;
+    });
+    try {
+      final applied = await ref
+          .read(directoryRepositoryProvider)
+          .applyListingProfile();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Your profile now reads as ${applied.name} (${applied.handle}).',
+          ),
+        ),
+      );
+    } on RepositoryException catch (error) {
+      if (!mounted) return;
+      setState(() => _error = describeError(error).body);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _open(String url) async {
     final messenger = ScaffoldMessenger.of(context);
     final uri = Uri.tryParse(url);
@@ -136,6 +166,9 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
               error: _error,
               result: _result,
               onLink: _link,
+              onApplyProfile: (current?.listingCount ?? 0) > 0
+                  ? _applyProfile
+                  : null,
             ),
           ),
           if (linked) ...[
@@ -280,6 +313,7 @@ class _StatusCard extends StatelessWidget {
     required this.error,
     required this.result,
     required this.onLink,
+    this.onApplyProfile,
   });
 
   final DirectoryLink? link;
@@ -288,6 +322,9 @@ class _StatusCard extends StatelessWidget {
   final String? error;
   final DirectoryLinkResult? result;
   final VoidCallback onLink;
+
+  /// Present once a listing is linked: fills the profile from it.
+  final VoidCallback? onApplyProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -327,6 +364,20 @@ class _StatusCard extends StatelessWidget {
             style: linked ? PillStyle.quiet : PillStyle.solid,
             onPressed: !verified || busy ? null : onLink,
           ),
+          if (onApplyProfile != null) ...[
+            const SizedBox(height: 8),
+            PillButton(
+              'Use my directory listing',
+              style: PillStyle.quiet,
+              onPressed: busy ? null : onApplyProfile,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Sets your name, handle, bio, hashtags and city from the '
+              'listing. It ran once when you linked; tap to run it again.',
+              style: LbmText.xtiny.copyWith(color: c.ink3, height: 1.4),
+            ),
+          ],
           if (!verified) ...[
             const SizedBox(height: 8),
             Text(

@@ -1704,6 +1704,41 @@ class FixtureDirectoryRepository implements DirectoryRepository {
   }
 
   @override
+  Future<({String name, String handle})> applyListingProfile() async {
+    await _backend._settle();
+    final mine = _mine();
+    if (!(_link?.linked ?? false) || mine.isEmpty) {
+      throw const ValidationException(
+        'No directory listing is linked to this account yet. Link it first, '
+        'then try again.',
+      );
+    }
+    final listing = mine.firstWhere((l) => l.isPublished, orElse: () => mine.first);
+    final handle =
+        '@${listing.title.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '')}';
+    final people = {..._backend.store.people.value};
+    final me = people[_backend.uid];
+    if (me != null) {
+      people[_backend.uid] = me.copyWith(
+        name: listing.title,
+        handle: handle,
+        bio: [listing.description, listing.website]
+            .where((s) => s.isNotEmpty)
+            .join('\n'),
+        tags: [
+          for (final t in [...listing.categories, ...listing.tags])
+            '#${t.replaceAll(RegExp('[^A-Za-z0-9]'), '')}',
+        ],
+        cityState: listing.state.isEmpty
+            ? ''
+            : '${listing.city.isEmpty ? '' : '${listing.city}, '}${listing.state}',
+      );
+      _backend.store.people.value = people;
+    }
+    return (name: listing.title, handle: handle);
+  }
+
+  @override
   Future<DirectoryLinkResult> link({bool auto = false}) async {
     await _backend._settle();
     if (_link?.linked ?? false) {

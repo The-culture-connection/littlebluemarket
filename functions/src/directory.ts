@@ -86,6 +86,8 @@ export interface DirectoryDoc {
   linkedAt?: Timestamp;
   checkedAt?: Timestamp;
   refreshedAt?: Timestamp;
+  /** Set once the listing has filled the profile (Stage 13). */
+  profileAppliedAt?: Timestamp;
 }
 
 function millis(stamp: Timestamp | undefined): number {
@@ -526,6 +528,129 @@ export async function syncAllDirectoryListings(lookups: Lookups = defaultLookups
   return owners;
 }
 
+// ------------------------------------------------------- profile from listing
+
+/** What the listing says the profile should be. */
+export interface ListingProfile {
+  name: string;
+  /** The handle before uniqueness: letters and digits, at most 24. */
+  handleBase: string;
+  bio: string;
+  tags: string[];
+  /** "City, ST", a state name, or '' for an online-only business. */
+  cityState: string;
+}
+
+/** `Home/Living` → `#HomeLiving`, `Woman-Owned` → `#WomanOwned`. Pure. */
+export function hashtagFor(term: string): string {
+  const words = term.split(/[^A-Za-z0-9]+/).filter(Boolean);
+  if (!words.length) return '';
+  return `#${words.map((w) => w[0]!.toUpperCase() + w.slice(1)).join('')}`;
+}
+
+/** `Field Trips Travel & Vacations` → `fieldtripstravelvacations`. Pure. */
+export function handleBaseFor(title: string): string {
+  const base = title.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 24);
+  return base || 'business';
+}
+
+/**
+ * The profile a mirrored listing implies, per Grace's mapping (2026-09-08):
+ * title → name and handle; category and tags → hashtags; location → City,
+ * State; description, website and owner → bio. Pure, over the mirror
+ * document so the names are already resolved.
+ */
+export function profileFromMirror(
+  doc: Record<string, unknown>,
+  ownerName: string,
+): ListingProfile {
+  const str = (v: unknown) => (v === null || v === undefined ? '' : String(v).trim());
+  const list = (v: unknown) => (Array.isArray(v) ? v.map(String) : []);
+  const title = str(doc.title);
+  const city = str(doc.city);
+  const state = str(doc.state);
+  const locations = list(doc.locations);
+  const locationLabel = str(doc.locationLabel);
+  let cityState = '';
+  if (city && state) cityState = `${city}, ${state}`;
+  else if (city) cityState = city;
+  else if (locations[0] && !/online|virtual/i.test(locations[0])) cityState = locations[0];
+  else if (locationLabel && !/online|virtual/i.test(locationLabel)) cityState = locationLabel.replace(/^\*/, '');
+
+  const tags = [...new Set([...list(doc.categories), ...list(doc.tags)].map(hashtagFor).filter(Boolean))];
+  const lines = [str(doc.description), str(doc.website)];
+  // The owner's name only when it is a name, not a login.
+  if (ownerName && /\s/.test(ownerName)) lines.push(`Owner: ${ownerName}`);
+  return {
+    name: title,
+    handleBase: handleBaseFor(title),
+    bio: lines.filter(Boolean).join('\n'),
+    tags,
+    cityState,
+  };
+}
+
+/** `foundhouse`, then `foundhouse2`, `foundhouse3`… Pure. */
+export function* handleCandidates(base: string): Generator<string> {
+  yield base;
+  for (let n = 2; n < 1000; n++) yield `${base}${n}`;
+}
+
+/** Which of this owner's mirrored listings speaks for the profile: the newest published one, else the newest of any. */
+export function pickProfileListing(docs: Array<Record<string, unknown>>): Record<string, unknown> | null {
+  if (!docs.length) return null;
+  const at = (d: Record<string, unknown>) => millis(d.updatedAt as Timestamp | undefined);
+  const sorted = [...docs].sort((a, b) => at(b) - at(a));
+  return sorted.find((d) => d.status === 'publish') ?? sorted[0] ?? null;
+}
+
+/**
+ * Writes the listing's profile onto `users/{uid}` and stamps
+ * `directory/{uid}.profileAppliedAt`. Runs once by itself on the first
+ * successful link with a listing, and again whenever the person taps
+ * "Use my directory listing", so their own later edits are never replaced
+ * behind their back. The handle is made unique against everyone else's.
+ */
+export async function applyListingProfile(uid: string): Promise<{ name: string; handle: string } | null> {
+  const db = getFirestore();
+  const link = (await db.collection('directory').doc(uid).get()).data() as (DirectoryDoc & { wpName?: string }) | undefined;
+  if (!link || link.status !== 'linked') return null;
+  const mirrored = await db.collection('directoryListings').where('ownerUid', '==', uid).get();
+  const doc = pickProfileListing(mirrored.docs.map((d) => d.data()));
+  if (!doc) return null;
+
+  const profile = profileFromMirror(doc, String(link.wpName ?? ''));
+  const current = (await db.collection('users').doc(uid).get()).data() ?? {};
+  let handle = String(current.handleLower ?? '');
+  const already = handle === profile.handleBase || handle.startsWith(profile.handleBase);
+  if (!already) {
+    handle = profile.handleBase;
+    for (const candidate of handleCandidates(profile.handleBase)) {
+      const taken = await db.collection('users').where('handleLower', '==', candidate).limit(1).get();
+      if (taken.empty || taken.docs[0]!.id === uid) {
+        handle = candidate;
+        break;
+      }
+    }
+  }
+
+  await db.collection('users').doc(uid).set(
+    {
+      name: profile.name,
+      handle: `@${handle}`,
+      handleLower: handle,
+      bio: profile.bio,
+      tags: profile.tags,
+      cityState: profile.cityState,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+  await db.collection('directory').doc(uid).set({ profileAppliedAt: FieldValue.serverTimestamp() }, { merge: true });
+  logger.info('Profile filled from the directory listing', { uid, handle });
+  return { name: profile.name, handle: `@${handle}` };
+}
+
 // -------------------------------------------------------------------- sync
 
 export interface SyncOptions {
@@ -610,6 +735,7 @@ export async function syncDirectory(
       wpEmailLower: emailLower,
       wpUserId: user?.id ?? null,
       wpLogin: user?.slug ?? '',
+      wpName: user?.name ?? '',
       wcCustomerId: customerId,
       orderCount: orders.length,
       listingCount: listings,
@@ -638,5 +764,15 @@ export async function syncDirectory(
   }
   await batch.commit();
   logger.info('Directory linked', { uid, wpUserId: user?.id ?? null, customerId, orders: orders.length, listings });
+
+  // Stage 13: the first link with a listing fills the profile. Once, by
+  // itself; after that only the button does it.
+  if (listings > 0 && !existing?.profileAppliedAt) {
+    try {
+      await applyListingProfile(uid);
+    } catch (error) {
+      logger.warn('Profile from listing failed on first link', { uid, message: (error as Error).message });
+    }
+  }
   return { status: 'linked', orders: orders.length, listings, wpLogin: user?.slug, note };
 }

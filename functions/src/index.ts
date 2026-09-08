@@ -17,7 +17,7 @@ import {
   DIRECTORY_ADD_LISTING_URL,
   WP_SECRETS,
 } from './config.ts';
-import { syncAllDirectoryListings, syncDirectory } from './directory.ts';
+import { applyListingProfile, syncAllDirectoryListings, syncDirectory } from './directory.ts';
 import { announceIfNew, rebuildBuyerIndexPage } from './buyer_index.ts';
 import {
   forumReplyRecipients,
@@ -367,6 +367,24 @@ export const adminSendAnnouncement = onCall(
       route: typeof data.route === 'string' ? data.route : undefined,
       byUid: uid,
     });
+  }),
+);
+
+/**
+ * Stage 13: "Use my directory listing". Fills name, handle, bio, hashtags
+ * and City, State from the mirrored listing, on demand.
+ */
+export const directoryApplyProfile = onCall(
+  withLoudErrors('directoryApplyProfile', async (request) => {
+    const uid = requireUid(request.auth);
+    const result = await applyListingProfile(uid);
+    if (!result) {
+      throw new HttpsError(
+        'failed-precondition',
+        'No directory listing is linked to this account yet. Link it first, then try again.',
+      );
+    }
+    return result;
   }),
 );
 

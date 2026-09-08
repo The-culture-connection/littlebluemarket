@@ -10,8 +10,13 @@ import {
   MANUAL_MIN_AGE_MS,
   NOT_FOUND_RECHECK_MS,
   directoryPostFor,
+  handleBaseFor,
+  handleCandidates,
+  hashtagFor,
   indexRefreshKind,
   listingIdsOf,
+  pickProfileListing,
+  profileFromMirror,
   listingMirrorDoc,
   mergeIndex,
   mergeOrders,
@@ -21,6 +26,44 @@ import {
 } from '../src/directory.ts';
 import { indexEntriesFromWp, isSiteFallbackImage, listingFromWp } from '../src/wordpress.ts';
 import type { DirectoryListingRecord, WcOrderRecord } from '../src/wordpress.ts';
+
+test('a listing becomes a profile: title to name and handle, terms to hashtags, location to City, State, the rest to the bio', () => {
+  const p = profileFromMirror({
+    title: 'Field Trips Travel & Vacations', description: 'World traveler, points and miles pro.', website: 'https://www.example.test/advisor',
+    city: 'St. Petersburg', state: 'FL', locations: ['Online/Virtual'], categories: ['Travel', 'Apparel/Accessories'], tags: ['Woman-Owned'],
+  }, 'Erica Field');
+  assert.equal(p.name, 'Field Trips Travel & Vacations');
+  assert.equal(p.handleBase, 'fieldtripstravelvacations'.slice(0, 24));
+  assert.deepEqual(p.tags, ['#Travel', '#ApparelAccessories', '#WomanOwned']);
+  assert.equal(p.cityState, 'St. Petersburg, FL');
+  assert.equal(p.bio, 'World traveler, points and miles pro.\nhttps://www.example.test/advisor\nOwner: Erica Field');
+});
+
+test('an online-only business with a state term, and a login-shaped owner, keep the bio clean', () => {
+  const p = profileFromMirror({ title: 'FoundHouse', description: 'Develop your business website with FoundHouse', website: '', locations: ['Michigan'], locationLabel: '*Online/Virtual Business', categories: ['Services'] }, 'GraceShorter');
+  assert.equal(p.handleBase, 'foundhouse');
+  assert.equal(p.cityState, 'Michigan');
+  assert.deepEqual(p.tags, ['#Services']);
+  assert.equal(p.bio, 'Develop your business website with FoundHouse');
+  const online = profileFromMirror({ title: 'X', locations: ['Online/Virtual'], locationLabel: '*Online/Virtual Business' }, '');
+  assert.equal(online.cityState, '');
+  assert.equal(hashtagFor('Bath/Beauty/Wellness'), '#BathBeautyWellness');
+  assert.equal(handleBaseFor('!!!'), 'business');
+  const [a, b, c] = handleCandidates('foundhouse');
+  assert.deepEqual([a, b, c], ['foundhouse', 'foundhouse2', 'foundhouse3']);
+});
+
+test('the newest published listing speaks for the profile, else the newest of any', () => {
+  const t = (ms: number) => Timestamp.fromMillis(ms);
+  const docs = [
+    { title: 'old published', status: 'publish', updatedAt: t(1) },
+    { title: 'new pending', status: 'pending', updatedAt: t(3) },
+    { title: 'new published', status: 'publish', updatedAt: t(2) },
+  ];
+  assert.equal(pickProfileListing(docs)?.title, 'new published');
+  assert.equal(pickProfileListing([docs[1]!])?.title, 'new pending');
+  assert.equal(pickProfileListing([]), null);
+});
 
 test('the owner index is built from listing pages, folded by id, and answers "whose listings"', () => {
   const rows = indexEntriesFromWp([

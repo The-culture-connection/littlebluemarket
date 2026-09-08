@@ -289,6 +289,11 @@ abstract interface class DirectoryRepository {
   /// "Link my directory account", or, with [auto], the silent launch-time
   /// call that reuses a fresher answer and never nags. Idempotent.
   Future<DirectoryLinkResult> link({bool auto = false});
+
+  /// "Use my directory listing": the backend fills name, handle, bio,
+  /// hashtags and City, State from the linked listing. Returns the new name
+  /// and handle.
+  Future<({String name, String handle})> applyListingProfile();
 }
 
 /// Shipments, in both directions.

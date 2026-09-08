@@ -110,6 +110,19 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
           .guarded(operation: 'firestore directoryListings (published)');
 
   @override
+  Future<({String name, String handle})> applyListingProfile() =>
+      guardFirestore(() async {
+        _requireUid;
+        final result = await _functions
+            .httpsCallable('directoryApplyProfile')
+            .call<Map<String, dynamic>>(const {});
+        return (
+          name: FirestoreMappers.str(result.data['name']),
+          handle: FirestoreMappers.str(result.data['handle']),
+        );
+      }, operation: 'callable directoryApplyProfile');
+
+  @override
   Future<DirectoryLinkResult> link({bool auto = false}) =>
       guardFirestore(() async {
         _requireUid;
