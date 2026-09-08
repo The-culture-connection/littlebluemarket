@@ -338,6 +338,22 @@ describe('selling is a grant, not a client write', () => {
     await assertSucceeds(member('maya').doc('sellers/kali').get());
     await assertSucceeds(member('maya').doc('vendorNames/gwynstone').get());
   });
+
+  test('the directory link and its website orders are yours to read and nobody\'s to write', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('directory/maya').set({ status: 'linked', wpLogin: 'maya' });
+      await admin.firestore().doc('users/maya/directoryOrders/88').set({ number: '1088', totalCents: 4500 });
+    });
+
+    await assertSucceeds(member('maya').doc('directory/maya').get());
+    await assertFails(member('kali').doc('directory/maya').get());
+    await assertFails(guest().doc('directory/maya').get());
+    await assertFails(member('maya').doc('directory/maya').set({ status: 'linked', wpLogin: 'someone-else' }));
+
+    await assertSucceeds(member('maya').doc('users/maya/directoryOrders/88').get());
+    await assertFails(member('kali').doc('users/maya/directoryOrders/88').get());
+    await assertFails(member('maya').doc('users/maya/directoryOrders/88').set({ totalCents: 0 }));
+  });
 });
 
 describe('creating a profile', () => {

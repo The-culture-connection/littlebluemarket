@@ -252,6 +252,22 @@ final purchasesProvider = StreamProvider<List<Purchase>>((ref) {
   return ref.watch(commerceRepositoryProvider).watchPurchases(uid);
 });
 
+// ---------------------------------------------------------------- directory
+
+/// littlebluecart.com: whether this account is joined to the directory, live.
+final directoryLinkProvider = StreamProvider<DirectoryLink?>((ref) {
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null) return Stream.value(null);
+  return ref.watch(directoryRepositoryProvider).watchLink();
+});
+
+/// Orders from littlebluecart.com, newest first.
+final directoryOrdersProvider = StreamProvider<List<DirectoryOrder>>((ref) {
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null) return Stream.value(const <DirectoryOrder>[]);
+  return ref.watch(directoryRepositoryProvider).watchOrders();
+});
+
 // ------------------------------------------------------------------- search
 
 /// The live search, as one value.

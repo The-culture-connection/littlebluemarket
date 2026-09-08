@@ -33,6 +33,7 @@ const _routes = <String, String>{
   'edit profile': '/you/edit',
   'add a product': '/you/add-product',
   'sell with us': '/you/sell',
+  'directory': '/you/directory',
   'notifications': '/you/notifications',
   'edit product (missing)': '/you/edit-product/nope',
   'diagnostics (dev)': '/you/diagnostics',

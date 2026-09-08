@@ -25,6 +25,7 @@ import '../screens/you/notifications_screen.dart';
 import '../screens/you/sell_screen.dart';
 import '../screens/you/claim_shop_screen.dart';
 import '../screens/you/diagnostics_screen.dart';
+import '../screens/you/directory_screen.dart';
 import '../screens/you/edit_profile_screen.dart';
 import '../screens/you/messages_screen.dart';
 import '../screens/you/profile_screen.dart';
@@ -241,6 +242,12 @@ GoRouter buildRouter(Ref ref) {
                   GoRoute(
                     path: 'sell',
                     builder: (context, state) => const SellWithUsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'directory',
+                    builder: (context, state) => DirectoryScreen(
+                      auto: state.uri.queryParameters['auto'] == '1',
+                    ),
                   ),
                   GoRoute(
                     path: 'notifications',

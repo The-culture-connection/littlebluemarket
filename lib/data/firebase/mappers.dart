@@ -406,6 +406,37 @@ abstract final class FirestoreMappers {
     reviewed: boolean(data['reviewed']),
   );
 
+  static DirectoryLink directoryLink(Map<String, dynamic> data) =>
+      DirectoryLink(
+        linked: str(data['status']) == 'linked',
+        wpLogin: str(data['wpLogin']),
+        wpUserId: integer(data['wpUserId']),
+        orderCount: integer(data['orderCount']),
+        listingCount: integer(data['listingCount']),
+        linkedAt: timeOrNull(data['linkedAt']),
+        checkedAt: timeOrNull(data['checkedAt']),
+      );
+
+  static DirectoryOrder directoryOrder(String id, Map<String, dynamic> data) =>
+      DirectoryOrder(
+        id: id,
+        number: str(data['number'], id),
+        status: str(data['status']),
+        createdAt: time(data['createdAt']),
+        totalCents: integer(data['totalCents']),
+        currency: str(data['currency'], 'USD'),
+        items: [
+          for (final item in (data['items'] as List<dynamic>? ?? const []))
+            if (item is Map)
+              DirectoryOrderItem(
+                name: str(item['name']),
+                quantity: integer(item['quantity'], 1),
+                totalCents: integer(item['totalCents']),
+              ),
+        ],
+        viewUrl: str(data['viewUrl']),
+      );
+
   static Shipment shipment(Map<String, dynamic> data, {String? payoutNote}) =>
       Shipment(
         productId: str(data['productId']),

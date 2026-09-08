@@ -1,0 +1,292 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../data/repositories/repositories.dart';
+import '../../models/models.dart';
+import '../../state/providers.dart';
+import '../../state/session.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/tokens.dart';
+import '../../widgets/async.dart';
+import '../../widgets/primitives.dart';
+import '../../widgets/screen.dart';
+import '../../widgets/unverified_banner.dart';
+
+/// Little Blue Cart directory: the one page that joins this account to
+/// littlebluecart.com.
+///
+/// Linking is by the confirmed email, decided on the backend: a WordPress
+/// member, a WooCommerce customer, or both. What comes back is shown here,
+/// website orders first; listings join in CP-D3. Arriving from an onboarding
+/// door (`?auto=1`) runs the link by itself once the email is confirmed.
+class DirectoryScreen extends ConsumerStatefulWidget {
+  const DirectoryScreen({super.key, this.auto = false});
+
+  /// True when an onboarding door sent the person here: link without a tap.
+  final bool auto;
+
+  @override
+  ConsumerState<DirectoryScreen> createState() => _DirectoryScreenState();
+}
+
+class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
+  bool _busy = false;
+  bool _autoRan = false;
+  DirectoryLinkResult? _result;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.auto) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAuto());
+    }
+  }
+
+  /// The door's promise: once the email is confirmed, the link runs on its
+  /// own. Once, so a session stream that re-emits cannot loop it.
+  void _maybeAuto() {
+    if (!mounted || !widget.auto || _autoRan) return;
+    final session = ref.read(sessionProvider).value;
+    if (session is! MemberSession || !session.emailVerified) return;
+    final link = ref.read(directoryLinkProvider).value;
+    _autoRan = true;
+    if (link?.linked ?? false) return;
+    _link();
+  }
+
+  Future<void> _link() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _result = null;
+    });
+    try {
+      final result = await ref.read(directoryRepositoryProvider).link();
+      if (!mounted) return;
+      setState(() => _result = result);
+    } on RepositoryException catch (error) {
+      if (!mounted) return;
+      setState(() => _error = describeError(error).body);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _open(String url) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final uri = Uri.tryParse(url);
+    if (uri == null || url.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('That link is not set up yet.')),
+      );
+      return;
+    }
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not open $url')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final session = ref.watch(sessionProvider).value;
+    final verified = session is MemberSession && session.emailVerified;
+    final link = ref.watch(directoryLinkProvider);
+    final orders = ref.watch(directoryOrdersProvider);
+
+    // The confirm-email banner's "I've confirmed it" flips the session; the
+    // door's automatic link waits for exactly that.
+    ref.listen(sessionProvider, (_, _) => _maybeAuto());
+
+    return LbmScreen(
+      appBar: const LbmAppBar(title: 'Little Blue Cart directory'),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 32),
+        children: [
+          const UnverifiedBanner(),
+          LbmAsync<DirectoryLink?>(
+            link,
+            skeleton: const SizedBox(height: 120),
+            data: (current) => _StatusCard(
+              link: current,
+              verified: verified,
+              busy: _busy,
+              error: _error,
+              result: _result,
+              onLink: _link,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const SectionHead('Orders from littlebluecart.com'),
+          const SizedBox(height: 8),
+          LbmAsync<List<DirectoryOrder>>(
+            orders,
+            skeleton: const SizedBox(height: 80),
+            data: (list) => list.isEmpty
+                ? LbmCard(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      (link.value?.linked ?? false)
+                          ? 'No website orders on this email yet.'
+                          : 'Link your account to see orders you placed on '
+                                'littlebluecart.com.',
+                      style: LbmText.tiny.copyWith(color: c.ink2, height: 1.5),
+                    ),
+                  )
+                : LbmCard(
+                    child: RowStack(
+                      children: [
+                        for (final order in list)
+                          ListRow(
+                            title: Text(
+                              'Order #${order.number} · ${order.totalLabel}',
+                            ),
+                            subtitle: Text(
+                              '${order.dateLabel} · ${order.statusLabel}'
+                              '${order.items.isEmpty ? '' : '\n${order.summary}'}',
+                            ),
+                            trailing: Icon(
+                              Icons.open_in_new_rounded,
+                              size: 20,
+                              color: c.ink3,
+                            ),
+                            onTap: () => _open(order.viewUrl),
+                          ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusCard extends StatelessWidget {
+  const _StatusCard({
+    required this.link,
+    required this.verified,
+    required this.busy,
+    required this.error,
+    required this.result,
+    required this.onLink,
+  });
+
+  final DirectoryLink? link;
+  final bool verified;
+  final bool busy;
+  final String? error;
+  final DirectoryLinkResult? result;
+  final VoidCallback onLink;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final current = link;
+    final linked = current?.linked ?? false;
+
+    return LbmCard(
+      color: linked ? c.sageMist : null,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            linked
+                ? current!.label
+                : 'Bought or listed on littlebluecart.com?',
+            style: LbmText.display.copyWith(fontSize: 18, color: c.ink),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            linked
+                ? '${_plural(current!.orderCount, 'website order')} · '
+                      '${_plural(current.listingCount, 'listing')}'
+                : 'If your littlebluecart.com account uses this email, tap '
+                      'below. The app finds your website orders and your '
+                      'business listing.',
+            style: LbmText.tiny.copyWith(color: c.ink2, height: 1.5),
+          ),
+          const SizedBox(height: 12),
+          PillButton(
+            busy
+                ? 'Checking…'
+                : linked
+                ? 'Refresh'
+                : 'Link my directory account',
+            style: linked ? PillStyle.quiet : PillStyle.solid,
+            onPressed: !verified || busy ? null : onLink,
+          ),
+          if (!verified) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Confirm your email first (above).',
+              style: LbmText.xtiny.copyWith(color: c.ink3),
+            ),
+          ],
+          if (error != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              error!,
+              style: LbmText.tiny.copyWith(
+                fontWeight: FontWeight.w700,
+                color: c.clay,
+              ),
+            ),
+          ],
+          if (result != null) ...[
+            const SizedBox(height: 10),
+            _ResultLine(result: result!),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static String _plural(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';
+}
+
+class _ResultLine extends StatelessWidget {
+  const _ResultLine({required this.result});
+
+  final DirectoryLinkResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final (String text, Color color) = switch (result.status) {
+      DirectoryLinkStatus.linked => (
+        'Linked. ${result.orders} ${result.orders == 1 ? 'order' : 'orders'} '
+            'and ${result.listings} ${result.listings == 1 ? 'listing' : 'listings'} '
+            'found.${result.note == null ? '' : ' ${result.note}'}',
+        c.sage,
+      ),
+      DirectoryLinkStatus.alreadyLinked => (
+        result.note ?? 'Already linked.',
+        c.sage,
+      ),
+      DirectoryLinkStatus.notFound => (
+        'No account at littlebluecart.com uses this email. If your listing '
+            'or orders are under another address, sign in with that one.'
+            '${result.note == null ? '' : ' ${result.note}'}',
+        c.clay,
+      ),
+      DirectoryLinkStatus.off => (
+        result.note ?? 'The directory is not connected to the app yet.',
+        c.clay,
+      ),
+    };
+    return Text(
+      text,
+      style: LbmText.tiny.copyWith(
+        fontWeight: FontWeight.w700,
+        color: color,
+        height: 1.5,
+      ),
+    );
+  }
+}

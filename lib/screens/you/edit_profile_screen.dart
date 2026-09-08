@@ -358,8 +358,26 @@ class _SellerRows extends StatelessWidget {
             onTap: () => context.push('/you/shipping'),
           ),
           const _AddressesRow(),
+          const _DirectoryRow(),
         ],
       ),
+    );
+  }
+}
+
+/// littlebluecart.com. Everyone gets the row: a seller on the Market can be
+/// a customer of the directory, and the other way round.
+class _DirectoryRow extends StatelessWidget {
+  const _DirectoryRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return ListRow(
+      title: const Text('Little Blue Cart directory'),
+      subtitle: const Text('Your website orders and your business listing'),
+      trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
+      onTap: () => context.push('/you/directory'),
     );
   }
 }
@@ -390,6 +408,7 @@ class _BuyerRowsState extends ConsumerState<_BuyerRows> {
             onTap: () => context.push('/you/shipping'),
           ),
           const _AddressesRow(),
+          const _DirectoryRow(),
           ListRow(
             title: const Text('Sell with us'),
             subtitle: const Text(

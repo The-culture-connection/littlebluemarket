@@ -6,7 +6,7 @@
 
 - `scripts/doctor.sh` → 0 FAIL. The four WARN lines are known (store password; three optional Shopify scopes).
 - Quit the app and run `scripts/run-live.sh` so the phone has the current build. If a screen described here is missing, that is almost always an old build.
-- Test identities: `grace-s@…` (your admin account), `grace-s+buyer1@…`, `grace-s+customer1@…` (has website orders), `grace-s+seller1@…` (claimed seller, vendor `cc`), `grace-s+seller2@…` (new, for the roster and application journeys). Verification mail lands in Spam.
+- Test identities: `grace-s@…` (your admin account), `grace-s+buyer1@…`, `grace-s+customer1@…` (has website orders), `grace-s+seller1@…` (claimed seller, vendor `cc`), `grace-s+seller2@…` (new, for the roster and application journeys), `grace-s+dir1@…` (a littlebluecart.com customer and listing owner, on the staging site). Verification mail lands in Spam.
 - How to report a failure: tap **Copy for Claude** on the red strip, or copy the Diagnostics report, and paste it with the journey and step number.
 
 ---
@@ -85,6 +85,17 @@
 
 1. As `grace-s@…`: Edit profile → Diagnostics (dev builds) → Claim admin (once) → Sync collections, Backfill catalog, Set seller vendor, Try publish. Edit profile → **Seller applications** (release builds too).
 2. From the repo when something looks wrong: `npm run peek -- --reviews`, `npm run peek -- --doc catalog/<id>`, `npm run inspect:product -- --id <id>`, `npm run shipturtle:vendors`, `npm run move-stock -- --vendor <v> --to <location>`, `npm run replay-order -- --order <n> [--deliver|--ship]`.
+
+## J12 · Directory customer (has bought on littlebluecart.com)
+
+*Needs CP-D0 and CP-D1 done: the staging WordPress, the three secrets, and a deploy. On the **staging** site: a WP user `grace-s+dir1@…` (Subscriber) with one completed WooCommerce order (WooCommerce → Orders → Add order → that customer → any product → Status Completed).*
+
+1. Create a Profile with `grace-s+dir1@…` → confirm the email → finish setup.
+2. You → Edit profile → **Little Blue Cart directory**. *Pass:* the card already says **Linked** (the link ran on its own once the email was confirmed) and **Orders from littlebluecart.com** lists the order with its number, date, total and status. If it says "Bought or listed on littlebluecart.com?" instead, tap **Link my directory account**: the line under the button reads "Linked. 1 order and 0 listings found."
+3. Tap the order. *Pass:* the browser opens the order on the staging site's My account page (a login box there is fine).
+4. Tap **Refresh** straight away. *Pass:* "Checked a few minutes ago. Try again in a few minutes." (the ten-minute limit).
+5. Sign in as `grace-s+buyer1@…` (no WordPress account) → Edit profile → Little Blue Cart directory → **Link my directory account**. *Pass:* "No account at littlebluecart.com uses this email…" and no red strip.
+6. If step 2 finds nothing for `+dir1`: in `REPO\functions\` run `npm run wp:probe -- --email grace-s+dir1@the-culture-connection.com` and paste the block. It says whether the site has the user, the customer and the order.
 
 ---
 

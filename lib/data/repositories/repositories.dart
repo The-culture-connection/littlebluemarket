@@ -241,6 +241,23 @@ abstract interface class ProfileRepository {
   Future<void> deleteAddress(String id);
 }
 
+/// littlebluecart.com, the directory: this account's link to a WordPress
+/// member and WooCommerce customer, and the website orders that came with it.
+///
+/// Everything is decided server-side from the **verified** email; the link
+/// document and the orders are read-only mirrors. Listings join in CP-D3.
+abstract interface class DirectoryRepository {
+  /// The `directory/{uid}` document, or null before the first link.
+  Stream<DirectoryLink?> watchLink();
+
+  /// Orders from littlebluecart.com, newest first.
+  Stream<List<DirectoryOrder>> watchOrders();
+
+  /// "Link my directory account", or, with [auto], the silent launch-time
+  /// call that reuses a fresher answer and never nags. Idempotent.
+  Future<DirectoryLinkResult> link({bool auto = false});
+}
+
 /// Shipments, in both directions.
 abstract interface class FulfillmentRepository {
   Stream<List<Shipment>> watchSending();

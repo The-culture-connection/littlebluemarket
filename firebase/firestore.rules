@@ -89,6 +89,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // littlebluecart.com. The link to a WordPress member and WooCommerce
+    // customer is decided by the functions from the verified email; yours to
+    // read, nobody's to write. Same shape as sellers/, same reason.
+    match /directory/{uid} {
+      allow read: if isSelf(uid);
+      allow write: if false;
+    }
+
     match /users/{uid} {
       // Profiles are public: the storefront, the seller strip on a listing and
       // the author of a review all need to read one.
@@ -124,6 +132,13 @@ service cloud.firestore {
 
       // What you bought. Yours to read, nobody's to write.
       match /purchases/{purchaseId} {
+        allow read: if isSelf(uid);
+        allow write: if false;
+      }
+
+      // What you bought on littlebluecart.com. Copied in by the directory
+      // link; same rule as purchases.
+      match /directoryOrders/{orderId} {
         allow read: if isSelf(uid);
         allow write: if false;
       }

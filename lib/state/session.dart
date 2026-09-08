@@ -92,6 +92,11 @@ class SessionNotifier extends StreamNotifier<Session> {
   /// and the token did not. Once, so a fixture backend cannot loop.
   final _reloadedFor = <String>{};
 
+  /// Accounts this run has already offered to littlebluecart.com. Same
+  /// once-per-launch rule as [_linkAttempted]; the backend decides whether
+  /// its stored answer is fresh enough to reuse.
+  final _directoryAttempted = <String>{};
+
   @override
   Stream<Session> build() {
     final auth = ref.watch(authServiceProvider);
@@ -113,6 +118,7 @@ class SessionNotifier extends StreamNotifier<Session> {
         }
 
         _linkOnce(user, person, profiles);
+        _directoryLinkOnce(user);
         _repairSellerDrift(user, person);
 
         return MemberSession(
@@ -136,6 +142,28 @@ class SessionNotifier extends StreamNotifier<Session> {
       profiles.linkStoreAccounts().catchError((Object error, StackTrace stack) {
         DevErrorSink.report(error, stack, 'callable linkAccounts (auto)');
         return const LinkResult();
+      }),
+    );
+  }
+
+  /// littlebluecart.com: a verified account is joined to its WordPress member
+  /// and WooCommerce customer without choosing a role, so a directory
+  /// customer finds their website orders waiting. Silent. A backend that has
+  /// no directory yet (`off`), a function not deployed yet, or an unconfirmed
+  /// email are not errors worth a strip; anything else goes to the dev sink
+  /// and is retried on the next launch.
+  void _directoryLinkOnce(AuthUser user) {
+    if (!user.emailVerified) return;
+    if (!_directoryAttempted.add(user.uid)) return;
+    unawaited(
+      ref.read(directoryRepositoryProvider).link(auto: true).catchError((
+        Object error,
+        StackTrace stack,
+      ) {
+        if (error is! NotFoundException && error is! ValidationException) {
+          DevErrorSink.report(error, stack, 'callable directoryLinkMe (auto)');
+        }
+        return const DirectoryLinkResult(status: DirectoryLinkStatus.off);
       }),
     );
   }

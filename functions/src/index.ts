@@ -14,7 +14,10 @@ import {
   SHIPTURTLE_WEBHOOK_SECRET,
   SHIPTURTLE_API_KEY,
   REGISTRATION_URL,
+  DIRECTORY_ADD_LISTING_URL,
+  WP_SECRETS,
 } from './config.ts';
+import { syncDirectory } from './directory.ts';
 import {
   backfillSellerForVendor,
   mirrorProduct,
@@ -265,7 +268,27 @@ export const appConfig = onCall(
   withLoudErrors('appConfig', async () => ({
     registrationUrl: REGISTRATION_URL.value().trim(),
     shipturtleUrl: 'https://app.shipturtle.com/',
+    directoryAddListingUrl: DIRECTORY_ADD_LISTING_URL.value().trim(),
   })),
+);
+
+/**
+ * "Link my directory account", and the silent launch-time call behind it:
+ * joins this verified email to littlebluecart.com (member, customer, orders).
+ * `auto: true` reuses a fresher stored answer and never nags.
+ */
+export const directoryLinkMe = onCall(
+  { secrets: WP_SECRETS, timeoutSeconds: 120 },
+  withLoudErrors('directoryLinkMe', async (request) => {
+    const uid = requireUid(request.auth);
+    const email = request.auth?.token?.email;
+    const verified = request.auth?.token?.email_verified === true;
+    if (typeof email !== 'string' || !verified) {
+      throw new HttpsError('failed-precondition', 'Confirm your email address first.');
+    }
+    const auto = Boolean((request.data ?? {}).auto);
+    return syncDirectory(uid, email.trim().toLowerCase(), { auto });
+  }),
 );
 
 /**

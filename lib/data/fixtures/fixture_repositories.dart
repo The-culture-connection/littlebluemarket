@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../models/models.dart';
 import '../auth/auth_service.dart';
 import '../repositories/repositories.dart';
@@ -1106,6 +1108,7 @@ class FixtureProfileRepository implements ProfileRepository {
     const AppConfig(
       registrationUrl: 'https://example.com/pages/sell-with-us',
       shipturtleUrl: 'https://app.shipturtle.com/',
+      directoryAddListingUrl: 'https://example.com/add-directory-listing/',
     ),
   );
 
@@ -1539,4 +1542,96 @@ class FixtureDiagnosticsRepository implements DiagnosticsRepository {
         total: Fx.products.length,
         done: true,
       );
+}
+
+/// The demo directory: unlinked until the first link, then one member with
+/// two website orders. The session's silent launch-time link means the demo
+/// user is usually already linked by the time the screen opens.
+class FixtureDirectoryRepository implements DirectoryRepository {
+  FixtureDirectoryRepository(this._backend);
+
+  final FixtureBackend _backend;
+
+  DirectoryLink? _link;
+  List<DirectoryOrder> _orders = const [];
+  final _links = StreamController<DirectoryLink?>.broadcast();
+  final _orderChanges = StreamController<List<DirectoryOrder>>.broadcast();
+
+  @override
+  Stream<DirectoryLink?> watchLink() async* {
+    yield _link;
+    yield* _links.stream;
+  }
+
+  @override
+  Stream<List<DirectoryOrder>> watchOrders() async* {
+    yield _orders;
+    yield* _orderChanges.stream;
+  }
+
+  @override
+  Future<DirectoryLinkResult> link({bool auto = false}) async {
+    await _backend._settle();
+    if (_link?.linked ?? false) {
+      return DirectoryLinkResult(
+        status: DirectoryLinkStatus.alreadyLinked,
+        orders: _orders.length,
+        listings: 1,
+        wpLogin: 'demo',
+      );
+    }
+    final now = DateTime.now();
+    _orders = [
+      DirectoryOrder(
+        id: '1088',
+        number: '1088',
+        status: 'completed',
+        createdAt: now.subtract(const Duration(days: 12)),
+        totalCents: 4500,
+        currency: 'USD',
+        items: const [
+          DirectoryOrderItem(
+            name: 'Tax the Rich Hoodie',
+            quantity: 1,
+            totalCents: 4000,
+          ),
+          DirectoryOrderItem(name: 'Sticker', quantity: 2, totalCents: 500),
+        ],
+        viewUrl: 'https://example.com/my-account/view-order/1088/',
+      ),
+      DirectoryOrder(
+        id: '1042',
+        number: '1042',
+        status: 'processing',
+        createdAt: now.subtract(const Duration(days: 40)),
+        totalCents: 2500,
+        currency: 'USD',
+        items: const [
+          DirectoryOrderItem(
+            name: 'UPGRADE Showcase to Express Lane',
+            quantity: 1,
+            totalCents: 2500,
+          ),
+        ],
+        viewUrl: 'https://example.com/my-account/view-order/1042/',
+      ),
+    ];
+    _link = DirectoryLink(
+      linked: true,
+      wpLogin: 'demo',
+      wpUserId: 6415,
+      orderCount: _orders.length,
+      listingCount: 1,
+      linkedAt: now,
+      checkedAt: now,
+    );
+    _links.add(_link);
+    _orderChanges.add(_orders);
+    return DirectoryLinkResult(
+      status: DirectoryLinkStatus.linked,
+      orders: _orders.length,
+      listings: 1,
+      wpLogin: 'demo',
+    );
+  }
 }

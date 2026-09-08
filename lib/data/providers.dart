@@ -7,6 +7,7 @@ import 'firebase/firebase_bootstrap.dart';
 import 'firebase/firestore_catalog_repository.dart';
 import 'firebase/firestore_collection_repository.dart';
 import 'firebase/firestore_diagnostics_repository.dart';
+import 'firebase/firestore_directory_repository.dart';
 import 'firebase/firestore_messaging_repository.dart';
 import 'firebase/firestore_profile_repository.dart';
 import 'firebase/firestore_search_repository.dart';
@@ -182,6 +183,20 @@ final fulfillmentRepositoryProvider = Provider<FulfillmentRepository>((ref) {
       ref.watch(fixtureBackendProvider),
     ),
     Backend.live => FulfillmentProxyRepository(
+      firestore: ref.watch(firestoreProvider),
+      functions: ref.watch(firebaseFunctionsProvider),
+      uid: ref.watch(_uidProvider),
+    ),
+  };
+});
+
+/// littlebluecart.com: the directory link and the website orders.
+final directoryRepositoryProvider = Provider<DirectoryRepository>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => FixtureDirectoryRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
+    Backend.live => FirestoreDirectoryRepository(
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),
       uid: ref.watch(_uidProvider),

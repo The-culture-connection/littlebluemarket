@@ -305,6 +305,9 @@ class FirestoreProfileRepository implements ProfileRepository {
         result.data['shipturtleUrl'],
         'https://app.shipturtle.com/',
       ),
+      directoryAddListingUrl: FirestoreMappers.str(
+        result.data['directoryAddListingUrl'],
+      ),
     );
   }, operation: 'callable appConfig');
 }
