@@ -29,17 +29,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     // unread styling is seen once, then cleared.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref
-          .read(socialRepositoryProvider)
-          .markNotificationsRead()
-          .catchError((_) {});
+      final social = ref.read(socialRepositoryProvider);
+      social.markNotificationsRead().catchError((_) {});
+      social.markAnnouncementsSeen().catchError((_) {});
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final notifications = ref.watch(notificationsProvider);
+    final notifications = ref.watch(bellProvider);
 
     return LbmScreen(
       appBar: const LbmAppBar(title: 'Notifications'),

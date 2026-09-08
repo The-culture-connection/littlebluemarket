@@ -21,6 +21,7 @@ import '../screens/onboarding/auth_screens.dart';
 import '../screens/onboarding/welcome_screen.dart';
 import '../screens/you/dm_screen.dart';
 import '../screens/you/add_product_screen.dart';
+import '../screens/you/admin_screen.dart';
 import '../screens/you/notification_settings_screen.dart';
 import '../screens/you/notifications_screen.dart';
 import '../screens/you/sell_screen.dart';
@@ -289,6 +290,12 @@ GoRouter buildRouter(Ref ref) {
                     path: 'notification-settings',
                     builder: (context, state) =>
                         const NotificationSettingsScreen(),
+                  ),
+                  // Release-visible, unlike Diagnostics: the screen itself
+                  // says "Admins only" to anyone without the claim.
+                  GoRoute(
+                    path: 'admin',
+                    builder: (context, state) => const AdminScreen(),
                   ),
                   // Debug builds only. Tests run in debug, so the smoke suite
                   // still renders it.

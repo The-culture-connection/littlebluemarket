@@ -1,7 +1,17 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { shouldNotifyAtAll, shouldPrune, shouldPush, titleFor } from '../src/push.ts';
+import { isAudience, shouldNotifyAtAll, shouldPrune, shouldPush, titleFor, topicTarget } from '../src/push.ts';
+
+test('an audience is a topic, except buyers, which is "everyone who is not a seller"', () => {
+  assert.deepEqual(topicTarget('all'), { topic: 'all' });
+  assert.deepEqual(topicTarget('sellers'), { topic: 'sellers' });
+  assert.deepEqual(topicTarget('directory'), { topic: 'directory' });
+  assert.deepEqual(topicTarget('buyers'), { condition: "'all' in topics && !('sellers' in topics)" });
+  assert.equal(isAudience('buyers'), true);
+  assert.equal(isAudience('everyone'), false);
+  assert.equal(isAudience(undefined), false);
+});
 
 test('every switch defaults to on, and off means off for exactly that kind', () => {
   assert.equal(shouldPush(undefined, { type: 'mention' }), true);

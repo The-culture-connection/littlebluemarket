@@ -572,6 +572,31 @@ class FirestoreSocialRepository implements SocialRepository {
       }, operation: 'firestore settings/notifications save');
 
   @override
+  Stream<List<Announcement>> watchAnnouncements({int limit = 20}) {
+    if (uid == null) return Stream.value(const []);
+    return _db
+        .collection('announcements')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map(
+          (snapshot) => [
+            for (final doc in snapshot.docs)
+              FirestoreMappers.announcement(doc.id, doc.data()),
+          ],
+        )
+        .guarded(operation: 'firestore announcements');
+  }
+
+  @override
+  Future<void> markAnnouncementsSeen() => guardFirestore(() async {
+    final me = _requireUid;
+    await _prefs(me).set({
+      'announcementsSeenAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }, operation: 'firestore settings/notifications seen');
+
+  @override
   Future<void> markNotificationsRead() => guardFirestore(() async {
     final me = _requireUid;
     final unread = await _notifications(

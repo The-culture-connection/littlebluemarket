@@ -18,7 +18,7 @@ import {
   WP_SECRETS,
 } from './config.ts';
 import { syncAllDirectoryListings, syncDirectory } from './directory.ts';
-import { sendPushToUid } from './push.ts';
+import { isAudience, sendAnnouncement, sendPushToUid } from './push.ts';
 import {
   backfillSellerForVendor,
   mirrorProduct,
@@ -311,6 +311,29 @@ export const pushTestMe = onCall(
       );
     }
     return outcome;
+  }),
+);
+
+/**
+ * Stage 12: an announcement from the merchant's phone to everyone or to a
+ * role. Admin claim only.
+ */
+export const adminSendAnnouncement = onCall(
+  withLoudErrors('adminSendAnnouncement', async (request) => {
+    const uid = requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    const audience = data.audience;
+    if (!isAudience(audience)) {
+      throw new HttpsError('invalid-argument', 'Pick who this goes to: all, sellers, buyers or directory.');
+    }
+    return sendAnnouncement({
+      title: String(data.title ?? ''),
+      body: String(data.body ?? ''),
+      audience,
+      route: typeof data.route === 'string' ? data.route : undefined,
+      byUid: uid,
+    });
   }),
 );
 

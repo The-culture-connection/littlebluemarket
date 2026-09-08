@@ -373,6 +373,12 @@ describe('selling is a grant, not a client write', () => {
     await assertSucceeds(member('maya').doc('users/maya/devices/tok-1').delete());
     await assertFails(member('kali').doc('users/maya/devices/tok-2').set({ platform: 'android' }));
     await assertFails(guest().doc('users/maya/devices/tok-3').set({ platform: 'android' }));
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('announcements/a1').set({ title: 'Hello', body: 'Testing', audience: 'all' });
+    });
+    await assertSucceeds(member('kali').doc('announcements/a1').get());
+    await assertSucceeds(guest().doc('announcements/a1').get());
+    await assertFails(adminUser('grace').doc('announcements/a2').set({ title: 'From the phone', audience: 'all' }));
     await assertSucceeds(member('maya').doc('users/maya/settings/notifications').set({ forums: false, mutedForums: ['f1'] }));
     await assertFails(member('kali').doc('users/maya/settings/notifications').get());
     await assertFails(member('maya').doc('users/maya/settings/other').set({ anything: true }));

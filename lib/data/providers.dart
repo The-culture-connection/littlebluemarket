@@ -7,6 +7,7 @@ import 'firebase/firebase_bootstrap.dart';
 import 'firebase/firestore_catalog_repository.dart';
 import 'firebase/firestore_collection_repository.dart';
 import 'firebase/firestore_diagnostics_repository.dart';
+import 'firebase/firestore_admin_repository.dart';
 import 'firebase/firestore_directory_repository.dart';
 import 'firebase/firebase_push_service.dart';
 import 'fixtures/fixture_push_service.dart';
@@ -203,6 +204,20 @@ final directoryRepositoryProvider = Provider<DirectoryRepository>((ref) {
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),
       uid: ref.watch(_uidProvider),
+    ),
+  };
+});
+
+/// The merchant's own calls (announcements). Refused server-side without
+/// the admin claim.
+final adminRepositoryProvider = Provider<AdminRepository>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => FixtureAdminRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
+    Backend.live => FirestoreAdminRepository(
+      firestore: ref.watch(firestoreProvider),
+      functions: ref.watch(firebaseFunctionsProvider),
     ),
   };
 });

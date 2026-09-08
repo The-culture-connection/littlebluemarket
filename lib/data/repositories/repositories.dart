@@ -152,6 +152,13 @@ abstract interface class SocialRepository {
   Stream<NotificationPrefs> watchNotificationPrefs();
   Future<void> saveNotificationPrefs(NotificationPrefs prefs);
 
+  /// News from Little Blue Market, newest first, every audience: the phone
+  /// keeps the ones meant for this viewer.
+  Stream<List<Announcement>> watchAnnouncements({int limit = 20});
+
+  /// Stamps the account: every announcement so far counts as read.
+  Future<void> markAnnouncementsSeen();
+
   Stream<List<Review>> watchReviews(String productId);
   Stream<RatingSummary> watchRating(String productId);
   Future<void> addReview(NewReview draft);
@@ -243,6 +250,13 @@ abstract interface class ProfileRepository {
   Future<List<Address>> addresses();
   Future<void> saveAddress(Address address);
   Future<void> deleteAddress(String id);
+}
+
+/// What the merchant's own account can do from the phone. Every call is
+/// refused server-side without the admin claim; the screen only hides.
+abstract interface class AdminRepository {
+  /// One announcement to everyone or to a role. Returns what was stored.
+  Future<Announcement> sendAnnouncement(NewAnnouncement draft);
 }
 
 /// littlebluecart.com, the directory: this account's link to a WordPress

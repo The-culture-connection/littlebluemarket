@@ -97,6 +97,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Announcements from the merchant. Written only by adminSendAnnouncement;
+    // every member reads them and the phone filters by audience, because an
+    // announcement is meant to be seen, not kept from anyone.
+    match /announcements/{id} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     // The public mirror of linked owners' directory listings. A published
     // listing is what the website already shows to anyone; a pending or
     // draft one is the owner's alone. Written only by the sync.

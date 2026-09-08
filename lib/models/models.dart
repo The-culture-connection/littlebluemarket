@@ -6,6 +6,7 @@ import 'formatting.dart';
 // domain vocabulary. The types live in their own files because they group into
 // genuinely separate concerns; this just spares 30 call sites the churn.
 export 'address.dart';
+export 'announcement.dart';
 export 'cart.dart';
 export 'collection.dart';
 export 'comment.dart';

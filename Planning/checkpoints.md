@@ -26,7 +26,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | Stage 9 — The gaps: seller application flow, Near me, @-tags, better search, live walkthroughs, shipping | 🟡 Built and deployed 2026-09-05; see Planning/manual-test.md |
 | Stage 10 — littlebluecart.com directory: dev WordPress, link account, website orders, listings, public listing cards | 🟡 CP-D0 to D4 built 2026-09-08 (D5 optional, not scheduled), waiting on Grace's Cloudways staging clicks, the three secrets and a deploy (plan in `Planning/littlebluecart.com directory + onboarding doors + push notifications.md`) |
 | Stage 11 — Onboarding doors: "Are you…" with seven doors | 🟡 CP-O1 and CP-O2 built 2026-09-08, ready for Grace to test (J14 in manual-test.md) |
-| Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | 🟡 CP-N0 built 2026-09-08 (plumbing + test push); N1–N4 next |
+| Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | 🟡 CP-N0 and CP-N1 built 2026-09-08 (plumbing, test push, announcements); N2–N4 next |
 | Cutover to the real shop | ⬜ Not started |
 
 Extras done along the way: a Sign out row, the app opens on the Market when you are already signed in, search matches any word of a title, product pages open for shops that have not joined yet, the catalog's spec subdocument rule, the first-save profile fix, Git Bash launchers.
@@ -476,7 +476,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
   **Grace does:** `scripts\deploy-dev.ps1` → `run-live.ps1` → sign in as `+buyer1` → Edit profile → Notifications → **Allow notifications** → Allow → **Send me a test notification** → press Home.
   **Pass:** a banner "Little Blue Market — This phone is set up for notifications"; tapping it opens the bell; Firestore shows `users/<uid>/devices/<token>`; a shoutout from `+seller1` tagging `@buyer1` arrives as a push and in the bell.
   **If it fails:** no permission prompt → Android 13+ image, or already denied in App info → Notifications. `pushTestMe failed: … no devices` → Copy for Claude. Token present but nothing arrives → emulator without Play services (doctor WARN).
-- [ ] **CP-N1 Announcements from your phone.** *Claude builds:* Edit profile → **Admin** (admins only, release builds too): title, body, audience All / Sellers / Buyers / Directory, Send; `announcements` collection; the bell shows them too.
+- [ ] **CP-N1 Announcements from your phone.** *Claude built (2026-09-08):* Edit profile → **Admin** (admins only, release builds too): title, body, audience All / Sellers / Buyers / Directory, Send; `announcements` collection; the bell shows them too.
   **Grace does:** as your admin account → Edit profile → Admin → "Hello from Little Blue Market" / "Testing announcements" / All → Send → Yes. Background the app.
   **Pass:** the push lands on this phone and any other signed-in test phone; the bell shows it at the top. Sending to Sellers leaves `+buyer1`'s phone silent.
   **If it fails:** "Admins only" → CP-C0 Claim admin. Sent but no push → sign out and in once, then `firebase functions:log --only adminSendAnnouncement --project dev`.

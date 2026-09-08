@@ -118,7 +118,19 @@ abstract final class FirestoreMappers {
           newProducts: boolean(data['newProducts'], true),
           announcements: boolean(data['announcements'], true),
           mutedForums: strings(data['mutedForums']),
+          announcementsSeenAt: timeOrNull(data['announcementsSeenAt']),
         );
+
+  static Announcement announcement(String id, Map<String, dynamic> data) =>
+      Announcement(
+        id: id,
+        title: str(data['title']),
+        body: str(data['body']),
+        audience: AnnouncementAudience.fromValue(str(data['audience'])),
+        route: str(data['route'], '/you/notifications'),
+        createdAt: time(data['createdAt']),
+      );
+
 
   /// A deterministic avatar colour from a uid.
   ///

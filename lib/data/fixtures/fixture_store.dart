@@ -89,6 +89,9 @@ class FixtureStore {
   final listings = Watchable<List<Listing>>([]);
   final notifications = Watchable<List<AppNotification>>([]);
 
+  /// News from the demo merchant. Empty until the Admin screen sends one.
+  final announcements = Watchable<List<Announcement>>([]);
+
   /// Post ids this viewer has liked.
   final likedPosts = <String>{};
   final likedComments = <String>{};

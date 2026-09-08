@@ -71,6 +71,7 @@ class NotificationPrefs {
     this.newProducts = true,
     this.announcements = true,
     this.mutedForums = const [],
+    this.announcementsSeenAt,
   });
 
   final bool mentions;
@@ -81,6 +82,10 @@ class NotificationPrefs {
   final bool announcements;
   final List<String> mutedForums;
 
+  /// Announcements are one document for everyone, so "read" is a stamp on
+  /// the account rather than a flag on each: anything newer is unread.
+  final DateTime? announcementsSeenAt;
+
   NotificationPrefs copyWith({
     bool? mentions,
     bool? comments,
@@ -89,6 +94,7 @@ class NotificationPrefs {
     bool? newProducts,
     bool? announcements,
     List<String>? mutedForums,
+    DateTime? announcementsSeenAt,
   }) => NotificationPrefs(
     mentions: mentions ?? this.mentions,
     comments: comments ?? this.comments,
@@ -97,6 +103,7 @@ class NotificationPrefs {
     newProducts: newProducts ?? this.newProducts,
     announcements: announcements ?? this.announcements,
     mutedForums: mutedForums ?? this.mutedForums,
+    announcementsSeenAt: announcementsSeenAt ?? this.announcementsSeenAt,
   );
 
   Map<String, Object> toMap() => {

@@ -1,6 +1,7 @@
-import { getFirestore } from 'firebase-admin/firestore';
-import { getMessaging, type Messaging } from 'firebase-admin/messaging';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
+import { getMessaging, type Message, type Messaging } from 'firebase-admin/messaging';
 import { logger } from 'firebase-functions';
+import { HttpsError } from 'firebase-functions/v2/https';
 
 /**
  * Push, in TypeScript, for both phones.
@@ -152,6 +153,96 @@ export async function sendPushToUid(
   });
   if (pruned) await batch.commit();
   return { devices: tokens.length, sent: response.successCount, pruned };
+}
+
+// ----------------------------------------------------------- announcements
+
+export const AUDIENCES = ['all', 'sellers', 'buyers', 'directory'] as const;
+export type Audience = (typeof AUDIENCES)[number];
+export const ANNOUNCEMENT_TITLE_MAX = 60;
+export const ANNOUNCEMENT_BODY_MAX = 180;
+
+/**
+ * Who an announcement reaches, in FCM's terms. Phones subscribe to `all`
+ * on sign-in, `sellers` when the token carries the seller claim, and
+ * `directory` when the account is joined to littlebluecart.com; "buyers"
+ * is everyone who is not a seller, which FCM expresses as a condition.
+ * Pure.
+ */
+export function topicTarget(audience: Audience): { topic: string } | { condition: string } {
+  switch (audience) {
+    case 'all':
+      return { topic: 'all' };
+    case 'sellers':
+      return { topic: 'sellers' };
+    case 'directory':
+      return { topic: 'directory' };
+    case 'buyers':
+      return { condition: "'all' in topics && !('sellers' in topics)" };
+  }
+}
+
+export function isAudience(value: unknown): value is Audience {
+  return typeof value === 'string' && (AUDIENCES as readonly string[]).includes(value);
+}
+
+export interface AnnouncementInput {
+  title: string;
+  body: string;
+  audience: Audience;
+  /** Where a tap goes; the bell when empty. */
+  route?: string;
+  byUid: string;
+}
+
+/**
+ * Grace's announcement: written to `announcements/{id}` first (the bell
+ * shows it from there, filtered by audience on the phone), then sent once
+ * to the topic. One send, however many phones: no fan-out, no per-user
+ * bell documents.
+ */
+export async function sendAnnouncement(
+  input: AnnouncementInput,
+  messaging: Messaging = getMessaging(),
+): Promise<{ id: string; messageId: string }> {
+  const title = input.title.trim();
+  const body = input.body.trim();
+  if (!title) throw new HttpsError('invalid-argument', 'Give the announcement a title.');
+  if (title.length > ANNOUNCEMENT_TITLE_MAX) {
+    throw new HttpsError('invalid-argument', `Keep the title under ${ANNOUNCEMENT_TITLE_MAX} characters.`);
+  }
+  if (!body) throw new HttpsError('invalid-argument', 'Write something for the announcement to say.');
+  if (body.length > ANNOUNCEMENT_BODY_MAX) {
+    throw new HttpsError('invalid-argument', `Keep the message under ${ANNOUNCEMENT_BODY_MAX} characters.`);
+  }
+  if (!isAudience(input.audience)) throw new HttpsError('invalid-argument', 'Pick who this goes to.');
+
+  const route = (input.route ?? '').trim() || '/you/notifications';
+  const db = getFirestore();
+  const ref = db.collection('announcements').doc();
+  await ref.set({
+    title,
+    body,
+    audience: input.audience,
+    route,
+    createdBy: input.byUid,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+
+  const message: Message = {
+    ...topicTarget(input.audience),
+    notification: { title, body },
+    data: { route, type: 'announcement', announcementId: ref.id },
+    android: {
+      priority: 'high',
+      notification: { channelId: 'lbm_default', icon: 'ic_stat_lbm', color: '#70A0D0' },
+    },
+    apns: { payload: { aps: { sound: 'default' } } },
+  } as Message;
+  const messageId = await messaging.send(message);
+  await ref.set({ messageId, sentAt: FieldValue.serverTimestamp() }, { merge: true });
+  logger.info('Announcement sent', { id: ref.id, audience: input.audience, messageId });
+  return { id: ref.id, messageId };
 }
 
 /** The same payload to many people, one after another; a failure for one never stops the rest. */

@@ -46,6 +46,7 @@ const _routes = <String, String>{
   'directory': '/you/directory',
   'notifications': '/you/notifications',
   'notification settings': '/you/notification-settings',
+  'admin': '/you/admin',
   'edit product (missing)': '/you/edit-product/nope',
   'claim a shop': '/you/claim-shop',
   'diagnostics (dev)': '/you/diagnostics',

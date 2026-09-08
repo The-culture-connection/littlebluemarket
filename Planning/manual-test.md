@@ -133,6 +133,9 @@
 5. Notifications → switch **Mentions and shoutouts** off → repeat step 4. *Pass:* the bell still shows it, the phone stays silent. Switch it back on.
 6. Sign out. *Pass:* Firestore `users/<uid>/devices` is empty for that account (the phone forgets itself before it signs out).
 7. If nothing arrives: the doctor's `android push` line (Play services), `firebase functions:log --only pushTestMe --project dev` (a `registration-token-not-registered` means the token was stale and has been pruned; tap Allow again), or Copy for Claude.
+8. **Announcements (CP-N1).** As `grace-s@…` (admin; Claim admin in Diagnostics if the row is missing): Edit profile → **Admin** → title "Hello from Little Blue Market", message "Testing announcements", Who: **Everyone**, A tap opens: **The bell** → **Send** → Send. Background the app. *Pass:* the push lands on this phone and on any other signed-in test phone; the bell shows it at the top with the megaphone icon; Firebase console `announcements/<id>` has `messageId` and `sentAt`.
+9. Send another with Who: **Sellers**. *Pass:* `+seller1`'s phone gets it; `+buyer1`'s stays silent and their bell does not list it. Opening the bell clears the unread tint on announcements too.
+10. If the push never lands but the bell has it: the phone was not subscribed to the topic yet; sign out and in once (the topics follow the session), then `firebase functions:log --only adminSendAnnouncement --project dev`.
 
 ---
 

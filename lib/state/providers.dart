@@ -104,16 +104,42 @@ final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
   return ref.watch(socialRepositoryProvider).watchNotifications();
 });
 
-final unreadNotificationsProvider = Provider<int>((ref) {
-  return ref.watch(notificationsProvider).value?.where((n) => !n.read).length ??
-      0;
-});
-
 /// The notification switches. Defaults until saved once.
 final notificationPrefsProvider = StreamProvider<NotificationPrefs>((ref) {
   final uid = ref.watch(currentUidProvider);
   if (uid == null) return Stream.value(const NotificationPrefs());
   return ref.watch(socialRepositoryProvider).watchNotificationPrefs();
+});
+
+/// News from Little Blue Market, every audience.
+final announcementsProvider = StreamProvider<List<Announcement>>((ref) {
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null) return Stream.value(const <Announcement>[]);
+  return ref.watch(socialRepositoryProvider).watchAnnouncements();
+});
+
+/// What the bell shows: personal notifications and the announcements meant
+/// for this viewer, newest first. The personal stream decides loading and
+/// error; announcements join when they arrive.
+final bellProvider = Provider<AsyncValue<List<AppNotification>>>((ref) {
+  final personal = ref.watch(notificationsProvider);
+  final announcements = ref.watch(announcementsProvider).value ?? const [];
+  final prefs = ref.watch(notificationPrefsProvider).value;
+  final isSeller = ref.watch(isSellerProvider);
+  final linked = ref.watch(directoryLinkProvider).value?.linked ?? false;
+  return personal.whenData((list) {
+    final merged = [
+      ...list,
+      for (final a in announcements)
+        if (a.audience.includes(isSeller: isSeller, directoryLinked: linked))
+          a.asNotification(seenAt: prefs?.announcementsSeenAt),
+    ]..sort((x, y) => y.createdAt.compareTo(x.createdAt));
+    return merged;
+  });
+});
+
+final unreadNotificationsProvider = Provider<int>((ref) {
+  return ref.watch(bellProvider).value?.where((n) => !n.read).length ?? 0;
 });
 
 /// Links that differ between the dev store and the real one. Kept for the

@@ -757,6 +757,16 @@ class FixtureSocialRepository implements SocialRepository {
   }
 
   @override
+  Stream<List<Announcement>> watchAnnouncements({int limit = 20}) =>
+      _store.announcements.stream.map((all) => all.take(limit).toList());
+
+  @override
+  Future<void> markAnnouncementsSeen() async {
+    _prefs = _prefs.copyWith(announcementsSeenAt: DateTime.now());
+    _prefChanges.add(_prefs);
+  }
+
+  @override
   Future<void> markNotificationsRead() async {
     _store.notifications.value = [
       for (final n in _store.notifications.value)
@@ -1572,6 +1582,35 @@ class FixtureDiagnosticsRepository implements DiagnosticsRepository {
         total: Fx.products.length,
         done: true,
       );
+}
+
+/// The demo merchant: an announcement lands in the store, so the bell shows
+/// it, and nothing is pushed anywhere.
+class FixtureAdminRepository implements AdminRepository {
+  FixtureAdminRepository(this._backend);
+
+  final FixtureBackend _backend;
+
+  @override
+  Future<Announcement> sendAnnouncement(NewAnnouncement draft) async {
+    await _backend._settle();
+    if (!draft.isValid) {
+      throw const ValidationException('Give it a title and a message.');
+    }
+    final announcement = Announcement(
+      id: 'a${DateTime.now().microsecondsSinceEpoch}',
+      title: draft.title.trim(),
+      body: draft.body.trim(),
+      audience: draft.audience,
+      route: draft.route.isEmpty ? '/you/notifications' : draft.route,
+      createdAt: DateTime.now(),
+    );
+    _backend.store.announcements.value = [
+      announcement,
+      ..._backend.store.announcements.value,
+    ];
+    return announcement;
+  }
 }
 
 /// The demo directory: unlinked until the first link, then one member with

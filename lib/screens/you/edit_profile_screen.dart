@@ -365,16 +365,29 @@ class _SellerRows extends StatelessWidget {
   }
 }
 
-/// littlebluecart.com. Everyone gets the row: a seller on the Market can be
-/// a customer of the directory, and the other way round.
-class _DirectoryRow extends StatelessWidget {
+/// littlebluecart.com and notifications. Everyone gets these rows: a seller
+/// on the Market can be a customer of the directory, and the other way
+/// round. The merchant's own account gets Admin as well.
+class _DirectoryRow extends ConsumerWidget {
   const _DirectoryRow();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
+    final isAdmin = ref.watch(isAdminProvider);
     return RowStack(
       children: [
+        if (isAdmin)
+          ListRow(
+            title: const Text('Admin'),
+            subtitle: const Text('Announcements to everyone or to a role'),
+            trailing: Icon(
+              Icons.chevron_right_rounded,
+              size: 22,
+              color: c.ink3,
+            ),
+            onTap: () => context.push('/you/admin'),
+          ),
         ListRow(
           title: const Text('Little Blue Cart directory'),
           subtitle: const Text(
