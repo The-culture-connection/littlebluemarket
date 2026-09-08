@@ -97,6 +97,17 @@
 5. Sign in as `grace-s+buyer1@…` (no WordPress account) → Edit profile → Little Blue Cart directory → **Link my directory account**. *Pass:* "No account at littlebluecart.com uses this email…" and no red strip.
 6. If step 2 finds nothing for `+dir1`: in `REPO\functions\` run `npm run wp:probe -- --email grace-s+dir1@the-culture-connection.com` and paste the block. It says whether the site has the user, the customer and the order.
 
+## J13 · Directory owner (a business listed on littlebluecart.com)
+
+*Needs J12's setup, plus a listing: on the **staging** site, logged in as `grace-s+dir1@…`, Add Your Business → Free plan → business name, website, phone, address, one category, one state, one ownership tag → submit. It sits in Pending until you publish it as WP admin.*
+
+1. As `+dir1` in the app: Edit profile → **Little Blue Cart directory** → **Refresh**. *Pass:* **My listings** shows the business with an **Under review** chip, its category, state and ownership-tag chips, the address, and Website / Call / Email / Directions buttons (only the ones the listing has).
+2. Tap **Website** (the business site opens in the browser), **Call** (the dialler opens with the number), **Email** (the mail app opens), **Directions** (Maps opens on the address). *Pass:* each opens the right app; nothing says "Could not open".
+3. On staging as WP admin: Directory → Listings → Pending → publish the listing. In the app: **Refresh** (after the ten-minute limit, or force-close and reopen the app). *Pass:* the chip reads **Published**. Firebase console: `directoryListings/<postId>` has `status: publish`, `ownerUid` = your uid, and `categories`, `tags`, `locations` as names, not numbers.
+4. Tap **Add a listing**. *Pass:* the browser opens the staging site's Add Your Business page.
+5. Leave it: within six hours (`directorySyncScheduled`) an edit made to the listing on the website reaches the card without a tap.
+6. If the card is missing or a field looks wrong: `npm run wp:probe -- --email grace-s+dir1@the-culture-connection.com` and paste the block (it prints the listing's status and its field names; the Free plan may carry different fields than the recorded Showcase one).
+
 ---
 
 ### If a journey fails

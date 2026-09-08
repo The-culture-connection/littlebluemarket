@@ -1554,8 +1554,10 @@ class FixtureDirectoryRepository implements DirectoryRepository {
 
   DirectoryLink? _link;
   List<DirectoryOrder> _orders = const [];
+  List<DirectoryListing> _listings = const [];
   final _links = StreamController<DirectoryLink?>.broadcast();
   final _orderChanges = StreamController<List<DirectoryOrder>>.broadcast();
+  final _listingChanges = StreamController<List<DirectoryListing>>.broadcast();
 
   @override
   Stream<DirectoryLink?> watchLink() async* {
@@ -1570,14 +1572,21 @@ class FixtureDirectoryRepository implements DirectoryRepository {
   }
 
   @override
+  Stream<List<DirectoryListing>> watchMyListings() async* {
+    yield _listings;
+    yield* _listingChanges.stream;
+  }
+
+  @override
   Future<DirectoryLinkResult> link({bool auto = false}) async {
     await _backend._settle();
     if (_link?.linked ?? false) {
       return DirectoryLinkResult(
         status: DirectoryLinkStatus.alreadyLinked,
         orders: _orders.length,
-        listings: 1,
+        listings: _listings.length,
         wpLogin: 'demo',
+        note: 'Checked a few minutes ago. Try again in a few minutes.',
       );
     }
     final now = DateTime.now();
@@ -1616,21 +1625,60 @@ class FixtureDirectoryRepository implements DirectoryRepository {
         viewUrl: 'https://example.com/my-account/view-order/1042/',
       ),
     ];
+    _listings = [
+      DirectoryListing(
+        id: '47494',
+        ownerUid: _backend.uid,
+        title: 'Field Trips Travel & Vacations',
+        status: 'publish',
+        link: 'https://example.com/directory-vendors/listing/field-trips/',
+        website: 'https://www.example.com/advisor/erica',
+        email: 'hello@example.com',
+        phone: '555-0100',
+        locationLabel: '*Online/Virtual Business',
+        street: '1851 Massachusetts Ave NE',
+        city: 'St. Petersburg',
+        state: 'FL',
+        zip: '33703',
+        address: '1851 Massachusetts Ave NE, St. Petersburg, FL 33703',
+        categories: const ['Travel'],
+        tags: const ['Woman-Owned'],
+        locations: const ['Online/Virtual'],
+        plan: 'DIRECTORY SHOWCASE PLAN',
+        updatedAt: now.subtract(const Duration(days: 3)),
+      ),
+      DirectoryListing(
+        id: '47510',
+        ownerUid: _backend.uid,
+        title: 'Field Trips Pop-Up Shop',
+        status: 'pending',
+        link: 'https://example.com/directory-vendors/listing/field-trips-pop-up/',
+        city: 'St. Petersburg',
+        state: 'FL',
+        address: 'St. Petersburg, FL',
+        categories: const ['Apparel/Accessories'],
+        tags: const ['Woman-Owned'],
+        locations: const ['Florida'],
+        plan: 'FREE',
+        updatedAt: now.subtract(const Duration(hours: 5)),
+      ),
+    ];
     _link = DirectoryLink(
       linked: true,
       wpLogin: 'demo',
       wpUserId: 6415,
       orderCount: _orders.length,
-      listingCount: 1,
+      listingCount: _listings.length,
       linkedAt: now,
       checkedAt: now,
     );
     _links.add(_link);
     _orderChanges.add(_orders);
+    _listingChanges.add(_listings);
     return DirectoryLinkResult(
       status: DirectoryLinkStatus.linked,
       orders: _orders.length,
-      listings: 1,
+      listings: _listings.length,
       wpLogin: 'demo',
     );
   }

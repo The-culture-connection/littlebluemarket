@@ -268,6 +268,15 @@ final directoryOrdersProvider = StreamProvider<List<DirectoryOrder>>((ref) {
   return ref.watch(directoryRepositoryProvider).watchOrders();
 });
 
+/// This account's own directory listings, every status.
+final myDirectoryListingsProvider = StreamProvider<List<DirectoryListing>>((
+  ref,
+) {
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null) return Stream.value(const <DirectoryListing>[]);
+  return ref.watch(directoryRepositoryProvider).watchMyListings();
+});
+
 // ------------------------------------------------------------------- search
 
 /// The live search, as one value.

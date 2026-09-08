@@ -97,6 +97,15 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // The public mirror of linked owners' directory listings. A published
+    // listing is what the website already shows to anyone; a pending or
+    // draft one is the owner's alone. Written only by the sync.
+    match /directoryListings/{postId} {
+      allow read: if resource.data.status == 'publish'
+        || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow write: if false;
+    }
+
     match /users/{uid} {
       // Profiles are public: the storefront, the seller strip on a listing and
       // the author of a review all need to read one.

@@ -63,6 +63,24 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
   }
 
   @override
+  Stream<List<DirectoryListing>> watchMyListings() {
+    final id = uid;
+    if (id == null) return Stream.value(const []);
+    return _db
+        .collection('directoryListings')
+        .where('ownerUid', isEqualTo: id)
+        .orderBy('updatedAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => [
+            for (final doc in snapshot.docs)
+              FirestoreMappers.directoryListing(doc.id, doc.data()),
+          ],
+        )
+        .guarded(operation: 'firestore directoryListings (mine)');
+  }
+
+  @override
   Future<DirectoryLinkResult> link({bool auto = false}) =>
       guardFirestore(() async {
         _requireUid;

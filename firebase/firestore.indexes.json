@@ -194,6 +194,40 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "_comment": "Stage 10: a directory owner's own listings, newest first (every status).",
+      "collectionGroup": "directoryListings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "_comment": "Stage 10: a directory owner's published listings on their public profile.",
+      "collectionGroup": "directoryListings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

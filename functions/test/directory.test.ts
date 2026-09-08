@@ -7,11 +7,13 @@ import {
   AUTO_MIN_AGE_MS,
   MANUAL_MIN_AGE_MS,
   NOT_FOUND_RECHECK_MS,
+  listingMirrorDoc,
   mergeOrders,
   reuseStored,
+  termIdsNeeded,
   wcTimestamp,
 } from '../src/directory.ts';
-import type { WcOrderRecord } from '../src/wordpress.ts';
+import type { DirectoryListingRecord, WcOrderRecord } from '../src/wordpress.ts';
 
 const NOW = Date.parse('2026-09-08T12:00:00Z');
 const at = (msAgo: number) => Timestamp.fromMillis(NOW - msAgo);
@@ -58,6 +60,43 @@ test('mergeOrders keeps the customer\'s orders, adds exact-email guest orders, d
   ];
   const merged = mergeOrders(byCustomer, byEmail, 'grace@example.test');
   assert.deepEqual(merged.map((o) => o.id), [2, 3, 1]);
+});
+
+const RECORD: DirectoryListingRecord = {
+  wpPostId: 47494, slug: 'field-trips', status: 'publish', link: 'https://example.test/listing/field-trips/',
+  title: 'Field Trips Travel & Vacations', wpAuthorId: 6415, featuredMediaId: 47490,
+  categoryIds: [725, 999], tagIds: [652], locationIds: [833],
+  website: 'https://www.example.test', email: 'owner@example.test', phone: '555-0100', storeLink: '',
+  locationLabel: '*Online/Virtual Business',
+  businessAddress: { street: '1851 Massachusetts Ave NE', city: 'St. Petersburg', state: 'FL', zip: '33703', display: '1851 Massachusetts Ave NE, St. Petersburg, FL 33703' },
+  plan: 'DIRECTORY SHOWCASE PLAN', planId: 26361, modified: '2026-09-05T03:39:37',
+};
+
+test('listingMirrorDoc names the terms it knows and drops the ids it does not', () => {
+  const doc = listingMirrorDoc(RECORD, 'uid-1', {
+    vendors_dir_cat: { '725': 'Travel' },
+    vendors_dir_tag: { '652': 'Woman-Owned' },
+    vendors_loc_loc: { '833': 'Online/Virtual' },
+  }, 'https://cdn.example.test/img.webp');
+  assert.equal(doc.ownerUid, 'uid-1');
+  assert.equal(doc.wpUserId, 6415);
+  assert.equal(doc.status, 'publish');
+  assert.deepEqual(doc.categories, ['Travel']);
+  assert.deepEqual(doc.tags, ['Woman-Owned']);
+  assert.deepEqual(doc.locations, ['Online/Virtual']);
+  assert.equal(doc.state, 'FL');
+  assert.equal(doc.address, '1851 Massachusetts Ave NE, St. Petersburg, FL 33703');
+  assert.equal(doc.imageUrl, 'https://cdn.example.test/img.webp');
+  assert.equal((doc.updatedAt as Timestamp).toDate().toISOString(), '2026-09-05T03:39:37.000Z');
+  // Never anything the public endpoint did not return.
+  assert.ok(!('wpEmailLower' in doc) && !('planId' in doc));
+});
+
+test('termIdsNeeded collects each taxonomy once across listings', () => {
+  const needed = termIdsNeeded([RECORD, { ...RECORD, wpPostId: 2, categoryIds: [725, 1], tagIds: [], locationIds: [] }]);
+  assert.deepEqual(needed.vendors_dir_cat, [725, 999, 1]);
+  assert.deepEqual(needed.vendors_dir_tag, [652]);
+  assert.deepEqual(needed.vendors_loc_loc, [833]);
 });
 
 test('WooCommerce GMT dates without a zone marker are read as UTC', () => {

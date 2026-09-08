@@ -253,6 +253,9 @@ abstract interface class DirectoryRepository {
   /// Orders from littlebluecart.com, newest first.
   Stream<List<DirectoryOrder>> watchOrders();
 
+  /// This account's own directory listings, every status, newest first.
+  Stream<List<DirectoryListing>> watchMyListings();
+
   /// "Link my directory account", or, with [auto], the silent launch-time
   /// call that reuses a fresher answer and never nags. Idempotent.
   Future<DirectoryLinkResult> link({bool auto = false});

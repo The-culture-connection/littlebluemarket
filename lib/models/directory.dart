@@ -122,3 +122,120 @@ class DirectoryOrder {
   /// "Tax the Rich Hoodie · Sticker ×2".
   String get summary => items.map((i) => i.label).join(' · ');
 }
+
+/// One business listing on littlebluecart.com, as the public mirror carries
+/// it: what the website already shows to anyone, with term ids already
+/// turned into names.
+@immutable
+class DirectoryListing {
+  const DirectoryListing({
+    required this.id,
+    required this.ownerUid,
+    required this.title,
+    required this.status,
+    required this.link,
+    this.website = '',
+    this.email = '',
+    this.phone = '',
+    this.storeLink = '',
+    this.locationLabel = '',
+    this.street = '',
+    this.city = '',
+    this.state = '',
+    this.zip = '',
+    this.address = '',
+    this.categories = const [],
+    this.tags = const [],
+    this.locations = const [],
+    this.plan = '',
+    this.imageUrl = '',
+    this.updatedAt,
+  });
+
+  /// The WordPress post id.
+  final String id;
+  final String ownerUid;
+  final String title;
+
+  /// WordPress's own status: publish, pending, draft, future, private.
+  final String status;
+
+  /// The listing page on littlebluecart.com.
+  final String link;
+  final String website;
+  final String email;
+  final String phone;
+
+  /// The seller's Little Blue Market storefront, when they filled it in.
+  final String storeLink;
+
+  /// The directory's own location label, e.g. "*Online/Virtual Business".
+  final String locationLabel;
+  final String street;
+  final String city;
+  final String state;
+  final String zip;
+
+  /// The full address on one line, as the site displays it.
+  final String address;
+  final List<String> categories;
+
+  /// Ownership tags: Woman-Owned, BIPOC-Owned, Ally…
+  final List<String> tags;
+
+  /// Directory locations, usually a state name.
+  final List<String> locations;
+  final String plan;
+  final String imageUrl;
+  final DateTime? updatedAt;
+
+  bool get isPublished => status == 'publish';
+
+  String get statusLabel => switch (status) {
+    'publish' => 'Published',
+    'pending' => 'Under review',
+    'draft' => 'Draft',
+    'future' => 'Scheduled',
+    'private' => 'Private',
+    _ => status,
+  };
+
+  /// "FL", or the directory's location when the address has no state.
+  String get stateLabel {
+    if (state.isNotEmpty) return state;
+    if (locations.isNotEmpty) return locations.first;
+    return locationLabel.replaceFirst('*', '');
+  }
+
+  /// "DIRECTORY SHOWCASE PLAN" → "Showcase plan".
+  String get planLabel {
+    final words = plan
+        .replaceFirst(RegExp('^DIRECTORY ', caseSensitive: false), '')
+        .trim()
+        .toLowerCase();
+    if (words.isEmpty) return '';
+    return words[0].toUpperCase() + words.substring(1);
+  }
+
+  Uri? get websiteUri {
+    if (website.isEmpty) return null;
+    final full = website.startsWith(RegExp('https?://'))
+        ? website
+        : 'https://$website';
+    return Uri.tryParse(full);
+  }
+
+  Uri? get callUri {
+    final digits = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    return digits.isEmpty ? null : Uri(scheme: 'tel', path: digits);
+  }
+
+  Uri? get emailUri => email.isEmpty ? null : Uri(scheme: 'mailto', path: email);
+
+  /// A `geo:` search, which Android hands to whichever maps app is installed.
+  Uri? get directionsUri => address.isEmpty
+      ? null
+      : Uri.parse('geo:0,0?q=${Uri.encodeComponent(address)}');
+
+  Uri? get linkUri => link.isEmpty ? null : Uri.tryParse(link);
+}

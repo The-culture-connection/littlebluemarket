@@ -9,6 +9,7 @@ import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/directory_listing_card.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/unverified_banner.dart';
@@ -97,6 +98,9 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
     final verified = session is MemberSession && session.emailVerified;
     final link = ref.watch(directoryLinkProvider);
     final orders = ref.watch(directoryOrdersProvider);
+    final listings = ref.watch(myDirectoryListingsProvider);
+    final config = ref.watch(appConfigProvider);
+    final linked = link.value?.linked ?? false;
 
     // The confirm-email banner's "I've confirmed it" flips the session; the
     // door's automatic link waits for exactly that.
@@ -120,6 +124,45 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
               onLink: _link,
             ),
           ),
+          if (linked) ...[
+            const SizedBox(height: 16),
+            const SectionHead('My listings'),
+            const SizedBox(height: 8),
+            LbmAsync<List<DirectoryListing>>(
+              listings,
+              skeleton: const SizedBox(height: 80),
+              data: (list) => list.isEmpty
+                  ? LbmCard(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'No listing under this account yet. Add your business '
+                        'below; it shows here once Little Blue Cart approves '
+                        'it (tap Refresh).',
+                        style: LbmText.tiny.copyWith(
+                          color: c.ink2,
+                          height: 1.5,
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        for (final listing in list)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: DirectoryListingCard(
+                              listing: listing,
+                              showStatus: true,
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          _AddListingCard(
+            config: config,
+            onOpen: _open,
+          ),
           const SizedBox(height: 16),
           const SectionHead('Orders from littlebluecart.com'),
           const SizedBox(height: 8),
@@ -130,7 +173,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                 ? LbmCard(
                     padding: const EdgeInsets.all(16),
                     child: Text(
-                      (link.value?.linked ?? false)
+                      linked
                           ? 'No website orders on this email yet.'
                           : 'Link your account to see orders you placed on '
                                 'littlebluecart.com.',
@@ -159,6 +202,55 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                       ],
                     ),
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Adding a listing stays on the website: the plans, the payment and Little
+/// Blue Cart's review live there. The app opens the form and says what
+/// happens next.
+class _AddListingCard extends StatelessWidget {
+  const _AddListingCard({required this.config, required this.onOpen});
+
+  final AsyncValue<AppConfig> config;
+  final Future<void> Function(String url) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return LbmCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'List your business in the directory',
+            style: LbmText.display.copyWith(fontSize: 18, color: c.ink),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'The form is on littlebluecart.com: pick a plan and tell us about '
+            'your business. Little Blue Cart reviews it; once it is approved, '
+            'come back here and tap Refresh.',
+            style: LbmText.tiny.copyWith(color: c.ink2, height: 1.5),
+          ),
+          const SizedBox(height: 12),
+          LbmAsync<AppConfig>(
+            config,
+            skeleton: const SizedBox(height: 40),
+            errorBuilder: (_, _) => PillButton(
+              'Add a listing',
+              style: PillStyle.quiet,
+              onPressed: () => onOpen(''),
+            ),
+            data: (cfg) => PillButton(
+              'Add a listing',
+              style: PillStyle.quiet,
+              onPressed: () => onOpen(cfg.directoryAddListingUrl),
+            ),
           ),
         ],
       ),

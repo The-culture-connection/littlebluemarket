@@ -354,6 +354,28 @@ describe('selling is a grant, not a client write', () => {
     await assertFails(member('kali').doc('users/maya/directoryOrders/88').get());
     await assertFails(member('maya').doc('users/maya/directoryOrders/88').set({ totalCents: 0 }));
   });
+
+  test('a published directory listing is public; a pending one is the owner\'s alone; nobody writes', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('directoryListings/1').set({ ownerUid: 'maya', status: 'publish', title: 'Live' });
+      await admin.firestore().doc('directoryListings/2').set({ ownerUid: 'maya', status: 'pending', title: 'Waiting' });
+    });
+
+    await assertSucceeds(guest().doc('directoryListings/1').get());
+    await assertSucceeds(member('kali').doc('directoryListings/1').get());
+    await assertSucceeds(member('maya').doc('directoryListings/2').get());
+    await assertFails(member('kali').doc('directoryListings/2').get());
+    await assertFails(guest().doc('directoryListings/2').get());
+    await assertFails(member('maya').doc('directoryListings/1').set({ title: 'Edited on the phone' }));
+    await assertFails(member('maya').doc('directoryListings/3').set({ ownerUid: 'maya', status: 'publish' }));
+
+    // The owner's own list and the public list are both answerable queries.
+    await assertSucceeds(member('maya').collection('directoryListings').where('ownerUid', '==', 'maya').get());
+    await assertSucceeds(
+      member('kali').collection('directoryListings').where('ownerUid', '==', 'maya').where('status', '==', 'publish').get(),
+    );
+    await assertFails(member('kali').collection('directoryListings').where('ownerUid', '==', 'maya').get());
+  });
 });
 
 describe('creating a profile', () => {

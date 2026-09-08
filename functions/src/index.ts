@@ -17,7 +17,7 @@ import {
   DIRECTORY_ADD_LISTING_URL,
   WP_SECRETS,
 } from './config.ts';
-import { syncDirectory } from './directory.ts';
+import { syncAllDirectoryListings, syncDirectory } from './directory.ts';
 import {
   backfillSellerForVendor,
   mirrorProduct,
@@ -289,6 +289,19 @@ export const directoryLinkMe = onCall(
     const auto = Boolean((request.data ?? {}).auto);
     return syncDirectory(uid, email.trim().toLowerCase(), { auto });
   }),
+);
+
+/**
+ * A listing edited or approved on the website reaches the app within six
+ * hours without anyone tapping; Refresh on the Directory screen is the
+ * on-demand path.
+ */
+export const directorySyncScheduled = onSchedule(
+  { schedule: 'every 6 hours', secrets: WP_SECRETS, timeoutSeconds: 540 },
+  async () => {
+    const owners = await syncAllDirectoryListings();
+    logger.info('Directory listings re-synced', { owners });
+  },
 );
 
 /**

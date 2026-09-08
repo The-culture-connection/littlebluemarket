@@ -437,6 +437,33 @@ abstract final class FirestoreMappers {
         viewUrl: str(data['viewUrl']),
       );
 
+  static DirectoryListing directoryListing(
+    String id,
+    Map<String, dynamic> data,
+  ) => DirectoryListing(
+    id: id,
+    ownerUid: str(data['ownerUid']),
+    title: str(data['title']),
+    status: str(data['status'], 'publish'),
+    link: str(data['link']),
+    website: str(data['website']),
+    email: str(data['email']),
+    phone: str(data['phone']),
+    storeLink: str(data['storeLink']),
+    locationLabel: str(data['locationLabel']),
+    street: str(data['street']),
+    city: str(data['city']),
+    state: str(data['state']),
+    zip: str(data['zip']),
+    address: str(data['address']),
+    categories: strings(data['categories']),
+    tags: strings(data['tags']),
+    locations: strings(data['locations']),
+    plan: str(data['plan']),
+    imageUrl: str(data['imageUrl']),
+    updatedAt: timeOrNull(data['updatedAt']),
+  );
+
   static Shipment shipment(Map<String, dynamic> data, {String? payoutNote}) =>
       Shipment(
         productId: str(data['productId']),
