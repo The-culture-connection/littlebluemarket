@@ -15,6 +15,11 @@ abstract interface class PushService {
   /// Asks the phone. On Android 13+ and iOS this shows the system prompt.
   Future<PushPermission> requestPermission();
 
+  /// At start-up: asks only when the phone has never been asked, so the
+  /// system prompt appears once and a refusal is respected afterwards (the
+  /// Notifications screen is the way back in).
+  Future<void> requestPermissionIfUndecided();
+
   /// Registers this phone for [uid]: writes the token, follows refreshes,
   /// wires foreground banners and taps. Safe to call more than once.
   Future<void> start(String uid);

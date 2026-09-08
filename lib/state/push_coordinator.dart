@@ -16,6 +16,16 @@ final pushCoordinatorProvider = Provider<void>((ref) {
   final push = ref.watch(pushServiceProvider);
   String? started;
 
+  // Grace's call (2026-09-08): ask for notifications as soon as the app
+  // starts, before anyone signs in. The system prompt shows once; a refusal
+  // is respected after that (the Notifications screen is the way back in).
+  // No timer here: a pending timer would fail every widget test.
+  unawaited(
+    push.requestPermissionIfUndecided().catchError((Object error, StackTrace stack) {
+      DevErrorSink.report(error, stack, 'push permission at start');
+    }),
+  );
+
   ref.listen<AsyncValue<Session>>(sessionProvider, (_, next) {
     final session = next.value;
     if (session is! MemberSession) return;

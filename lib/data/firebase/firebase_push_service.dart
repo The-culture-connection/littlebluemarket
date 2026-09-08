@@ -95,6 +95,12 @@ class FirebasePushService implements PushService {
     }
   }
 
+  @override
+  Future<void> requestPermissionIfUndecided() async {
+    if (await permissionStatus() != PushPermission.notDetermined) return;
+    await requestPermission();
+  }
+
   Future<void> _initLocal() async {
     if (_localReady) return;
     _localReady = true;

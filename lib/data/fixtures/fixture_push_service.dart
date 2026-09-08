@@ -20,6 +20,9 @@ class FixturePushService implements PushService {
       _permission = PushPermission.granted;
 
   @override
+  Future<void> requestPermissionIfUndecided() async {}
+
+  @override
   Future<void> start(String uid) async {}
 
   @override
