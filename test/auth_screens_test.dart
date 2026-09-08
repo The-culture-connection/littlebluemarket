@@ -12,9 +12,13 @@ import 'package:little_blue_market/widgets/primitives.dart';
 /// off these routes. They went untested for exactly that reason — and they are
 /// now the only way into the app, so they are worth their own file.
 const _routes = <String, String>{
+  'are you (the seven doors)': '/orient',
   'sign in': '/signin',
   'create a profile': '/signin?create=1',
+  'create a profile (a door)': '/signin?create=1&intent=dirseller',
   'confirm your email': '/verify?email=someone%40example.com&create=1',
+  'set up your profile': '/setup',
+  'set up your profile (a door)': '/setup?intent=mktseller',
 };
 
 Future<void> _pumpAt(

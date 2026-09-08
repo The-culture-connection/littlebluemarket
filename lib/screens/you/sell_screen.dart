@@ -23,7 +23,19 @@ import '../../widgets/unverified_banner.dart';
 /// in Shipturtle; come back and tap the same button. A claim code, for the
 /// cases the roster cannot decide.
 class SellWithUsScreen extends ConsumerStatefulWidget {
-  const SellWithUsScreen({super.key});
+  const SellWithUsScreen({
+    super.key,
+    this.autoCheck = false,
+    this.apply = false,
+  });
+
+  /// The "I sell on Little Blue Market" door: run Check my seller status by
+  /// itself, as soon as the email is confirmed.
+  final bool autoCheck;
+
+  /// The "I want to sell on Little Blue Market" door: open the website
+  /// application once, then stay here for the check that follows approval.
+  final bool apply;
 
   @override
   ConsumerState<SellWithUsScreen> createState() => _SellWithUsScreenState();
@@ -31,8 +43,29 @@ class SellWithUsScreen extends ConsumerStatefulWidget {
 
 class _SellWithUsScreenState extends ConsumerState<SellWithUsScreen> {
   bool _checking = false;
+  bool _autoRan = false;
+  bool _applyOpened = false;
   SellerSyncResult? _result;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoCheck) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAuto());
+    }
+  }
+
+  /// Once, and only with a confirmed email: the roster check needs the
+  /// address proven, and the banner's "I've confirmed it" is what flips it.
+  void _maybeAuto() {
+    if (!mounted || !widget.autoCheck || _autoRan) return;
+    final session = ref.read(sessionProvider).value;
+    if (session is! MemberSession || !session.emailVerified) return;
+    _autoRan = true;
+    if (ref.read(isSellerProvider)) return;
+    _check();
+  }
 
   Future<void> _check() async {
     if (_checking) return;
@@ -80,6 +113,17 @@ class _SellWithUsScreenState extends ConsumerState<SellWithUsScreen> {
     final verified = session is MemberSession && session.emailVerified;
     final isSeller = ref.watch(isSellerProvider);
     final config = ref.watch(appConfigProvider);
+
+    ref.listen(sessionProvider, (_, _) => _maybeAuto());
+
+    // The "apply" door: the website form opens once the link is known.
+    final applyUrl = config.value?.registrationUrl;
+    if (widget.apply && !_applyOpened && applyUrl != null && !isSeller) {
+      _applyOpened = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openRegistration(applyUrl);
+      });
+    }
 
     return LbmScreen(
       appBar: const LbmAppBar(title: 'Sell with us'),

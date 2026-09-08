@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../app_assets.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/repositories.dart';
+import '../../models/onboarding.dart';
 import '../../widgets/async.dart';
 import '../../state/session.dart';
 import '../../theme/app_theme.dart';
@@ -144,6 +145,158 @@ class _QuietAction extends StatelessWidget {
   }
 }
 
+// ------------------------------------------------------------------- orient
+
+/// "Are you…": the seven doors behind Create a Profile.
+///
+/// Each door is a plain `?intent=` on the sign-up route. It travels through
+/// email, confirm and setup and decides only where the person lands first.
+/// The welcome artwork stays screen one: its Sign in is "returning to the
+/// app", its Create a Profile opens this.
+class OrientScreen extends StatelessWidget {
+  const OrientScreen({super.key});
+
+  void _go(BuildContext context, OnboardingIntent intent) =>
+      context.push('/signin?create=1${intent.querySuffix}');
+
+  @override
+  Widget build(BuildContext context) {
+    return _OnboardingScaffold(
+      title: 'Are you…',
+      subtitle:
+          'Pick the one that fits best. It only decides where you land first.',
+      fields: [
+        _DoorGroup(
+          label: 'Shopping',
+          doors: [
+            _Door(
+              "I'm new here",
+              onTap: () => _go(context, OnboardingIntent.newHere),
+            ),
+            _Door(
+              "I've bought on littlebluecart.com",
+              onTap: () => _go(context, OnboardingIntent.directoryCustomer),
+            ),
+            _Door(
+              "I've bought on Little Blue Market",
+              onTap: () => _go(context, OnboardingIntent.marketplaceCustomer),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _DoorGroup(
+          label: 'Selling',
+          doors: [
+            _Door(
+              'My business is listed in the directory',
+              onTap: () => _go(context, OnboardingIntent.directorySeller),
+            ),
+            _Door(
+              'I sell on Little Blue Market',
+              onTap: () => _go(context, OnboardingIntent.marketplaceSeller),
+            ),
+            _Door(
+              'I want to list my business in the directory',
+              onTap: () => _go(context, OnboardingIntent.newDirectorySeller),
+            ),
+            _Door(
+              'I want to sell on Little Blue Market',
+              onTap: () => _go(context, OnboardingIntent.newMarketplaceSeller),
+            ),
+          ],
+        ),
+      ],
+      actions: [
+        _QuietAction(
+          'I already have a profile',
+          onPressed: () => context.push('/signin'),
+        ),
+      ],
+    );
+  }
+}
+
+class _DoorGroup extends StatelessWidget {
+  const _DoorGroup({required this.label, required this.doors});
+
+  final String label;
+  final List<Widget> doors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: kBodyFont,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
+              color: LbmConst.onWelcome.withValues(alpha: 0.72),
+            ),
+          ),
+        ),
+        for (final door in doors)
+          Padding(padding: const EdgeInsets.only(bottom: 8), child: door),
+      ],
+    );
+  }
+}
+
+/// One door: a translucent row on the onboarding blue, the same surface the
+/// fields use, so the list reads as choices rather than buttons.
+class _Door extends StatelessWidget {
+  const _Door(this.label, {required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: LbmRadius.fieldR,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.16),
+            borderRadius: LbmRadius.fieldR,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 13, 10, 13),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontFamily: kBodyFont,
+                      fontSize: 14.5,
+                      height: 1.3,
+                      fontWeight: FontWeight.w700,
+                      color: LbmConst.onWelcome,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: LbmConst.onWelcome.withValues(alpha: 0.8),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ------------------------------------------------------------ email + password
 
 /// Sign in, or create an account.
@@ -153,10 +306,17 @@ class _QuietAction extends StatelessWidget {
 /// Dynamic Links, which shut down in August 2025. Password auth is the one
 /// option that needs no mail infrastructure of our own.
 class EmailScreen extends ConsumerStatefulWidget {
-  const EmailScreen({super.key, this.creating = false});
+  const EmailScreen({
+    super.key,
+    this.creating = false,
+    this.intent = OnboardingIntent.newHere,
+  });
 
   /// Whether the person arrived via "Create a Profile" rather than "Sign in".
   final bool creating;
+
+  /// The door they chose on "Are you…", carried through to setup.
+  final OnboardingIntent intent;
 
   @override
   ConsumerState<EmailScreen> createState() => _EmailScreenState();
@@ -213,7 +373,8 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
         // That only blocks linking a shop record, so it is a notice rather
         // than a gate.
         context.push(
-          '/verify?email=${Uri.encodeComponent(_email.text)}&create=1',
+          '/verify?email=${Uri.encodeComponent(_email.text)}&create=1'
+          '${widget.intent.querySuffix}',
         );
       } else {
         final user = await session.signInWithPassword(
@@ -315,7 +476,8 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
         _QuietAction(
           widget.creating ? 'I already have a profile' : 'Create one instead',
           onPressed: () => context.pushReplacement(
-            '/signin?create=${widget.creating ? 0 : 1}',
+            '/signin?create=${widget.creating ? 0 : 1}'
+            '${widget.intent.querySuffix}',
           ),
         ),
       ],
@@ -378,10 +540,16 @@ class _SlateButton extends StatelessWidget {
 /// which happens later and refuses on its own. Blocking here would strand
 /// anyone whose mail is slow for the sake of a check they have not reached.
 class VerifyScreen extends ConsumerStatefulWidget {
-  const VerifyScreen({super.key, required this.email, this.creating = false});
+  const VerifyScreen({
+    super.key,
+    required this.email,
+    this.creating = false,
+    this.intent = OnboardingIntent.newHere,
+  });
 
   final String email;
   final bool creating;
+  final OnboardingIntent intent;
 
   @override
   ConsumerState<VerifyScreen> createState() => _VerifyScreenState();
@@ -474,7 +642,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
 
   void _continue() {
     if (widget.creating) {
-      context.push('/setup');
+      context.push('/setup${widget.intent.queryParam}');
     } else {
       context.go('/market');
     }
@@ -539,7 +707,13 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
 ///
 /// The handle is asked first because it doubles as the storefront address.
 class ProfileSetupScreen extends ConsumerStatefulWidget {
-  const ProfileSetupScreen({super.key});
+  const ProfileSetupScreen({
+    super.key,
+    this.intent = OnboardingIntent.newHere,
+  });
+
+  /// Where to land once the profile exists: the door chosen on "Are you…".
+  final OnboardingIntent intent;
 
   @override
   ConsumerState<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
@@ -548,7 +722,6 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _handle = TextEditingController(text: '@');
   final _bio = TextEditingController();
-  bool _sells = true;
   bool _busy = false;
   String? _error;
   Uint8List? _photo;
@@ -611,7 +784,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             .uploadAvatar(photo, contentType: _photoType);
       }
       if (!mounted) return;
-      context.go('/market');
+      // The door decides the first screen: a directory owner lands on the
+      // Directory page already linking, a Market seller on Sell with us
+      // already checking, everyone else on the feed.
+      context.go(widget.intent.landingRoute);
     } on RepositoryException catch (error) {
       if (!mounted) return;
       setState(() => _error = describeError(error).body);
@@ -675,11 +851,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           maxLines: 3,
           onDark: true,
         ),
-        const SizedBox(height: 13),
-        _SellCheckbox(
-          value: _sells,
-          onChanged: (v) => setState(() => _sells = v),
-        ),
         if (_error != null) ...[
           const SizedBox(height: 12),
           Text(
@@ -703,58 +874,3 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 }
 
-class _SellCheckbox extends StatelessWidget {
-  const _SellCheckbox({required this.value, required this.onChanged});
-
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => onChanged(!value),
-      borderRadius: LbmRadius.fieldR,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 22,
-              height: 22,
-              margin: const EdgeInsets.only(top: 1),
-              decoration: BoxDecoration(
-                color: value
-                    ? LbmConst.onWelcome
-                    : Colors.white.withValues(alpha: 0.16),
-                borderRadius: const BorderRadius.all(Radius.circular(7)),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.55),
-                  width: 1.5,
-                ),
-              ),
-              child: value
-                  ? const Icon(
-                      Icons.check_rounded,
-                      size: 16,
-                      color: LbmConst.welcomeBlue,
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                "I'm here to sell as well as buy",
-                style: TextStyle(
-                  fontSize: 13,
-                  height: 1.5,
-                  color: LbmConst.onWelcome.withValues(alpha: 0.88),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

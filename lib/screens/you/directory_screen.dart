@@ -22,10 +22,14 @@ import '../../widgets/unverified_banner.dart';
 /// website orders first; listings join in CP-D3. Arriving from an onboarding
 /// door (`?auto=1`) runs the link by itself once the email is confirmed.
 class DirectoryScreen extends ConsumerStatefulWidget {
-  const DirectoryScreen({super.key, this.auto = false});
+  const DirectoryScreen({super.key, this.auto = false, this.add = false});
 
   /// True when an onboarding door sent the person here: link without a tap.
   final bool auto;
+
+  /// True for the "I want to list my business" door: open the website's
+  /// Add Your Business form once, then stay here to explain what happens next.
+  final bool add;
 
   @override
   ConsumerState<DirectoryScreen> createState() => _DirectoryScreenState();
@@ -34,6 +38,7 @@ class DirectoryScreen extends ConsumerStatefulWidget {
 class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
   bool _busy = false;
   bool _autoRan = false;
+  bool _addOpened = false;
   DirectoryLinkResult? _result;
   String? _error;
 
@@ -105,6 +110,15 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
     // The confirm-email banner's "I've confirmed it" flips the session; the
     // door's automatic link waits for exactly that.
     ref.listen(sessionProvider, (_, _) => _maybeAuto());
+
+    // The "list my business" door: the form opens once the link is known.
+    final addUrl = config.value?.directoryAddListingUrl;
+    if (widget.add && !_addOpened && addUrl != null) {
+      _addOpened = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _open(addUrl);
+      });
+    }
 
     return LbmScreen(
       appBar: const LbmAppBar(title: 'Little Blue Cart directory'),

@@ -38,6 +38,7 @@ const _routes = <String, String>{
   'forum threads (empty)': '/community/forums/f3',
   'thread detail': '/community/thread/t1',
   'create a forum': '/community/new-forum',
+  'are you (the seven doors)': '/orient',
   'your profile': '/you',
   'edit profile': '/you/edit',
   'add a product': '/you/add-product',

@@ -30,6 +30,7 @@ import '../screens/you/edit_profile_screen.dart';
 import '../screens/you/messages_screen.dart';
 import '../screens/you/profile_screen.dart';
 import '../screens/you/shipping_screen.dart';
+import '../models/onboarding.dart';
 import '../state/session.dart';
 import '../widgets/app_shell.dart';
 
@@ -111,10 +112,16 @@ GoRouter buildRouter(Ref ref) {
         if (session is MemberSession) return '/market';
         if (session is OnboardingSession) {
           // Mid-onboarding on a cold start: the confirm screen first when
-          // the address is not yet proven, so it is never skipped past.
+          // the address is not yet proven, so it is never skipped past. The
+          // door is carried when the link still has it; a cold start that
+          // lost it lands on the feed, and the door waits in Edit profile.
+          final intent = OnboardingIntent.fromQuery(
+            state.uri.queryParameters['intent'],
+          );
           return session.emailVerified
-              ? '/setup'
-              : '/verify?email=${Uri.encodeComponent(session.email)}&create=1';
+              ? '/setup${intent.queryParam}'
+              : '/verify?email=${Uri.encodeComponent(session.email)}&create=1'
+                    '${intent.querySuffix}';
         }
         if (session is GuestSession && session.uid != null) return '/market';
       }
@@ -122,6 +129,7 @@ GoRouter buildRouter(Ref ref) {
       // The onboarding routes decide their own next step.
       if (path == '/' ||
           path.startsWith('/welcome') ||
+          path.startsWith('/orient') ||
           path.startsWith('/signin') ||
           path.startsWith('/verify') ||
           path.startsWith('/setup')) {
@@ -152,21 +160,38 @@ GoRouter buildRouter(Ref ref) {
       // Email and password, then a profile the first time. `/verify` is no
       // longer a gate — it tells a new account to confirm its address, which
       // only matters when linking a shop record later.
+      // "Are you…": the seven doors behind Create a Profile. The door rides
+      // along as ?intent= through the three routes below.
+      GoRoute(
+        path: '/orient',
+        builder: (context, state) => const OrientScreen(),
+      ),
       GoRoute(
         path: '/signin',
-        builder: (context, state) =>
-            EmailScreen(creating: state.uri.queryParameters['create'] == '1'),
+        builder: (context, state) => EmailScreen(
+          creating: state.uri.queryParameters['create'] == '1',
+          intent: OnboardingIntent.fromQuery(
+            state.uri.queryParameters['intent'],
+          ),
+        ),
       ),
       GoRoute(
         path: '/verify',
         builder: (context, state) => VerifyScreen(
           email: state.uri.queryParameters['email'] ?? '',
           creating: state.uri.queryParameters['create'] == '1',
+          intent: OnboardingIntent.fromQuery(
+            state.uri.queryParameters['intent'],
+          ),
         ),
       ),
       GoRoute(
         path: '/setup',
-        builder: (context, state) => const ProfileSetupScreen(),
+        builder: (context, state) => ProfileSetupScreen(
+          intent: OnboardingIntent.fromQuery(
+            state.uri.queryParameters['intent'],
+          ),
+        ),
       ),
 
       // The three tabs. Each branch keeps its own navigator, and therefore its
@@ -219,7 +244,9 @@ GoRouter buildRouter(Ref ref) {
             routes: [
               GoRoute(
                 path: '/you',
-                builder: (context, state) => const ProfileScreen(),
+                builder: (context, state) => ProfileScreen(
+                  openBought: state.uri.queryParameters['tab'] == 'bought',
+                ),
                 routes: [
                   GoRoute(
                     path: 'edit',
@@ -241,12 +268,16 @@ GoRouter buildRouter(Ref ref) {
                   ),
                   GoRoute(
                     path: 'sell',
-                    builder: (context, state) => const SellWithUsScreen(),
+                    builder: (context, state) => SellWithUsScreen(
+                      autoCheck: state.uri.queryParameters['auto'] == '1',
+                      apply: state.uri.queryParameters['apply'] == '1',
+                    ),
                   ),
                   GoRoute(
                     path: 'directory',
                     builder: (context, state) => DirectoryScreen(
                       auto: state.uri.queryParameters['auto'] == '1',
+                      add: state.uri.queryParameters['add'] == '1',
                     ),
                   ),
                   GoRoute(

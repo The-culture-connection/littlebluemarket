@@ -63,4 +63,13 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
     expect(_location(container), '/');
   });
+
+  testWidgets('a stranger can open the doors and is not bounced off them', (
+    tester,
+  ) async {
+    final container = await _pump(tester, before: (_) {});
+    container.read(routerProvider).go('/orient');
+    await tester.pumpAndSettle();
+    expect(_location(container), '/orient');
+  });
 }

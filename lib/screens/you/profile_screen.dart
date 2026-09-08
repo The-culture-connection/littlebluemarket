@@ -26,14 +26,21 @@ import '../market/results_screen.dart';
 /// The envelope opens messages and the overflow button opens shipping, which
 /// is where package and tracking information lives.
 class ProfileScreen extends ConsumerStatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.openBought = false});
+
+  /// Open on the Bought tab: the landing for someone who came through the
+  /// "I've bought on Little Blue Market" door.
+  final bool openBought;
 
   @override
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  int _tab = 0;
+  /// Null until the person picks one, so the first tab can depend on
+  /// whether they are a seller (Bought is the third tab then, the second
+  /// otherwise).
+  int? _tab;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +56,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: IdentitySkeleton(),
       );
     }
+
+    final tab = _tab ?? (widget.openBought ? (me.isSeller ? 2 : 1) : 0);
 
     return LbmScreen(
       appBar: LbmAppBar(
@@ -130,11 +139,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               labels: me.isSeller
                   ? const ['Products', 'Posted', 'Bought']
                   : const ['Posted', 'Bought & received'],
-              selected: _tab,
+              selected: tab,
               onChanged: (i) => setState(() => _tab = i),
             ),
             // The tab now actually switches the grid. It was tracked and ignored.
-            switch ((me.isSeller, _tab)) {
+            switch ((me.isSeller, tab)) {
               (true, 0) => Column(
                 children: [
                   const SellerDraftsPanel(),

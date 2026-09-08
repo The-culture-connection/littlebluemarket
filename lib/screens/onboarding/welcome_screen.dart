@@ -122,9 +122,12 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     context.push('/signin');
   }
 
+  /// The artwork's Create a Profile opens "Are you…", the seven doors, and
+  /// its Sign in is the returning-to-the-app door. The labels are painted
+  /// into the GIF, so the split lives here rather than on the buttons.
   void _onCreateProfile() {
     _dismissIntro();
-    context.push('/signin?create=1');
+    context.push('/orient');
   }
 
   void _onGuest() {

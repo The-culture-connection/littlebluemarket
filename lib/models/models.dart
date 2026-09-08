@@ -17,6 +17,7 @@ export 'link_result.dart';
 export 'listing.dart';
 export 'message.dart';
 export 'notification.dart';
+export 'onboarding.dart';
 export 'order.dart';
 export 'page.dart';
 export 'post.dart';

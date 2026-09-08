@@ -109,6 +109,19 @@
 6. **Everyone sees it (CP-D4).** Sign in as `grace-s+buyer1@…` → Market feed: a post by `+dir1` shows the business card (name, category, state, ownership tags, Website / Call / Email / Directions). Tap the avatar → the profile shows a **Little Blue Cart directory** section with the same card. *Pass:* a pending listing never appears for the buyer; unpublishing it on staging removes the post within six hours (or on the owner's next Refresh). Back as `+dir1`: the You tab shows a **Little Blue Cart directory** row under the profile header with the listing and order counts.
 7. If the card is missing or a field looks wrong: `npm run wp:probe -- --email grace-s+dir1@the-culture-connection.com` and paste the block (it prints the listing's status and its field names; the Free plan may carry different fields than the recorded Showcase one).
 
+## J14 · The seven doors (onboarding)
+
+*The welcome artwork is unchanged: **Sign in** is "returning to the app"; **Create a Profile** now opens **Are you…** with seven doors under Shopping and Selling. The door only decides where you land first; every landing screen is also in Edit profile.*
+
+1. Sign out → Welcome → **Create a Profile**. *Pass:* the blue **Are you…** screen with seven rows and "I already have a profile" underneath. The **Sign in** hotspot still opens Welcome back directly.
+2. **I'm new here** → a fresh `+buyer4@…` → confirm → handle → Create a profile. *Pass:* lands on the Market feed.
+3. **My business is listed in the directory** → `+dir1@…` (delete that account in the Firebase console first if it exists) → confirm → handle → Create. *Pass:* lands on **Little Blue Cart directory** and the link runs by itself ("Linked. …" appears with no tap).
+4. **I sell on Little Blue Market** → `+seller1@…` (delete the account first) → *skip* confirming with **Continue for now** → handle → Create. *Pass:* lands on **Sell with us** with the Confirm-your-email card and a disabled Check button. Open the mail, click, tap **I've confirmed it** → the check runs by itself → "You already sell as …".
+5. **I want to sell on Little Blue Market** → any fresh address → confirm → Create. *Pass:* lands on Sell with us and the browser opens the Become a vendor page once; back in the app the page is still there.
+6. **I want to list my business in the directory** → any fresh address → confirm → Create. *Pass:* lands on Little Blue Cart directory and the browser opens the staging Add Your Business page once; the card underneath says to come back and tap Refresh.
+7. **I've bought on Little Blue Market** → `+customer1@…` (delete first) → confirm → Create. *Pass:* lands on your profile with the **Bought** tab open and the website orders in it.
+8. **Cold start mid-way:** pick any Selling door, enter the email, then force-close before confirming. Reopen. *Pass:* the Confirm screen, then setup, then the Market (the door is lost on a cold start, on purpose; the screen you wanted is in Edit profile).
+
 ---
 
 ### If a journey fails
