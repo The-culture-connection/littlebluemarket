@@ -23,7 +23,8 @@ void main() {
 
   test('each door lands somewhere that exists', () {
     expect(OnboardingIntent.newHere.landingRoute, '/market');
-    expect(OnboardingIntent.directoryCustomer.landingRoute, '/you/directory?auto=1');
+    // No accounts on littlebluecart.com: this door lands like "new here".
+    expect(OnboardingIntent.directoryCustomer.landingRoute, '/market');
     expect(OnboardingIntent.marketplaceCustomer.landingRoute, '/you?tab=bought');
     expect(OnboardingIntent.directorySeller.landingRoute, '/you/directory?auto=1');
     expect(OnboardingIntent.marketplaceSeller.landingRoute, '/you/sell?auto=1');

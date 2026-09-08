@@ -8,7 +8,11 @@
 /// chosen wrongly costs nothing.
 enum OnboardingIntent {
   newHere('new', '/market'),
-  directoryCustomer('dircust', '/you/directory?auto=1'),
+  // littlebluecart.com has no customer accounts (WooCommerce checks people
+  // out as guests), so this door is a friendly label that lands on the feed
+  // like "new here". Their website orders still arrive: the silent link runs
+  // for every confirmed account and matches guest orders by billing email.
+  directoryCustomer('dircust', '/market'),
   marketplaceCustomer('mktcust', '/you?tab=bought'),
   directorySeller('dirseller', '/you/directory?auto=1'),
   marketplaceSeller('mktseller', '/you/sell?auto=1'),

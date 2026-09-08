@@ -170,7 +170,7 @@ When the app goes live, the production Firebase project gets its own `WP_APP_PAS
 | Door | Intent (`?intent=`) | Lands on |
 |---|---|---|
 | New here | `new` | `/market` |
-| I've bought on littlebluecart.com | `dircust` | `/you/directory?auto=1` (links by itself, shows orders) |
+| I've bought on littlebluecart.com | `dircust` | `/market` (changed 2026-09-08: the site has no customer accounts, WooCommerce checks people out as guests; their orders still arrive through the silent link, which matches guest orders by billing email) |
 | I've bought on Little Blue Market | `mktcust` | `/you` on the Bought tab (the existing email link fills it) |
 | I'm listed in the directory | `dirseller` | `/you/directory?auto=1` (links by itself, shows listings) |
 | I sell on Little Blue Market | `mktseller` | `/you/sell?auto=1` (checks the roster by itself) |
