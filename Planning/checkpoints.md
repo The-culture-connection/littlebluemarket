@@ -26,7 +26,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | Stage 9 — The gaps: seller application flow, Near me, @-tags, better search, live walkthroughs, shipping | 🟡 Built and deployed 2026-09-05; see Planning/manual-test.md |
 | Stage 10 — littlebluecart.com directory: dev WordPress, link account, website orders, listings, public listing cards | 🟡 CP-D0 to D4 built 2026-09-08 (D5 optional, not scheduled), waiting on Grace's Cloudways staging clicks, the three secrets and a deploy (plan in `Planning/littlebluecart.com directory + onboarding doors + push notifications.md`) |
 | Stage 11 — Onboarding doors: "Are you…" with seven doors | 🟡 CP-O1 and CP-O2 built 2026-09-08, ready for Grace to test (J14 in manual-test.md) |
-| Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | 🟡 CP-N0 and CP-N1 built 2026-09-08 (plumbing, test push, announcements); N2–N4 next |
+| Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | 🟡 CP-N0 to CP-N2 built 2026-09-08 (plumbing, test push, announcements, forum/shoutout/review pushes); N3–N4 next |
 | Cutover to the real shop | ⬜ Not started |
 
 Extras done along the way: a Sign out row, the app opens on the Market when you are already signed in, search matches any word of a title, product pages open for shops that have not joined yet, the catalog's spec subdocument rule, the first-save profile fix, Git Bash launchers.
@@ -480,7 +480,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
   **Grace does:** as your admin account → Edit profile → Admin → "Hello from Little Blue Market" / "Testing announcements" / All → Send → Yes. Background the app.
   **Pass:** the push lands on this phone and any other signed-in test phone; the bell shows it at the top. Sending to Sellers leaves `+buyer1`'s phone silent.
   **If it fails:** "Admins only" → CP-C0 Claim admin. Sent but no push → sign out and in once, then `firebase functions:log --only adminSendAnnouncement --project dev`.
-- [ ] **CP-N2 Forums, shoutouts, reviews.** *Claude builds:* new thread → every member of that forum except the author; reply → the thread's author and earlier commenters; shoutout → the tagged people and the seller it is about; review → the product's seller.
+- [ ] **CP-N2 Forums, shoutouts, reviews.** *Claude built (2026-09-08):* new thread → every member of that forum except the author; reply → the thread's author and earlier commenters; shoutout → the tagged people and the seller it is about; review → the product's seller.
   **Grace does:** `+buyer1` joins forum F; `+seller1` starts a thread in F; `+buyer1` replies; `+customer1` replies. `+buyer1` reviews a `+seller1` product. `+buyer1` posts a shoutout tagging `@seller1`.
   **Pass:** buyer gets the new thread; seller and buyer (not `+customer1`) get the second reply; seller gets the review and the shoutout; each push opens the right thread or post.
   **If it fails:** wrong people → `firebase functions:log --only onThreadCommentWritten --project dev`, paste. Nothing at all → N0's device check for that account.

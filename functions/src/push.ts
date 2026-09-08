@@ -155,6 +155,56 @@ export async function sendPushToUid(
   return { devices: tokens.length, sent: response.successCount, pruned };
 }
 
+// -------------------------------------------------------------- recipients
+//
+// Who hears about what, as pure functions the triggers feed. Authors never
+// hear about their own act; nobody is listed twice.
+
+/** A new thread: every member of the forum except the person who started it. Capped: a runaway forum is not a reason to send 10,000 pushes from one trigger. */
+export function forumThreadRecipients(memberIds: Iterable<string>, authorId: string, cap = 500): string[] {
+  const out: string[] = [];
+  for (const uid of new Set(memberIds)) {
+    if (!uid || uid === authorId) continue;
+    out.push(uid);
+    if (out.length >= cap) break;
+  }
+  return out;
+}
+
+/** A reply: the thread's author and everyone who commented before, except the replier. Not the whole forum. */
+export function forumReplyRecipients(
+  threadAuthorId: string,
+  earlierCommenterIds: Iterable<string>,
+  replierId: string,
+): string[] {
+  const out = new Set<string>();
+  if (threadAuthorId) out.add(threadAuthorId);
+  for (const uid of earlierCommenterIds) if (uid) out.add(uid);
+  out.delete(replierId);
+  out.delete('');
+  return [...out];
+}
+
+/**
+ * A shoutout names one seller (`aboutSellerId`) besides any @-mentions. The
+ * seller hears about it once: not when they wrote it, not when they were
+ * also @-mentioned (the mention path already told them), and not on an edit
+ * that kept the same seller.
+ */
+export function shoutoutSellerToNotify(
+  after: { authorId?: unknown; aboutSellerId?: unknown; mentionedUids?: unknown } | undefined,
+  before: { aboutSellerId?: unknown } | undefined,
+): string | null {
+  if (!after) return null;
+  const seller = String(after.aboutSellerId ?? '');
+  if (!seller) return null;
+  if (seller === String(after.authorId ?? '')) return null;
+  if (String(before?.aboutSellerId ?? '') === seller) return null;
+  const mentioned = Array.isArray(after.mentionedUids) ? after.mentionedUids.map(String) : [];
+  if (mentioned.includes(seller)) return null;
+  return seller;
+}
+
 // ----------------------------------------------------------- announcements
 
 export const AUDIENCES = ['all', 'sellers', 'buyers', 'directory'] as const;

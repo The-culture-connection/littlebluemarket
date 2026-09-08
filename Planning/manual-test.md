@@ -136,6 +136,10 @@
 8. **Announcements (CP-N1).** As `grace-s@…` (admin; Claim admin in Diagnostics if the row is missing): Edit profile → **Admin** → title "Hello from Little Blue Market", message "Testing announcements", Who: **Everyone**, A tap opens: **The bell** → **Send** → Send. Background the app. *Pass:* the push lands on this phone and on any other signed-in test phone; the bell shows it at the top with the megaphone icon; Firebase console `announcements/<id>` has `messageId` and `sentAt`.
 9. Send another with Who: **Sellers**. *Pass:* `+seller1`'s phone gets it; `+buyer1`'s stays silent and their bell does not list it. Opening the bell clears the unread tint on announcements too.
 10. If the push never lands but the bell has it: the phone was not subscribed to the topic yet; sign out and in once (the topics follow the session), then `firebase functions:log --only adminSendAnnouncement --project dev`.
+11. **Forums (CP-N2).** `+buyer1` joins a forum; `+seller1` starts a thread there. *Pass:* buyer's phone: "<seller> started a thread" with the title; tapping opens that thread. `+buyer1` replies; then `+customer1` (not a member of the thread yet) replies. *Pass:* seller (the author) and buyer (an earlier commenter) get "<customer> replied"; `+customer1` gets nothing; nobody gets pushed for their own reply.
+12. **Reviews.** `+buyer1` reviews one of `+seller1`'s products. *Pass:* seller's phone: "<buyer> reviewed your product" with the stars and the product name; tapping opens the review post.
+13. **Shoutout about a seller.** `+buyer1` posts a shoutout that picks `+seller1` as the seller it is about (without typing `@seller1`). *Pass:* seller's phone: "<buyer> mentioned you" with "Gave you a shoutout: …"; only once, even when the shoutout also @-mentions them.
+14. Wrong people, or nobody: `firebase functions:log --only onThreadCommentWritten --project dev` (or `onThreadWritten`, `onReviewWritten`, `onPostWritten`) and paste.
 
 ---
 

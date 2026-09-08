@@ -18,7 +18,14 @@ import {
   WP_SECRETS,
 } from './config.ts';
 import { syncAllDirectoryListings, syncDirectory } from './directory.ts';
-import { isAudience, sendAnnouncement, sendPushToUid } from './push.ts';
+import {
+  forumReplyRecipients,
+  forumThreadRecipients,
+  isAudience,
+  sendAnnouncement,
+  sendPushToUid,
+  shoutoutSellerToNotify,
+} from './push.ts';
 import {
   backfillSellerForVendor,
   mirrorProduct,
@@ -683,6 +690,16 @@ export const onPostWritten = onDocumentWritten(
         text: String(afterAll?.text ?? afterAll?.caption ?? '').slice(0, 140),
       });
     }
+    // Stage 12: the seller a shoutout is about hears it too, once.
+    const seller = shoutoutSellerToNotify(afterAll, beforeAll);
+    if (seller) {
+      await notify(seller, {
+        type: 'mention',
+        postId: event.params.postId,
+        fromUid: String(afterAll?.authorId ?? ''),
+        text: `Gave you a shoutout: ${String(afterAll?.text ?? '')}`.slice(0, 140),
+      });
+    }
   },
 );
 
@@ -755,6 +772,24 @@ export const onReviewWritten = onDocumentWritten(
       },
       { merge: true },
     );
+
+    // Stage 12: the product's seller hears about a new review, unless they
+    // wrote it themselves.
+    if (delta === 1) {
+      const product = (await db.collection('catalog').doc(productId).get()).data();
+      const sellerId = String(product?.sellerId ?? '');
+      const authorId = String(after.authorId ?? '');
+      if (sellerId && sellerId !== authorId) {
+        const stars = Number(after.rating ?? 0);
+        await notify(sellerId, {
+          type: 'review',
+          postId: `review_${reviewId}`,
+          fromUid: authorId,
+          productId,
+          text: `${stars ? `${stars}★ ` : ''}${String(product?.title ?? '')}: ${String(after.text ?? '')}`.slice(0, 140),
+        });
+      }
+    }
   },
 );
 
@@ -821,12 +856,32 @@ export const onThreadWritten = onDocumentWritten(
   async (event) => {
     const delta = counterDelta(Boolean(event.data?.before?.exists), Boolean(event.data?.after?.exists));
     if (delta === 0) return;
-    const forumId = (event.data?.after?.data() ?? event.data?.before?.data())?.forumId;
+    const thread = (event.data?.after?.data() ?? event.data?.before?.data()) as Record<string, unknown> | undefined;
+    const forumId = thread?.forumId;
     if (typeof forumId !== 'string' || !forumId) return;
-    await getFirestore()
+    const db = getFirestore();
+    await db
       .collection('forums')
       .doc(forumId)
       .set({ threadCount: FieldValue.increment(delta) }, { merge: true });
+
+    // Stage 12: a new thread reaches every member of the forum but its author.
+    if (delta === 1) {
+      const authorId = String(thread?.authorId ?? '');
+      const members = await db.collection('forums').doc(forumId).collection('members').select().get();
+      const recipients = forumThreadRecipients(members.docs.map((d) => d.id), authorId);
+      const text = String(thread?.title ?? thread?.body ?? '').slice(0, 140);
+      for (const uid of recipients) {
+        await notify(uid, {
+          type: 'forumThread',
+          fromUid: authorId,
+          text,
+          route: `/community/thread/${event.params.threadId}`,
+          forumId,
+          threadId: event.params.threadId,
+        });
+      }
+    }
   },
 );
 
@@ -835,10 +890,34 @@ export const onThreadCommentWritten = onDocumentWritten(
   async (event) => {
     const delta = counterDelta(Boolean(event.data?.before?.exists), Boolean(event.data?.after?.exists));
     if (delta === 0) return;
-    await getFirestore()
-      .collection('threads')
-      .doc(event.params.threadId)
-      .set({ commentCount: FieldValue.increment(delta) }, { merge: true });
+    const db = getFirestore();
+    const threadRef = db.collection('threads').doc(event.params.threadId);
+    await threadRef.set({ commentCount: FieldValue.increment(delta) }, { merge: true });
+
+    // Stage 12: a reply reaches the thread's author and the earlier
+    // commenters, not the whole forum.
+    if (delta === 1) {
+      const comment = event.data?.after?.data() as Record<string, unknown> | undefined;
+      const replierId = String(comment?.authorId ?? '');
+      const thread = (await threadRef.get()).data() ?? {};
+      const earlier = await threadRef.collection('comments').select('authorId').limit(500).get();
+      const recipients = forumReplyRecipients(
+        String(thread.authorId ?? ''),
+        earlier.docs.filter((d) => d.id !== event.params.commentId).map((d) => String(d.data().authorId ?? '')),
+        replierId,
+      );
+      const forumId = typeof thread.forumId === 'string' ? thread.forumId : undefined;
+      for (const uid of recipients) {
+        await notify(uid, {
+          type: 'forumReply',
+          fromUid: replierId,
+          text: String(comment?.text ?? '').slice(0, 140),
+          route: `/community/thread/${event.params.threadId}`,
+          forumId,
+          threadId: event.params.threadId,
+        });
+      }
+    }
   },
 );
 

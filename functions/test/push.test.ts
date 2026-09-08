@@ -1,7 +1,40 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { isAudience, shouldNotifyAtAll, shouldPrune, shouldPush, titleFor, topicTarget } from '../src/push.ts';
+import {
+  forumReplyRecipients,
+  forumThreadRecipients,
+  isAudience,
+  shouldNotifyAtAll,
+  shouldPrune,
+  shouldPush,
+  shoutoutSellerToNotify,
+  titleFor,
+  topicTarget,
+} from '../src/push.ts';
+
+test('a new thread goes to every member but its author, once each, capped', () => {
+  assert.deepEqual(forumThreadRecipients(['a', 'b', 'a', 'author', ''], 'author'), ['a', 'b']);
+  assert.deepEqual(forumThreadRecipients(['a', 'b', 'c'], 'x', 2), ['a', 'b']);
+});
+
+test('a reply goes to the thread author and earlier commenters, never the replier, never twice', () => {
+  assert.deepEqual(forumReplyRecipients('seller', ['buyer', 'seller', 'buyer'], 'customer').sort(), ['buyer', 'seller']);
+  assert.deepEqual(forumReplyRecipients('seller', ['buyer'], 'seller'), ['buyer']);
+  assert.deepEqual(forumReplyRecipients('', [''], 'anyone'), []);
+});
+
+test('the seller a shoutout is about hears it once, and not from themselves', () => {
+  assert.equal(shoutoutSellerToNotify({ authorId: 'dee', aboutSellerId: 'kali' }, undefined), 'kali');
+  // Also @-mentioned: the mention path already told them.
+  assert.equal(shoutoutSellerToNotify({ authorId: 'dee', aboutSellerId: 'kali', mentionedUids: ['kali'] }, undefined), null);
+  // Their own shoutout about themselves.
+  assert.equal(shoutoutSellerToNotify({ authorId: 'kali', aboutSellerId: 'kali' }, undefined), null);
+  // An edit that kept the same seller.
+  assert.equal(shoutoutSellerToNotify({ authorId: 'dee', aboutSellerId: 'kali' }, { aboutSellerId: 'kali' }), null);
+  assert.equal(shoutoutSellerToNotify({ authorId: 'dee' }, undefined), null);
+  assert.equal(shoutoutSellerToNotify(undefined, undefined), null);
+});
 
 test('an audience is a topic, except buyers, which is "everyone who is not a seller"', () => {
   assert.deepEqual(topicTarget('all'), { topic: 'all' });
