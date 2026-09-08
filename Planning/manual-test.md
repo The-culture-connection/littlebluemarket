@@ -140,6 +140,8 @@
 12. **Reviews.** `+buyer1` reviews one of `+seller1`'s products. *Pass:* seller's phone: "<buyer> reviewed your product" with the stars and the product name; tapping opens the review post.
 13. **Shoutout about a seller.** `+buyer1` posts a shoutout that picks `+seller1` as the seller it is about (without typing `@seller1`). *Pass:* seller's phone: "<buyer> mentioned you" with "Gave you a shoutout: …"; only once, even when the shoutout also @-mentions them.
 14. Wrong people, or nobody: `firebase functions:log --only onThreadCommentWritten --project dev` (or `onThreadWritten`, `onReviewWritten`, `onPostWritten`) and paste.
+15. **New from a shop you bought from (CP-N3).** As admin: Edit profile → Admin → **Rebuild buyer index**. *Pass:* "Indexed N shop–buyer pairs across M people." As `+seller1`: Products → Add a product → fill it in → Add to my shop; then in the Shopify admin set that product **Active**. `+buyer1` (who bought from `+seller1` in J3) has the app in the background. *Pass:* buyer's phone: "New from <shop>: <title>"; tapping opens the product; `+customer1` (never bought from that shop) gets nothing; the bell lists it under "added something new".
+16. Set the same product to Draft and back to Active in Shopify. *Pass:* no second push (the product is stamped `announcedAt` in `catalog/<id>`). If nothing arrived in step 15: `npm run inspect:product -- --id <id>` (was it Active with a vendor that maps to `+seller1`?), then `firebase functions:log --only onCatalogWritten --project dev`.
 
 ---
 

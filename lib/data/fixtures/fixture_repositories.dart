@@ -1611,6 +1611,13 @@ class FixtureAdminRepository implements AdminRepository {
     ];
     return announcement;
   }
+
+  @override
+  Future<BackfillProgress> rebuildBuyerIndex() async {
+    await _backend._settle();
+    final people = _backend.store.people.value.length;
+    return BackfillProgress(processed: people, total: people, done: true);
+  }
 }
 
 /// The demo directory: unlinked until the first link, then one member with

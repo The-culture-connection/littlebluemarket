@@ -339,6 +339,16 @@ describe('selling is a grant, not a client write', () => {
     await assertSucceeds(member('maya').doc('vendorNames/gwynstone').get());
   });
 
+  test('a seller cannot read their own buyer list, and nobody writes it', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('sellers/kali/buyers/maya').set({ count: 2 });
+    });
+    await assertFails(seller('kali').doc('sellers/kali/buyers/maya').get());
+    await assertFails(seller('kali').collection('sellers/kali/buyers').get());
+    await assertFails(member('maya').doc('sellers/kali/buyers/maya').get());
+    await assertFails(adminUser('grace').doc('sellers/kali/buyers/dee').set({ count: 1 }));
+  });
+
   test('the directory link and its website orders are yours to read and nobody\'s to write', async () => {
     await env.withSecurityRulesDisabled(async (admin) => {
       await admin.firestore().doc('directory/maya').set({ status: 'linked', wpLogin: 'maya' });

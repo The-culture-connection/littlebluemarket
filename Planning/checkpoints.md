@@ -26,7 +26,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | Stage 9 — The gaps: seller application flow, Near me, @-tags, better search, live walkthroughs, shipping | 🟡 Built and deployed 2026-09-05; see Planning/manual-test.md |
 | Stage 10 — littlebluecart.com directory: dev WordPress, link account, website orders, listings, public listing cards | 🟡 CP-D0 to D4 built 2026-09-08 (D5 optional, not scheduled), waiting on Grace's Cloudways staging clicks, the three secrets and a deploy (plan in `Planning/littlebluecart.com directory + onboarding doors + push notifications.md`) |
 | Stage 11 — Onboarding doors: "Are you…" with seven doors | 🟡 CP-O1 and CP-O2 built 2026-09-08, ready for Grace to test (J14 in manual-test.md) |
-| Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | 🟡 CP-N0 to CP-N2 built 2026-09-08 (plumbing, test push, announcements, forum/shoutout/review pushes); N3–N4 next |
+| Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | 🟡 CP-N0 to CP-N3 built 2026-09-08 (Android push end to end); CP-N4 iPhone pre-wired, needs a Mac |
 | Cutover to the real shop | ⬜ Not started |
 
 Extras done along the way: a Sign out row, the app opens on the Market when you are already signed in, search matches any word of a title, product pages open for shops that have not joined yet, the catalog's spec subdocument rule, the first-save profile fix, Git Bash launchers.
@@ -484,7 +484,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
   **Grace does:** `+buyer1` joins forum F; `+seller1` starts a thread in F; `+buyer1` replies; `+customer1` replies. `+buyer1` reviews a `+seller1` product. `+buyer1` posts a shoutout tagging `@seller1`.
   **Pass:** buyer gets the new thread; seller and buyer (not `+customer1`) get the second reply; seller gets the review and the shoutout; each push opens the right thread or post.
   **If it fails:** wrong people → `firebase functions:log --only onThreadCommentWritten --project dev`, paste. Nothing at all → N0's device check for that account.
-- [ ] **CP-N3 "New from a shop you bought from".** *Claude builds:* a buyer index per seller written on every paid order (and rebuilt from history by Admin → **Rebuild buyer index**); a push when a product of theirs goes Active for the first time.
+- [ ] **CP-N3 "New from a shop you bought from".** *Claude built (2026-09-08):* a buyer index per seller written on every paid order (and rebuilt from history by Admin → **Rebuild buyer index**); a push when a product of theirs goes Active for the first time.
   **Grace does:** Admin → Rebuild buyer index. As `+seller1` add a product → set it Active in Shopify. `+buyer1` (bought from `+seller1` in Stage 3) backgrounds the app.
   **Pass:** buyer's phone: "New from <shop>: <title>", tap opens the product; `+customer1` gets nothing; approving the same product again sends nothing.
   **If it fails:** nothing → rebuild the index again and paste the count, or `npm run inspect:product -- --id <id>`. Duplicates → `firebase functions:log --only onCatalogWritten --project dev`.

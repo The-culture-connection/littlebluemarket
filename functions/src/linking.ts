@@ -313,6 +313,25 @@ export async function backfillOrders(
   for (const doc of docs) {
     batch.set(userRef.collection('purchases').doc(doc.id), doc.data, { merge: true });
   }
+  // Stage 12: the buyer index for website history, one entry per seller.
+  // Set, not incremented: the backfill runs once per account.
+  const bySeller = new Map<string, { lastOrderId: string; lastPurchaseAt: unknown; count: number }>();
+  for (const doc of docs) {
+    const sellerId = String(doc.data.sellerId ?? '');
+    if (!sellerId) continue;
+    const entry = bySeller.get(sellerId) ?? { lastOrderId: '', lastPurchaseAt: null, count: 0 };
+    entry.count += 1;
+    entry.lastOrderId = String(doc.data.orderId ?? entry.lastOrderId);
+    entry.lastPurchaseAt = doc.data.purchasedAt ?? entry.lastPurchaseAt;
+    bySeller.set(sellerId, entry);
+  }
+  for (const [sellerId, entry] of bySeller) {
+    batch.set(
+      db.collection('sellers').doc(sellerId).collection('buyers').doc(uid),
+      { ...entry, backfilledAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+  }
   // Set rather than increment: this runs once per account, and a backfill that
   // ran twice must not double the count.
   batch.set(

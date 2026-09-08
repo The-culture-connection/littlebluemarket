@@ -257,6 +257,11 @@ abstract interface class ProfileRepository {
 abstract interface class AdminRepository {
   /// One announcement to everyone or to a role. Returns what was stored.
   Future<Announcement> sendAnnouncement(NewAnnouncement draft);
+
+  /// Rebuilds "who bought from whom" from every account's purchases, page
+  /// by page until done. [processed] is people walked, [total] entries
+  /// written. Harmless to run twice.
+  Future<BackfillProgress> rebuildBuyerIndex();
 }
 
 /// littlebluecart.com, the directory: this account's link to a WordPress

@@ -248,6 +248,20 @@ export async function recordPaidOrder(
         { merge: true },
       );
 
+      // Stage 12: who bought from whom, for "new from a shop you bought
+      // from". One entry per seller on this order, never readable by a phone.
+      for (const sellerUid of revenueBySeller.keys()) {
+        tx.set(
+          db.collection('sellers').doc(sellerUid).collection('buyers').doc(buyerUid),
+          {
+            lastOrderId: order.id,
+            lastPurchaseAt: Timestamp.fromDate(order.placedAt),
+            count: FieldValue.increment(1),
+          },
+          { merge: true },
+        );
+      }
+
       // One purchase document per line, because that is how they are used:
       // the profile grid lists them and the review composer picks one.
       for (const line of order.lines) {

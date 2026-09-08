@@ -18,6 +18,7 @@ import {
   WP_SECRETS,
 } from './config.ts';
 import { syncAllDirectoryListings, syncDirectory } from './directory.ts';
+import { announceIfNew, rebuildBuyerIndexPage } from './buyer_index.ts';
 import {
   forumReplyRecipients,
   forumThreadRecipients,
@@ -318,6 +319,31 @@ export const pushTestMe = onCall(
       );
     }
     return outcome;
+  }),
+);
+
+/**
+ * Stage 12: "new from a shop you bought from". Fires on every mirror write;
+ * only the first transition to active, for an attributed product, tells the
+ * seller's buyers. The stamp is written before anyone is told.
+ */
+export const onCatalogWritten = onDocumentWritten(
+  'catalog/{productId}',
+  async (event) => {
+    const before = event.data?.before?.data() as Record<string, unknown> | undefined;
+    const after = event.data?.after?.data() as Record<string, unknown> | undefined;
+    await announceIfNew(event.params.productId, before, after);
+  },
+);
+
+/** Stage 12: rebuilds the buyer index from every account's purchases, a page of people per call. Admin only. */
+export const adminBackfillBuyerIndex = onCall(
+  { timeoutSeconds: 300, memory: '512MiB' },
+  withLoudErrors('adminBackfillBuyerIndex', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const { cursor, reset } = (request.data ?? {}) as { cursor?: unknown; reset?: unknown };
+    return rebuildBuyerIndexPage(typeof cursor === 'string' ? cursor : null, { reset: reset === true });
   }),
 );
 

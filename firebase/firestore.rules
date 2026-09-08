@@ -74,6 +74,13 @@ service cloud.firestore {
     match /sellers/{uid} {
       allow read: if true;
       allow write: if false;
+
+      // Who bought from this seller, for "new from a shop you bought from".
+      // The order pipeline writes it; no phone reads it, not even the
+      // seller's: a buyer list is not something a storefront gets to have.
+      match /buyers/{buyerUid} {
+        allow read, write: if false;
+      }
     }
 
     // One vendor, one owner. Reserved inside the granting transaction, so

@@ -27,8 +27,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   int _audience = 0;
   int _opens = 0;
   bool _busy = false;
+  bool _rebuilding = false;
   String? _notice;
   String? _error;
+  String? _rebuildNote;
 
   static const _audiences = AnnouncementAudience.values;
   static const _opensLabels = ['The bell', 'Market', 'Community'];
@@ -94,6 +96,28 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       setState(() => _error = describeError(error).body);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _rebuild() async {
+    if (_rebuilding) return;
+    setState(() {
+      _rebuilding = true;
+      _rebuildNote = null;
+    });
+    try {
+      final progress = await ref.read(adminRepositoryProvider).rebuildBuyerIndex();
+      if (!mounted) return;
+      setState(
+        () => _rebuildNote =
+            'Indexed ${progress.total} shop–buyer pairs across '
+            '${progress.processed} people.',
+      );
+    } on RepositoryException catch (error) {
+      if (!mounted) return;
+      setState(() => _rebuildNote = describeError(error).body);
+    } finally {
+      if (mounted) setState(() => _rebuilding = false);
     }
   }
 
@@ -197,6 +221,42 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                     style: LbmText.tiny.copyWith(
                       fontWeight: FontWeight.w700,
                       color: c.clay,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          LbmCard(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '"New from a shop you bought from"',
+                  style: LbmText.display.copyWith(fontSize: 18, color: c.ink),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Every paid order records who bought from whom. Run this once '
+                  'to include orders from before today, or after a big import.',
+                  style: LbmText.tiny.copyWith(color: c.ink2, height: 1.5),
+                ),
+                const SizedBox(height: 12),
+                PillButton(
+                  _rebuilding ? 'Rebuilding…' : 'Rebuild buyer index',
+                  style: PillStyle.quiet,
+                  onPressed: _rebuilding ? null : _rebuild,
+                ),
+                if (_rebuildNote != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    _rebuildNote!,
+                    style: LbmText.tiny.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: c.ink2,
                       height: 1.5,
                     ),
                   ),

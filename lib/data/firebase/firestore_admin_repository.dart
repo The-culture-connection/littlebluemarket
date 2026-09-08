@@ -49,4 +49,34 @@ class FirestoreAdminRepository implements AdminRepository {
         }
         return FirestoreMappers.announcement(doc.id, data);
       }, operation: 'callable adminSendAnnouncement');
+
+  @override
+  Future<BackfillProgress> rebuildBuyerIndex() => guardFirestore(() async {
+    final callable = _functions.httpsCallable(
+      'adminBackfillBuyerIndex',
+      options: HttpsCallableOptions(timeout: const Duration(seconds: 310)),
+    );
+    var reset = true;
+    String? cursor;
+    // A page of people per call; the function keeps its own cursor, so a
+    // dropped connection resumes rather than restarts.
+    for (var page = 0; page < 200; page++) {
+      final result = await callable.call<Map<String, dynamic>>({
+        'reset': reset,
+        'cursor': ?cursor,
+      });
+      reset = false;
+      final data = result.data;
+      final done = FirestoreMappers.boolean(data['done']);
+      cursor = data['nextCursor'] is String ? data['nextCursor'] as String : null;
+      if (done || cursor == null) {
+        return BackfillProgress(
+          processed: FirestoreMappers.integer(data['processed']),
+          total: FirestoreMappers.integer(data['indexed']),
+          done: true,
+        );
+      }
+    }
+    throw const BackendException('The rebuild did not finish in 200 pages.');
+  }, operation: 'callable adminBackfillBuyerIndex');
 }
