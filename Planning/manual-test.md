@@ -51,12 +51,13 @@
 3. The applicant: Sell with us → **Check my seller status**. *Pass:* "You now sell as <vendor>"; Products tab appears. Then J4 steps 4–7 work for them.
 4. Six hours later at the latest the same grant would have happened on its own (the roster sweep), so a seller who never taps the button still becomes one.
 
-## J6 · Shipping
+## J6 · Shipping (handled entirely in Shipturtle, 2026-09-08)
 
-1. **Buyers** hear from the store by email. You → Packages shows "Check your email for shipping updates" and, below, anything with tracking under **On its way to you**.
-2. **Sellers** manage shipping in Shipturtle: You → Packages → **Open Shipturtle** opens the vendor dashboard. Add tracking to an app order there.
-3. Within 15 minutes the buyer's Packages screen shows the tracking with a progress bar. (The pull runs every 15 minutes on its own.)
-4. **Delivered:** ask Claude to run `npm run replay-order -- --order <number> --deliver`. *Pass:* Packages shows **Delivered**; the feed shows **How was it?**; the Bought tab tap offers Write a review.
+*The Packages screen is gone, along with every "on its way" line. Shipping is Shipturtle's and the store's emails; the app only opens the door for sellers.*
+
+1. **Buyers** hear from the store by email. In the app a purchase under Bought says "Ordered N days ago" until it is delivered, then "Received N days ago". There is no tracking screen and no shipping icon on the profile.
+2. **Sellers** manage orders and shipping in Shipturtle: Edit profile → **Orders & shipping** opens the vendor dashboard in the browser. Add tracking to an app order there; the buyer hears about it by email.
+3. **Delivered:** the store's fulfilment reaches the app on its own (or ask Claude to run `npm run replay-order -- --order <number> --deliver`). *Pass:* the purchase under Bought reads Received; the feed shows **How was it?**; tapping the purchase offers Write a review.
 
 ## J7 · Reviews
 

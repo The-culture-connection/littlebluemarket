@@ -41,7 +41,6 @@ const _routes = <String, String>{
   'admin': '/you/admin',
   'edit product (missing)': '/you/edit-product/nope',
   'diagnostics (dev)': '/you/diagnostics',
-  'shipping': '/you/shipping',
   'messages': '/you/messages',
   'direct message': '/you/dm/kali?to=1',
 };

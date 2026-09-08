@@ -385,16 +385,6 @@ final cartCountProvider = Provider<int>((ref) {
   return ref.watch(cartProvider).value?.itemCount ?? 0;
 });
 
-// --------------------------------------------------------------- fulfillment
-
-final sendingProvider = StreamProvider<List<Shipment>>((ref) {
-  return ref.watch(fulfillmentRepositoryProvider).watchSending();
-});
-
-final receivingProvider = StreamProvider<List<Shipment>>((ref) {
-  return ref.watch(fulfillmentRepositoryProvider).watchReceiving();
-});
-
 // ---------------------------------------------------------------- messaging
 
 final chatroomProvider = StreamProvider<List<Message>>((ref) {

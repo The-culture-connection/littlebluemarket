@@ -81,7 +81,6 @@ const _shots = <String, String>{
   'forums': '/community/forums',
   'thread': '/community/thread/t1',
   'profile': '/you',
-  'shipping': '/you/shipping',
   'messages': '/you/messages',
   'dm': '/you/dm/kali?to=1',
 };

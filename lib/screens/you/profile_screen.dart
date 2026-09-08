@@ -84,11 +84,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             badge: (unread ?? 0) > 0,
             onPressed: () => context.push('/you/messages'),
           ),
-          CircleIconButton(
-            icon: Icons.more_horiz_rounded,
-            tooltip: 'Packages and shipping',
-            onPressed: () => context.push('/you/shipping'),
-          ),
         ],
       ),
       // Pull to refresh re-reads every grid. The products one matters most:
@@ -374,11 +369,13 @@ class _TextCell extends StatelessWidget {
 Future<void> showPurchaseSheet(BuildContext context, Purchase purchase) {
   return showLbmSheet(context, (sheetContext) {
     final c = sheetContext.c;
+    // Shipping lives in Shipturtle and the store's emails, not here, so an
+    // undelivered purchase simply says when it was ordered.
     final status = purchase.reviewed
         ? 'Reviewed'
         : purchase.delivered
         ? 'Received ${purchase.age} ago'
-        : 'On its way';
+        : 'Ordered ${purchase.age} ago';
     return LbmSheet(
       children: [
         Text(

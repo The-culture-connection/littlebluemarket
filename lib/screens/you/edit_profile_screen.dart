@@ -352,16 +352,40 @@ class _SellerRows extends StatelessWidget {
               ),
             ),
           ),
-          ListRow(
-            title: const Text('Sales & shipping'),
-            subtitle: const Text('Add tracking, see what is waiting to go out'),
-            trailing: chevron,
-            onTap: () => context.push('/you/shipping'),
-          ),
-          const _AddressesRow(),
+          // Orders and shipping are handled in Shipturtle, entirely; the app
+          // only opens the door.
+          const _ShipturtleRow(),
           const _DirectoryRow(),
         ],
       ),
+    );
+  }
+}
+
+class _ShipturtleRow extends ConsumerWidget {
+  const _ShipturtleRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    return ListRow(
+      title: const Text('Orders & shipping'),
+      subtitle: const Text('Managed in Shipturtle'),
+      trailing: Icon(Icons.open_in_new_rounded, size: 20, color: c.ink3),
+      onTap: () async {
+        final messenger = ScaffoldMessenger.of(context);
+        var url = 'https://app.shipturtle.com/';
+        try {
+          url = (await ref.read(appConfigProvider.future)).shipturtleUrl;
+        } on Object {
+          // The default above is the real address; the config only confirms it.
+        }
+        final uri = Uri.tryParse(url);
+        if (uri == null ||
+            !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+          messenger.showSnackBar(SnackBar(content: Text('Could not open $url')));
+        }
+      },
     );
   }
 }
@@ -452,17 +476,6 @@ class _BuyerRowsState extends ConsumerState<_BuyerRows> {
     return LbmCard(
       child: RowStack(
         children: [
-          ListRow(
-            title: const Text('Packages & tracking'),
-            subtitle: const Text('What is on its way to you'),
-            trailing: Icon(
-              Icons.chevron_right_rounded,
-              size: 22,
-              color: c.ink3,
-            ),
-            onTap: () => context.push('/you/shipping'),
-          ),
-          const _AddressesRow(),
           const _DirectoryRow(),
           ListRow(
             title: const Text('Sell with us'),
@@ -482,25 +495,3 @@ class _BuyerRowsState extends ConsumerState<_BuyerRows> {
   }
 }
 
-class _AddressesRow extends ConsumerWidget {
-  const _AddressesRow();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.c;
-    final addresses = ref.watch(addressesProvider);
-
-    return ListRow(
-      title: const Text('Shipping addresses'),
-      // A real count, not the hardcoded "2 saved" the prototype showed.
-      subtitle: Text(switch (addresses) {
-        AsyncData(:final value) when value.isEmpty => 'None saved yet',
-        AsyncData(:final value) => '${value.length} saved',
-        AsyncError() => 'Could not load',
-        _ => 'Loading…',
-      }),
-      trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
-      onTap: () => context.push('/you/shipping'),
-    );
-  }
-}

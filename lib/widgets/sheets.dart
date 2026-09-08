@@ -227,7 +227,8 @@ Future<void> showCheckoutSheet(
         const SizedBox(height: 8),
         Text(
           'Payment, shipping and tax are handled by the store. Your order shows '
-          'up under Packages once it is confirmed.',
+          'up under Bought once it is confirmed, and shipping updates come by '
+          'email.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 13.5, height: 1.55, color: c.ink2),
         ),

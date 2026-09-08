@@ -280,7 +280,9 @@ class _PurchaseRow extends ConsumerWidget {
       ),
       title: Text(purchase.title, maxLines: 2, overflow: TextOverflow.ellipsis),
       subtitle: Text(
-        purchase.delivered ? 'Received ${purchase.age} ago' : 'On its way',
+        purchase.delivered
+            ? 'Received ${purchase.age} ago'
+            : 'Ordered ${purchase.age} ago',
       ),
       trailing: Icon(
         selected

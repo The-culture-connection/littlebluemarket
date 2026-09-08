@@ -32,7 +32,6 @@ import '../screens/you/directory_screen.dart';
 import '../screens/you/edit_profile_screen.dart';
 import '../screens/you/messages_screen.dart';
 import '../screens/you/profile_screen.dart';
-import '../screens/you/shipping_screen.dart';
 import '../models/onboarding.dart';
 import '../state/session.dart';
 import '../widgets/app_shell.dart';
@@ -315,10 +314,6 @@ GoRouter buildRouter(Ref ref) {
                       path: 'diagnostics',
                       builder: (context, state) => const DiagnosticsScreen(),
                     ),
-                  GoRoute(
-                    path: 'shipping',
-                    builder: (context, state) => const ShippingScreen(),
-                  ),
                   GoRoute(
                     path: 'messages',
                     builder: (context, state) => const MessagesScreen(),
