@@ -5,6 +5,7 @@ import '../../models/models.dart';
 import '../../router/nav.dart';
 import '../../state/providers.dart';
 import '../../widgets/async.dart';
+import '../../widgets/directory_listing_card.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/profile_identity.dart';
 import '../../widgets/screen.dart';
@@ -64,6 +65,9 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
                 ),
               ],
             ),
+            // A business listed on littlebluecart.com shows its listing the
+            // way a seller shows a storefront. Nothing when there is none.
+            _DirectorySection(personId: person.id),
             // A buyer has no storefront, so they get one tab rather than an
             // empty "Posted" one.
             if (person.isSeller)
@@ -80,6 +84,41 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// This person's published littlebluecart.com listings, from the public
+/// mirror. Decided by the query, not by a field on the profile.
+class _DirectorySection extends ConsumerWidget {
+  const _DirectorySection({required this.personId});
+
+  final String personId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final listings = ref.watch(directoryListingsOfProvider(personId));
+    return LbmAsync<List<DirectoryListing>>(
+      listings,
+      skeleton: const SizedBox.shrink(),
+      errorBuilder: (_, _) => const SizedBox.shrink(),
+      data: (list) => list.isEmpty
+          ? const SizedBox.shrink()
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionHead('Little Blue Cart directory'),
+                  const SizedBox(height: 8),
+                  for (final listing in list)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: DirectoryListingCard(listing: listing),
+                    ),
+                ],
+              ),
+            ),
     );
   }
 }

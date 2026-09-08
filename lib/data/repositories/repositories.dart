@@ -256,6 +256,13 @@ abstract interface class DirectoryRepository {
   /// This account's own directory listings, every status, newest first.
   Stream<List<DirectoryListing>> watchMyListings();
 
+  /// One listing from the public mirror, or null when it is gone. Errors
+  /// (a pending listing read by a stranger) surface as errors.
+  Stream<DirectoryListing?> watchListing(String id);
+
+  /// Someone's published listings, for their public profile.
+  Stream<List<DirectoryListing>> watchPublishedListingsOf(String ownerUid);
+
   /// "Link my directory account", or, with [auto], the silent launch-time
   /// call that reuses a fresher answer and never nags. Idempotent.
   Future<DirectoryLinkResult> link({bool auto = false});

@@ -15,6 +15,7 @@ class DirectoryListingCard extends StatelessWidget {
     super.key,
     required this.listing,
     this.showStatus = false,
+    this.bare = false,
   });
 
   final DirectoryListing listing;
@@ -22,6 +23,9 @@ class DirectoryListingCard extends StatelessWidget {
   /// Published / Under review, for the owner only. A stranger never sees a
   /// pending listing, so the chip would only ever say Published.
   final bool showStatus;
+
+  /// No card chrome of its own: inside a feed post, which is already a card.
+  final bool bare;
 
   Future<void> _open(BuildContext context, Uri? uri) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -52,25 +56,36 @@ class DirectoryListingCard extends StatelessWidget {
       (label: 'Directions', icon: Icons.near_me_rounded, uri: l.directionsUri),
     ].where((a) => a.uri != null).toList();
 
-    return LbmCard(
-      child: Column(
+    final image = l.imageUrl.isEmpty
+        ? null
+        : AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Image.network(
+              l.imageUrl,
+              fit: BoxFit.cover,
+              // A dead image link is not worth a broken-picture glyph.
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
+          );
+
+    final content = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (l.imageUrl.isNotEmpty)
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Image.network(
-                  l.imageUrl,
-                  fit: BoxFit.cover,
-                  // A dead image link is not worth a broken-picture glyph.
-                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                ),
-              ),
-            ),
+          if (image != null)
+            bare
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                    child: ClipRRect(
+                      borderRadius: LbmRadius.imageR,
+                      child: image,
+                    ),
+                  )
+                : ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                    child: image,
+                  ),
           Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
@@ -151,7 +166,8 @@ class DirectoryListingCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
+      );
+
+    return bare ? content : LbmCard(child: content);
   }
 }

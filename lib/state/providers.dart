@@ -277,6 +277,20 @@ final myDirectoryListingsProvider = StreamProvider<List<DirectoryListing>>((
   return ref.watch(directoryRepositoryProvider).watchMyListings();
 });
 
+/// One listing from the public mirror, live: the feed card reads it.
+final directoryListingProvider =
+    StreamProvider.family<DirectoryListing?, String>((ref, id) {
+      return ref.watch(directoryRepositoryProvider).watchListing(id);
+    });
+
+/// Someone's published listings, for their public profile.
+final directoryListingsOfProvider =
+    StreamProvider.family<List<DirectoryListing>, String>((ref, ownerUid) {
+      return ref
+          .watch(directoryRepositoryProvider)
+          .watchPublishedListingsOf(ownerUid);
+    });
+
 // ------------------------------------------------------------------- search
 
 /// The live search, as one value.

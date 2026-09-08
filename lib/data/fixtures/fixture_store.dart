@@ -243,6 +243,19 @@ class FixtureStore {
             'She shot my whole refill line in an afternoon.',
         aboutSellerId: 'ama',
       ),
+      // A business on littlebluecart.com announcing itself, as the directory
+      // sync would post it. The card reads the demo mirror listing.
+      DirectoryPost(
+        id: 'post_directory_1',
+        authorId: 'dee',
+        createdAt: now.subtract(const Duration(hours: 20)),
+        tags: const [],
+        likeCount: 12,
+        commentCount: 1,
+        likedByMe: false,
+        listingId: '47494',
+        title: 'Field Trips Travel & Vacations',
+      ),
       ...listings.skip(3),
     ];
   }

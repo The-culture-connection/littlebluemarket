@@ -24,7 +24,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | Stage 7 — Cart replaces like, cart posts, reviews | ✅ Done, passed by Grace (2026-09-05) |
 | Stage 8 — Shipturtle: roster auto-grant, tracking and settlement pulled, store fulfilment, prod gate | 🟡 Built and deployed 2026-09-05, ready for Grace to test |
 | Stage 9 — The gaps: seller application flow, Near me, @-tags, better search, live walkthroughs, shipping | 🟡 Built and deployed 2026-09-05; see Planning/manual-test.md |
-| Stage 10 — littlebluecart.com directory: dev WordPress, link account, website orders, listings, public listing cards | 🟡 CP-D0 to D3 built 2026-09-08, waiting on Grace's Cloudways staging clicks, the three secrets and a deploy (plan in `Planning/littlebluecart.com directory + onboarding doors + push notifications.md`) |
+| Stage 10 — littlebluecart.com directory: dev WordPress, link account, website orders, listings, public listing cards | 🟡 CP-D0 to D4 built 2026-09-08 (D5 optional, not scheduled), waiting on Grace's Cloudways staging clicks, the three secrets and a deploy (plan in `Planning/littlebluecart.com directory + onboarding doors + push notifications.md`) |
 | Stage 11 — Onboarding doors: "Are you…" with seven doors | ⬜ Not started |
 | Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | ⬜ Not started |
 | Cutover to the real shop | ⬜ Not started |
@@ -447,7 +447,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
   **Grace does (staging):** logged in as `+dir1`, Add Your Business → Free → business name, website, phone, address, a category, a state, an ownership tag → submit. In the app: Directory → **Refresh** → "Under review" card. As WP admin publish it → Refresh again.
   **Pass:** the card flips to Published; Website opens the site, Call opens the dialler, Directions opens Maps; **Add a listing** opens the staging form; `directoryListings/<postId>` has `status: publish`.
   **If it fails:** card missing → `npm run wp:probe -- --email …` and paste (field names differ per plan; one round of fixes is expected). "Could not open …" → paste the URL. "Try again in a few minutes" → the 10-minute limit, expected.
-- [ ] **CP-D4 Directory owners are visible to everyone.** *Claude builds:* a `directory` feed post per published listing (like the auto post for a product), a **Little Blue Cart directory** section on the owner's public profile, and a card on their own profile.
+- [ ] **CP-D4 Directory owners are visible to everyone.** *Claude built (2026-09-08):* a `directory` feed post per published listing (like the auto post for a product), a **Little Blue Cart directory** section on the owner's public profile, and a card on their own profile.
   **Grace does:** sign in as `+buyer1` → Market feed → the directory post for `+dir1`'s business → tap the avatar.
   **Pass:** the buyer sees business name, category, state, ownership tags, Website / Call / Email / Directions. A pending listing is not visible to the buyer.
   **If it fails:** post missing → `npm run peek -- --collection posts` (look for `directory_`), paste. "Could not load" for the buyer → Copy for Claude.

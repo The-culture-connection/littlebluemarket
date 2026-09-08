@@ -499,6 +499,10 @@ class FixtureSocialRepository implements SocialRepository {
         aboutSellerId: draft.aboutSellerId,
         imageUrls: draft.imageUrls,
       ),
+      // Posted by the directory sync, never composed.
+      PostKind.directory => throw const ValidationException(
+        'Directory listings post themselves once Little Blue Cart approves them.',
+      ),
       PostKind.cart => () {
         // The rules refuse more than the cap; the demo says so the same way.
         if (draft.items.isEmpty || draft.items.length > CartPost.maxItems) {
@@ -591,6 +595,17 @@ class FixtureSocialRepository implements SocialRepository {
         likedByMe: liked,
         items: p.items,
         caption: p.caption,
+      ),
+      DirectoryPost p => DirectoryPost(
+        id: p.id,
+        authorId: p.authorId,
+        createdAt: p.createdAt,
+        tags: p.tags,
+        likeCount: count,
+        commentCount: p.commentCount,
+        likedByMe: liked,
+        listingId: p.listingId,
+        title: p.title,
       ),
     };
   }
@@ -1554,7 +1569,32 @@ class FixtureDirectoryRepository implements DirectoryRepository {
 
   DirectoryLink? _link;
   List<DirectoryOrder> _orders = const [];
-  List<DirectoryListing> _listings = const [];
+
+  /// The demo directory. One published business belongs to `dee` from the
+  /// start, so her public profile and the seeded feed post have something to
+  /// show; the demo user's own listings arrive with the first link.
+  List<DirectoryListing> _listings = const [
+    DirectoryListing(
+      id: '47494',
+      ownerUid: 'dee',
+      title: 'Field Trips Travel & Vacations',
+      status: 'publish',
+      link: 'https://example.com/directory-vendors/listing/field-trips/',
+      website: 'https://www.example.com/advisor/erica',
+      email: 'hello@example.com',
+      phone: '555-0100',
+      locationLabel: '*Online/Virtual Business',
+      street: '1851 Massachusetts Ave NE',
+      city: 'St. Petersburg',
+      state: 'FL',
+      zip: '33703',
+      address: '1851 Massachusetts Ave NE, St. Petersburg, FL 33703',
+      categories: ['Travel'],
+      tags: ['Woman-Owned'],
+      locations: ['Online/Virtual'],
+      plan: 'DIRECTORY SHOWCASE PLAN',
+    ),
+  ];
   final _links = StreamController<DirectoryLink?>.broadcast();
   final _orderChanges = StreamController<List<DirectoryOrder>>.broadcast();
   final _listingChanges = StreamController<List<DirectoryListing>>.broadcast();
@@ -1571,10 +1611,35 @@ class FixtureDirectoryRepository implements DirectoryRepository {
     yield* _orderChanges.stream;
   }
 
+  List<DirectoryListing> _mine() =>
+      _listings.where((l) => l.ownerUid == _backend.uid).toList();
+
   @override
   Stream<List<DirectoryListing>> watchMyListings() async* {
-    yield _listings;
-    yield* _listingChanges.stream;
+    yield _mine();
+    yield* _listingChanges.stream.map((_) => _mine());
+  }
+
+  @override
+  Stream<DirectoryListing?> watchListing(String id) async* {
+    DirectoryListing? find() =>
+        _listings.cast<DirectoryListing?>().firstWhere(
+          (l) => l?.id == id,
+          orElse: () => null,
+        );
+    yield find();
+    yield* _listingChanges.stream.map((_) => find());
+  }
+
+  @override
+  Stream<List<DirectoryListing>> watchPublishedListingsOf(
+    String ownerUid,
+  ) async* {
+    List<DirectoryListing> find() => _listings
+        .where((l) => l.ownerUid == ownerUid && l.isPublished)
+        .toList();
+    yield find();
+    yield* _listingChanges.stream.map((_) => find());
   }
 
   @override
@@ -1584,7 +1649,7 @@ class FixtureDirectoryRepository implements DirectoryRepository {
       return DirectoryLinkResult(
         status: DirectoryLinkStatus.alreadyLinked,
         orders: _orders.length,
-        listings: _listings.length,
+        listings: _mine().length,
         wpLogin: 'demo',
         note: 'Checked a few minutes ago. Try again in a few minutes.',
       );
@@ -1626,31 +1691,31 @@ class FixtureDirectoryRepository implements DirectoryRepository {
       ),
     ];
     _listings = [
+      ..._listings.where((l) => l.ownerUid != _backend.uid),
       DirectoryListing(
-        id: '47494',
+        id: '47501',
         ownerUid: _backend.uid,
-        title: 'Field Trips Travel & Vacations',
+        title: 'Juniper Refill Bar',
         status: 'publish',
-        link: 'https://example.com/directory-vendors/listing/field-trips/',
-        website: 'https://www.example.com/advisor/erica',
+        link: 'https://example.com/directory-vendors/listing/juniper-refill/',
+        website: 'https://www.example.com/juniper',
         email: 'hello@example.com',
-        phone: '555-0100',
-        locationLabel: '*Online/Virtual Business',
-        street: '1851 Massachusetts Ave NE',
-        city: 'St. Petersburg',
-        state: 'FL',
-        zip: '33703',
-        address: '1851 Massachusetts Ave NE, St. Petersburg, FL 33703',
-        categories: const ['Travel'],
-        tags: const ['Woman-Owned'],
-        locations: const ['Online/Virtual'],
+        phone: '555-0101',
+        street: '204 Michigan Ave',
+        city: 'Detroit',
+        state: 'MI',
+        zip: '48226',
+        address: '204 Michigan Ave, Detroit, MI 48226',
+        categories: const ['Home/Living'],
+        tags: const ['Woman-Owned', 'BIPOC-Owned'],
+        locations: const ['Michigan'],
         plan: 'DIRECTORY SHOWCASE PLAN',
         updatedAt: now.subtract(const Duration(days: 3)),
       ),
       DirectoryListing(
         id: '47510',
         ownerUid: _backend.uid,
-        title: 'Field Trips Pop-Up Shop',
+        title: 'Juniper Pop-Up Shop',
         status: 'pending',
         link: 'https://example.com/directory-vendors/listing/field-trips-pop-up/',
         city: 'St. Petersburg',
@@ -1668,7 +1733,7 @@ class FixtureDirectoryRepository implements DirectoryRepository {
       wpLogin: 'demo',
       wpUserId: 6415,
       orderCount: _orders.length,
-      listingCount: _listings.length,
+      listingCount: _mine().length,
       linkedAt: now,
       checkedAt: now,
     );
@@ -1678,7 +1743,7 @@ class FixtureDirectoryRepository implements DirectoryRepository {
     return DirectoryLinkResult(
       status: DirectoryLinkStatus.linked,
       orders: _orders.length,
-      listings: _listings.length,
+      listings: _mine().length,
       wpLogin: 'demo',
     );
   }

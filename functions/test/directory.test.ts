@@ -7,6 +7,7 @@ import {
   AUTO_MIN_AGE_MS,
   MANUAL_MIN_AGE_MS,
   NOT_FOUND_RECHECK_MS,
+  directoryPostFor,
   listingMirrorDoc,
   mergeOrders,
   reuseStored,
@@ -90,6 +91,18 @@ test('listingMirrorDoc names the terms it knows and drops the ids it does not', 
   assert.equal((doc.updatedAt as Timestamp).toDate().toISOString(), '2026-09-05T03:39:37.000Z');
   // Never anything the public endpoint did not return.
   assert.ok(!('wpEmailLower' in doc) && !('planId' in doc));
+});
+
+test('directoryPostFor posts as the owner, keyed to the listing, with the counters left to the social functions', () => {
+  const post = directoryPostFor(RECORD, 'uid-1');
+  assert.equal(post.kind, 'directory');
+  assert.equal(post.authorId, 'uid-1');
+  assert.equal(post.listingId, '47494');
+  assert.equal(post.title, 'Field Trips Travel & Vacations');
+  assert.equal(post.auto, true);
+  assert.deepEqual(post.tags, []);
+  // createdAt is the caller's, added only the first time.
+  assert.ok(!('createdAt' in post));
 });
 
 test('termIdsNeeded collects each taxonomy once across listings', () => {

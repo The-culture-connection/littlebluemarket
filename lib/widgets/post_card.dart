@@ -8,6 +8,7 @@ import '../state/providers.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
+import 'directory_listing_card.dart';
 import 'primitives.dart';
 import 'product_art.dart';
 import 'sheets.dart';
@@ -43,6 +44,7 @@ class PostCard extends ConsumerWidget {
             final ReviewPost review => _ReviewBody(post: review),
             final ShoutoutPost shoutout => _ShoutoutBody(post: shoutout),
             final CartPost cart => _CartBody(post: cart),
+            final DirectoryPost directory => _DirectoryBody(post: directory),
           },
         ],
       ),
@@ -375,6 +377,48 @@ class _ShoutoutBody extends ConsumerWidget {
               ],
             ],
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A business on littlebluecart.com: its listing card, live from the mirror,
+/// then the same action bar and count line as every other post.
+class _DirectoryBody extends ConsumerWidget {
+  const _DirectoryBody({required this.post});
+
+  final DirectoryPost post;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final listing = ref.watch(directoryListingProvider(post.listingId));
+    final fallback = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
+      child: Text(
+        post.title,
+        style: LbmText.display.copyWith(fontSize: 17, color: c.ink),
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LbmAsync<DirectoryListing?>(
+          listing,
+          skeleton: const ListRowSkeleton(rows: 2),
+          // A listing that went back to pending is unreadable to a stranger;
+          // the post keeps the name until the sync takes it down.
+          errorBuilder: (_, _) => fallback,
+          data: (current) => current == null
+              ? fallback
+              : DirectoryListingCard(listing: current, bare: true),
+        ),
+        _Actions(post: post),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 16),
+          child: _CountLine(post: post),
         ),
       ],
     );

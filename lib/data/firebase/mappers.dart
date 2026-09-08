@@ -289,6 +289,18 @@ abstract final class FirestoreMappers {
           aboutSellerId: data['aboutSellerId'] as String?,
           imageUrls: strings(data['imageUrls']),
         );
+      case 'directory':
+        return DirectoryPost(
+          id: id,
+          authorId: authorId,
+          createdAt: createdAt,
+          tags: tags,
+          likeCount: likeCount,
+          commentCount: commentCount,
+          likedByMe: likedByMe,
+          listingId: str(data['listingId']),
+          title: str(data['title']),
+        );
       default:
         return null;
     }

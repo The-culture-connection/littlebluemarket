@@ -123,6 +123,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ],
             ),
+            const _DirectoryCard(),
             // A seller gets their shop first. The labels are shorter when there
             // are three, so the pill row survives large text.
             SegmentedTabs(
@@ -146,6 +147,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const Puff(),
             const SizedBox(height: 20),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The littlebluecart.com row, for an account that is joined to it. Nothing
+/// at all otherwise: the door is in Edit profile.
+class _DirectoryCard extends ConsumerWidget {
+  const _DirectoryCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final link = ref.watch(directoryLinkProvider).value;
+    if (link == null || !link.linked) return const SizedBox.shrink();
+    String plural(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      child: LbmCard(
+        child: ListRow(
+          leading: Icon(Icons.storefront_outlined, color: c.ink3),
+          title: const Text('Little Blue Cart directory'),
+          subtitle: Text(
+            '${plural(link.listingCount, 'listing')} · '
+            '${plural(link.orderCount, 'website order')}',
+          ),
+          trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
+          onTap: () => context.push('/you/directory'),
         ),
       ),
     );
@@ -289,6 +319,7 @@ class _TextCell extends StatelessWidget {
     final c = context.c;
     final text = switch (post) {
       final ShoutoutPost s => s.text,
+      final DirectoryPost d => d.title,
       final CartPost cart =>
         '🛒 ${cart.itemCount} ${cart.itemCount == 1 ? 'thing' : 'things'}'
             '${cart.caption == null ? '' : '\n${cart.caption}'}',

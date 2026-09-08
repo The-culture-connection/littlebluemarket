@@ -8,7 +8,7 @@ import 'models.dart';
 /// thing that could appear in it. The product needs three: a seller posting a
 /// listing, a buyer reviewing something they bought, and anyone shouting out a
 /// seller. They share the like/comment/tag machinery and differ in their body.
-enum PostKind { listing, review, shoutout, cart }
+enum PostKind { listing, review, shoutout, cart, directory }
 
 /// A feed entry.
 ///
@@ -133,6 +133,39 @@ final class ShoutoutPost extends Post {
 
   @override
   PostKind get kind => PostKind.shoutout;
+
+  @override
+  String? get subjectProductId => null;
+}
+
+/// A business on littlebluecart.com, announcing itself.
+///
+/// Posted by the directory sync as the listing's owner when the listing is
+/// published, and removed when it is not; nobody composes one. The card reads
+/// the live mirror document, so an edit on the website reaches the feed.
+@immutable
+final class DirectoryPost extends Post {
+  const DirectoryPost({
+    required super.id,
+    required super.authorId,
+    required super.createdAt,
+    required super.tags,
+    required super.likeCount,
+    required super.commentCount,
+    required super.likedByMe,
+    required this.listingId,
+    required this.title,
+  });
+
+  /// The WordPress post id, which is also the mirror document's id.
+  final String listingId;
+
+  /// The business name, so the post still says something when the mirror is
+  /// unreadable (a stranger on a listing that went back to pending).
+  final String title;
+
+  @override
+  PostKind get kind => PostKind.directory;
 
   @override
   String? get subjectProductId => null;

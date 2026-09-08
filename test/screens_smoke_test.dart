@@ -24,6 +24,7 @@ const _routes = <String, String>{
   'post detail (review)': '/market/post/post_review_1',
   'post detail (shoutout)': '/market/post/post_shoutout_1',
   'post detail (cart)': '/market/post/post_cart_1',
+  'post detail (directory)': '/market/post/post_directory_1',
   'product details': '/market/product/p3',
   'product details (service)': '/market/product/p6',
   'all reviews': '/market/reviews/p1',

@@ -106,7 +106,8 @@
 3. On staging as WP admin: Directory → Listings → Pending → publish the listing. In the app: **Refresh** (after the ten-minute limit, or force-close and reopen the app). *Pass:* the chip reads **Published**. Firebase console: `directoryListings/<postId>` has `status: publish`, `ownerUid` = your uid, and `categories`, `tags`, `locations` as names, not numbers.
 4. Tap **Add a listing**. *Pass:* the browser opens the staging site's Add Your Business page.
 5. Leave it: within six hours (`directorySyncScheduled`) an edit made to the listing on the website reaches the card without a tap.
-6. If the card is missing or a field looks wrong: `npm run wp:probe -- --email grace-s+dir1@the-culture-connection.com` and paste the block (it prints the listing's status and its field names; the Free plan may carry different fields than the recorded Showcase one).
+6. **Everyone sees it (CP-D4).** Sign in as `grace-s+buyer1@…` → Market feed: a post by `+dir1` shows the business card (name, category, state, ownership tags, Website / Call / Email / Directions). Tap the avatar → the profile shows a **Little Blue Cart directory** section with the same card. *Pass:* a pending listing never appears for the buyer; unpublishing it on staging removes the post within six hours (or on the owner's next Refresh). Back as `+dir1`: the You tab shows a **Little Blue Cart directory** row under the profile header with the listing and order counts.
+7. If the card is missing or a field looks wrong: `npm run wp:probe -- --email grace-s+dir1@the-culture-connection.com` and paste the block (it prints the listing's status and its field names; the Free plan may carry different fields than the recorded Showcase one).
 
 ---
 

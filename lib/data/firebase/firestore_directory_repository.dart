@@ -81,6 +81,35 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
   }
 
   @override
+  Stream<DirectoryListing?> watchListing(String id) => _db
+      .collection('directoryListings')
+      .doc(id)
+      .snapshots()
+      .map((doc) {
+        final data = doc.data();
+        return data == null
+            ? null
+            : FirestoreMappers.directoryListing(doc.id, data);
+      })
+      .guarded(operation: 'firestore directoryListings/{id}');
+
+  @override
+  Stream<List<DirectoryListing>> watchPublishedListingsOf(String ownerUid) =>
+      _db
+          .collection('directoryListings')
+          .where('ownerUid', isEqualTo: ownerUid)
+          .where('status', isEqualTo: 'publish')
+          .orderBy('updatedAt', descending: true)
+          .snapshots()
+          .map(
+            (snapshot) => [
+              for (final doc in snapshot.docs)
+                FirestoreMappers.directoryListing(doc.id, doc.data()),
+            ],
+          )
+          .guarded(operation: 'firestore directoryListings (published)');
+
+  @override
   Future<DirectoryLinkResult> link({bool auto = false}) =>
       guardFirestore(() async {
         _requireUid;

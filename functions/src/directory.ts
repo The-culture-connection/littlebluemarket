@@ -177,6 +177,26 @@ export function listingMirrorDoc(
   };
 }
 
+/**
+ * The feed entry a published listing makes for itself, the way a live
+ * product does (`autoPostFor` in catalog.ts): posted as the owner, id derived
+ * from the listing so a re-sync updates rather than duplicates. `createdAt`
+ * is added by the caller only on first creation, so a six-hourly re-sync
+ * does not float the post back to the top of the feed.
+ */
+export function directoryPostFor(record: DirectoryListingRecord, ownerUid: string): Record<string, unknown> {
+  return {
+    kind: 'directory',
+    authorId: ownerUid,
+    listingId: String(record.wpPostId),
+    title: record.title,
+    tags: [],
+    auto: true,
+    likeCount: FieldValue.increment(0),
+    commentCount: FieldValue.increment(0),
+  };
+}
+
 /** Which term ids a set of listings needs names for, per taxonomy. Pure. */
 export function termIdsNeeded(records: DirectoryListingRecord[]): Record<ListingTaxonomy, number[]> {
   const cat = new Set<number>();
@@ -324,15 +344,33 @@ export async function syncListings(
     vendors_loc_loc: await cachedTermNames('vendors_loc_loc', needed.vendors_loc_loc, lookups),
   };
   const mirror = db.collection('directoryListings');
+  const posts = db.collection('posts');
   const existing = await mirror.where('ownerUid', '==', ownerUid).select().get();
   const keep = new Set(records.map((r) => String(r.wpPostId)));
+  const postRefs = records.map((r) => posts.doc(`directory_${r.wpPostId}`));
+  const existingPosts = postRefs.length ? await db.getAll(...postRefs) : [];
   const batch = db.batch();
-  for (const record of records) {
+  for (const [i, record] of records.entries()) {
     const imageUrl = record.featuredMediaId ? await lookups.mediaUrl(record.featuredMediaId) : '';
     batch.set(mirror.doc(String(record.wpPostId)), listingMirrorDoc(record, ownerUid, names, imageUrl), { merge: true });
+    // Published listings announce themselves in the feed; anything else
+    // (pending, draft, unpublished again) has no business there.
+    const postRef = postRefs[i]!;
+    const hadPost = existingPosts[i]?.exists ?? false;
+    if (record.status === 'publish') {
+      batch.set(
+        postRef,
+        { ...directoryPostFor(record, ownerUid), ...(hadPost ? {} : { createdAt: FieldValue.serverTimestamp() }) },
+        { merge: true },
+      );
+    } else if (hadPost) {
+      batch.delete(postRef);
+    }
   }
   for (const doc of existing.docs) {
-    if (!keep.has(doc.id)) batch.delete(doc.ref);
+    if (keep.has(doc.id)) continue;
+    batch.delete(doc.ref);
+    batch.delete(posts.doc(`directory_${doc.id}`));
   }
   await batch.commit();
   return records.length;
