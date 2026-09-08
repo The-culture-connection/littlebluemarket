@@ -28,8 +28,22 @@ class FirestoreCatalogRepository implements CatalogRepository {
   CollectionReference<Map<String, dynamic>> get _catalog =>
       _db.collection('catalog');
 
+  /// Website-link products from directory businesses (Stage 13). Their ids
+  /// carry the `dp_` prefix, so every read here can tell the two apart.
+  CollectionReference<Map<String, dynamic>> get _external =>
+      _db.collection('directoryProducts');
+
+  String _externalDocId(String id) =>
+      id.substring(Product.externalPrefix.length);
+
   @override
   Future<Product> product(String id) => guardFirestore(() async {
+    if (Product.isExternalId(id)) {
+      final doc = await _external.doc(_externalDocId(id)).get();
+      final data = doc.data();
+      if (data == null) throw NotFoundException('product', id);
+      return FirestoreMappers.directoryProduct(doc.id, data);
+    }
     final doc = await _catalog.doc(id).get();
     final data = doc.data();
     // Throws rather than substituting another product. The prototype's
@@ -40,6 +54,7 @@ class FirestoreCatalogRepository implements CatalogRepository {
 
   @override
   Future<ProductSpec> spec(String id) => guardFirestore(() async {
+    if (Product.isExternalId(id)) return kExternalProductSpec;
     final doc = await _catalog.doc(id).collection('spec').doc('detail').get();
     final data = doc.data();
     if (data == null) throw NotFoundException('spec', id);
@@ -53,16 +68,39 @@ class FirestoreCatalogRepository implements CatalogRepository {
 
         final found = <String, Product>{};
         const chunkSize = 30;
-        for (var i = 0; i < ids.length; i += chunkSize) {
-          final chunk = ids.sublist(
+        final catalogIds = ids.where((id) => !Product.isExternalId(id)).toList();
+        final externalIds = ids.where(Product.isExternalId).toList();
+        for (var i = 0; i < catalogIds.length; i += chunkSize) {
+          final chunk = catalogIds.sublist(
             i,
-            i + chunkSize > ids.length ? ids.length : i + chunkSize,
+            i + chunkSize > catalogIds.length ? catalogIds.length : i + chunkSize,
           );
           final snapshot = await _catalog
               .where(FieldPath.documentId, whereIn: chunk)
               .get();
           for (final doc in snapshot.docs) {
             found[doc.id] = FirestoreMappers.product(doc.id, doc.data());
+          }
+        }
+        for (var i = 0; i < externalIds.length; i += chunkSize) {
+          final chunk = externalIds
+              .sublist(
+                i,
+                i + chunkSize > externalIds.length
+                    ? externalIds.length
+                    : i + chunkSize,
+              )
+              .map(_externalDocId)
+              .toList();
+          final snapshot = await _external
+              .where(FieldPath.documentId, whereIn: chunk)
+              .get();
+          for (final doc in snapshot.docs) {
+            final product = FirestoreMappers.directoryProduct(
+              doc.id,
+              doc.data(),
+            );
+            found[product.id] = product;
           }
         }
 
@@ -95,6 +133,8 @@ class FirestoreCatalogRepository implements CatalogRepository {
   @override
   Future<List<Variant>> liveVariants(String productId) =>
       guardFirestore(() async {
+        // A website-link product has no variants here; the website does.
+        if (Product.isExternalId(productId)) return const [];
         // The only read that must not be served from the mirror: stock is the
         // one field where being a few minutes stale sells something twice.
         final result = await _functions
@@ -111,12 +151,22 @@ class FirestoreCatalogRepository implements CatalogRepository {
       }, operation: 'callable commerceLiveVariants');
 
   @override
-  Stream<Product> watchProduct(String id) => _catalog
-      .doc(id)
-      .snapshots()
-      .where((doc) => doc.data() != null)
-      .map((doc) => FirestoreMappers.product(doc.id, doc.data()!))
-      .guarded(operation: 'firestore catalog watchProduct');
+  Stream<Product> watchProduct(String id) {
+    if (Product.isExternalId(id)) {
+      return _external
+          .doc(_externalDocId(id))
+          .snapshots()
+          .where((doc) => doc.data() != null)
+          .map((doc) => FirestoreMappers.directoryProduct(doc.id, doc.data()!))
+          .guarded(operation: 'firestore directoryProducts watchProduct');
+    }
+    return _catalog
+        .doc(id)
+        .snapshots()
+        .where((doc) => doc.data() != null)
+        .map((doc) => FirestoreMappers.product(doc.id, doc.data()!))
+        .guarded(operation: 'firestore catalog watchProduct');
+  }
 
   @override
   Future<List<TagCount>> popularTags({int limit = 8}) =>

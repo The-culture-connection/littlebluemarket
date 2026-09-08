@@ -294,6 +294,21 @@ abstract interface class DirectoryRepository {
   /// hashtags and City, State from the linked listing. Returns the new name
   /// and handle.
   Future<({String name, String handle})> applyListingProfile();
+
+  /// Products this business sells on its own website, newest first. Their
+  /// ids carry [Product.externalPrefix].
+  Stream<List<Product>> watchMyProducts();
+
+  /// Someone's website-link products, for their storefront.
+  Stream<List<Product>> watchProductsOf(String ownerUid);
+
+  /// Adds, or with [id] edits, a website-link product. The backend refuses
+  /// anyone not joined to the directory. Returns the document id (without
+  /// the prefix).
+  Future<String> saveProduct(NewDirectoryProduct draft, {String? id});
+
+  /// Removes one, and its feed post. [id] without the prefix.
+  Future<void> deleteProduct(String id);
 }
 
 /// Shipments, in both directions.

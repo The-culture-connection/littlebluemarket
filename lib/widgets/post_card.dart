@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../data/repositories/repositories.dart';
 import '../models/models.dart';
@@ -163,7 +164,9 @@ class _ListingBody extends ConsumerWidget {
             child: ProductArt(product, borderRadius: LbmRadius.imageR),
           ),
         ),
-        _Actions(post: post, productId: product.id),
+        // A website-link product has no cart: its Buy opens the business's
+        // own site, so the cart icon would only ever fail.
+        _Actions(post: post, productId: product.isExternal ? null : product.id),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
           child: Column(
@@ -208,20 +211,42 @@ class _ListingBody extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              PillButton(
-                'Buy',
-                small: true,
-                expand: false,
-                onPressed: () => requireProfile(
-                  context,
-                  ref,
-                  () => showBuySheet(context, product),
+              if (product.isExternal)
+                PillButton(
+                  'Buy on their website',
+                  small: true,
+                  expand: false,
+                  icon: Icons.open_in_new_rounded,
+                  onPressed: () => openBuyUrl(context, product),
+                )
+              else
+                PillButton(
+                  'Buy',
+                  small: true,
+                  expand: false,
+                  onPressed: () => requireProfile(
+                    context,
+                    ref,
+                    () => showBuySheet(context, product),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Buy on a directory business's own website: the browser, not the cart.
+Future<void> openBuyUrl(BuildContext context, Product product) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final uri = Uri.tryParse(product.buyUrl ?? '');
+  if (uri == null) return;
+  final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (!ok) {
+    messenger.showSnackBar(
+      SnackBar(content: Text('Could not open ${product.buyUrl}')),
     );
   }
 }

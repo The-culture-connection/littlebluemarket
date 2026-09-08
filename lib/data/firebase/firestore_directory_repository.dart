@@ -109,6 +109,55 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
           )
           .guarded(operation: 'firestore directoryListings (published)');
 
+  CollectionReference<Map<String, dynamic>> get _products =>
+      _db.collection('directoryProducts');
+
+  Stream<List<Product>> _productsOf(String ownerUid) => _products
+      .where('ownerUid', isEqualTo: ownerUid)
+      .orderBy('createdAt', descending: true)
+      .snapshots()
+      .map(
+        (snapshot) => [
+          for (final doc in snapshot.docs)
+            FirestoreMappers.directoryProduct(doc.id, doc.data()),
+        ],
+      )
+      .guarded(operation: 'firestore directoryProducts');
+
+  @override
+  Stream<List<Product>> watchMyProducts() {
+    final id = uid;
+    if (id == null) return Stream.value(const []);
+    return _productsOf(id);
+  }
+
+  @override
+  Stream<List<Product>> watchProductsOf(String ownerUid) =>
+      _productsOf(ownerUid);
+
+  @override
+  Future<String> saveProduct(NewDirectoryProduct draft, {String? id}) =>
+      guardFirestore(() async {
+        _requireUid;
+        final result = await _functions
+            .httpsCallable(
+              'directoryProductSave',
+              options: HttpsCallableOptions(
+                timeout: const Duration(seconds: 60),
+              ),
+            )
+            .call<Map<String, dynamic>>({...draft.toMap(), 'id': ?id});
+        return FirestoreMappers.str(result.data['id']);
+      }, operation: 'callable directoryProductSave');
+
+  @override
+  Future<void> deleteProduct(String id) => guardFirestore(() async {
+    _requireUid;
+    await _functions
+        .httpsCallable('directoryProductDelete')
+        .call<Map<String, dynamic>>({'id': id});
+  }, operation: 'callable directoryProductDelete');
+
   @override
   Future<({String name, String handle})> applyListingProfile() =>
       guardFirestore(() async {

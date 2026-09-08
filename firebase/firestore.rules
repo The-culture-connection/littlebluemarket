@@ -112,6 +112,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Products a directory business sells on its own website. Everyone reads
+    // them; only the two callables write them, and only for an account that
+    // holds the directory link.
+    match /directoryProducts/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // The public mirror of linked owners' directory listings. A published
     // listing is what the website already shows to anyone; a pending or
     // draft one is the owner's alone. Written only by the sync.

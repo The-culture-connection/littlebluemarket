@@ -35,6 +35,7 @@ const _routes = <String, String>{
   'add a product': '/you/add-product',
   'sell with us': '/you/sell',
   'directory': '/you/directory',
+  'add a website-link product': '/you/directory-product',
   'notifications': '/you/notifications',
   'notification settings': '/you/notification-settings',
   'admin': '/you/admin',

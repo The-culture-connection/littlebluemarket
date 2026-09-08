@@ -313,31 +313,43 @@ class _Body extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              CircleIconButton(
-                icon: Icons.add_shopping_cart_rounded,
-                tooltip: 'Add to cart',
-                onPressed: () => requireProfile(
-                  context,
-                  ref,
-                  () => addToCart(
-                    context,
-                    ref,
-                    productId,
-                    variantId: variant?.name,
+              // A directory business sells on its own website: no cart, and
+              // Buy opens the site. Anyone may tap it, signed in or not.
+              if (product.isExternal)
+                Expanded(
+                  child: PillButton(
+                    'Buy on their website',
+                    icon: Icons.open_in_new_rounded,
+                    onPressed: () => openBuyUrl(context, product),
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: PillButton(
-                  isGuest ? 'Buy · sign up' : 'Buy',
+                )
+              else ...[
+                CircleIconButton(
+                  icon: Icons.add_shopping_cart_rounded,
+                  tooltip: 'Add to cart',
                   onPressed: () => requireProfile(
                     context,
                     ref,
-                    () => showBuySheet(context, product, variant: variant),
+                    () => addToCart(
+                      context,
+                      ref,
+                      productId,
+                      variantId: variant?.name,
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: PillButton(
+                    isGuest ? 'Buy · sign up' : 'Buy',
+                    onPressed: () => requireProfile(
+                      context,
+                      ref,
+                      () => showBuySheet(context, product, variant: variant),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

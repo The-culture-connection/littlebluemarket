@@ -27,6 +27,7 @@ import '../screens/you/notifications_screen.dart';
 import '../screens/you/sell_screen.dart';
 import '../screens/you/claim_shop_screen.dart';
 import '../screens/you/diagnostics_screen.dart';
+import '../screens/you/directory_product_screen.dart';
 import '../screens/you/directory_screen.dart';
 import '../screens/you/edit_profile_screen.dart';
 import '../screens/you/messages_screen.dart';
@@ -280,6 +281,16 @@ GoRouter buildRouter(Ref ref) {
                     builder: (context, state) => DirectoryScreen(
                       auto: state.uri.queryParameters['auto'] == '1',
                       add: state.uri.queryParameters['add'] == '1',
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'directory-product',
+                    builder: (context, state) => const DirectoryProductScreen(),
+                  ),
+                  GoRoute(
+                    path: 'directory-product/:id',
+                    builder: (context, state) => DirectoryProductScreen(
+                      productId: state.pathParameters['id']!,
                     ),
                   ),
                   GoRoute(

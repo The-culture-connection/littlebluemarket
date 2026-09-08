@@ -161,12 +161,23 @@ class Product {
     this.glyph,
     this.tileFrom,
     this.tileTo,
+    this.buyUrl,
   });
 
   final String id;
   final String title;
   final int priceCents;
   final String sellerId;
+
+  /// Set for a product a directory business sells on its own website: Buy
+  /// opens this address instead of the cart, and nothing here is in Shopify.
+  final String? buyUrl;
+
+  bool get isExternal => buyUrl != null && buyUrl!.isNotEmpty;
+
+  /// The `directoryProducts` document behind a website-link product.
+  static const externalPrefix = 'dp_';
+  static bool isExternalId(String id) => id.startsWith(externalPrefix);
   final List<String> tags;
   final double rating;
   final int ratingCount;
@@ -210,8 +221,10 @@ class Product {
 
   bool get hasPhoto => imageUrls.isNotEmpty;
 
-  /// "$8", "$450" — whole dollars stay whole, as in the prototype.
-  String get price => Fmt.money(priceCents);
+  /// "$8", "$450" — whole dollars stay whole, as in the prototype. A
+  /// website-link product with no price says where to look instead.
+  String get price =>
+      isExternal && priceCents == 0 ? 'See website' : Fmt.money(priceCents);
 
   /// "Detroit, MI · 4 mi" once we know where the viewer is, "Nashville, TN ·
   /// ships free" when the listing ships anywhere, "Detroit, MI" otherwise.
@@ -256,6 +269,7 @@ class Product {
     glyph: glyph,
     tileFrom: tileFrom,
     tileTo: tileTo,
+    buyUrl: buyUrl,
   );
 }
 

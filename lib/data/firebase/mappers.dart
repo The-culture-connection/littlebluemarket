@@ -180,7 +180,33 @@ abstract final class FirestoreMappers {
     commentCount: integer(data['commentCount']),
     imageUrls: strings(data['imageUrls']),
     collectionHandles: strings(data['collectionHandles']),
+    buyUrl: data['buyUrl'] is String && (data['buyUrl'] as String).isNotEmpty
+        ? data['buyUrl'] as String
+        : null,
   );
+
+  /// A `directoryProducts` document as a [Product], id prefixed so every
+  /// reader knows it is not in the catalog.
+  static Product directoryProduct(String docId, Map<String, dynamic> data) =>
+      Product(
+        id: '${Product.externalPrefix}$docId',
+        title: str(data['title'], 'Untitled'),
+        priceCents: integer(data['priceCents']),
+        sellerId: str(data['ownerUid']),
+        tags: strings(data['tags']),
+        rating: decimal(data['rating']),
+        ratingCount: integer(data['ratingCount']),
+        type: 'From littlebluecart.com',
+        description: str(data['description']),
+        cityState: str(data['cityState']),
+        lat: data['lat'] == null ? null : decimal(data['lat']),
+        lng: data['lng'] == null ? null : decimal(data['lng']),
+        saveCount: integer(data['saveCount']),
+        inCartsCount: integer(data['inCartsCount']),
+        commentCount: integer(data['commentCount']),
+        imageUrls: strings(data['imageUrls']),
+        buyUrl: str(data['buyUrl'], 'https://littlebluecart.com'),
+      );
 
   static Collection collection(String handle, Map<String, dynamic> data) =>
       Collection(

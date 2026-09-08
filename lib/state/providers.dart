@@ -310,6 +310,19 @@ final myDirectoryListingsProvider = StreamProvider<List<DirectoryListing>>((
   return ref.watch(directoryRepositoryProvider).watchMyListings();
 });
 
+/// The signed-in directory business's website-link products.
+final myDirectoryProductsProvider = StreamProvider<List<Product>>((ref) {
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null) return Stream.value(const <Product>[]);
+  return ref.watch(directoryRepositoryProvider).watchMyProducts();
+});
+
+/// Someone's website-link products, for their storefront.
+final directoryProductsOfProvider =
+    StreamProvider.family<List<Product>, String>((ref, ownerUid) {
+      return ref.watch(directoryRepositoryProvider).watchProductsOf(ownerUid);
+    });
+
 /// One listing from the public mirror, live: the feed card reads it.
 final directoryListingProvider =
     StreamProvider.family<DirectoryListing?, String>((ref, id) {

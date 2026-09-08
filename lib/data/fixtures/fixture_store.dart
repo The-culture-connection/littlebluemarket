@@ -92,6 +92,28 @@ class FixtureStore {
   /// News from the demo merchant. Empty until the Admin screen sends one.
   final announcements = Watchable<List<Announcement>>([]);
 
+  /// Website-link products of directory businesses (Stage 13). One belongs
+  /// to `dee` from the start so the product page and feed card can render.
+  final directoryProducts = Watchable<Map<String, Product>>({
+    'dp_demo1': const Product(
+      id: 'dp_demo1',
+      title: 'Custom itinerary planning',
+      priceCents: 0,
+      sellerId: 'dee',
+      tags: ['#Travel', '#WomanOwned'],
+      rating: 0,
+      ratingCount: 0,
+      type: 'From littlebluecart.com',
+      description:
+          'A trip planned around your points, your dates and your people. '
+          'Booked on our website.',
+      cityState: 'St. Petersburg, FL',
+      saveCount: 0,
+      commentCount: 0,
+      buyUrl: 'https://www.example.com/advisor/erica',
+    ),
+  });
+
   /// Post ids this viewer has liked.
   final likedPosts = <String>{};
   final likedComments = <String>{};

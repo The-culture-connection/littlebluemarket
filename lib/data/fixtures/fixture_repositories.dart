@@ -51,15 +51,20 @@ class FixtureCatalogRepository implements CatalogRepository {
 
   final FixtureBackend _backend;
 
+  /// Catalog products, then the website-link ones of directory businesses.
+  Product? _find(String id) =>
+      Fx.products[id] ?? _backend.store.directoryProducts.value[id];
+
   @override
   Future<Product> product(String id) {
-    final found = Fx.products[id];
+    final found = _find(id);
     if (found == null) throw NotFoundException('product', id);
     return _backend._delayed(found);
   }
 
   @override
   Future<ProductSpec> spec(String id) {
+    if (Product.isExternalId(id)) return _backend._delayed(kExternalProductSpec);
     final found = Fx.specs[id];
     if (found == null) throw NotFoundException('spec', id);
     return _backend._delayed(found);
@@ -69,7 +74,7 @@ class FixtureCatalogRepository implements CatalogRepository {
   Future<List<Product>> productsByIds(List<String> ids) {
     // Missing ids are skipped rather than fatal: a stale reference in a feed
     // should cost one card, not the whole screen.
-    return _backend._delayed([for (final id in ids) ?Fx.products[id]]);
+    return _backend._delayed([for (final id in ids) ?_find(id)]);
   }
 
   @override
@@ -84,6 +89,7 @@ class FixtureCatalogRepository implements CatalogRepository {
 
   @override
   Future<List<Variant>> liveVariants(String productId) async {
+    if (Product.isExternalId(productId)) return const [];
     final spec = Fx.specs[productId];
     if (spec == null) throw NotFoundException('product', productId);
     return _backend._delayed(spec.variants);
@@ -95,6 +101,12 @@ class FixtureCatalogRepository implements CatalogRepository {
 
   @override
   Stream<Product> watchProduct(String id) {
+    if (Product.isExternalId(id)) {
+      return _backend.store.directoryProducts.stream
+          .map((all) => all[id])
+          .where((p) => p != null)
+          .cast<Product>();
+    }
     final found = Fx.products[id];
     if (found == null) return Stream.error(NotFoundException('product', id));
     return Stream.value(found);
@@ -1701,6 +1713,60 @@ class FixtureDirectoryRepository implements DirectoryRepository {
         .toList();
     yield find();
     yield* _listingChanges.stream.map((_) => find());
+  }
+
+  Watchable<Map<String, Product>> get _products =>
+      _backend.store.directoryProducts;
+
+  @override
+  Stream<List<Product>> watchMyProducts() => _products.stream.map(
+    (all) => all.values.where((p) => p.sellerId == _backend.uid).toList(),
+  );
+
+  @override
+  Stream<List<Product>> watchProductsOf(String ownerUid) => _products.stream
+      .map((all) => all.values.where((p) => p.sellerId == ownerUid).toList());
+
+  @override
+  Future<String> saveProduct(NewDirectoryProduct draft, {String? id}) async {
+    await _backend._settle();
+    if (!(_link?.linked ?? false)) {
+      throw const PermissionException(
+        'Only businesses in the Little Blue Cart directory can add products '
+        'this way. Link your directory account first.',
+      );
+    }
+    if (!draft.isValid) throw const ValidationException('Give it a name.');
+    final docId = id ?? 'demo${DateTime.now().microsecondsSinceEpoch}';
+    final website = _mine().map((l) => l.website).firstWhere(
+      (w) => w.isNotEmpty,
+      orElse: () => 'https://example.com',
+    );
+    final product = Product(
+      id: '${Product.externalPrefix}$docId',
+      title: draft.title.trim(),
+      priceCents: draft.priceCents,
+      sellerId: _backend.uid,
+      tags: draft.tags,
+      rating: 0,
+      ratingCount: 0,
+      type: 'From littlebluecart.com',
+      description: draft.description.trim(),
+      cityState: '',
+      saveCount: 0,
+      commentCount: 0,
+      imageUrls: draft.imageUrls,
+      buyUrl: draft.buyUrl.trim().isEmpty ? website : draft.buyUrl.trim(),
+    );
+    _products.value = {..._products.value, product.id: product};
+    return docId;
+  }
+
+  @override
+  Future<void> deleteProduct(String id) async {
+    await _backend._settle();
+    final all = {..._products.value}..remove('${Product.externalPrefix}$id');
+    _products.value = all;
   }
 
   @override

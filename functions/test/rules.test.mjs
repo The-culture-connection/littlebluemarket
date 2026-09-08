@@ -393,6 +393,13 @@ describe('selling is a grant, not a client write', () => {
     await assertFails(member('kali').doc('users/maya/settings/notifications').get());
     await assertFails(member('maya').doc('users/maya/settings/other').set({ anything: true }));
 
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('directoryProducts/dp1').set({ ownerUid: 'maya', title: 'Itinerary', buyUrl: 'https://x.test' });
+    });
+    await assertSucceeds(guest().doc('directoryProducts/dp1').get());
+    await assertFails(member('maya').doc('directoryProducts/dp1').set({ title: 'Edited on the phone' }));
+    await assertFails(member('maya').doc('directoryProducts/dp2').set({ ownerUid: 'maya', title: 'New' }));
+
     // The owner's own list and the public list are both answerable queries.
     await assertSucceeds(member('maya').collection('directoryListings').where('ownerUid', '==', 'maya').get());
     await assertSucceeds(

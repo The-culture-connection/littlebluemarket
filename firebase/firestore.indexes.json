@@ -228,6 +228,21 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "_comment": "Stage 13: a directory business's website-link products, newest first.",
+      "collectionGroup": "directoryProducts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ownerUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

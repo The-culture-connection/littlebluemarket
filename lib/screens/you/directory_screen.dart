@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/repositories/repositories.dart';
@@ -203,6 +204,58 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                           ),
                       ],
                     ),
+            ),
+          ],
+          if (linked) ...[
+            const SizedBox(height: 16),
+            const SectionHead('My products (sold on my website)'),
+            const SizedBox(height: 8),
+            LbmAsync<List<Product>>(
+              ref.watch(myDirectoryProductsProvider),
+              skeleton: const SizedBox(height: 60),
+              data: (list) => LbmCard(
+                child: RowStack(
+                  children: [
+                    for (final product in list)
+                      ListRow(
+                        leading: product.hasPhoto
+                            ? ClipRRect(
+                                borderRadius: LbmRadius.imageR,
+                                child: SizedBox(
+                                  width: 44,
+                                  height: 44,
+                                  child: Image.network(
+                                    product.imageUrls.first,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) =>
+                                        ColoredBox(color: c.skyWash),
+                                  ),
+                                ),
+                              )
+                            : Icon(Icons.storefront_outlined, color: c.ink3),
+                        title: Text(product.title),
+                        subtitle: Text(product.price),
+                        trailing: Icon(
+                          Icons.edit_outlined,
+                          size: 20,
+                          color: c.ink3,
+                        ),
+                        onTap: () => context.push(
+                          '/you/directory-product/'
+                          '${product.id.substring(Product.externalPrefix.length)}',
+                        ),
+                      ),
+                    ListRow(
+                      leading: Icon(Icons.add_rounded, color: c.accentText),
+                      title: const Text('Add a product'),
+                      subtitle: const Text(
+                        'Photos, a name, a price; Buy opens your website',
+                      ),
+                      onTap: () => context.push('/you/directory-product'),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
           const SizedBox(height: 16),

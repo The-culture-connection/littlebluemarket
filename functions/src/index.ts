@@ -18,6 +18,7 @@ import {
   WP_SECRETS,
 } from './config.ts';
 import { applyListingProfile, syncAllDirectoryListings, syncDirectory } from './directory.ts';
+import { deleteDirectoryProduct, saveDirectoryProduct } from './directory_products.ts';
 import { announceIfNew, rebuildBuyerIndexPage } from './buyer_index.ts';
 import {
   forumReplyRecipients,
@@ -385,6 +386,29 @@ export const directoryApplyProfile = onCall(
       );
     }
     return result;
+  }),
+);
+
+/**
+ * Stage 13: a directory business adds or edits a product it sells on its
+ * own website. The directory link is the grant.
+ */
+export const directoryProductSave = onCall(
+  withLoudErrors('directoryProductSave', async (request) => {
+    const uid = requireUid(request.auth);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    const id = typeof data.id === 'string' && data.id ? data.id : undefined;
+    return saveDirectoryProduct(uid, data, id);
+  }),
+);
+
+export const directoryProductDelete = onCall(
+  withLoudErrors('directoryProductDelete', async (request) => {
+    const uid = requireUid(request.auth);
+    const id = String((request.data ?? {}).id ?? '');
+    if (!id) throw new HttpsError('invalid-argument', 'Which product?');
+    await deleteDirectoryProduct(uid, id);
+    return { ok: true };
   }),
 );
 

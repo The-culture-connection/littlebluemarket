@@ -1,6 +1,59 @@
 import 'package:flutter/foundation.dart';
 
-import 'formatting.dart';
+import 'models.dart';
+
+/// The spec table behind a website-link product: there are no variants, no
+/// stock and no shipping to show, only where to buy.
+const kExternalProductSpec = ProductSpec(
+  subtitle: 'Sold on their website',
+  lead: 'Buy on their website',
+  rows: [],
+  variants: [],
+  shipping: [],
+  returns: '',
+);
+
+/// What a directory business fills in for a product it sells on its own
+/// website. A price of zero means "see the website".
+@immutable
+class NewDirectoryProduct {
+  const NewDirectoryProduct({
+    required this.title,
+    this.description = '',
+    this.priceCents = 0,
+    this.imageUrls = const [],
+    this.buyUrl = '',
+    this.tags = const [],
+  });
+
+  static const titleMax = 80;
+  static const descriptionMax = 600;
+  static const photosMax = 6;
+
+  final String title;
+  final String description;
+  final int priceCents;
+  final List<String> imageUrls;
+
+  /// Empty means "use the website on my directory listing".
+  final String buyUrl;
+  final List<String> tags;
+
+  bool get isValid =>
+      title.trim().isNotEmpty &&
+      title.trim().length <= titleMax &&
+      description.trim().length <= descriptionMax &&
+      imageUrls.length <= photosMax;
+
+  Map<String, Object> toMap() => {
+    'title': title.trim(),
+    'description': description.trim(),
+    'priceCents': priceCents,
+    'imageUrls': imageUrls,
+    'buyUrl': buyUrl.trim(),
+    'tags': tags,
+  };
+}
 
 /// What "Link my directory account" came back with. [off] means the backend
 /// has no directory configured yet (the silent launch-time call never

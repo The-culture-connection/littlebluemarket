@@ -112,16 +112,37 @@ class FirestoreSocialRepository implements SocialRepository {
     if (ids.isEmpty) return const {};
     final products = <String, Product>{};
     const chunkSize = 30;
-    for (var i = 0; i < ids.length; i += chunkSize) {
-      final chunk = ids.sublist(
+    // Two homes: the catalog mirror, and the website-link products of
+    // directory businesses (ids prefixed `dp_`).
+    final catalogIds = ids.where((id) => !Product.isExternalId(id)).toList();
+    final externalIds = ids
+        .where(Product.isExternalId)
+        .map((id) => id.substring(Product.externalPrefix.length))
+        .toList();
+    for (var i = 0; i < catalogIds.length; i += chunkSize) {
+      final chunk = catalogIds.sublist(
         i,
-        i + chunkSize > ids.length ? ids.length : i + chunkSize,
+        i + chunkSize > catalogIds.length ? catalogIds.length : i + chunkSize,
       );
       final snapshot = await _catalog
           .where(FieldPath.documentId, whereIn: chunk)
           .get();
       for (final doc in snapshot.docs) {
         products[doc.id] = FirestoreMappers.product(doc.id, doc.data());
+      }
+    }
+    for (var i = 0; i < externalIds.length; i += chunkSize) {
+      final chunk = externalIds.sublist(
+        i,
+        i + chunkSize > externalIds.length ? externalIds.length : i + chunkSize,
+      );
+      final snapshot = await _db
+          .collection('directoryProducts')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+      for (final doc in snapshot.docs) {
+        final product = FirestoreMappers.directoryProduct(doc.id, doc.data());
+        products[product.id] = product;
       }
     }
     return products;
