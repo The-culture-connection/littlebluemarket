@@ -130,6 +130,15 @@ export const WP_BASE_URL = defineString('WP_BASE_URL', { default: '' });
 export const WP_APP_USER = defineString('WP_APP_USER', { default: '' });
 
 /**
+ * `yes` lets the dev project read the LIVE littlebluecart.com. Grace's call
+ * (2026-09-08): there is no staging copy to be had without a Cloudways login,
+ * and the app never writes to WordPress (adding a listing goes through the
+ * website's own form; the WooCommerce key is Read). The doctor still says so
+ * in yellow on every run, so it is never forgotten.
+ */
+export const WP_LIVE_OK = defineString('WP_LIVE_OK', { default: '' });
+
+/**
  * Where a business adds itself to the directory: the website form, because
  * the plans, the payment and the review queue live there. Dev points at the
  * staging copy, prod at littlebluecart.com.

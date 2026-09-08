@@ -15,6 +15,7 @@ import { storefrontGraphQL } from './shopify/storefront.ts';
 import {
   credentialsFromParams,
   isLiveWpBase,
+  liveWpAllowed,
   wcGet,
   wpBase,
   wpConfigured,
@@ -289,8 +290,9 @@ export function defaultProbes(): Probe[] {
       run: async () => {
         if (!wpConfigured()) throw new Error('WP_BASE_URL is empty (directory features are off)');
         const host = wpHost();
-        if (projectId() === DEV_PROJECT && isLiveWpBase(wpBase())) {
-          throw new Error(`WP_BASE_URL is the LIVE site (${host}) on the dev project`);
+        const live = isLiveWpBase(wpBase());
+        if (projectId() === DEV_PROJECT && live && !liveWpAllowed()) {
+          throw new Error(`WP_BASE_URL is the LIVE site (${host}) on the dev project; set WP_LIVE_OK=yes in the env if that is intended`);
         }
         const pub = await wpFetch<unknown[]>('wp/v2/vendors_dir_ltg', { auth: 'none', query: { per_page: 1 } });
         const listings = pub.total ?? (Array.isArray(pub.data) ? pub.data.length : 0);
@@ -303,8 +305,8 @@ export function defaultProbes(): Probe[] {
           throw new Error(`app password works but "${me.slug}" has roles [${roles.join(', ')}]; looking members up by email needs an administrator`);
         }
         return {
-          summary: `app password works · user ${me.slug} · administrator · ${listings} listings public · ${host}`,
-          data: { host, listings, user: me.slug },
+          summary: `app password works · user ${me.slug} · administrator · ${listings} listings public · ${host}${live ? ' · LIVE site, read-only by design' : ''}`,
+          data: { host, listings, user: me.slug, live },
         };
       },
     },

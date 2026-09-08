@@ -6,6 +6,7 @@ import {
   WP_APP_PASSWORD,
   WP_APP_USER,
   WP_BASE_URL,
+  WP_LIVE_OK,
 } from './config.ts';
 import { toCents } from './orders.ts';
 
@@ -73,6 +74,15 @@ export function isLiveWpBase(base: string): boolean {
   }
   if (!isLiveWpHost(url.host)) return false;
   return url.pathname.replace(/\/+$/, '') === '';
+}
+
+/** Whether the merchant has said, in the env, that reading the live site is intended. */
+export function liveWpAllowed(): boolean {
+  try {
+    return WP_LIVE_OK.value().trim().toLowerCase() === 'yes';
+  } catch {
+    return false;
+  }
 }
 
 export interface WpCredentials {

@@ -43,7 +43,9 @@ Nothing gets pasted into chat. Each secret is typed once into a prompt on your c
 
 Everything below is created on the **staging** site, not on littlebluecart.com. The dev Firebase project `little-blue-610e5` points at staging. Live keys are made only at cutover, for the production Firebase project.
 
-**Route B, from wp-admin only (the one in use since 2026-09-08; Grace has no Cloudways login):**
+**Route C, the one in use (Grace's decision, 2026-09-08): dev reads the LIVE site.** The host blocks plugin installs and there is no Cloudways login, so no copy can be made today. The app never writes to WordPress and the WooCommerce key is Read, so `WP_BASE_URL=https://littlebluecart.com` with `WP_LIVE_OK=yes` in the dev env is allowed; the doctor stays yellow about it. Test with existing accounts where possible and delete any test user, order or listing added to the live site once a checkpoint passes. The Application Password and WooCommerce key are made on the live wp-admin, and they are also the production credentials at cutover.
+
+**Route B, from wp-admin only (kept for when a copy becomes possible):**
 
 1. littlebluecart.com `/wp-admin` → Plugins → Add New → **WP Staging** → Install → Activate.
 2. **WP Staging** → **Create Staging Site** → name `dev` → **Start Cloning**. 10–30 minutes; keep the tab open.

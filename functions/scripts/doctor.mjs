@@ -207,9 +207,11 @@ async function main() {
     warn('wordpress', `WP_BASE_URL empty in ${envRel}: directory features off`, 'CP-D0: make the Cloudways staging copy of littlebluecart.com and put its https URL in WP_BASE_URL (Planning/checkpoints.md, Stage 10)');
   } else if (!/^https:\/\//.test(wpBase) || !wpHost) {
     fail('wordpress', `WP_BASE_URL "${wpBase}" must be an https:// URL`, `fix the line in ${envRel}`);
-  } else if ((wpHost === PRODUCTION_WP_HOST || wpHost.endsWith(`.${PRODUCTION_WP_HOST}`)) && new URL(wpBase).pathname.replace(/\/+$/, '') === '') {
-    fail('wordpress', `WP_BASE_URL is the LIVE site (${wpHost})`, 'dev must point at a staging copy: either Cloudways -> Staging Management -> Add Staging Application, or the WP Staging plugin, which makes one at littlebluecart.com/<folder>; put that https URL in WP_BASE_URL');
+  } else if ((wpHost === PRODUCTION_WP_HOST || wpHost.endsWith(`.${PRODUCTION_WP_HOST}`)) && new URL(wpBase).pathname.replace(/\/+$/, '') === '' && String(params.WP_LIVE_OK ?? '').trim().toLowerCase() !== 'yes') {
+    fail('wordpress', `WP_BASE_URL is the LIVE site (${wpHost})`, 'either point at a staging copy, or, if reading the live site is what you want (the app never writes to WordPress), add WP_LIVE_OK=yes to ' + envRel);
   } else {
+    const liveByChoice = (wpHost === PRODUCTION_WP_HOST || wpHost.endsWith(`.${PRODUCTION_WP_HOST}`)) && new URL(wpBase).pathname.replace(/\/+$/, '') === '';
+    if (liveByChoice) warn('wordpress (live)', 'dev is reading the LIVE littlebluecart.com (WP_LIVE_OK=yes): read-only, but test users, orders and listings you create there are real', 'use existing accounts to test where you can, and delete any test user, order or listing you add on the live site when the checkpoint passes');
     // A WP Staging copy gates visitors behind a login; the app password gets
     // through, so the public checks fall back to it and say so.
     const stagingUser = String(params.WP_APP_USER ?? '').trim();
