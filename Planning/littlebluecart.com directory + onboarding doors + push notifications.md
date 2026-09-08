@@ -2,6 +2,8 @@
 
 `REPO` = `little_blue_market\`, `PARENT` = the folder above it (where `.env.dev` lives). Same shorthand as `Planning/checkpoints.md`.
 
+> **Status, 2026-09-08:** every checkpoint below except the optional CP-D5 is built, tested and pushed to `main`: CP-D0–D4, CP-O1–O2, CP-N0–N3, and CP-N4's iPhone files. None is ticked yet: each waits for your tap-through, and the whole directory stage waits for the Cloudways staging site and the three secrets (§2). The boxes, pass lines and journeys live in `Planning/checkpoints.md` (Stages 10–12) and `Planning/manual-test.md` (J12–J15). One thing to know before anything else: **the next `deploy-dev` asks for the three WordPress secrets and will not finish until they exist**, so do §2's "First" and "Secrets" steps before deploying anything, including a Stage 8/9 fix.
+
 ## 1. Context
 
 The app already joins Firebase (identity, social) with Shopify + Shipturtle (Little Blue **Market** money and shipping). Stages 0–9 are built; 8–9 await your tap-through.

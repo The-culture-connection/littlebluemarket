@@ -449,8 +449,13 @@ async function main() {
   ].filter(Boolean);
   if (pushProblems.length) fail('push', pushProblems.join(' · '), 'these are in the repo (CP-N0); git status, then paste this line to Claude');
   else pass('push', 'manifest permission + channel + icon present · google-services.json present');
-  if (!existsSync(join(REPO_DIR, 'ios', 'Runner', 'GoogleService-Info.plist'))) {
-    manual('push (iPhone)', 'ios/Runner/GoogleService-Info.plist is not in the repo yet; iPhone push waits for CP-N4', 'on a Mac: flutterfire configure --project=' + projectId + ' --platforms=ios, then the APNs key in the Firebase console (Planning/checkpoints.md CP-N4)');
+  const iosWired = existsSync(join(REPO_DIR, 'ios', 'Runner', 'Runner.entitlements'))
+    && (existsSync(join(REPO_DIR, 'ios', 'Runner', 'Info.plist')) && readFileSync(join(REPO_DIR, 'ios', 'Runner', 'Info.plist'), 'utf8').includes('remote-notification'));
+  if (!iosWired) fail('push (iPhone)', 'ios/Runner/Runner.entitlements or the remote-notification background mode is missing', 'these are in the repo (CP-N4); git status, then paste this line to Claude');
+  else if (!existsSync(join(REPO_DIR, 'ios', 'Runner', 'GoogleService-Info.plist'))) {
+    manual('push (iPhone)', 'entitlements wired · ios/Runner/GoogleService-Info.plist is not in the repo yet, so the iPhone build cannot talk to Firebase', 'on a Mac: flutterfire configure --project=' + projectId + ' --platforms=ios (commit the plist; it is public config), then the APNs key in the Firebase console (Planning/checkpoints.md CP-N4)');
+  } else {
+    pass('push (iPhone)', 'entitlements, background mode and GoogleService-Info.plist present (APNs key: Firebase console -> Cloud Messaging)');
   }
 
   // 13. android emulator -------------------------------------------------------------

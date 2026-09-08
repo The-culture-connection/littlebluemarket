@@ -26,7 +26,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | Stage 9 — The gaps: seller application flow, Near me, @-tags, better search, live walkthroughs, shipping | 🟡 Built and deployed 2026-09-05; see Planning/manual-test.md |
 | Stage 10 — littlebluecart.com directory: dev WordPress, link account, website orders, listings, public listing cards | 🟡 CP-D0 to D4 built 2026-09-08 (D5 optional, not scheduled), waiting on Grace's Cloudways staging clicks, the three secrets and a deploy (plan in `Planning/littlebluecart.com directory + onboarding doors + push notifications.md`) |
 | Stage 11 — Onboarding doors: "Are you…" with seven doors | 🟡 CP-O1 and CP-O2 built 2026-09-08, ready for Grace to test (J14 in manual-test.md) |
-| Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | 🟡 CP-N0 to CP-N3 built 2026-09-08 (Android push end to end); CP-N4 iPhone pre-wired, needs a Mac |
+| Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | 🟡 CP-N0 to CP-N3 built 2026-09-08 (Android push end to end); CP-N4 iPhone pre-wired 2026-09-08, the rest needs a Mac (manual-test J15 step 17) |
 | Cutover to the real shop | ⬜ Not started |
 
 Extras done along the way: a Sign out row, the app opens on the Market when you are already signed in, search matches any word of a title, product pages open for shops that have not joined yet, the catalog's spec subdocument rule, the first-save profile fix, Git Bash launchers.
@@ -488,7 +488,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
   **Grace does:** Admin → Rebuild buyer index. As `+seller1` add a product → set it Active in Shopify. `+buyer1` (bought from `+seller1` in Stage 3) backgrounds the app.
   **Pass:** buyer's phone: "New from <shop>: <title>", tap opens the product; `+customer1` gets nothing; approving the same product again sends nothing.
   **If it fails:** nothing → rebuild the index again and paste the count, or `npm run inspect:product -- --id <id>`. Duplicates → `firebase functions:log --only onCatalogWritten --project dev`.
-- [ ] **CP-N4 iPhone.** *Claude builds (pre-wired):* `ios/Runner/Runner.entitlements`, background mode, project settings; a doctor MANUAL line with the steps. Needs a Mac with Xcode and a real iPhone.
+- [ ] **CP-N4 iPhone.** *Claude pre-wired (2026-09-08):* `ios/Runner/Runner.entitlements`, background mode, project settings; a doctor MANUAL line with the steps. Needs a Mac with Xcode and a real iPhone.
   **Grace does (Mac):** `flutterfire configure --project=little-blue-610e5 --platforms=ios`; Apple Developer → Identifiers → `com.littleblue.market` → tick Push Notifications; Keys → + → `LBM FCM` → tick Apple Push Notifications service → download the `.p8` once (keep it in `PARENT\`), note Key ID and Team ID; Firebase console → Project settings → Cloud Messaging → Apple app → upload the `.p8` with Key ID and Team ID; Xcode → Runner → Signing & Capabilities → your Team; run on the iPhone → Edit profile → Notifications → Allow → **Send me a test notification** → lock the phone.
   **Pass:** the banner arrives on the locked iPhone; an announcement sent from the Android emulator lands on it too; `devices/<token>` shows `platform: ios`.
   **If it fails:** Xcode `no valid "aps-environment" entitlement` → capability not on the signed build. Functions log `messaging/third-party-auth-error` → the `.p8`, Key ID or Team ID do not match. Nothing and no error → a Simulator; APNs needs a real device.
