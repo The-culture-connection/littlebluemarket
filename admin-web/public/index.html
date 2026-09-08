@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Little Blue Market · Admin</title>
+<style>
+  :root { --blue: #70A0D0; --ink: #1f2a3a; --ink2: #5a6577; --mist: #eef4fb; --clay: #b5533c; --sage: #3f7d5c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #f7f9fc; }
+  header { background: var(--blue); color: #fff; padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+  main { max-width: 640px; margin: 24px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 18px; }
+  h2 { margin: 0 0 6px; font-size: 17px; }
+  p.hint { margin: 0 0 14px; color: var(--ink2); font-size: 13.5px; }
+  label { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink2); margin: 12px 0 4px; }
+  input, textarea, select { width: 100%; font: inherit; padding: 10px 12px; border: 1px solid #d5dde8; border-radius: 10px; background: #fff; }
+  textarea { min-height: 84px; resize: vertical; }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  button { font: inherit; font-weight: 700; padding: 11px 16px; border-radius: 999px; border: 0; cursor: pointer; }
+  button.primary { background: #2d5f9e; color: #fff; }
+  button.quiet { background: var(--mist); color: var(--ink); }
+  button:disabled { opacity: .5; cursor: default; }
+  .count { font-size: 12px; color: var(--ink2); text-align: right; }
+  .notice { margin-top: 12px; font-size: 13.5px; font-weight: 700; }
+  .notice.ok { color: var(--sage); } .notice.bad { color: var(--clay); }
+  ul.recent { list-style: none; padding: 0; margin: 0; }
+  ul.recent li { padding: 10px 0; border-top: 1px solid #edf1f6; }
+  ul.recent li:first-child { border-top: 0; }
+  ul.recent .meta { font-size: 12px; color: var(--ink2); }
+  .who { font-size: 13px; opacity: .9; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Little Blue Market · Admin</h1>
+  <div class="who"><span id="who"></span> <button id="signout" class="quiet" hidden>Sign out</button></div>
+</header>
+<main>
+  <section id="signin" class="card">
+    <h2>Sign in</h2>
+    <p class="hint">Your Little Blue Market account, the same email and password as the app. Only an account with the admin claim can send.</p>
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="username">
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password">
+    <div style="margin-top:14px"><button id="signinBtn" class="primary">Sign in</button></div>
+    <div id="signinNotice" class="notice bad" hidden></div>
+  </section>
+
+  <section id="notadmin" class="card" hidden>
+    <h2>Admins only</h2>
+    <p class="hint">This account is signed in but has no admin claim. In the app: Edit profile → Diagnostics → Claim admin (your email must be on the admin list), then sign out and in here.</p>
+  </section>
+
+  <section id="send" class="card" hidden>
+    <h2>Send an announcement</h2>
+    <p class="hint">A push to every phone in the audience, and a line under their bell. Same as the Admin screen in the app.</p>
+    <label for="title">Title</label>
+    <input id="title" maxlength="60" placeholder="Hello from Little Blue Market">
+    <div class="count"><span id="titleLeft">60</span> left</div>
+    <label for="body">Message</label>
+    <textarea id="body" maxlength="180" placeholder="What is happening, in a sentence or two."></textarea>
+    <div class="count"><span id="bodyLeft">180</span> left</div>
+    <div class="row">
+      <div>
+        <label for="audience">Who</label>
+        <select id="audience">
+          <option value="all">Everyone</option>
+          <option value="sellers">Sellers</option>
+          <option value="buyers">Buyers</option>
+          <option value="directory">Directory businesses</option>
+        </select>
+      </div>
+      <div>
+        <label for="route">A tap opens</label>
+        <select id="route">
+          <option value="/you/notifications">The bell</option>
+          <option value="/market">Market</option>
+          <option value="/community">Community</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:16px"><button id="sendBtn" class="primary" disabled>Send</button></div>
+    <div id="sendNotice" class="notice" hidden></div>
+  </section>
+
+  <section id="recentCard" class="card" hidden>
+    <h2>Recent announcements</h2>
+    <ul id="recent" class="recent"></ul>
+  </section>
+</main>
+<script src="./firebase-config.js"></script>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
