@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/repositories/dev_error_sink.dart';
 import '../../data/repositories/repositories.dart';
@@ -395,6 +396,35 @@ class _DirectoryRow extends ConsumerWidget {
           ),
           trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
           onTap: () => context.push('/you/directory'),
+        ),
+        // Applying to the directory stays on the website: the plans, the
+        // payment and Little Blue Cart's review live there.
+        ListRow(
+          title: const Text('List my business in the directory'),
+          subtitle: const Text('Apply on littlebluecart.com'),
+          trailing: Icon(Icons.open_in_new_rounded, size: 20, color: c.ink3),
+          onTap: () async {
+            final messenger = ScaffoldMessenger.of(context);
+            String url = '';
+            try {
+              url = (await ref.read(appConfigProvider.future))
+                  .directoryAddListingUrl;
+            } on Object {
+              url = '';
+            }
+            final uri = Uri.tryParse(url);
+            if (uri == null || url.isEmpty) {
+              messenger.showSnackBar(
+                const SnackBar(content: Text('That link is not set up yet.')),
+              );
+              return;
+            }
+            if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+              messenger.showSnackBar(
+                SnackBar(content: Text('Could not open $url')),
+              );
+            }
+          },
         ),
         ListRow(
           title: const Text('Notifications'),

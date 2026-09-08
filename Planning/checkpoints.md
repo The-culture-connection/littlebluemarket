@@ -27,7 +27,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | Stage 10 — littlebluecart.com directory: dev WordPress, link account, website orders, listings, public listing cards | 🟡 CP-D0 to D4 built 2026-09-08 (D5 optional, not scheduled), waiting on Grace's Cloudways staging clicks, the three secrets and a deploy (plan in `Planning/littlebluecart.com directory + onboarding doors + push notifications.md`) |
 | Stage 11 — Onboarding doors: "Are you…" with seven doors | 🟡 CP-O1 and CP-O2 built 2026-09-08, ready for Grace to test (J14 in manual-test.md) |
 | Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | 🟡 CP-N0 to CP-N3 built 2026-09-08 (Android push end to end); CP-N4 iPhone pre-wired 2026-09-08, the rest needs a Mac (manual-test J15 step 17) |
-| Stage 13 — Directory businesses as sellers: listing fills the profile, website-link products, photo strip, apply row | 🟡 CP-E1 and CP-E2 built 2026-09-08; E3–E4 next |
+| Stage 13 — Directory businesses as sellers: listing fills the profile, website-link products, photo strip, apply row | 🟡 CP-E1 to CP-E4 built 2026-09-08, ready for Grace to test (manual-test J13 steps 8–13) |
 | Cutover to the real shop | ⬜ Not started |
 
 Extras done along the way: a Sign out row, the app opens on the Market when you are already signed in, search matches any word of a title, product pages open for shops that have not joined yet, the catalog's spec subdocument rule, the first-save profile fix, Git Bash launchers.
@@ -518,10 +518,10 @@ Decisions (Grace, 2026-09-08): the listing **overwrites** the profile on the fir
   **Grace does:** You → Products → **Add a product** → a photo, a title, a price, leave the link as it is → Save. Then open it from the feed as `+buyer1`.
   **Pass:** the product shows on your Products tab and in the feed; the buyer's Buy button opens your website in the browser; there is no cart button on it; Edit and Delete work for you and are absent for the buyer.
   **If it fails:** "Only businesses in the directory can add products this way" → the account is not linked (CP-D2). Copy for Claude for anything else.
-- [ ] **CP-E3 The Products tab for directory sellers, photos on top, Market first.** *Claude builds:* the own and public profiles give a linked directory member the seller layout (Products · Posted · Bought); the Products tab shows the listing photo strip, then Shopify products when the person is also a Market seller, then the website-link products; Add a product goes to Shopify's form for Market sellers and to the directory form otherwise.
+- [ ] **CP-E3 The Products tab for directory sellers, photos on top, Market first.** *Claude built (2026-09-08):* the own and public profiles give a linked directory member the seller layout (Products · Posted · Bought); the Products tab shows the listing photo strip, then Shopify products when the person is also a Market seller, then the website-link products; Add a product goes to Shopify's form for Market sellers and to the directory form otherwise.
   **Grace does:** as `+dir1`-style directory-only account: Products tab. As `+seller1` after linking a directory listing: Products tab.
   **Pass:** directory-only: strip + website-link products; Market seller: strip, Shopify grid, then website-link products; nothing deleted when a directory seller is granted Market selling.
-- [ ] **CP-E4 Apply to the directory from Edit profile.** *Claude builds:* Edit profile → **List my business in the directory** → the website's Add Your Business form (the same link the door and the Directory screen use).
+- [ ] **CP-E4 Apply to the directory from Edit profile.** *Claude built (2026-09-08):* Edit profile → **List my business in the directory** → the website's Add Your Business form (the same link the door and the Directory screen use).
   **Grace does:** Edit profile → List my business in the directory. **Pass:** the browser opens littlebluecart.com/add-directory-listing/.
 
 ### Cutover (later, its own checklist)

@@ -6,6 +6,7 @@ import '../../router/nav.dart';
 import '../../state/providers.dart';
 import '../../widgets/async.dart';
 import '../../widgets/directory_listing_card.dart';
+import '../../widgets/directory_storefront.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/profile_identity.dart';
 import '../../widgets/screen.dart';
@@ -33,6 +34,11 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
   @override
   Widget build(BuildContext context) {
     final person = ref.watch(personProvider(widget.personId));
+    // A directory business shows a storefront the way a Market seller does:
+    // the listing's photos, then what it sells on its own website.
+    final hasDirectory = ref.watch(
+      hasDirectoryStorefrontProvider(widget.personId),
+    );
 
     return LbmScreen(
       appBar: LbmAppBar(
@@ -70,15 +76,21 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
             _DirectorySection(personId: person.id),
             // A buyer has no storefront, so they get one tab rather than an
             // empty "Posted" one.
-            if (person.isSeller)
+            if (person.isSeller || hasDirectory)
               SegmentedTabs(
                 labels: const ['Posted', 'Reviews written'],
                 selected: _tab,
                 onChanged: (i) => setState(() => _tab = i),
               ),
-            if (person.isSeller && _tab == 0)
-              SellerProductsGrid(sellerId: person.id)
-            else
+            if ((person.isSeller || hasDirectory) && _tab == 0) ...[
+              if (hasDirectory) DirectoryPhotoStrip(ownerUid: person.id),
+              if (person.isSeller) SellerProductsGrid(sellerId: person.id),
+              if (hasDirectory)
+                DirectoryProductsGrid(
+                  ownerUid: person.id,
+                  heading: person.isSeller ? 'Sold on their website' : null,
+                ),
+            ] else
               _ReviewsWritten(personId: person.id),
             const SizedBox(height: 26),
           ],

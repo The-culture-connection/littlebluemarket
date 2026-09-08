@@ -14,6 +14,7 @@ import '../../widgets/primitives.dart';
 import '../../widgets/product_art.dart';
 import '../../widgets/profile_identity.dart';
 import '../../widgets/composers.dart';
+import '../../widgets/directory_storefront.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/seller_drafts.dart';
 import '../../widgets/seller_products_grid.dart';
@@ -57,7 +58,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       );
     }
 
-    final tab = _tab ?? (widget.openBought ? (me.isSeller ? 2 : 1) : 0);
+    // A business joined to the directory gets the seller layout too: its
+    // Products tab is the listing's photos and what it sells on its website.
+    final directoryLinked =
+        ref.watch(directoryLinkProvider).value?.linked ?? false;
+    final sellerLike = me.isSeller || directoryLinked;
+    final tab = _tab ?? (widget.openBought ? (sellerLike ? 2 : 1) : 0);
 
     return LbmScreen(
       appBar: LbmAppBar(
@@ -136,18 +142,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             // A seller gets their shop first. The labels are shorter when there
             // are three, so the pill row survives large text.
             SegmentedTabs(
-              labels: me.isSeller
+              labels: sellerLike
                   ? const ['Products', 'Posted', 'Bought']
                   : const ['Posted', 'Bought & received'],
               selected: tab,
               onChanged: (i) => setState(() => _tab = i),
             ),
             // The tab now actually switches the grid. It was tracked and ignored.
-            switch ((me.isSeller, tab)) {
+            // Market products first, the directory's after: a directory
+            // business that later joins the Market keeps its website-link
+            // products; Shopify simply takes the top of the tab.
+            switch ((sellerLike, tab)) {
               (true, 0) => Column(
                 children: [
-                  const SellerDraftsPanel(),
-                  SellerProductsGrid(sellerId: me.id, own: true),
+                  if (directoryLinked)
+                    DirectoryPhotoStrip(ownerUid: me.id, own: true),
+                  if (me.isSeller) ...[
+                    const SellerDraftsPanel(),
+                    SellerProductsGrid(sellerId: me.id, own: true),
+                  ],
+                  if (directoryLinked)
+                    DirectoryProductsGrid(
+                      ownerUid: me.id,
+                      own: true,
+                      heading: me.isSeller ? 'Sold on your website' : null,
+                    ),
                 ],
               ),
               (true, 1) || (false, 0) => _PostedGrid(personId: me.id),
