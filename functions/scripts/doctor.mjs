@@ -41,6 +41,23 @@ import {
 } from './lib/shopify-admin.mjs';
 
 const PRODUCTION_DOMAIN = 'little-blue-cart-dev.myshopify.com';
+/** The live WordPress directory. Dev must talk to its Cloudways staging copy, never to this. */
+const PRODUCTION_WP_HOST = 'littlebluecart.com';
+
+/** A public WordPress REST call; no credential, so nothing to leak. */
+async function wpJson(url) {
+  const res = await fetch(url, { headers: { accept: 'application/json' }, redirect: 'follow' });
+  const text = await res.text();
+  if (!res.ok) {
+    const hint = text.trimStart().startsWith('<') ? '(an HTML page: a password box or a firewall)' : text.slice(0, 120);
+    throw new Error(`HTTP ${res.status} ${hint}`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`HTTP ${res.status} but the body is not JSON (${text.slice(0, 80)})`);
+  }
+}
 /** What the backend needs; Shopify's write_x implies read_x. */
 const REQUIRED_SCOPES = [
   'read_products', 'write_products', 'read_inventory', 'write_inventory', 'write_publications',
@@ -155,6 +172,38 @@ async function main() {
     else if (!params.SHOPIFY_STORE_DOMAIN.endsWith('.myshopify.com')) fail('env params', `SHOPIFY_STORE_DOMAIN "${params.SHOPIFY_STORE_DOMAIN}" should end in .myshopify.com (no https://, no slash)`, `fix the line in ${envRel}`);
     else if (params.SHOPIFY_STORE_DOMAIN === PRODUCTION_DOMAIN) warn('env params', `SHOPIFY_STORE_DOMAIN is the PRODUCTION store (${PRODUCTION_DOMAIN})`, 'dev must point at little-blue-market-devtestingshop.myshopify.com');
     else pass('env params', `${params.SHOPIFY_STORE_DOMAIN} · API ${params.SHOPIFY_API_VERSION ?? '(default)'} · client id set`);
+  }
+
+  // 4b. wordpress: the directory's staging copy ---------------------------------
+  const wpBase = String(params.WP_BASE_URL ?? '').trim().replace(/\/+$/, '');
+  let wpHost = '';
+  try {
+    wpHost = wpBase ? new URL(wpBase).host : '';
+  } catch {
+    wpHost = '';
+  }
+  if (!wpBase) {
+    warn('wordpress', `WP_BASE_URL empty in ${envRel}: directory features off`, 'CP-D0: make the Cloudways staging copy of littlebluecart.com and put its https URL in WP_BASE_URL (Planning/checkpoints.md, Stage 10)');
+  } else if (!/^https:\/\//.test(wpBase) || !wpHost) {
+    fail('wordpress', `WP_BASE_URL "${wpBase}" must be an https:// URL`, `fix the line in ${envRel}`);
+  } else if (wpHost === PRODUCTION_WP_HOST || wpHost.endsWith(`.${PRODUCTION_WP_HOST}`)) {
+    fail('wordpress', `WP_BASE_URL is the LIVE site (${wpHost})`, 'dev must point at the staging copy: Cloudways -> the app -> Staging Management -> Add Staging Application, then put the staging https URL in WP_BASE_URL');
+  } else {
+    try {
+      const index = await wpJson(`${wpBase}/wp-json/`);
+      const namespaces = Array.isArray(index.namespaces) ? index.namespaces : [];
+      const missingNs = ['wp/v2', 'wc/v3'].filter((ns) => !namespaces.includes(ns));
+      const listings = await wpJson(`${wpBase}/wp-json/wp/v2/vendors_dir_ltg?per_page=1`);
+      const one = Array.isArray(listings) && listings.length === 1;
+      if (missingNs.length) fail('wordpress', `${wpHost} answers but has no ${missingNs.join(', ')} (WooCommerce off, or the REST API is filtered)`, 'on the staging site: Plugins -> WooCommerce active; a security plugin may be hiding the REST API');
+      else if (!one) fail('wordpress', `${wpHost} answers but /wp/v2/vendors_dir_ltg returned no listing (Directories Pro off, or the listing type is not in the REST API)`, 'on the staging site: Plugins -> Directories Pro active, then re-run');
+      else pass('wordpress', `staging reachable · ${index.name ?? wpHost} · listings public`);
+    } catch (error) {
+      const m = String(error.message);
+      fail('wordpress', `${wpHost}: ${m.slice(0, 160)}`, /401|403|password/i.test(m)
+        ? 'Cloudways -> the staging app -> Access Details -> Password Protection: off, then re-run'
+        : 'open the staging URL in a browser over https; if it loads, paste this line to Claude');
+    }
   }
 
   if (emulators) {

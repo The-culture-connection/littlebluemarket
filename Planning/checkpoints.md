@@ -6,7 +6,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 
 ---
 
-## Progress at a glance (updated 2026-09-05)
+## Progress at a glance (updated 2026-09-08)
 
 | Item | Status |
 |---|---|
@@ -24,6 +24,9 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | Stage 7 — Cart replaces like, cart posts, reviews | ✅ Done, passed by Grace (2026-09-05) |
 | Stage 8 — Shipturtle: roster auto-grant, tracking and settlement pulled, store fulfilment, prod gate | 🟡 Built and deployed 2026-09-05, ready for Grace to test |
 | Stage 9 — The gaps: seller application flow, Near me, @-tags, better search, live walkthroughs, shipping | 🟡 Built and deployed 2026-09-05; see Planning/manual-test.md |
+| Stage 10 — littlebluecart.com directory: dev WordPress, link account, website orders, listings, public listing cards | 🟡 CP-D0 built 2026-09-08, waiting on Grace's Cloudways staging clicks (plan in `Planning/littlebluecart.com directory + onboarding doors + push notifications.md`) |
+| Stage 11 — Onboarding doors: "Are you…" with seven doors | ⬜ Not started |
+| Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | ⬜ Not started |
 | Cutover to the real shop | ⬜ Not started |
 
 Extras done along the way: a Sign out row, the app opens on the Market when you are already signed in, search matches any word of a title, product pages open for shops that have not joined yet, the catalog's spec subdocument rule, the first-save profile fix, Git Bash launchers.
@@ -422,13 +425,81 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 **Also fixed 2026-09-05:** the onboarding bug where the confirm-email step was skipped on a cold start and an unconfirmed member had no way forward. A cold start mid-onboarding now lands on the confirm screen; an unconfirmed sign-in gets it back; and an unconfirmed member sees a banner on the feed with **Resend** and **I've confirmed it**. Shoutouts can carry a photo.
 
+### Stage 10 — littlebluecart.com, the directory (added 2026-09-08)
+
+**Goal:** someone who bought on littlebluecart.com sees those orders in the app; a business listed in the directory sees its listing, contact info and website, can add a listing through the website form, and its listing shows to everyone like a seller profile. Applying to sell on the Market stays exactly as it is. **Full detail, secrets list and design:** `Planning/littlebluecart.com directory + onboarding doors + push notifications.md`.
+
+**Test identity:** `grace-s+dir1@the-culture-connection.com`, created on the **staging** WordPress (never on the live site). Everything in this stage is built and tested against a staging copy of littlebluecart.com, the same rule as the dev Shopify shop.
+
+- [ ] **CP-D0 A development WordPress + WooCommerce.** *Claude built:* `WP_BASE_URL`, `WP_APP_USER` and `DIRECTORY_ADD_LISTING_URL` in the env; a doctor line `wordpress` that reaches `<WP_BASE_URL>/wp-json/` and reads one directory listing, and FAILs when `WP_BASE_URL` is the live littlebluecart.com.
+  **Grace does (once, Cloudways):** 1. Cloudways → Applications → the littlebluecart.com app → **Staging Management** → **Add Staging Application** → same server → Create (10–30 minutes). 2. Open the staging app → **Access Details**: copy the staging URL (`https://wordpress-…cloudwaysapps.com`); make sure **Password Protection** is **off**. 3. Log in to the staging `/wp-admin`: when WooCommerce asks, choose **This is a temporary / staging site**; WooCommerce → Settings → Payments → every live gateway off; Settings → Reading → tick **Discourage search engines**; Plugins → Add New → install and activate **Disable Emails**. 4. Put the staging URL in `REPO\functions\.env.little-blue-610e5` as `WP_BASE_URL=` and `DIRECTORY_ADD_LISTING_URL=<staging URL>/add-directory-listing/` (or tell Claude the URL), then `scripts\doctor.ps1`.
+  **Pass:** the staging URL opens over https and looks like littlebluecart.com; `<staging URL>/wp-json/wp/v2/vendors_dir_ltg?per_page=1` shows a listing in the browser; the doctor line reads `PASS wordpress staging reachable · <site name> · listings public`.
+  **If it fails:** `401` or a browser password box → Cloudways → staging app → Access Details → Password Protection off. `FAIL env params WP_BASE_URL is the LIVE site` → put the staging URL in the env file. `http` only → Cloudways → staging app → SSL Certificate → Let's Encrypt (or use the `cloudwaysapps.com` address). Anything else → paste the doctor block.
+- [ ] **CP-D1 Credentials, WordPress client, doctor.** *Claude builds:* `WP_APP_PASSWORD`, `WC_CONSUMER_KEY`, `WC_CONSUMER_SECRET` secrets; `functions/src/wordpress.ts` (the only place that talks to WordPress); `wordpress` and `woocommerce` rows in the backend health check; `npm run wp:probe -- --email <addr>`.
+  **Grace does (on the staging site):** Users → your admin user → Profile → **Application Passwords** → name `Little Blue Market app` → Add New → copy once → in `REPO\functions\`: `npm run secrets:dev -- WP_APP_PASSWORD` and paste when asked. Put your WP login name in `functions\.env.little-blue-610e5` as `WP_APP_USER=`. WooCommerce → Settings → Advanced → REST API → **Add key** (Description `Little Blue Market app`, your admin user, Permissions **Read**) → Generate → `npm run secrets:dev -- WC_CONSUMER_KEY`, then `npm run secrets:dev -- WC_CONSUMER_SECRET`. Then `scripts\deploy-dev.ps1`.
+  **Pass:** doctor shows `PASS wordpress … administrator … N listings public` and `PASS woocommerce … M orders`; Diagnostics → Run backend health check shows both green.
+  **If it fails:** `WP 401 rest_cannot_access` → wrong Application Password, or Application Passwords is switched off by a security plugin. `roles [subscriber]` → the password must be your administrator user's. `woocommerce_rest_cannot_view` → the key is not Read, or key and secret are from different pairs. `403` with an HTML page → a firewall strips the Authorization header; paste the doctor block.
+- [ ] **CP-D2 Link your directory account and see website orders.** *Claude builds:* `directoryLinkMe` / `directoryRefresh` (email from the verified token only), the server-only `directory/{uid}` doc and `users/{uid}/directoryOrders`, the **Little Blue Cart directory** screen (Edit profile → Little Blue Cart directory), and a silent once-per-launch link so directory customers get their orders without choosing a role.
+  **Grace does (staging):** Users → Add New `grace-s+dir1@…` (Subscriber). WooCommerce → Orders → Add order → Customer: that user → any product → Status **Completed** → Create. In the app: Create a Profile with `+dir1`, confirm the email, You → Edit profile → **Little Blue Cart directory** → **Link my directory account**.
+  **Pass:** the card says Linked; the order shows with its number and total; the Firebase console shows `directory/<uid>` and `users/<uid>/directoryOrders/<id>`. Kill and reopen the app: same result without tapping.
+  **If it fails:** "No account at littlebluecart.com uses this email" → the WP user's email is not exactly `+dir1`. Linked but no orders → the order's billing email differs: `npm run wp:probe -- --email grace-s+dir1@…` and paste. Anything red → Copy for Claude.
+- [ ] **CP-D3 Your listings, with tap-to-call, website and directions.** *Claude builds:* the public mirror `directoryListings/{wpPostId}` (only what WordPress already shows publicly), a 6-hourly re-sync, the listing card with Website / Call / Email / Directions, and **Add a listing** (opens the website's Add Your Business form; `DIRECTORY_ADD_LISTING_URL`).
+  **Grace does (staging):** logged in as `+dir1`, Add Your Business → Free → business name, website, phone, address, a category, a state, an ownership tag → submit. In the app: Directory → **Refresh** → "Under review" card. As WP admin publish it → Refresh again.
+  **Pass:** the card flips to Published; Website opens the site, Call opens the dialler, Directions opens Maps; **Add a listing** opens the staging form; `directoryListings/<postId>` has `status: publish`.
+  **If it fails:** card missing → `npm run wp:probe -- --email …` and paste (field names differ per plan; one round of fixes is expected). "Could not open …" → paste the URL. "Try again in a few minutes" → the 10-minute limit, expected.
+- [ ] **CP-D4 Directory owners are visible to everyone.** *Claude builds:* a `directory` feed post per published listing (like the auto post for a product), a **Little Blue Cart directory** section on the owner's public profile, and a card on their own profile.
+  **Grace does:** sign in as `+buyer1` → Market feed → the directory post for `+dir1`'s business → tap the avatar.
+  **Pass:** the buyer sees business name, category, state, ownership tags, Website / Call / Email / Directions. A pending listing is not visible to the buyer.
+  **If it fails:** post missing → `npm run peek -- --collection posts` (look for `directory_`), paste. "Could not load" for the buyer → Copy for Claude.
+- [ ] **CP-D5 (optional, later) Browse all 1,700 businesses.** Hourly import of the whole directory, category / state / ownership filters, a Directory chip in search. Not scheduled.
+
+### Stage 11 — Onboarding doors (added 2026-09-08)
+
+**Goal:** the welcome artwork stays screen 1 (**Sign in** = returning to the app). **Create a Profile** opens a new screen, "Are you…", with seven doors: *New here* · *I've bought on littlebluecart.com* · *I've bought on Little Blue Market* · *I'm listed in the directory* · *I sell on Little Blue Market* · *I want to list my business in the directory* · *I want to sell on Little Blue Market*. The door chosen survives email, confirm and profile setup, and lands the person on the right screen. Needs CP-D2 (the directory screen) first.
+
+- [ ] **CP-O1 The "Are you…" screen and the door that survives sign-up.** *Claude builds:* `/orient` with the seven doors; `?intent=` carried through `/signin` → `/verify` → `/setup`; landing: new here → Market; bought on littlebluecart.com → Directory (linking by itself); bought on the Market → your profile's Bought tab; listed in the directory → Directory; sell on the Market → Sell with us (checking by itself); want to list a business → Directory, which opens Add Your Business; want to sell on the Market → Sell with us, which opens Apply on our website. The dead "I'm here to sell" checkbox is removed.
+  **Grace does:** sign out → Welcome → Create a Profile → **I'm listed in the directory** → `+dir1` → confirm → handle → Create a profile. Repeat with **New here** and with **I want to sell on Little Blue Market**.
+  **Pass:** first lands on the Directory screen already linking; second lands on Market; third lands on Sell with us with the website application open. **Sign in** still goes straight to Welcome back.
+  **If it fails:** lands on Market after choosing another door → the door was dropped on one hop; Copy for Claude with the route from the dev badge. Killed the app between the email and setup → expected to land on Market; the door you wanted is in Edit profile.
+- [ ] **CP-O2 The landing screens finish the job.** *Claude builds:* Sell with us and Directory run their check by themselves when arrived at from a door, once the email is confirmed (the banner's **I've confirmed it** triggers it).
+  **Grace does:** Create a Profile → **I sell on Little Blue Market** → `+seller1` → skip confirming → handle → Create.
+  **Pass:** Sell with us opens with the Confirm-your-email card and a disabled Check button; confirm, tap **I've confirmed it** → the check runs by itself → "You already sell as …".
+  **If it fails:** the check never runs after confirming → Copy for Claude.
+
+### Stage 12 — Push notifications (added 2026-09-08)
+
+**Goal:** phones get a push for announcements from you (everyone or per role), a new product from a shop you bought from, new threads in forums you joined and replies to you, shoutouts that tag you, and reviews on your product. Android and iPhone; all sending in TypeScript Cloud Functions. Every push also lands in the in-app bell.
+
+**Before N0:** the Android emulator must be a **Google APIs / Google Play** image, Android 13 or newer (Android Studio → Device Manager → Create device → a system image marked "Google Play"). The doctor says so if it is not.
+
+- [ ] **CP-N0 Plumbing: a token per phone, one test push.** *Claude builds:* `firebase_messaging`, device tokens in `users/{uid}/devices`, Edit profile → **Notifications** (allow, toggles, **Send me a test notification**), `functions/src/push.ts`, and the bell's `notify()` becomes the one place that also pushes.
+  **Grace does:** `scripts\deploy-dev.ps1` → `run-live.ps1` → sign in as `+buyer1` → Edit profile → Notifications → **Allow notifications** → Allow → **Send me a test notification** → press Home.
+  **Pass:** a banner "Little Blue Market — This phone is set up for notifications"; tapping it opens the bell; Firestore shows `users/<uid>/devices/<token>`; a shoutout from `+seller1` tagging `@buyer1` arrives as a push and in the bell.
+  **If it fails:** no permission prompt → Android 13+ image, or already denied in App info → Notifications. `pushTestMe failed: … no devices` → Copy for Claude. Token present but nothing arrives → emulator without Play services (doctor WARN).
+- [ ] **CP-N1 Announcements from your phone.** *Claude builds:* Edit profile → **Admin** (admins only, release builds too): title, body, audience All / Sellers / Buyers / Directory, Send; `announcements` collection; the bell shows them too.
+  **Grace does:** as your admin account → Edit profile → Admin → "Hello from Little Blue Market" / "Testing announcements" / All → Send → Yes. Background the app.
+  **Pass:** the push lands on this phone and any other signed-in test phone; the bell shows it at the top. Sending to Sellers leaves `+buyer1`'s phone silent.
+  **If it fails:** "Admins only" → CP-C0 Claim admin. Sent but no push → sign out and in once, then `firebase functions:log --only adminSendAnnouncement --project dev`.
+- [ ] **CP-N2 Forums, shoutouts, reviews.** *Claude builds:* new thread → every member of that forum except the author; reply → the thread's author and earlier commenters; shoutout → the tagged people and the seller it is about; review → the product's seller.
+  **Grace does:** `+buyer1` joins forum F; `+seller1` starts a thread in F; `+buyer1` replies; `+customer1` replies. `+buyer1` reviews a `+seller1` product. `+buyer1` posts a shoutout tagging `@seller1`.
+  **Pass:** buyer gets the new thread; seller and buyer (not `+customer1`) get the second reply; seller gets the review and the shoutout; each push opens the right thread or post.
+  **If it fails:** wrong people → `firebase functions:log --only onThreadCommentWritten --project dev`, paste. Nothing at all → N0's device check for that account.
+- [ ] **CP-N3 "New from a shop you bought from".** *Claude builds:* a buyer index per seller written on every paid order (and rebuilt from history by Admin → **Rebuild buyer index**); a push when a product of theirs goes Active for the first time.
+  **Grace does:** Admin → Rebuild buyer index. As `+seller1` add a product → set it Active in Shopify. `+buyer1` (bought from `+seller1` in Stage 3) backgrounds the app.
+  **Pass:** buyer's phone: "New from <shop>: <title>", tap opens the product; `+customer1` gets nothing; approving the same product again sends nothing.
+  **If it fails:** nothing → rebuild the index again and paste the count, or `npm run inspect:product -- --id <id>`. Duplicates → `firebase functions:log --only onCatalogWritten --project dev`.
+- [ ] **CP-N4 iPhone.** *Claude builds (pre-wired):* `ios/Runner/Runner.entitlements`, background mode, project settings; a doctor MANUAL line with the steps. Needs a Mac with Xcode and a real iPhone.
+  **Grace does (Mac):** `flutterfire configure --project=little-blue-610e5 --platforms=ios`; Apple Developer → Identifiers → `com.littleblue.market` → tick Push Notifications; Keys → + → `LBM FCM` → tick Apple Push Notifications service → download the `.p8` once (keep it in `PARENT\`), note Key ID and Team ID; Firebase console → Project settings → Cloud Messaging → Apple app → upload the `.p8` with Key ID and Team ID; Xcode → Runner → Signing & Capabilities → your Team; run on the iPhone → Edit profile → Notifications → Allow → **Send me a test notification** → lock the phone.
+  **Pass:** the banner arrives on the locked iPhone; an announcement sent from the Android emulator lands on it too; `devices/<token>` shows `platform: ios`.
+  **If it fails:** Xcode `no valid "aps-environment" entitlement` → capability not on the signed build. Functions log `messaging/third-party-auth-error` → the `.p8`, Key ID or Team ID do not match. Nothing and no error → a Simulator; APNs needs a real device.
+
 ### Cutover (later, its own checklist)
 
-Unchanged from `answers-to-open-questions.md` Part 2: add a `prod` alias, confirm the app on the real shop, repoint the store domain, deploy, register webhooks, backfill, issue claim codes to the top five vendors. Nothing in this plan touches the real shop.
+Unchanged from `answers-to-open-questions.md` Part 2: add a `prod` alias, confirm the app on the real shop, repoint the store domain, deploy, register webhooks, backfill, issue claim codes to the top five vendors. Nothing in this plan touches the real shop. **Added 2026-09-08:** the production project also gets its own `WP_APP_PASSWORD`, `WC_CONSUMER_KEY`, `WC_CONSUMER_SECRET` made on littlebluecart.com, `WP_BASE_URL=https://littlebluecart.com` and the live add-listing URL; staging drifts, so re-clone it from Cloudways before any big directory test (test users made on staging are wiped by a re-clone).
 
 ### Sequencing
 
-Stage 0 → Stage 1 → CP-A1 → (CP-A2 and CP-A3 independent) → CP-A4 needs CP-A3 → CP-A5 independent of A2–A4 → Stage 3 needs Stage 0 and CP-A1 (CP-A4 for seller sales) → Stages 4–9 in order (CP-S2 to CP-S5 can run any time after Stage 4; CP-S1 and CP-S6 wait on Stage 8). One commit and push per checkpoint.
+Stage 0 → Stage 1 → CP-A1 → (CP-A2 and CP-A3 independent) → CP-A4 needs CP-A3 → CP-A5 independent of A2–A4 → Stage 3 needs Stage 0 and CP-A1 (CP-A4 for seller sales) → Stages 4–9 in order (CP-S2 to CP-S5 can run any time after Stage 4; CP-S1 and CP-S6 wait on Stage 8) → Stage 10 in order, CP-D0 first and nothing else in it until the doctor confirms the dev project points at staging → Stage 11 needs CP-D2 → Stage 12 is independent of 10 and 11 (its Android path is testable on the emulator; CP-N4 last). One commit and push per checkpoint.
 
 ---
 
@@ -439,14 +510,16 @@ Stage 0 → Stage 1 → CP-A1 → (CP-A2 and CP-A3 independent) → CP-A4 needs 
 - Shipturtle on the dev store: your test vendor's user email = `+seller1`; the docs link from Dashboard → API integration (CP-A5).
 - Firestore console: the `vendorClaims` document the script prints (CP-A3); the `_internal/admins` document (CP-C0).
 - Approving listings in Shipturtle (CP-R1).
+- Cloudways: the staging copy of littlebluecart.com, Password Protection off (CP-D0). On staging: the Application Password, the WooCommerce Read key (CP-D1), the `+dir1` user, order and listing (CP-D2, CP-D3), publishing the pending listing (CP-D3).
+- Android Studio: an emulator on a Google Play image, Android 13+ (CP-N0). Apple Developer + Firebase console: the APNs key (CP-N4), and a Mac with Xcode for the iPhone build.
 
 ---
 
 ## 6. Critical files (for Claude)
 
-**Flutter:** `lib/main.dart` · `lib/widgets/async.dart` · `lib/data/firebase/firestore_errors.dart` (the one error hook) · `lib/data/shopify/{commerce,fulfillment}_proxy_repository.dart` · `lib/data/firebase/firestore_profile_repository.dart` · `lib/data/firebase/firebase_auth_service.dart` · `lib/data/auth/auth_service.dart` · `lib/state/session.dart` · `lib/router/app_router.dart` · `lib/screens/onboarding/auth_screens.dart` · `lib/screens/you/{profile,edit_profile,claim_shop}_screen.dart` · `lib/screens/market/seller_feed_screen.dart` (grid to extract) · `lib/widgets/sheets.dart` (checkout at :232, `requireSeller` copy at :166) · `lib/data/repositories/{repositories,exceptions}.dart` · `lib/data/providers.dart` · `lib/data/fixtures/fixture_repositories.dart`.
+**Flutter:** `lib/main.dart` · `lib/widgets/async.dart` · `lib/data/firebase/firestore_errors.dart` (the one error hook) · `lib/data/shopify/{commerce,fulfillment}_proxy_repository.dart` · `lib/data/firebase/firestore_profile_repository.dart` · `lib/data/firebase/firebase_auth_service.dart` · `lib/data/auth/auth_service.dart` · `lib/state/session.dart` · `lib/router/app_router.dart` · `lib/screens/onboarding/auth_screens.dart` · `lib/screens/you/{profile,edit_profile,claim_shop}_screen.dart` · `lib/screens/market/seller_feed_screen.dart` (grid to extract) · `lib/widgets/sheets.dart` (checkout at :232, `requireSeller` copy at :166) · `lib/data/repositories/{repositories,exceptions}.dart` · `lib/data/providers.dart` · `lib/data/fixtures/fixture_repositories.dart` · **Stages 10–12:** `lib/models/{directory,onboarding}.dart` · `lib/data/firebase/{firestore_directory_repository,firebase_push_service}.dart` · `lib/data/push/push_service.dart` · `lib/state/push_coordinator.dart` · `lib/widgets/directory_listing_card.dart` · `lib/screens/onboarding/orient_screen.dart` · `lib/screens/you/{directory,notification_settings,admin}_screen.dart`.
 
-**Functions:** `functions/src/{index,config,linking,sellers,vendors,catalog,orders,cart,fulfillment,shipturtle}.ts` · `functions/src/shopify/{token,storefront}.ts` · `functions/scripts/{register-webhooks,seed}.mjs` · `functions/test/*` · `firebase/{firestore.rules,storage.rules,firestore.indexes.json}` · `.firebaserc` · `functions/.env.little-blue-610e5`.
+**Functions:** `functions/src/{index,config,linking,sellers,vendors,catalog,orders,cart,fulfillment,shipturtle}.ts` · `functions/src/shopify/{token,storefront}.ts` · **Stages 10–12:** `functions/src/{wordpress,directory,push}.ts` · `functions/scripts/wp-probe.mjs` · `functions/scripts/{register-webhooks,seed}.mjs` · `functions/test/*` · `firebase/{firestore.rules,storage.rules,firestore.indexes.json}` · `.firebaserc` · `functions/.env.little-blue-610e5`.
 
 **Reuse, do not rebuild:** `guardFirestore`/`translateFirestoreError`; `LbmAsync`/`LbmErrorCard`/`showLbmSheet`/`ListRow`/`PillButton`; `requireSeller()` in `sheets.dart`; `requireSeller` (three-fact check) and `hashClaimCode`/`normalizeVendorName` in `sellers.ts`; the token minting and GraphQL helpers in `register-webhooks.mjs`; `forgetVendorCache()`; the avatar upload path in `firestore_profile_repository.dart`; `Planning/implementation-phases.md` for the deep engineering detail of Phases 4–8 (this document is the order and the test; that one is the how).
 

@@ -226,3 +226,35 @@ The Shipturtle **API Integration add-on** and a merchant-level access token. Wit
 cannot be automated and every seller has to be linked by hand via a `vendorMappings` document. The
 rule itself is no longer unknown — it is email → `company_id` — so the code does not change shape
 when the token arrives; only `findVendor()` gets a real implementation.
+
+---
+
+## 6. littlebluecart.com (WordPress + WooCommerce): staging vs live — added 2026-09-08
+
+Read off the live site on 2026-09-05. The directory is a WordPress custom post type `vendors_dir_ltg`
+("LBC Directory - Listings", the Directories Pro plugin), with taxonomies `vendors_dir_cat`
+(category), `vendors_dir_tag` (ownership tags such as Woman-Owned) and `vendors_loc_loc` (state).
+Listings are public at `GET /wp-json/wp/v2/vendors_dir_ltg`; the per-plan business fields (website,
+email, phone, address, plan) arrive in `drts_fields`. WooCommerce REST `wc/v3` is on and sells LBC
+merch plus paid listing upgrades. The host is **Cloudways** (the server answers as
+`cloudwaysapps.com`).
+
+**The rule, same as the Shopify shops: the dev Firebase project talks to a Cloudways staging copy,
+never to littlebluecart.com.** `WP_BASE_URL` in `functions/.env.little-blue-610e5` must be the staging
+URL; the doctor FAILs when it is the live domain. Staging is a full clone (theme, WooCommerce,
+Directories Pro and its field configuration, all data), which matters because the Directories Pro
+setup cannot be rebuilt by hand. It drifts from live, so re-clone before a big directory test; test
+users made on staging are wiped by a re-clone.
+
+**How an app account maps to a WordPress account:** by the app's verified email, looked up with an
+administrator **Application Password** (`GET /wp/v2/users?search=<email>&context=edit` needs the
+`list_users` capability). Exact, unique match or no match; two WP users on one email link neither,
+the same rule `linking.ts` applies to Shopify customers. Orders come from WooCommerce by customer id,
+or by exact billing email for guest checkouts. Listings by `author=<wpUserId>`, mirrored into the
+public `directoryListings/{wpPostId}` collection using only what the unauthenticated endpoint already
+returns. Adding a listing stays on the website form (`/add-directory-listing/`; the plans and the
+two-week review live there).
+
+Credentials, all made on staging for the dev project and again on live at cutover: `WP_APP_PASSWORD`,
+`WC_CONSUMER_KEY`, `WC_CONSUMER_SECRET` (Secret Manager); `WP_BASE_URL`, `WP_APP_USER`,
+`DIRECTORY_ADD_LISTING_URL` (identifiers, in the env file).

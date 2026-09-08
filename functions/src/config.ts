@@ -102,6 +102,28 @@ export const SHIPTURTLE_AUTH_HEADER = defineString('SHIPTURTLE_AUTH_HEADER', {
   default: 'Authorization',
 });
 
+// ------------------------------------------------------- littlebluecart.com
+
+/**
+ * The WordPress site behind the directory. For the dev project this is the
+ * Cloudways *staging* copy of littlebluecart.com, never the live site (the
+ * doctor fails on the live host). Empty means the directory features are off,
+ * and every directory callable says so instead of guessing.
+ */
+export const WP_BASE_URL = defineString('WP_BASE_URL', { default: '' });
+
+/** The WordPress administrator login the Application Password belongs to. */
+export const WP_APP_USER = defineString('WP_APP_USER', { default: '' });
+
+/**
+ * Where a business adds itself to the directory: the website form, because
+ * the plans, the payment and the review queue live there. Dev points at the
+ * staging copy, prod at littlebluecart.com.
+ */
+export const DIRECTORY_ADD_LISTING_URL = defineString('DIRECTORY_ADD_LISTING_URL', {
+  default: '',
+});
+
 /** Every secret a function might need, for the ones that touch everything. */
 export const ALL_SECRETS = [
   SHOPIFY_CLIENT_SECRET,
