@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The accent behind the push icon: LbmConst.welcomeBlue in
+         lib/theme/tokens.dart. Keep the two in step. -->
+    <color name="lbm_notification">#70A0D0</color>
+</resources>

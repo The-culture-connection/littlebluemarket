@@ -373,11 +373,23 @@ class _DirectoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    return ListRow(
-      title: const Text('Little Blue Cart directory'),
-      subtitle: const Text('Your website orders and your business listing'),
-      trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
-      onTap: () => context.push('/you/directory'),
+    return RowStack(
+      children: [
+        ListRow(
+          title: const Text('Little Blue Cart directory'),
+          subtitle: const Text(
+            'Your website orders and your business listing',
+          ),
+          trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
+          onTap: () => context.push('/you/directory'),
+        ),
+        ListRow(
+          title: const Text('Notifications'),
+          subtitle: const Text('What this phone tells you about'),
+          trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
+          onTap: () => context.push('/you/notification-settings'),
+        ),
+      ],
     );
   }
 }

@@ -26,7 +26,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | Stage 9 — The gaps: seller application flow, Near me, @-tags, better search, live walkthroughs, shipping | 🟡 Built and deployed 2026-09-05; see Planning/manual-test.md |
 | Stage 10 — littlebluecart.com directory: dev WordPress, link account, website orders, listings, public listing cards | 🟡 CP-D0 to D4 built 2026-09-08 (D5 optional, not scheduled), waiting on Grace's Cloudways staging clicks, the three secrets and a deploy (plan in `Planning/littlebluecart.com directory + onboarding doors + push notifications.md`) |
 | Stage 11 — Onboarding doors: "Are you…" with seven doors | 🟡 CP-O1 and CP-O2 built 2026-09-08, ready for Grace to test (J14 in manual-test.md) |
-| Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | ⬜ Not started |
+| Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | 🟡 CP-N0 built 2026-09-08 (plumbing + test push); N1–N4 next |
 | Cutover to the real shop | ⬜ Not started |
 
 Extras done along the way: a Sign out row, the app opens on the Market when you are already signed in, search matches any word of a title, product pages open for shops that have not joined yet, the catalog's spec subdocument rule, the first-save profile fix, Git Bash launchers.
@@ -472,7 +472,7 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
 
 **Before N0:** the Android emulator must be a **Google APIs / Google Play** image, Android 13 or newer (Android Studio → Device Manager → Create device → a system image marked "Google Play"). The doctor says so if it is not.
 
-- [ ] **CP-N0 Plumbing: a token per phone, one test push.** *Claude builds:* `firebase_messaging`, device tokens in `users/{uid}/devices`, Edit profile → **Notifications** (allow, toggles, **Send me a test notification**), `functions/src/push.ts`, and the bell's `notify()` becomes the one place that also pushes.
+- [ ] **CP-N0 Plumbing: a token per phone, one test push.** *Claude built (2026-09-08):* `firebase_messaging`, device tokens in `users/{uid}/devices`, Edit profile → **Notifications** (allow, toggles, **Send me a test notification**), `functions/src/push.ts`, and the bell's `notify()` becomes the one place that also pushes.
   **Grace does:** `scripts\deploy-dev.ps1` → `run-live.ps1` → sign in as `+buyer1` → Edit profile → Notifications → **Allow notifications** → Allow → **Send me a test notification** → press Home.
   **Pass:** a banner "Little Blue Market — This phone is set up for notifications"; tapping it opens the bell; Firestore shows `users/<uid>/devices/<token>`; a shoutout from `+seller1` tagging `@buyer1` arrives as a push and in the bell.
   **If it fails:** no permission prompt → Android 13+ image, or already denied in App info → Notifications. `pushTestMe failed: … no devices` → Copy for Claude. Token present but nothing arrives → emulator without Play services (doctor WARN).

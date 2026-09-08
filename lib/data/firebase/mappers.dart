@@ -87,6 +87,11 @@ abstract final class FirestoreMappers {
         kind: switch (str(data['type'])) {
           'mention' => NotificationKind.mention,
           'comment' => NotificationKind.comment,
+          'review' => NotificationKind.review,
+          'forumThread' => NotificationKind.forumThread,
+          'forumReply' => NotificationKind.forumReply,
+          'newProduct' => NotificationKind.newProduct,
+          'announcement' => NotificationKind.announcement,
           _ => NotificationKind.other,
         },
         postId: str(data['postId']),
@@ -94,7 +99,26 @@ abstract final class FirestoreMappers {
         text: str(data['text']),
         createdAt: time(data['createdAt']),
         read: boolean(data['read']),
+        route: data['route'] is String && (data['route'] as String).isNotEmpty
+            ? data['route'] as String
+            : null,
+        title: data['title'] is String && (data['title'] as String).isNotEmpty
+            ? data['title'] as String
+            : null,
       );
+
+  static NotificationPrefs notificationPrefs(Map<String, dynamic>? data) =>
+      data == null
+      ? const NotificationPrefs()
+      : NotificationPrefs(
+          mentions: boolean(data['mentions'], true),
+          comments: boolean(data['comments'], true),
+          forums: boolean(data['forums'], true),
+          reviews: boolean(data['reviews'], true),
+          newProducts: boolean(data['newProducts'], true),
+          announcements: boolean(data['announcements'], true),
+          mutedForums: strings(data['mutedForums']),
+        );
 
   /// A deterministic avatar colour from a uid.
   ///

@@ -169,6 +169,18 @@ service cloud.firestore {
         allow update: if isSelf(uid)
           && incoming().diff(existing()).affectedKeys().hasOnly(['read', 'readAt']);
       }
+
+      // Push: one document per phone, keyed by its FCM token. The phone
+      // writes its own; a guest never registers one. Only the functions
+      // read them, to send.
+      match /devices/{token} {
+        allow read, write: if isSelf(uid) && member();
+      }
+
+      // Notification switches and muted forums. Yours alone.
+      match /settings/{doc} {
+        allow read, write: if isSelf(uid) && member() && doc == 'notifications';
+      }
     }
 
     // ---------------------------------------------------------------- catalog

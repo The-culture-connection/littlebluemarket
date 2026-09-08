@@ -200,7 +200,19 @@ class SessionNotifier extends StreamNotifier<Session> {
 
   Future<void> continueAsGuest() => _auth.continueAsGuest();
 
-  Future<void> signOut() => _auth.signOut();
+  /// Forgets this phone's push token first, while the rules still let the
+  /// owner delete it; then signs out.
+  Future<void> signOut() async {
+    final current = state.value;
+    if (current is MemberSession) {
+      try {
+        await ref.read(pushServiceProvider).stop(current.uid);
+      } catch (_) {
+        // A stale token is pruned by the first failed send.
+      }
+    }
+    await _auth.signOut();
+  }
 
   /// Writes the profile that turns an [OnboardingSession] into a
   /// [MemberSession].

@@ -548,6 +548,29 @@ class FirestoreSocialRepository implements SocialRepository {
         .guarded(operation: 'firestore notifications');
   }
 
+  DocumentReference<Map<String, dynamic>> _prefs(String me) =>
+      _db.collection('users').doc(me).collection('settings').doc('notifications');
+
+  @override
+  Stream<NotificationPrefs> watchNotificationPrefs() {
+    final me = uid;
+    if (me == null) return Stream.value(const NotificationPrefs());
+    return _prefs(me)
+        .snapshots()
+        .map((doc) => FirestoreMappers.notificationPrefs(doc.data()))
+        .guarded(operation: 'firestore settings/notifications');
+  }
+
+  @override
+  Future<void> saveNotificationPrefs(NotificationPrefs prefs) =>
+      guardFirestore(() async {
+        final me = _requireUid;
+        await _prefs(me).set({
+          ...prefs.toMap(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }, operation: 'firestore settings/notifications save');
+
   @override
   Future<void> markNotificationsRead() => guardFirestore(() async {
     final me = _requireUid;

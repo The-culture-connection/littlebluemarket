@@ -122,6 +122,18 @@
 7. **I've bought on Little Blue Market** → `+customer1@…` (delete first) → confirm → Create. *Pass:* lands on your profile with the **Bought** tab open and the website orders in it.
 8. **Cold start mid-way:** pick any Selling door, enter the email, then force-close before confirming. Reopen. *Pass:* the Confirm screen, then setup, then the Market (the door is lost on a cold start, on purpose; the screen you wanted is in Edit profile).
 
+## J15 · Push notifications
+
+*The emulator must be a **Google Play** image, Android 13 or newer (Android Studio → Device Manager → Create device → a system image marked "Google Play"). The doctor's `android push` line says whether the running one has Play services; without them nothing ever arrives and nothing says why.*
+
+1. `scripts\deploy-dev.ps1` → `run-live.ps1` → sign in as `grace-s+buyer1@…` → Edit profile → **Notifications** → **Allow notifications** → Allow on Android's prompt. *Pass:* the card reads "Allowed on this phone." and Firestore shows `users/<uid>/devices/<token>` with `platform: android`.
+2. **Send me a test notification** → press the emulator's Home button. *Pass:* a banner "Little Blue Market — This phone is set up for notifications." with the cart icon; tapping it opens the app on the bell.
+3. With the app open in the foreground, send the test again. *Pass:* the banner still appears (the app draws it itself when it is in front).
+4. As `+seller1` post a shoutout that tags `@buyer1`. *Pass:* buyer's phone: "<seller name> mentioned you" as a push, and the same line under the bell; tapping the push opens that post.
+5. Notifications → switch **Mentions and shoutouts** off → repeat step 4. *Pass:* the bell still shows it, the phone stays silent. Switch it back on.
+6. Sign out. *Pass:* Firestore `users/<uid>/devices` is empty for that account (the phone forgets itself before it signs out).
+7. If nothing arrives: the doctor's `android push` line (Play services), `firebase functions:log --only pushTestMe --project dev` (a `registration-token-not-registered` means the token was stale and has been pruned; tap Allow again), or Copy for Claude.
+
 ---
 
 ### If a journey fails

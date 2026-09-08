@@ -148,6 +148,10 @@ abstract interface class SocialRepository {
   Stream<List<AppNotification>> watchNotifications();
   Future<void> markNotificationsRead();
 
+  /// The notification switches, yours alone. Defaults when never saved.
+  Stream<NotificationPrefs> watchNotificationPrefs();
+  Future<void> saveNotificationPrefs(NotificationPrefs prefs);
+
   Stream<List<Review>> watchReviews(String productId);
   Stream<RatingSummary> watchRating(String productId);
   Future<void> addReview(NewReview draft);

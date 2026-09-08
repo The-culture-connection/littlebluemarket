@@ -438,10 +438,34 @@ async function main() {
     pass('emulator ports', 'free');
   }
 
+  // 12b. push (Stage 12) ------------------------------------------------------------
+  const manifestPath = join(REPO_DIR, 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
+  const manifest = existsSync(manifestPath) ? readFileSync(manifestPath, 'utf8') : '';
+  const pushProblems = [
+    !manifest.includes('android.permission.POST_NOTIFICATIONS') && 'POST_NOTIFICATIONS permission missing from AndroidManifest.xml',
+    !manifest.includes('default_notification_channel_id') && 'default_notification_channel_id meta-data missing from AndroidManifest.xml',
+    !existsSync(join(REPO_DIR, 'android', 'app', 'google-services.json')) && 'android/app/google-services.json missing',
+    !existsSync(join(REPO_DIR, 'android', 'app', 'src', 'main', 'res', 'drawable', 'ic_stat_lbm.xml')) && 'res/drawable/ic_stat_lbm.xml missing',
+  ].filter(Boolean);
+  if (pushProblems.length) fail('push', pushProblems.join(' · '), 'these are in the repo (CP-N0); git status, then paste this line to Claude');
+  else pass('push', 'manifest permission + channel + icon present · google-services.json present');
+  if (!existsSync(join(REPO_DIR, 'ios', 'Runner', 'GoogleService-Info.plist'))) {
+    manual('push (iPhone)', 'ios/Runner/GoogleService-Info.plist is not in the repo yet; iPhone push waits for CP-N4', 'on a Mac: flutterfire configure --project=' + projectId + ' --platforms=ios, then the APNs key in the Firebase console (Planning/checkpoints.md CP-N4)');
+  }
+
   // 13. android emulator -------------------------------------------------------------
   const devices = run('flutter', ['devices', '--machine']).out;
-  if (/emulator-\d+/.test(devices)) pass('android', `emulator booted (${devices.match(/emulator-\d+/)[0]})`);
-  else {
+  if (/emulator-\d+/.test(devices)) {
+    const serial = devices.match(/emulator-\d+/)[0];
+    pass('android', `emulator booted (${serial})`);
+    // Push needs Google Play services on the image; a plain AOSP image never
+    // receives one and gives no error, which is the hardest failure to see.
+    if (adb) {
+      const gms = run('adb', ['-s', serial, 'shell', 'pm', 'list', 'packages', 'com.google.android.gms']).out;
+      if (/com\.google\.android\.gms/.test(gms)) pass('android push', 'the emulator has Google Play services');
+      else warn('android push', 'this emulator image has no Google Play services: notifications will never arrive on it', 'Android Studio -> Device Manager -> Create device -> pick a system image marked "Google Play" (Android 13 or newer), then run-live on that one');
+    }
+  } else {
     const qemu = run(process.platform === 'win32' ? 'tasklist' : 'ps', process.platform === 'win32' ? [] : ['-A']).out;
     if (/qemu-system/i.test(qemu)) warn('android', 'an emulator process is running but adb cannot see it', 'adb kill-server; adb start-server   (then re-run the doctor)');
     else warn('android', 'no Android emulator running', 'Android Studio -> Device Manager -> Play, or: flutter emulators --launch Pixel_3');

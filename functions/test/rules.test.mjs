@@ -369,6 +369,14 @@ describe('selling is a grant, not a client write', () => {
     await assertFails(member('maya').doc('directoryListings/1').set({ title: 'Edited on the phone' }));
     await assertFails(member('maya').doc('directoryListings/3').set({ ownerUid: 'maya', status: 'publish' }));
 
+    await assertSucceeds(member('maya').doc('users/maya/devices/tok-1').set({ platform: 'android' }));
+    await assertSucceeds(member('maya').doc('users/maya/devices/tok-1').delete());
+    await assertFails(member('kali').doc('users/maya/devices/tok-2').set({ platform: 'android' }));
+    await assertFails(guest().doc('users/maya/devices/tok-3').set({ platform: 'android' }));
+    await assertSucceeds(member('maya').doc('users/maya/settings/notifications').set({ forums: false, mutedForums: ['f1'] }));
+    await assertFails(member('kali').doc('users/maya/settings/notifications').get());
+    await assertFails(member('maya').doc('users/maya/settings/other').set({ anything: true }));
+
     // The owner's own list and the public list are both answerable queries.
     await assertSucceeds(member('maya').collection('directoryListings').where('ownerUid', '==', 'maya').get());
     await assertSucceeds(

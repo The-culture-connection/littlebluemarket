@@ -5,11 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
+
 import 'app_assets.dart';
 import 'data/firebase/firebase_bootstrap.dart';
+import 'data/firebase/firebase_push_service.dart';
 import 'data/repositories/dev_error_sink.dart';
 import 'router/app_router.dart';
 import 'state/providers.dart';
+import 'state/push_coordinator.dart';
 import 'state/session.dart';
 import 'theme/app_theme.dart';
 import 'widgets/dev_error_surface.dart';
@@ -52,6 +56,9 @@ Future<void> main() async {
   // configuration and pays no start-up cost.
   if (const String.fromEnvironment('LBM_BACKEND') == 'live') {
     await initializeFirebase(useEmulators: useFirebaseEmulators);
+    // A background push has nothing to do in Dart (the system shows it), but
+    // the handler must exist or the plugin logs a warning on every one.
+    FirebaseMessaging.onBackgroundMessage(lbmBackgroundMessageHandler);
   }
 
   runApp(ProviderScope(retry: lbmRetry, child: const LittleBlueMarketApp()));
@@ -79,6 +86,9 @@ class LittleBlueMarketApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final override = ref.watch(themeModeProvider);
+    // Registers the phone for push once a member is signed in and opens
+    // the route a tapped banner names. No UI of its own.
+    ref.watch(pushCoordinatorProvider);
 
     return MaterialApp.router(
       title: 'Little Blue Market',

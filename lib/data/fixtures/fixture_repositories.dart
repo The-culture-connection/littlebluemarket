@@ -741,6 +741,21 @@ class FixtureSocialRepository implements SocialRepository {
   Stream<List<AppNotification>> watchNotifications() =>
       _store.notifications.stream;
 
+  NotificationPrefs _prefs = const NotificationPrefs();
+  final _prefChanges = StreamController<NotificationPrefs>.broadcast();
+
+  @override
+  Stream<NotificationPrefs> watchNotificationPrefs() async* {
+    yield _prefs;
+    yield* _prefChanges.stream;
+  }
+
+  @override
+  Future<void> saveNotificationPrefs(NotificationPrefs prefs) async {
+    _prefs = prefs;
+    _prefChanges.add(prefs);
+  }
+
   @override
   Future<void> markNotificationsRead() async {
     _store.notifications.value = [

@@ -21,6 +21,7 @@ import '../screens/onboarding/auth_screens.dart';
 import '../screens/onboarding/welcome_screen.dart';
 import '../screens/you/dm_screen.dart';
 import '../screens/you/add_product_screen.dart';
+import '../screens/you/notification_settings_screen.dart';
 import '../screens/you/notifications_screen.dart';
 import '../screens/you/sell_screen.dart';
 import '../screens/you/claim_shop_screen.dart';
@@ -283,6 +284,11 @@ GoRouter buildRouter(Ref ref) {
                   GoRoute(
                     path: 'notifications',
                     builder: (context, state) => const NotificationsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'notification-settings',
+                    builder: (context, state) =>
+                        const NotificationSettingsScreen(),
                   ),
                   // Debug builds only. Tests run in debug, so the smoke suite
                   // still renders it.

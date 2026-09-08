@@ -18,6 +18,7 @@ import {
   WP_SECRETS,
 } from './config.ts';
 import { syncAllDirectoryListings, syncDirectory } from './directory.ts';
+import { sendPushToUid } from './push.ts';
 import {
   backfillSellerForVendor,
   mirrorProduct,
@@ -288,6 +289,28 @@ export const directoryLinkMe = onCall(
     }
     const auto = Boolean((request.data ?? {}).auto);
     return syncDirectory(uid, email.trim().toLowerCase(), { auto });
+  }),
+);
+
+/**
+ * Stage 12: "Send me a test notification". Proves the phone is registered
+ * and the channel works before anything real depends on it.
+ */
+export const pushTestMe = onCall(
+  withLoudErrors('pushTestMe', async (request) => {
+    const uid = requireUid(request.auth);
+    const outcome = await sendPushToUid(uid, {
+      title: 'Little Blue Market',
+      body: 'This phone is set up for notifications.',
+      data: { route: '/you/notifications', type: 'test' },
+    });
+    if (outcome.devices === 0) {
+      throw new HttpsError(
+        'failed-precondition',
+        'No phone is registered for notifications yet. Tap Allow notifications first, then try again.',
+      );
+    }
+    return outcome;
   }),
 );
 

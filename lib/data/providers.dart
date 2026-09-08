@@ -8,6 +8,9 @@ import 'firebase/firestore_catalog_repository.dart';
 import 'firebase/firestore_collection_repository.dart';
 import 'firebase/firestore_diagnostics_repository.dart';
 import 'firebase/firestore_directory_repository.dart';
+import 'firebase/firebase_push_service.dart';
+import 'fixtures/fixture_push_service.dart';
+import 'push/push_service.dart';
 import 'firebase/firestore_messaging_repository.dart';
 import 'firebase/firestore_profile_repository.dart';
 import 'firebase/firestore_search_repository.dart';
@@ -200,6 +203,17 @@ final directoryRepositoryProvider = Provider<DirectoryRepository>((ref) {
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),
       uid: ref.watch(_uidProvider),
+    ),
+  };
+});
+
+/// Push: the phone's token, topics and banners. A no-op on fixtures.
+final pushServiceProvider = Provider<PushService>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => FixturePushService(),
+    Backend.live => FirebasePushService(
+      firestore: ref.watch(firestoreProvider),
+      functions: ref.watch(firebaseFunctionsProvider),
     ),
   };
 });

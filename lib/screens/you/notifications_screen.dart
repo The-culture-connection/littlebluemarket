@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../models/models.dart';
 import '../../router/nav.dart';
 import '../../state/providers.dart';
@@ -49,7 +51,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         empty: const LbmEmpty(
           title: 'Nothing yet',
           body:
-              'When someone mentions you or comments on your post, it lands here.',
+              'Mentions, comments, replies, reviews of your products, new '
+              'things from shops you bought from and news from Little Blue '
+              'Market land here.',
         ),
         data: (all) => ListView(
           padding: const EdgeInsets.fromLTRB(14, 4, 14, 26),
@@ -78,6 +82,39 @@ class _NotificationRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = color;
+    final announcement =
+        notification.kind == NotificationKind.announcement ||
+        notification.fromUid.isEmpty;
+    final route = notification.route;
+    void open() {
+      if (route != null) {
+        context.go(route);
+      } else if (notification.postId.isNotEmpty) {
+        context.goToPost(notification.postId);
+      }
+    }
+
+    // An announcement is from Little Blue Market, not from a person: the
+    // mark instead of an avatar, its own title instead of a headline.
+    if (announcement) {
+      return ListRow(
+        background: notification.read
+            ? null
+            : c.accentMist.withValues(alpha: 0.4),
+        leading: Icon(Icons.campaign_outlined, color: c.accentText),
+        title: Text(notification.title ?? 'Little Blue Market'),
+        subtitle: Text(
+          notification.text.isEmpty
+              ? notification.age
+              : '${notification.text}\n${notification.age}',
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+        ),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        onTap: open,
+      );
+    }
+
     final from = ref.watch(personProvider(notification.fromUid));
     final name = from.value?.name ?? 'Someone';
     return ListRow(
@@ -96,7 +133,7 @@ class _NotificationRow extends ConsumerWidget {
         overflow: TextOverflow.ellipsis,
       ),
       crossAxisAlignment: CrossAxisAlignment.start,
-      onTap: () => context.goToPost(notification.postId),
+      onTap: open,
     );
   }
 }

@@ -109,6 +109,13 @@ final unreadNotificationsProvider = Provider<int>((ref) {
       0;
 });
 
+/// The notification switches. Defaults until saved once.
+final notificationPrefsProvider = StreamProvider<NotificationPrefs>((ref) {
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null) return Stream.value(const NotificationPrefs());
+  return ref.watch(socialRepositoryProvider).watchNotificationPrefs();
+});
+
 /// Links that differ between the dev store and the real one. Kept for the
 /// life of the app: they do not change while it runs.
 final appConfigProvider = FutureProvider<AppConfig>((ref) {

@@ -3,7 +3,16 @@ import 'package:flutter/foundation.dart';
 import 'formatting.dart';
 
 /// Why the bell lit up.
-enum NotificationKind { mention, comment, other }
+enum NotificationKind {
+  mention,
+  comment,
+  review,
+  forumThread,
+  forumReply,
+  newProduct,
+  announcement,
+  other,
+}
 
 /// One entry under the bell. Written only by the backend.
 @immutable
@@ -16,6 +25,8 @@ class AppNotification {
     required this.text,
     required this.createdAt,
     this.read = false,
+    this.route,
+    this.title,
   });
 
   final String id;
@@ -28,12 +39,74 @@ class AppNotification {
   final DateTime createdAt;
   final bool read;
 
+  /// Where a tap goes. Older entries have none and open their post.
+  final String? route;
+
+  /// An announcement's own title. Everything else is named after a person.
+  final String? title;
+
   String get age => Fmt.relative(createdAt);
 
   String get headline => switch (kind) {
     NotificationKind.mention => 'mentioned you in a post',
     NotificationKind.comment => 'commented on your post',
+    NotificationKind.review => 'reviewed your product',
+    NotificationKind.forumThread => 'started a thread in a forum you joined',
+    NotificationKind.forumReply => 'replied in a thread you are in',
+    NotificationKind.newProduct => 'added something new',
+    NotificationKind.announcement => '',
     NotificationKind.other => 'sent you a note',
+  };
+}
+
+/// The notification switches. Every one defaults to on; a muted forum
+/// silences the bell as well as the push for that forum.
+@immutable
+class NotificationPrefs {
+  const NotificationPrefs({
+    this.mentions = true,
+    this.comments = true,
+    this.forums = true,
+    this.reviews = true,
+    this.newProducts = true,
+    this.announcements = true,
+    this.mutedForums = const [],
+  });
+
+  final bool mentions;
+  final bool comments;
+  final bool forums;
+  final bool reviews;
+  final bool newProducts;
+  final bool announcements;
+  final List<String> mutedForums;
+
+  NotificationPrefs copyWith({
+    bool? mentions,
+    bool? comments,
+    bool? forums,
+    bool? reviews,
+    bool? newProducts,
+    bool? announcements,
+    List<String>? mutedForums,
+  }) => NotificationPrefs(
+    mentions: mentions ?? this.mentions,
+    comments: comments ?? this.comments,
+    forums: forums ?? this.forums,
+    reviews: reviews ?? this.reviews,
+    newProducts: newProducts ?? this.newProducts,
+    announcements: announcements ?? this.announcements,
+    mutedForums: mutedForums ?? this.mutedForums,
+  );
+
+  Map<String, Object> toMap() => {
+    'mentions': mentions,
+    'comments': comments,
+    'forums': forums,
+    'reviews': reviews,
+    'newProducts': newProducts,
+    'announcements': announcements,
+    'mutedForums': mutedForums,
   };
 }
 

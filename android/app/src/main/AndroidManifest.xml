@@ -6,10 +6,26 @@
          app or the system photo picker; neither needs a runtime permission,
          but a phone without a camera must still be allowed to install. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Push. Android 13+ asks the person; the app asks on the Notifications
+         screen, never at launch. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:label="Little Blue Market"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Where a push lands when the app is not running, and how it looks.
+             The channel id is also in firebase_push_service.dart and in the
+             backend's Android payload; the three must agree. The status-bar
+             icon must be white on transparent or Android draws a blank square. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="lbm_default" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_lbm" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/lbm_notification" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
