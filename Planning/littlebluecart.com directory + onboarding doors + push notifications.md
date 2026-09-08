@@ -43,10 +43,15 @@ Nothing gets pasted into chat. Each secret is typed once into a prompt on your c
 
 Everything below is created on the **staging** site, not on littlebluecart.com. The dev Firebase project `little-blue-610e5` points at staging. Live keys are made only at cutover, for the production Firebase project.
 
-1. Cloudways → Applications → the littlebluecart.com app → **Staging Management** → **Add Staging Application** → same server → Create. Wait for the copy (10–30 minutes for a site this size).
-2. Open the staging app → **Access Details**: note the staging URL (`https://wordpress-…cloudwaysapps.com`) and the WP admin login. Make sure **Password Protection** is **off** (otherwise the app's calls are blocked).
-3. Log in to staging `/wp-admin`: WooCommerce will ask whether this is a staging site → choose **This is a temporary / staging site**. WooCommerce → Settings → Payments → turn every live gateway off (or test mode). Settings → Reading → tick **Discourage search engines**. Plugins → Add New → install and activate **Disable Emails** so staging never mails real customers.
-4. Tell me the staging URL. It becomes `WP_BASE_URL` and the base of `DIRECTORY_ADD_LISTING_URL` for the dev project.
+**Route B, from wp-admin only (the one in use since 2026-09-08; Grace has no Cloudways login):**
+
+1. littlebluecart.com `/wp-admin` → Plugins → Add New → **WP Staging** → Install → Activate.
+2. **WP Staging** → **Create Staging Site** → name `dev` → **Start Cloning**. 10–30 minutes; keep the tab open.
+3. The copy is `https://littlebluecart.com/dev/`, its wp-admin `https://littlebluecart.com/dev/wp-admin/`, same login as live. Visitors see a login box; the app gets through with the Application Password (CP-D1).
+4. In the **copy's** wp-admin: WooCommerce's staging question → **This is a temporary / staging site**; WooCommerce → Settings → Payments → every live method off; Settings → Reading → **Discourage search engines**; Plugins → **Disable Emails** installed and active.
+5. `WP_BASE_URL=https://littlebluecart.com/dev` and `DIRECTORY_ADD_LISTING_URL=https://littlebluecart.com/dev/add-directory-listing/` in the dev env file. The doctor allows a copy in a folder under the live domain and refuses only the live root.
+
+*Route A, if a Cloudways login turns up:* Cloudways → the app → **Staging Management** → **Add Staging Application**; the copy gets its own `https://wordpress-…cloudwaysapps.com` address; switch **Password Protection** off; steps 4–5 are the same.
 
 ### Secrets (typed into `npm run secrets:dev -- NAME` inside `REPO\functions\`, made on the staging site)
 

@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import {
   basicAuth,
   decodeEntities,
+  isLiveWpBase,
   isLiveWpHost,
   listingFromWp,
   orderFromWc,
@@ -74,6 +75,30 @@ test('basicAuth is the standard header and the live host is recognised in every 
   assert.equal(isLiveWpHost('www.littlebluecart.com'), true);
   assert.equal(isLiveWpHost('staging.littlebluecart.com'), true);
   assert.equal(isLiveWpHost('wordpress-1234.cloudwaysapps.com'), false);
+});
+
+test('the live site is the live host with nothing after it; a WP Staging folder under it is a different WordPress', () => {
+  assert.equal(isLiveWpBase('https://littlebluecart.com'), true);
+  assert.equal(isLiveWpBase('https://www.littlebluecart.com/'), true);
+  assert.equal(isLiveWpBase('https://littlebluecart.com/dev'), false);
+  assert.equal(isLiveWpBase('https://littlebluecart.com/staging-abc/'), false);
+  assert.equal(isLiveWpBase('https://wordpress-1234.cloudwaysapps.com'), false);
+  assert.equal(isLiveWpBase('not a url'), false);
+});
+
+test('a public call the site gates with 401 or 403 is retried once with the app password', async () => {
+  const { impl, seen } = fakeFetch([
+    { status: 403, body: { code: 'rest_forbidden', message: 'Sorry, you are not allowed to do that.' } },
+    { status: 200, body: [{ id: 1 }], total: 12 },
+  ]);
+  const page = await wpFetch<unknown[]>('wp/v2/vendors_dir_ltg', { auth: 'none', base: BASE, fetchImpl: impl, delaysMs: [0, 0] }, CREDS);
+  assert.equal(page.total, 12);
+  assert.equal(seen.length, 2);
+  assert.equal(seen[0]!.authorization, undefined);
+  assert.equal(seen[1]!.authorization, basicAuth('grace', 'abcd efgh ijkl mnop'));
+  // Without a credential there is nothing to retry with: the 403 surfaces.
+  const bare = fakeFetch([{ status: 403, body: { code: 'rest_forbidden', message: 'no' } }]);
+  await assert.rejects(wpFetch('wp/v2/vendors_dir_ltg', { base: BASE, fetchImpl: bare.impl, delaysMs: [0, 0] }, { ...CREDS, appPassword: '' }), /WP 403 wp\/v2\/vendors_dir_ltg/);
 });
 
 test('pickWpUser wants exactly one member with exactly that email', () => {

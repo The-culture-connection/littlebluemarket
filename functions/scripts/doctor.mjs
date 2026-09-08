@@ -207,25 +207,43 @@ async function main() {
     warn('wordpress', `WP_BASE_URL empty in ${envRel}: directory features off`, 'CP-D0: make the Cloudways staging copy of littlebluecart.com and put its https URL in WP_BASE_URL (Planning/checkpoints.md, Stage 10)');
   } else if (!/^https:\/\//.test(wpBase) || !wpHost) {
     fail('wordpress', `WP_BASE_URL "${wpBase}" must be an https:// URL`, `fix the line in ${envRel}`);
-  } else if (wpHost === PRODUCTION_WP_HOST || wpHost.endsWith(`.${PRODUCTION_WP_HOST}`)) {
-    fail('wordpress', `WP_BASE_URL is the LIVE site (${wpHost})`, 'dev must point at the staging copy: Cloudways -> the app -> Staging Management -> Add Staging Application, then put the staging https URL in WP_BASE_URL');
+  } else if ((wpHost === PRODUCTION_WP_HOST || wpHost.endsWith(`.${PRODUCTION_WP_HOST}`)) && new URL(wpBase).pathname.replace(/\/+$/, '') === '') {
+    fail('wordpress', `WP_BASE_URL is the LIVE site (${wpHost})`, 'dev must point at a staging copy: either Cloudways -> Staging Management -> Add Staging Application, or the WP Staging plugin, which makes one at littlebluecart.com/<folder>; put that https URL in WP_BASE_URL');
   } else {
+    // A WP Staging copy gates visitors behind a login; the app password gets
+    // through, so the public checks fall back to it and say so.
+    const stagingUser = String(params.WP_APP_USER ?? '').trim();
+    const stagingPassword = stagingUser ? (process.env.WP_APP_PASSWORD || secretValue('WP_APP_PASSWORD', projectId)) : '';
+    const fallbackAuth = stagingUser && stagingPassword ? basicAuth(stagingUser, stagingPassword) : null;
+    let usedFallback = false;
+    const read = async (url) => {
+      try {
+        return await wpJson(url);
+      } catch (error) {
+        if (fallbackAuth && /HTTP 40[13]/.test(String(error.message))) {
+          usedFallback = true;
+          return (await wpFetchJson(url, fallbackAuth)).json;
+        }
+        throw error;
+      }
+    };
     try {
-      const index = await wpJson(`${wpBase}/wp-json/`);
+      const index = await read(`${wpBase}/wp-json/`);
       const namespaces = Array.isArray(index.namespaces) ? index.namespaces : [];
       const missingNs = ['wp/v2', 'wc/v3'].filter((ns) => !namespaces.includes(ns));
-      const listings = await wpJson(`${wpBase}/wp-json/wp/v2/vendors_dir_ltg?per_page=1`);
+      const listings = await read(`${wpBase}/wp-json/wp/v2/vendors_dir_ltg?per_page=1`);
       const one = Array.isArray(listings) && listings.length === 1;
       if (missingNs.length) fail('wordpress', `${wpHost} answers but has no ${missingNs.join(', ')} (WooCommerce off, or the REST API is filtered)`, 'on the staging site: Plugins -> WooCommerce active; a security plugin may be hiding the REST API');
       else if (!one) fail('wordpress', `${wpHost} answers but /wp/v2/vendors_dir_ltg returned no listing (Directories Pro off, or the listing type is not in the REST API)`, 'on the staging site: Plugins -> Directories Pro active, then re-run');
       else {
-        pass('wordpress', `staging reachable · ${index.name ?? wpHost} · listings public`);
+        const where = new URL(wpBase).pathname.replace(/\/+$/, '') ? `${wpHost}${new URL(wpBase).pathname.replace(/\/+$/, '')} (a copy in a folder under the live domain)` : wpHost;
+        pass('wordpress', `staging reachable · ${index.name ?? wpHost} · ${where} · ${usedFallback ? 'visitors are gated, the app password gets through (fine for staging)' : 'listings public'}`);
         wpPublicOk = true;
       }
     } catch (error) {
       const m = String(error.message);
       fail('wordpress', `${wpHost}: ${m.slice(0, 160)}`, /401|403|password/i.test(m)
-        ? 'Cloudways -> the staging app -> Access Details -> Password Protection: off, then re-run'
+        ? (fallbackAuth ? 'the site gates visitors and the app password did not get through either: check WP_APP_USER and WP_APP_PASSWORD (CP-D1)' : 'the site gates visitors (a password wall or WP Staging\'s login): finish CP-D1 (WP_APP_USER + WP_APP_PASSWORD) and the doctor will use them here')
         : 'open the staging URL in a browser over https; if it loads, paste this line to Claude');
     }
   }

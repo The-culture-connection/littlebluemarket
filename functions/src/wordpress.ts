@@ -52,10 +52,27 @@ export function wpHost(base: string = wpBase()): string {
   }
 }
 
-/** The live site, or anything under it. Dev must never point here. */
+/** The live site's host, or a subdomain of it. */
 export function isLiveWpHost(host: string): boolean {
   const h = host.toLowerCase();
   return h === LIVE_WP_HOST || h === `www.${LIVE_WP_HOST}` || h.endsWith(`.${LIVE_WP_HOST}`);
+}
+
+/**
+ * The live site itself: the live host with nothing after it. Dev must never
+ * point here. A staging copy made by the WP Staging plugin lives in a folder
+ * under the live domain (`https://littlebluecart.com/dev`), which is a
+ * different WordPress with its own database, so that is allowed.
+ */
+export function isLiveWpBase(base: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(base);
+  } catch {
+    return false;
+  }
+  if (!isLiveWpHost(url.host)) return false;
+  return url.pathname.replace(/\/+$/, '') === '';
 }
 
 export interface WpCredentials {
@@ -150,11 +167,32 @@ function sleep(ms: number): Promise<void> {
  * One REST call with the right credential, two retries on 429/5xx or a
  * network failure, and an error message that names the path and WordPress's
  * reason. Authorization never appears in a message or a log.
+ *
+ * A call meant to be public (`auth: 'none'`) that the site refuses with 401
+ * or 403 is tried once more with the app credential: a WP Staging copy gates
+ * visitors behind a login, and the data is the same either way.
  */
 export async function wpFetch<T>(
   path: string,
   options: WpFetchOptions = {},
   credentials: WpCredentials = credentialsFromParams(),
+): Promise<WpPage<T>> {
+  try {
+    return await wpFetchOnce<T>(path, options, credentials);
+  } catch (error) {
+    const gated = error instanceof Error && /^WP 40[13] /.test(error.message);
+    const publicCall = (options.auth ?? 'none') === 'none';
+    if (gated && publicCall && credentials.appUser && credentials.appPassword) {
+      return wpFetchOnce<T>(path, { ...options, auth: 'app' }, credentials);
+    }
+    throw error;
+  }
+}
+
+async function wpFetchOnce<T>(
+  path: string,
+  options: WpFetchOptions,
+  credentials: WpCredentials,
 ): Promise<WpPage<T>> {
   const base = (options.base ?? wpBase()).replace(/\/+$/, '');
   if (!base) throw new Error('WP_BASE_URL is empty: the directory features are off');

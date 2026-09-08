@@ -14,8 +14,9 @@ import { probeShipturtle } from './shipturtle_api.ts';
 import { storefrontGraphQL } from './shopify/storefront.ts';
 import {
   credentialsFromParams,
-  isLiveWpHost,
+  isLiveWpBase,
   wcGet,
+  wpBase,
   wpConfigured,
   wpFetch,
   wpGet,
@@ -288,7 +289,7 @@ export function defaultProbes(): Probe[] {
       run: async () => {
         if (!wpConfigured()) throw new Error('WP_BASE_URL is empty (directory features are off)');
         const host = wpHost();
-        if (projectId() === DEV_PROJECT && isLiveWpHost(host)) {
+        if (projectId() === DEV_PROJECT && isLiveWpBase(wpBase())) {
           throw new Error(`WP_BASE_URL is the LIVE site (${host}) on the dev project`);
         }
         const pub = await wpFetch<unknown[]>('wp/v2/vendors_dir_ltg', { auth: 'none', query: { per_page: 1 } });

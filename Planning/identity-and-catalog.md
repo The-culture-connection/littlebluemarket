@@ -239,9 +239,13 @@ email, phone, address, plan) arrive in `drts_fields`. WooCommerce REST `wc/v3` i
 merch plus paid listing upgrades. The host is **Cloudways** (the server answers as
 `cloudwaysapps.com`).
 
-**The rule, same as the Shopify shops: the dev Firebase project talks to a Cloudways staging copy,
-never to littlebluecart.com.** `WP_BASE_URL` in `functions/.env.little-blue-610e5` must be the staging
-URL; the doctor FAILs when it is the live domain. Staging is a full clone (theme, WooCommerce,
+**The rule, same as the Shopify shops: the dev Firebase project talks to a staging copy, never to
+littlebluecart.com itself.** Grace has no Cloudways login (2026-09-08), so the copy is made by the
+**WP Staging** plugin from wp-admin and lives in a folder under the live domain,
+`https://littlebluecart.com/dev`: a separate WordPress with its own database tables. `WP_BASE_URL` in
+`functions/.env.little-blue-610e5` is that address; the doctor and the backend refuse only the live
+root (`https://littlebluecart.com` with nothing after it). WP Staging gates visitors behind a login,
+so every "public" read falls back to the Application Password when the site answers 401/403. Staging is a full clone (theme, WooCommerce,
 Directories Pro and its field configuration, all data), which matters because the Directories Pro
 setup cannot be rebuilt by hand. It drifts from live, so re-clone before a big directory test; test
 users made on staging are wiped by a re-clone.
