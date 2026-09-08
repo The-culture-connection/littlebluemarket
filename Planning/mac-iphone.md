@@ -47,6 +47,27 @@ The corner badge must read **DEV · live · little-blue-610e5**. If it says fixt
 - Push (J15 steps 1–3, 17–18) needs a **real** iPhone; the Simulator cannot receive APNs. Allow notifications on the Notifications screen, then **Send me a test notification** and lock the phone.
 - Xcode's Run button builds the app **without** the live flag, so it starts on demo data. Use the script.
 
+## Archiving: TestFlight now, the App Store later
+
+An archive is the signed, release build Apple distributes. `flutter run` puts a debug build on one plugged-in phone; an archive goes through App Store Connect to any tester's phone (TestFlight) and, after review, to everyone.
+
+**Before the first archive (once, in the browser):** appstoreconnect.apple.com → **My Apps** → **+** → New App → platform iOS, name `Little Blue Market`, bundle ID `com.littleblue.market` (it is listed because Xcode registered it in step 8), SKU `littlebluemarket`. Nothing else has to be filled in for TestFlight.
+
+**Each archive (Terminal, in `little_blue_market`):**
+
+```
+git pull
+flutter build ipa --release --dart-define=LBM_BACKEND=live
+```
+
+That takes five to ten minutes and prints where the archive is, `build/ios/archive/Runner.xcarchive`, and the `.ipa` next to it. The `--dart-define` is essential: without it the archive is the demo-data app.
+
+**Upload it:** `open build/ios/archive/Runner.xcarchive` opens Xcode's Organizer on that archive → **Distribute App** → **TestFlight & App Store** (or "App Store Connect") → keep the defaults → **Upload**. Xcode signs it with your Team, switches the push entitlement to production on its own, and uploads. Ten to thirty minutes later the build appears in App Store Connect → your app → **TestFlight**. Add yourself and any testers under **Internal Testing**; they install the TestFlight app from the App Store and get an invite by email. Apple may ask one export-compliance question the first time; the app uses only standard https, so the answer is that it does not use non-exempt encryption.
+
+**Version numbers:** each upload needs a higher build number. It comes from `pubspec.yaml`'s `version:` line (`0.3.0+1`: the `+1` is the build number). Bump the number after the `+` before each archive, or run `flutter build ipa --release --dart-define=LBM_BACKEND=live --build-number=2`.
+
+**What an archive today would contain:** the dev backend, the dev Shopify test shop and the live littlebluecart.com directory. That is right for TestFlight testers now. It is **not** right for the App Store: that needs the cutover (a production Firebase project, the real shop, the checklist in `answers-to-open-questions.md` Part 2) and a build made against it. Do not submit for App Store review before the cutover is done.
+
 ## If it fails
 
 - `flutter doctor` red on Xcode or CocoaPods → finish steps 1–2; `sudo gem install cocoapods` is the older way if Homebrew's fails.
