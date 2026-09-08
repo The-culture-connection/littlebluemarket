@@ -5,16 +5,58 @@ import { Timestamp } from 'firebase-admin/firestore';
 
 import {
   AUTO_MIN_AGE_MS,
+  INDEX_DELTA_MIN_AGE_MS,
+  INDEX_FULL_TTL_MS,
   MANUAL_MIN_AGE_MS,
   NOT_FOUND_RECHECK_MS,
   directoryPostFor,
+  indexRefreshKind,
+  listingIdsOf,
   listingMirrorDoc,
+  mergeIndex,
   mergeOrders,
   reuseStored,
   termIdsNeeded,
   wcTimestamp,
 } from '../src/directory.ts';
+import { indexEntriesFromWp, isSiteFallbackImage, listingFromWp } from '../src/wordpress.ts';
 import type { DirectoryListingRecord, WcOrderRecord } from '../src/wordpress.ts';
+
+test('the owner index is built from listing pages, folded by id, and answers "whose listings"', () => {
+  const rows = indexEntriesFromWp([
+    { id: 47516, author: 6371, modified_gmt: '2026-09-08T19:51:18', status: 'publish' },
+    { id: 47494, author: 6415, modified_gmt: '2026-09-05T03:39:37', status: 'publish' },
+    { id: 47509, author: 6466, modified_gmt: '2026-09-07T10:00:00', status: 'pending' },
+    { id: 'junk' },
+  ]);
+  assert.equal(rows.length, 3);
+  let index = mergeIndex({}, rows);
+  // A delta that moves a listing to a new owner and adds one wins over the old row.
+  index = mergeIndex(index, indexEntriesFromWp([{ id: 47494, author: 6371, modified_gmt: '2026-09-08T20:00:00', status: 'publish' }, { id: 47600, author: 6371, modified_gmt: '2026-09-08T20:01:00', status: 'draft' }]));
+  assert.deepEqual(listingIdsOf(index, 6371).sort(), [47494, 47516, 47600]);
+  assert.deepEqual(listingIdsOf(index, 6415), []);
+});
+
+test('the index is rebuilt every six hours, topped up every ten minutes, and reused between', () => {
+  const now = Date.parse('2026-09-08T12:00:00Z');
+  assert.equal(indexRefreshKind(undefined, now), 'full');
+  assert.equal(indexRefreshKind({ fullAt: now - INDEX_FULL_TTL_MS - 1, updatedAt: now }, now), 'full');
+  assert.equal(indexRefreshKind({ fullAt: now - 3_600_000, updatedAt: now - INDEX_DELTA_MIN_AGE_MS - 1 }, now), 'delta');
+  assert.equal(indexRefreshKind({ fullAt: now - 3_600_000, updatedAt: now - 60_000 }, now), 'none');
+});
+
+test('the description comes from the SEO field and the site logo is never a listing photo', () => {
+  const l = listingFromWp({
+    id: 47516, author: 6371, status: 'publish', title: { rendered: 'FoundHouse' }, featured_media: 0,
+    yoast_head_json: { og_description: 'Develop your business website with FoundHouse', og_image: [{ url: 'https://littlebluecart.com/wp-content/uploads/2025/09/Little-Blue-Cart-Header-Logo-1.png' }] },
+  });
+  assert.ok(l);
+  assert.equal(l.description, 'Develop your business website with FoundHouse');
+  assert.equal(l.ogImageUrl, '');
+  assert.equal(isSiteFallbackImage('https://littlebluecart.com/wp-content/uploads/2026/09/IMG_1063.webp'), false);
+  const withPhoto = listingFromWp({ id: 1, author: 2, yoast_head_json: { og_image: [{ url: 'https://littlebluecart.com/wp-content/uploads/2026/09/IMG_1063.webp' }] } });
+  assert.equal(withPhoto?.ogImageUrl, 'https://littlebluecart.com/wp-content/uploads/2026/09/IMG_1063.webp');
+});
 
 const NOW = Date.parse('2026-09-08T12:00:00Z');
 const at = (msAgo: number) => Timestamp.fromMillis(NOW - msAgo);
@@ -71,6 +113,7 @@ const RECORD: DirectoryListingRecord = {
   locationLabel: '*Online/Virtual Business',
   businessAddress: { street: '1851 Massachusetts Ave NE', city: 'St. Petersburg', state: 'FL', zip: '33703', display: '1851 Massachusetts Ave NE, St. Petersburg, FL 33703' },
   plan: 'DIRECTORY SHOWCASE PLAN', planId: 26361, modified: '2026-09-05T03:39:37',
+  description: 'World traveler, points and miles pro.', ogImageUrl: '',
 };
 
 test('listingMirrorDoc names the terms it knows and drops the ids it does not', () => {
@@ -88,6 +131,7 @@ test('listingMirrorDoc names the terms it knows and drops the ids it does not', 
   assert.equal(doc.state, 'FL');
   assert.equal(doc.address, '1851 Massachusetts Ave NE, St. Petersburg, FL 33703');
   assert.equal(doc.imageUrl, 'https://cdn.example.test/img.webp');
+  assert.equal(doc.description, 'World traveler, points and miles pro.');
   assert.equal((doc.updatedAt as Timestamp).toDate().toISOString(), '2026-09-05T03:39:37.000Z');
   // Never anything the public endpoint did not return.
   assert.ok(!('wpEmailLower' in doc) && !('planId' in doc));

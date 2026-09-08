@@ -148,12 +148,17 @@ class DirectoryListing {
     this.tags = const [],
     this.locations = const [],
     this.plan = '',
+    this.description = '',
     this.imageUrl = '',
     this.updatedAt,
   });
 
   /// The WordPress post id.
   final String id;
+
+  /// The listing's own words, as far as the site shares them (about a
+  /// sentence and a half).
+  final String description;
   final String ownerUid;
   final String title;
 

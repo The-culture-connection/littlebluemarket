@@ -45,6 +45,7 @@ async function get(path, query, authorization) {
     } catch { /* not JSON */ }
     throw new Error(`WP ${res.status} ${path}: ${hint}`);
   }
+  if (!text.trim()) throw new Error(`WP ${res.status} ${path}: empty answer (a security plugin hides this endpoint)`);
   return { json: JSON.parse(text), total: res.headers.get('x-wp-total') };
 }
 
@@ -58,33 +59,69 @@ async function main() {
   line('site', `${site.json.name ?? '?'} · wp/v2 ${site.json.namespaces?.includes('wp/v2') ? 'yes' : 'NO'} · wc/v3 ${site.json.namespaces?.includes('wc/v3') ? 'yes' : 'NO'}`);
 
   // WordPress member ---------------------------------------------------------
+  // WooCommerce's customers endpoint with role=all lists every WordPress
+  // user and is what littlebluecart.com answers; core's wp/v2/users comes
+  // back blank there (a security plugin). Same order as the app.
   let user = null;
-  if (!appUser || !appPassword) {
-    line('wordpress user', 'skipped: WP_APP_USER or WP_APP_PASSWORD not set (CP-D1)');
-  } else {
-    const auth = basic(appUser, appPassword);
-    const { json } = await get('wp/v2/users', { search: email, context: 'edit', per_page: 100 }, auth);
-    const exact = (Array.isArray(json) ? json : []).filter((u) => String(u.email ?? '').toLowerCase() === email);
-    if (exact.length === 1) {
-      user = exact[0];
-      line('wordpress user', `found · id ${user.id} · login ${user.slug} · roles [${(user.roles ?? []).join(', ')}] · registered ${user.registered_date ?? '?'}`);
-    } else if (exact.length > 1) {
-      line('wordpress user', `${exact.length} users share this email: the app links neither (fix on the site, then retry)`);
-    } else {
-      line('wordpress user', `none with exactly this email (${Array.isArray(json) ? json.length : 0} loose search hits ignored)`);
+  if (wcKey && wcSecret) {
+    try {
+      const { json } = await get('wc/v3/customers', { email, role: 'all', per_page: 20 }, basic(wcKey, wcSecret));
+      const exact = (Array.isArray(json) ? json : []).filter((u) => String(u.email ?? '').toLowerCase() === email);
+      if (exact.length === 1) {
+        user = { id: exact[0].id, slug: exact[0].username, roles: [exact[0].role], registered_date: exact[0].date_created };
+        line('wordpress user', `found via WooCommerce · id ${user.id} · login ${user.slug} · role ${user.roles[0] ?? '?'} · registered ${user.registered_date ?? '?'}`);
+      } else if (exact.length > 1) {
+        line('wordpress user', `${exact.length} users share this email: the app links neither (fix on the site, then retry)`);
+      } else {
+        line('wordpress user', 'none with exactly this email (WooCommerce customers, every role)');
+      }
+    } catch (error) {
+      line('wordpress user', `WooCommerce lookup failed: ${error.message}`);
     }
-    if (user) {
-      const { json: listings } = await get('wp/v2/vendors_dir_ltg', { author: user.id, status: 'publish,pending,draft,private,future', context: 'view', per_page: 50 }, auth);
-      const arr = Array.isArray(listings) ? listings : [];
-      line('directory listings', `${arr.length} for author ${user.id}`);
-      for (const l of arr) {
+  } else {
+    line('wordpress user', 'skipped: WC_CONSUMER_KEY / WC_CONSUMER_SECRET not set (CP-D1)');
+  }
+  if (!user && appUser && appPassword) {
+    try {
+      const auth = basic(appUser, appPassword);
+      const { json } = await get('wp/v2/users', { search: email, context: 'edit', per_page: 100 }, auth);
+      const exact = (Array.isArray(json) ? json : []).filter((u) => String(u.email ?? '').toLowerCase() === email);
+      if (exact.length === 1) {
+        user = exact[0];
+        line('wordpress user (core)', `found · id ${user.id} · login ${user.slug} · roles [${(user.roles ?? []).join(', ')}]`);
+      } else {
+        line('wordpress user (core)', `none (${Array.isArray(json) ? json.length : 0} loose hits)`);
+      }
+    } catch (error) {
+      line('wordpress user (core)', `unavailable: ${error.message.slice(0, 120)} (expected on littlebluecart.com: the site hides this endpoint)`);
+    }
+  }
+  if (user && appUser && appPassword) {
+    // The site blanks ?author= queries, so walk the owner pages the way the
+    // app does and pick this member's ids, then fetch those by id.
+    const auth = basic(appUser, appPassword);
+    const mine = [];
+    let pages = 0;
+    for (let page = 1; page <= 100; page++) {
+      let res;
+      try {
+        res = await get('wp/v2/vendors_dir_ltg', { _fields: 'id,author,status', per_page: 100, page, status: 'publish,pending,draft,private,future' }, auth);
+      } catch (error) {
+        if (/WP 400 /.test(error.message) && page > 1) break;
+        throw error;
+      }
+      pages++;
+      for (const row of Array.isArray(res.json) ? res.json : []) if (Number(row.author) === Number(user.id)) mine.push(row.id);
+      if (!Array.isArray(res.json) || res.json.length < 100) break;
+    }
+    line('directory listings', `${mine.length} for author ${user.id} (walked ${pages} page(s) of the owner index)`);
+    if (mine.length) {
+      const { json: listings } = await get('wp/v2/vendors_dir_ltg', { include: mine.slice(0, 100).join(','), status: 'publish,pending,draft,private,future', context: 'view', per_page: 100 }, auth);
+      for (const l of Array.isArray(listings) ? listings : []) {
         const plan = l.drts_fields?.payment_plan;
         const planName = Array.isArray(plan) ? plan[0]?.plan_name : plan?.plan_name;
-        line(`  #${l.id}`, `${l.status} · "${l.title?.rendered ?? ''}" · plan ${planName ?? '?'} · fields [${Object.keys(l.drts_fields ?? {}).join(', ')}]`);
-      }
-      if (!arr.length) {
-        const { json: pub } = await get('wp/v2/vendors_dir_ltg', { author: user.id, per_page: 5 });
-        line('  public check', `${Array.isArray(pub) ? pub.length : 0} published listings visible without a password`);
+        const desc = l.yoast_head_json?.og_description ? 'yes' : 'no';
+        line(`  #${l.id}`, `${l.status} · "${l.title?.rendered ?? ''}" · plan ${planName ?? '?'} · description ${desc} · image ${l.featured_media ? 'featured' : 'none'} · fields [${Object.keys(l.drts_fields ?? {}).join(', ') || 'none'}] · cat ${JSON.stringify(l.vendors_dir_cat)} tag ${JSON.stringify(l.vendors_dir_tag)} loc ${JSON.stringify(l.vendors_loc_loc)}`);
       }
     }
   }

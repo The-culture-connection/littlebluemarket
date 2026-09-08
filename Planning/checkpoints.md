@@ -27,6 +27,7 @@ Path shorthand: `REPO` = `…\Little Blue Cart\little_blue_market` (the git repo
 | Stage 10 — littlebluecart.com directory: dev WordPress, link account, website orders, listings, public listing cards | 🟡 CP-D0 to D4 built 2026-09-08 (D5 optional, not scheduled), waiting on Grace's Cloudways staging clicks, the three secrets and a deploy (plan in `Planning/littlebluecart.com directory + onboarding doors + push notifications.md`) |
 | Stage 11 — Onboarding doors: "Are you…" with seven doors | 🟡 CP-O1 and CP-O2 built 2026-09-08, ready for Grace to test (J14 in manual-test.md) |
 | Stage 12 — Push notifications: announcements, forums, shoutouts, reviews, new products, iPhone | 🟡 CP-N0 to CP-N3 built 2026-09-08 (Android push end to end); CP-N4 iPhone pre-wired 2026-09-08, the rest needs a Mac (manual-test J15 step 17) |
+| Stage 13 — Directory businesses as sellers: listing fills the profile, website-link products, photo strip, apply row | ⬜ Not started (added 2026-09-08) |
 | Cutover to the real shop | ⬜ Not started |
 
 Extras done along the way: a Sign out row, the app opens on the Market when you are already signed in, search matches any word of a title, product pages open for shops that have not joined yet, the catalog's spec subdocument rule, the first-save profile fix, Git Bash launchers.
@@ -494,13 +495,42 @@ Test identities (write them in a note outside the repo): `grace-s+buyer1@the-cul
   **Pass:** the banner arrives on the locked iPhone; an announcement sent from the Android emulator lands on it too; `devices/<token>` shows `platform: ios`.
   **If it fails:** Xcode `no valid "aps-environment" entitlement` → capability not on the signed build. Functions log `messaging/third-party-auth-error` → the `.p8`, Key ID or Team ID do not match. Nothing and no error → a Simulator; APNs needs a real device.
 
+### Stage 13 — Directory businesses as sellers in the app (added 2026-09-08, Grace's redesign)
+
+**Goal:** a business listed on littlebluecart.com is a seller in the app, without Shopify. Its listing fills its profile; it gets a Products tab; it can post products whose **Buy** button opens its own website; if it later joins the Market, Shopify products take over and nothing is deleted. Applying to the directory stays on the website form. What littlebluecart.com stores per listing and where it goes:
+
+| On littlebluecart.com | In the app |
+|---|---|
+| Title | the profile name **and** the handle (made unique if taken) |
+| Category, Tags | profile hashtags (`Home/Living` → `#HomeLiving`, `Woman-Owned` → `#WomanOwned`) |
+| Location | City, State on the profile, which Near me and the seller's products measure from |
+| Website URL, Listing description, Business owner | the bio |
+| Photos | a photo strip at the top of the Products tab |
+| Little Blue Market URL, Business owner address | not used |
+
+Decisions (Grace, 2026-09-08): the listing **overwrites** the profile on the first link, and a **Use my directory listing** button re-applies it later, so edits made in the app are never replaced silently; photos are a strip, not products; a directory seller who becomes a Market seller keeps the website-link products, shown after the Shopify ones. Only what the site exposes can be used: the description is the first ~150 characters (the SEO field), the photo is the featured image, and the owner's name is the WordPress account name.
+
+- [ ] **CP-E1 The listing fills the profile.** *Claude builds:* `directoryApplyProfile` (the link's first success calls it by itself; the Directory screen's **Use my directory listing** button calls it on demand): name and handle from the title, hashtags from category and tags, City, State from the location, bio from description + website + owner. Handle collisions get a number. Nothing on the phone writes these; the function does, and `onUserWritten` geocodes the city as it already does.
+  **Grace does:** Edit profile → Little Blue Cart directory → **Use my directory listing**. Then look at the You tab.
+  **Pass:** the name reads FoundHouse, the handle `@foundhouse`, the bio holds the description and the website, the hashtags include the category, City, State shows the listing's location; Near me (J8) now finds this profile's products from that city.
+  **If it fails:** the handle is taken by someone else → the app appends a number (`@foundhouse2`); paste Copy for Claude for anything red.
+- [ ] **CP-E2 Products with a Buy button that opens the website.** *Claude builds:* `directoryProducts/{id}` (title, price optional, description, photos, buy link prefilled with the listing website) written only through `directoryProductSave` / `directoryProductDelete`, which refuse anyone not joined to the directory; a feed post per product; the product page and the feed card show **Buy on their website** instead of Add to cart; an **Add a product** form for directory sellers (photos, title, price, description, link).
+  **Grace does:** You → Products → **Add a product** → a photo, a title, a price, leave the link as it is → Save. Then open it from the feed as `+buyer1`.
+  **Pass:** the product shows on your Products tab and in the feed; the buyer's Buy button opens your website in the browser; there is no cart button on it; Edit and Delete work for you and are absent for the buyer.
+  **If it fails:** "Only businesses in the directory can add products this way" → the account is not linked (CP-D2). Copy for Claude for anything else.
+- [ ] **CP-E3 The Products tab for directory sellers, photos on top, Market first.** *Claude builds:* the own and public profiles give a linked directory member the seller layout (Products · Posted · Bought); the Products tab shows the listing photo strip, then Shopify products when the person is also a Market seller, then the website-link products; Add a product goes to Shopify's form for Market sellers and to the directory form otherwise.
+  **Grace does:** as `+dir1`-style directory-only account: Products tab. As `+seller1` after linking a directory listing: Products tab.
+  **Pass:** directory-only: strip + website-link products; Market seller: strip, Shopify grid, then website-link products; nothing deleted when a directory seller is granted Market selling.
+- [ ] **CP-E4 Apply to the directory from Edit profile.** *Claude builds:* Edit profile → **List my business in the directory** → the website's Add Your Business form (the same link the door and the Directory screen use).
+  **Grace does:** Edit profile → List my business in the directory. **Pass:** the browser opens littlebluecart.com/add-directory-listing/.
+
 ### Cutover (later, its own checklist)
 
 Unchanged from `answers-to-open-questions.md` Part 2: add a `prod` alias, confirm the app on the real shop, repoint the store domain, deploy, register webhooks, backfill, issue claim codes to the top five vendors. Nothing in this plan touches the real shop. **Added 2026-09-08:** the production project also gets its own `WP_APP_PASSWORD`, `WC_CONSUMER_KEY`, `WC_CONSUMER_SECRET` made on littlebluecart.com, `WP_BASE_URL=https://littlebluecart.com` and the live add-listing URL; staging drifts, so re-clone it from Cloudways before any big directory test (test users made on staging are wiped by a re-clone).
 
 ### Sequencing
 
-Stage 0 → Stage 1 → CP-A1 → (CP-A2 and CP-A3 independent) → CP-A4 needs CP-A3 → CP-A5 independent of A2–A4 → Stage 3 needs Stage 0 and CP-A1 (CP-A4 for seller sales) → Stages 4–9 in order (CP-S2 to CP-S5 can run any time after Stage 4; CP-S1 and CP-S6 wait on Stage 8) → Stage 10 in order, CP-D0 first and nothing else in it until the doctor confirms the dev project points at staging → Stage 11 needs CP-D2 → Stage 12 is independent of 10 and 11 (its Android path is testable on the emulator; CP-N4 last). One commit and push per checkpoint.
+Stage 0 → Stage 1 → CP-A1 → (CP-A2 and CP-A3 independent) → CP-A4 needs CP-A3 → CP-A5 independent of A2–A4 → Stage 3 needs Stage 0 and CP-A1 (CP-A4 for seller sales) → Stages 4–9 in order (CP-S2 to CP-S5 can run any time after Stage 4; CP-S1 and CP-S6 wait on Stage 8) → Stage 10 in order, CP-D0 first and nothing else in it until the doctor confirms the dev project points at staging → Stage 11 needs CP-D2 → Stage 12 is independent of 10 and 11 (its Android path is testable on the emulator; CP-N4 last) → Stage 13 needs CP-D2/D3 (E1 first, then E2, E3, E4). One commit and push per checkpoint.
 
 ---
 

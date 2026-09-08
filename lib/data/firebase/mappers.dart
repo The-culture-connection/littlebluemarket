@@ -508,6 +508,7 @@ abstract final class FirestoreMappers {
     tags: strings(data['tags']),
     locations: strings(data['locations']),
     plan: str(data['plan']),
+    description: str(data['description']),
     imageUrl: str(data['imageUrl']),
     updatedAt: timeOrNull(data['updatedAt']),
   );

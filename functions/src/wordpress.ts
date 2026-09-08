@@ -235,9 +235,17 @@ async function wpFetchOnce<T>(
       if (res.ok) {
         let data: T;
         try {
+          if (!text.trim()) {
+            // littlebluecart.com does this for wp/v2/users: a 200 with nothing
+            // in it, from a plugin that hides members from enumeration.
+            throw new Error('empty answer (a security plugin hides this endpoint)');
+          }
           data = JSON.parse(text) as T;
-        } catch {
-          throw new Error(`WP ${res.status} ${path}: the body is not JSON (${text.trim().slice(0, 80)})`);
+        } catch (parseError) {
+          const why = parseError instanceof Error && /empty answer/.test(parseError.message)
+            ? parseError.message
+            : `the body is not JSON (${text.trim().slice(0, 80)})`;
+          throw new Error(`WP ${res.status} ${path}: ${why}`);
         }
         return {
           data,
@@ -329,10 +337,13 @@ export interface WpUser {
 }
 
 /**
- * The one member whose email is exactly this, out of a `users?search=` page
- * (`search` also matches logins and display names, so the filter is on the
- * email field). Two members on one email link neither, the same rule
- * `linking.ts` applies to store customers.
+ * The one member whose email is exactly this, out of a page of users. Two
+ * shapes arrive here: WordPress core's `wp/v2/users` (`slug`, `roles[]`) and
+ * WooCommerce's `wc/v3/customers?role=all` (`username`, `role`), which lists
+ * the same WordPress users and is the one littlebluecart.com actually
+ * answers (core's users endpoint is blanked there against enumeration).
+ * Two members on one email link neither, the same rule `linking.ts` applies
+ * to store customers.
  */
 export function pickWpUser(json: unknown, emailLower: string): WpUser | null {
   if (!Array.isArray(json)) return null;
@@ -347,12 +358,13 @@ export function pickWpUser(json: unknown, emailLower: string): WpUser | null {
   const u = matches[0]!;
   const id = num(u.id);
   if (id === null) return null;
+  const fullName = [str(u.first_name), str(u.last_name)].filter(Boolean).join(' ');
   return {
     id,
     email: wanted,
-    slug: str(u.slug),
-    name: str(u.name),
-    roles: Array.isArray(u.roles) ? u.roles.map(String) : [],
+    slug: str(u.slug) || str(u.username),
+    name: str(u.name) || fullName || str(u.username),
+    roles: Array.isArray(u.roles) ? u.roles.map(String) : str(u.role) ? [str(u.role)] : [],
   };
 }
 
@@ -401,6 +413,19 @@ export interface DirectoryListingRecord {
   plan: string;
   planId: number | null;
   modified: string;
+  /**
+   * The listing description. The post body is not in the REST API on
+   * littlebluecart.com; Yoast's `og_description` carries the first ~150
+   * characters of it, which is what there is.
+   */
+  description: string;
+  /** Yoast's share image, when the listing has no featured image of its own. */
+  ogImageUrl: string;
+}
+
+/** The site's own header logo, which Yoast falls back to; not a listing photo. */
+export function isSiteFallbackImage(url: string): boolean {
+  return /Little-Blue-Cart-Header-Logo/i.test(url);
 }
 
 /** One `vendors_dir_ltg` post as the public REST API returns it (`context=view`). */
@@ -416,6 +441,9 @@ export function listingFromWp(json: unknown): DirectoryListingRecord | null {
     ? (first(fields.payment_plan) as Record<string, unknown>)
     : null;
   const location = address(fields.location_address);
+  const yoast = (o.yoast_head_json && typeof o.yoast_head_json === 'object' ? o.yoast_head_json : {}) as Record<string, unknown>;
+  const ogImages = Array.isArray(yoast.og_image) ? yoast.og_image : [];
+  const ogFirst = ogImages[0] && typeof ogImages[0] === 'object' ? str((ogImages[0] as Record<string, unknown>).url) : '';
   return {
     wpPostId: id,
     slug: str(o.slug),
@@ -436,7 +464,32 @@ export function listingFromWp(json: unknown): DirectoryListingRecord | null {
     plan: plan ? str(plan.plan_name) : '',
     planId: plan ? num(plan.plan_id) : null,
     modified: str(o.modified_gmt) || str(o.modified),
+    description: decodeEntities(str(yoast.og_description) || str(yoast.description)),
+    ogImageUrl: isSiteFallbackImage(ogFirst) ? '' : ogFirst,
   };
+}
+
+/** One row of the owner index: which member owns which listing. */
+export interface ListingIndexEntry {
+  id: number;
+  author: number;
+  modified: string;
+  status: string;
+}
+
+/** A `_fields=id,author,modified_gmt,status` page, as index rows. Pure. */
+export function indexEntriesFromWp(json: unknown): ListingIndexEntry[] {
+  if (!Array.isArray(json)) return [];
+  const out: ListingIndexEntry[] = [];
+  for (const row of json) {
+    if (!row || typeof row !== 'object') continue;
+    const o = row as Record<string, unknown>;
+    const id = num(o.id);
+    const author = num(o.author);
+    if (id === null || author === null) continue;
+    out.push({ id, author, modified: str(o.modified_gmt) || str(o.modified), status: str(o.status) || 'publish' });
+  }
+  return out;
 }
 
 export interface WcOrderItem {

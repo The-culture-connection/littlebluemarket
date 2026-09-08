@@ -262,3 +262,23 @@ two-week review live there).
 Credentials, all made on staging for the dev project and again on live at cutover: `WP_APP_PASSWORD`,
 `WC_CONSUMER_KEY`, `WC_CONSUMER_SECRET` (Secret Manager); `WP_BASE_URL`, `WP_APP_USER`,
 `DIRECTORY_ADD_LISTING_URL` (identifiers, in the env file).
+
+**What the live site actually answers (found 2026-09-08, the hard way).** A security plugin on
+littlebluecart.com blanks every request that could enumerate members: `GET /wp/v2/users`,
+`/wp/v2/users/{id}` and any listing query carrying `?author=` come back as an empty 200, even with
+the administrator Application Password. `/wp/v2/users/me` works. So the app does three things
+differently from the obvious design:
+
+- **Member by email:** `GET /wc/v3/customers?email=<e>&role=all` with the WooCommerce key. It lists
+  every WordPress user (a WooCommerce customer id *is* the WordPress user id), and it answers.
+  Core's users endpoint is tried second and its blank answer is logged, not fatal.
+- **A member's listings:** an **owner index**, `_internal/wpListingIndex`, built by walking the
+  listing pages with `_fields=id,author,modified_gmt,status` (19 pages of 100; pending and draft
+  need the credential), rebuilt every six hours and topped up with `modified_after` every ten
+  minutes or on a tap of Refresh. The member's ids come from the index; the listings themselves
+  from `?include=<ids>&context=view` (edit context drops `drts_fields`).
+- **Description and photo:** the post body is not in the REST API for this type. Yoast's
+  `og_description` (the first ~150 characters) is the description; the featured image, else Yoast's
+  `og_image`, is the photo, ignoring the site's own header logo that Yoast falls back to.
+
+`npm run wp:probe -- --email <e>` walks the same path and prints what it finds.

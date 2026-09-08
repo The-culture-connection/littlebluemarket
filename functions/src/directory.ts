@@ -4,6 +4,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 
 import {
   credentialsFromParams,
+  indexEntriesFromWp,
   listingFromWp,
   orderFromWc,
   pickWpUser,
@@ -13,6 +14,7 @@ import {
   wpFetch,
   wpGet,
   type DirectoryListingRecord,
+  type ListingIndexEntry,
   type WcOrderRecord,
   type WpUser,
 } from './wordpress.ts';
@@ -46,6 +48,19 @@ export const AUTO_MIN_AGE_MS = 6 * 3_600_000;
 export const NOT_FOUND_RECHECK_MS = 7 * 86_400_000;
 /** Category, tag and location names change rarely. */
 export const TERM_CACHE_TTL_MS = 24 * 3_600_000;
+/**
+ * The owner index. littlebluecart.com blanks every `?author=` query (an
+ * anti-enumeration plugin), so "which listings are this member's" is answered
+ * from an index of every listing's owner, built from the listing pages the
+ * site does answer: a full crawl every six hours, a changed-since delta in
+ * between.
+ */
+export const INDEX_DOC = '_internal/wpListingIndex';
+export const INDEX_FULL_TTL_MS = 6 * 3_600_000;
+export const INDEX_DELTA_MIN_AGE_MS = 10 * 60_000;
+/** How far back a delta looks past the last refresh, for clock skew. */
+export const INDEX_DELTA_OVERLAP_MS = 60 * 60_000;
+const EVERY_STATUS = 'publish,pending,draft,private,future';
 
 export const LISTING_TAXONOMIES = ['vendors_dir_cat', 'vendors_dir_tag', 'vendors_loc_loc'] as const;
 export type ListingTaxonomy = (typeof LISTING_TAXONOMIES)[number];
@@ -171,6 +186,7 @@ export function listingMirrorDoc(
     tags: resolve('vendors_dir_tag', record.tagIds),
     locations: resolve('vendors_loc_loc', record.locationIds),
     plan: record.plan,
+    description: record.description,
     imageUrl,
     updatedAt: wcTimestamp(record.modified) ?? FieldValue.serverTimestamp(),
     refreshedAt: FieldValue.serverTimestamp(),
@@ -210,6 +226,36 @@ export function termIdsNeeded(records: DirectoryListingRecord[]): Record<Listing
   return { vendors_dir_cat: [...cat], vendors_dir_tag: [...tag], vendors_loc_loc: [...loc] };
 }
 
+// ------------------------------------------------------------- owner index
+
+/** The stored index: listing id → owner, last change, status. */
+export type StoredIndex = Record<string, { a: number; m: string; s: string }>;
+
+/** Folds crawled rows into the index. Pure. */
+export function mergeIndex(existing: StoredIndex, rows: ListingIndexEntry[]): StoredIndex {
+  const out: StoredIndex = { ...existing };
+  for (const row of rows) out[String(row.id)] = { a: row.author, m: row.modified, s: row.status };
+  return out;
+}
+
+/** The listing ids one member owns, per the index. Pure. */
+export function listingIdsOf(index: StoredIndex, wpUserId: number): number[] {
+  return Object.entries(index)
+    .filter(([, v]) => v.a === wpUserId)
+    .map(([id]) => Number(id))
+    .filter((id) => Number.isFinite(id));
+}
+
+/** What kind of refresh the index needs. Pure. */
+export function indexRefreshKind(
+  stored: { fullAt?: number; updatedAt?: number } | undefined,
+  now: number,
+): 'full' | 'delta' | 'none' {
+  if (!stored?.fullAt || now - stored.fullAt >= INDEX_FULL_TTL_MS) return 'full';
+  if (!stored.updatedAt || now - stored.updatedAt >= INDEX_DELTA_MIN_AGE_MS) return 'delta';
+  return 'none';
+}
+
 // ----------------------------------------------------------------- lookups
 
 export interface Lookups {
@@ -217,8 +263,10 @@ export interface Lookups {
   customer: (emailLower: string) => Promise<number | null>;
   ordersByCustomer: (customerId: number) => Promise<WcOrderRecord[]>;
   ordersByEmail: (emailLower: string) => Promise<WcOrderRecord[]>;
-  /** Every listing this member owns, in every status. */
-  listings: (wpUserId: number) => Promise<DirectoryListingRecord[]>;
+  /** Every listing's owner, one row per listing; `since` narrows to those changed after it. */
+  crawlIndex: (since?: string) => Promise<ListingIndexEntry[]>;
+  /** These listings, in every status the credential can see. */
+  listingsByIds: (ids: number[]) => Promise<DirectoryListingRecord[]>;
   /** Names for these term ids; unknown ids simply missing. */
   termNames: (taxonomy: ListingTaxonomy, ids: number[]) => Promise<Record<string, string>>;
   /** The public URL of a media item, or ''. */
@@ -236,8 +284,27 @@ export function defaultLookups(): Lookups {
       .map((l) => listingFromWp(l))
       .filter((l): l is DirectoryListingRecord => l !== null);
   return {
-    user: async (email) =>
-      pickWpUser(await wpGet<unknown>('wp/v2/users', { search: email, context: 'edit', per_page: 100 }), email),
+    user: async (email) => {
+      // WooCommerce's customers endpoint lists every WordPress user when
+      // asked for every role, and littlebluecart.com answers it; core's
+      // wp/v2/users comes back blank there. WooCommerce first, core second.
+      const creds = credentialsFromParams();
+      if (creds.wcKey && creds.wcSecret) {
+        try {
+          const page = await wcGet<unknown>('customers', { email, role: 'all', per_page: 20 });
+          const hit = pickWpUser(page.data, email);
+          if (hit) return hit;
+        } catch (error) {
+          logger.warn('WooCommerce customer lookup failed; trying core users', { message: (error as Error).message });
+        }
+      }
+      try {
+        return pickWpUser(await wpGet<unknown>('wp/v2/users', { search: email, context: 'edit', per_page: 100 }), email);
+      } catch (error) {
+        logger.warn('Core users lookup unavailable', { message: (error as Error).message });
+        return null;
+      }
+    },
     customer: async (email) => {
       const page = await wcGet<Array<{ id?: unknown; email?: unknown }>>('customers', { email, per_page: 10 });
       const hit = (Array.isArray(page.data) ? page.data : []).find(
@@ -250,19 +317,46 @@ export function defaultLookups(): Lookups {
       orders((await wcGet<unknown>('orders', { customer: customerId, per_page: 100 })).data),
     ordersByEmail: async (email) =>
       orders((await wcGet<unknown>('orders', { search: email, per_page: 100 })).data),
-    listings: async (wpUserId) => {
-      try {
-        const page = await wpFetch<unknown[]>('wp/v2/vendors_dir_ltg', {
-          auth: 'app',
-          query: { author: wpUserId, status: 'publish,pending,draft,private,future', context: 'view', per_page: 50 },
-        });
-        return records(page.data);
-      } catch (error) {
-        // A site that refuses the status filter still answers for published ones.
-        logger.warn('Listing fetch fell back to published only', { message: (error as Error).message });
-        const page = await wpFetch<unknown[]>('wp/v2/vendors_dir_ltg', { auth: 'none', query: { author: wpUserId, per_page: 50 } });
-        return records(page.data);
+    crawlIndex: async (since) => {
+      const creds = credentialsFromParams();
+      const withApp = Boolean(creds.appUser && creds.appPassword);
+      const rows: ListingIndexEntry[] = [];
+      for (let page = 1; page <= 100; page++) {
+        const query: Record<string, string | number | undefined> = {
+          _fields: 'id,author,modified_gmt,status',
+          per_page: 100,
+          page,
+          modified_after: since,
+          // Pending and draft listings are only visible with the credential.
+          status: withApp ? EVERY_STATUS : undefined,
+        };
+        let result;
+        try {
+          result = await wpFetch<unknown>('wp/v2/vendors_dir_ltg', { auth: withApp ? 'app' : 'none', query });
+        } catch (error) {
+          // Past the last page WordPress answers 400 rest_post_invalid_page_number.
+          if (/WP 400 /.test((error as Error).message) && page > 1) break;
+          throw error;
+        }
+        rows.push(...indexEntriesFromWp(result.data));
+        const totalPages = result.totalPages ?? page;
+        if (page >= totalPages) break;
       }
+      return rows;
+    },
+    listingsByIds: async (ids) => {
+      const creds = credentialsFromParams();
+      const withApp = Boolean(creds.appUser && creds.appPassword);
+      const out: DirectoryListingRecord[] = [];
+      for (let i = 0; i < ids.length; i += 100) {
+        const page = await wpFetch<unknown[]>('wp/v2/vendors_dir_ltg', {
+          auth: withApp ? 'app' : 'none',
+          // context=view on purpose: edit context drops drts_fields.
+          query: { include: ids.slice(i, i + 100).join(','), per_page: 100, context: 'view', status: withApp ? EVERY_STATUS : undefined },
+        });
+        out.push(...records(page.data));
+      }
+      return out;
     },
     termNames: async (taxonomy, ids) => {
       if (!ids.length) return {};
@@ -327,6 +421,38 @@ export async function cachedTermNames(
 }
 
 /**
+ * The owner index, refreshed as needed: a full crawl when it is missing or
+ * six hours old, a changed-since delta when it is ten minutes old, the
+ * stored copy otherwise. `force` skips the ten-minute wait (a person who just
+ * added a listing is tapping Refresh).
+ */
+export async function ownerIndex(lookups: Lookups, { now = Date.now(), force = false } = {}): Promise<StoredIndex> {
+  const db = getFirestore();
+  const ref = db.doc(INDEX_DOC);
+  const stored = (await ref.get()).data() as
+    | { entries?: StoredIndex; fullAt?: Timestamp; updatedAt?: Timestamp }
+    | undefined;
+  const fullAt = millis(stored?.fullAt);
+  const updatedAt = millis(stored?.updatedAt);
+  let kind = indexRefreshKind({ fullAt: fullAt || undefined, updatedAt: updatedAt || undefined }, now);
+  if (kind === 'none' && force) kind = 'delta';
+  if (kind === 'none') return stored?.entries ?? {};
+
+  if (kind === 'full') {
+    const rows = await lookups.crawlIndex();
+    const entries = mergeIndex({}, rows);
+    await ref.set({ entries, fullAt: Timestamp.fromMillis(now), updatedAt: Timestamp.fromMillis(now), count: rows.length });
+    logger.info('Listing owner index rebuilt', { count: rows.length });
+    return entries;
+  }
+  const since = new Date(updatedAt - INDEX_DELTA_OVERLAP_MS).toISOString().replace(/\.\d{3}Z$/, '');
+  const rows = await lookups.crawlIndex(since);
+  const entries = mergeIndex(stored?.entries ?? {}, rows);
+  await ref.set({ entries, updatedAt: Timestamp.fromMillis(now), count: Object.keys(entries).length }, { merge: true });
+  return entries;
+}
+
+/**
  * Mirrors one member's listings and removes mirror documents for listings
  * the site no longer has. Returns how many the member has now.
  */
@@ -334,9 +460,12 @@ export async function syncListings(
   ownerUid: string,
   wpUserId: number,
   lookups: Lookups,
+  options: { force?: boolean } = {},
 ): Promise<number> {
   const db = getFirestore();
-  const records = await lookups.listings(wpUserId);
+  const index = await ownerIndex(lookups, { force: options.force ?? false });
+  const ids = listingIdsOf(index, wpUserId);
+  const records = ids.length ? await lookups.listingsByIds(ids) : [];
   const needed = termIdsNeeded(records);
   const names: TermNames = {
     vendors_dir_cat: await cachedTermNames('vendors_dir_cat', needed.vendors_dir_cat, lookups),
@@ -351,7 +480,8 @@ export async function syncListings(
   const existingPosts = postRefs.length ? await db.getAll(...postRefs) : [];
   const batch = db.batch();
   for (const [i, record] of records.entries()) {
-    const imageUrl = record.featuredMediaId ? await lookups.mediaUrl(record.featuredMediaId) : '';
+    const featured = record.featuredMediaId ? await lookups.mediaUrl(record.featuredMediaId) : '';
+    const imageUrl = featured || record.ogImageUrl;
     batch.set(mirror.doc(String(record.wpPostId)), listingMirrorDoc(record, ownerUid, names, imageUrl), { merge: true });
     // Published listings announce themselves in the feed; anything else
     // (pending, draft, unpublished again) has no business there.
@@ -441,7 +571,9 @@ export async function syncDirectory(
   let customerId: number | null = null;
   let orders: WcOrderRecord[] = [];
   if (creds.wcKey && creds.wcSecret) {
-    customerId = await lookups.customer(emailLower);
+    // A WooCommerce customer id is the WordPress user id, so a member found
+    // above is their own customer record whatever role they hold.
+    customerId = (await lookups.customer(emailLower)) ?? user?.id ?? null;
     const [byCustomer, byEmail] = await Promise.all([
       customerId === null ? Promise.resolve([]) : lookups.ordersByCustomer(customerId),
       lookups.ordersByEmail(emailLower),
@@ -451,7 +583,9 @@ export async function syncDirectory(
     notes.push('Website orders are not set up yet (WC_CONSUMER_KEY / WC_CONSUMER_SECRET).');
   }
 
-  const listings = user ? await syncListings(uid, user.id, lookups) : 0;
+  // A tap on the button refreshes the owner index too: the person has
+  // usually just added a listing on the website.
+  const listings = user ? await syncListings(uid, user.id, lookups, { force: !auto }) : 0;
   const note = notes.length ? notes.join(' ') : undefined;
   const found = user !== null || customerId !== null || orders.length > 0;
 

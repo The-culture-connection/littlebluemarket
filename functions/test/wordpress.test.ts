@@ -115,6 +115,24 @@ test('pickWpUser wants exactly one member with exactly that email', () => {
   assert.equal(pickWpUser({ not: 'an array' }, 'grace@example.test'), null);
 });
 
+test('pickWpUser also reads the WooCommerce customers shape, which is what littlebluecart.com answers', () => {
+  const page = [
+    { id: 6371, email: 'Grace@Example.test', username: 'GraceShorter', first_name: '', last_name: '', role: 'administrator' },
+    { id: 27, email: 'other@example.test', username: 'other', role: 'subscriber' },
+  ];
+  assert.deepEqual(pickWpUser(page, 'grace@example.test'), {
+    id: 6371, email: 'grace@example.test', slug: 'GraceShorter', name: 'GraceShorter', roles: ['administrator'],
+  });
+});
+
+test('wpFetch names an empty 200 body for what it is', async () => {
+  const { impl } = fakeFetch([{ status: 200, body: '' }]);
+  await assert.rejects(
+    wpFetch('wp/v2/users', { auth: 'app', base: BASE, fetchImpl: impl, delaysMs: [0, 0] }, CREDS),
+    /WP 200 wp\/v2\/users: empty answer \(a security plugin hides this endpoint\)/,
+  );
+});
+
 test('listingFromWp reads the recorded Directories Pro shape', () => {
   const l = listingFromWp(LISTING);
   assert.ok(l);

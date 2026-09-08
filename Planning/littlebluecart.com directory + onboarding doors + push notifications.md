@@ -320,6 +320,10 @@ Stage 10 → 11 → 12. D0 first, always: nothing else in Stage 10 may start unt
 | CP-N3 buyer index + new-product trigger | M |
 | CP-N4 iPhone | M |
 
+## 11. Stage 13 — Directory businesses as sellers (added 2026-09-08)
+
+Grace's redesign after seeing Stage 10: the full checkpoint text (CP-E1–E4, the field mapping table and the decisions) is in `Planning/checkpoints.md` under Stage 13. In short: the listing fills the profile (name, handle, hashtags, City/State, bio) on first link and on a button; directory sellers get a Products tab with a photo strip and can post products whose Buy button opens their website (`directoryProducts`, written only through callables that require the directory link); a directory seller who becomes a Market seller keeps those products after the Shopify ones; Edit profile gains a List my business in the directory row.
+
 ## 10. Verification
 
 Per checkpoint: `scripts\test-all.ps1` green (analyze clean, flutter test, tsc, npm test, plus `npm run test:rules` when rules change) → `scripts\deploy-dev.ps1` → `scripts\doctor.ps1` all PASS (including the staging guard) → your tap-through per the "Grace does / Pass" lines above, on `run-live.ps1` against `little-blue-610e5`, the dev Shopify shop and the staging WordPress → commit and push → tick the box in `Planning/checkpoints.md`. Journeys J12 (directory customer), J13 (directory owner), J14 (onboarding doors), J15 (push) get added to `Planning/manual-test.md`.

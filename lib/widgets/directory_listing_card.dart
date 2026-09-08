@@ -113,6 +113,13 @@ class DirectoryListingCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(meta, style: LbmText.xtiny.copyWith(color: c.ink3)),
                 ],
+                if (l.description.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    l.description,
+                    style: LbmText.tiny.copyWith(color: c.ink2, height: 1.45),
+                  ),
+                ],
                 if (chips.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Wrap(
