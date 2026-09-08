@@ -1770,6 +1770,27 @@ class FixtureDirectoryRepository implements DirectoryRepository {
   }
 
   @override
+  Future<void> reportPurchase(String productId) async {
+    await _backend._settle();
+    final product = _products.value[productId];
+    if (product == null) throw NotFoundException('product', productId);
+    final purchases = _backend.store.purchases;
+    purchases.value = [
+      Purchase(
+        id: 'website_${DateTime.now().microsecondsSinceEpoch}',
+        orderId: 'website',
+        productId: productId,
+        title: product.title,
+        purchasedAt: DateTime.now(),
+        sellerId: product.sellerId,
+        imageUrl: product.imageUrls.isEmpty ? null : product.imageUrls.first,
+        delivered: true,
+      ),
+      ...purchases.value,
+    ];
+  }
+
+  @override
   Future<({String name, String handle})> applyListingProfile() async {
     await _backend._settle();
     final mine = _mine();

@@ -320,7 +320,7 @@ class _Body extends ConsumerWidget {
                   child: PillButton(
                     'Buy on their website',
                     icon: Icons.open_in_new_rounded,
-                    onPressed: () => openBuyUrl(context, product),
+                    onPressed: () => openBuyUrl(context, ref, product),
                   ),
                 )
               else ...[

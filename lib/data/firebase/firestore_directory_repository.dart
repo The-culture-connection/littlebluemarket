@@ -151,6 +151,14 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
       }, operation: 'callable directoryProductSave');
 
   @override
+  Future<void> reportPurchase(String productId) => guardFirestore(() async {
+    _requireUid;
+    await _functions
+        .httpsCallable('directoryPurchaseReport')
+        .call<Map<String, dynamic>>({'productId': productId});
+  }, operation: 'callable directoryPurchaseReport');
+
+  @override
   Future<void> deleteProduct(String id) => guardFirestore(() async {
     _requireUid;
     await _functions

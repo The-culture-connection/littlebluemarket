@@ -6,6 +6,7 @@ import '../data/repositories/repositories.dart';
 import '../models/models.dart';
 import '../router/nav.dart';
 import '../state/providers.dart';
+import '../state/session.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
@@ -217,7 +218,7 @@ class _ListingBody extends ConsumerWidget {
                   small: true,
                   expand: false,
                   icon: Icons.open_in_new_rounded,
-                  onPressed: () => openBuyUrl(context, product),
+                  onPressed: () => openBuyUrl(context, ref, product),
                 )
               else
                 PillButton(
@@ -239,15 +240,89 @@ class _ListingBody extends ConsumerWidget {
 }
 
 /// Buy on a directory business's own website: the browser, not the cart.
-Future<void> openBuyUrl(BuildContext context, Product product) async {
+///
+/// The app cannot see what happens on that site, so when the person comes
+/// back it asks. "Yes, I bought it" records a self-reported purchase, which
+/// puts it under Bought, lets them review it, and tells the shop's future
+/// "new from a shop you bought from" pushes about them. Guests are not
+/// asked: there is no profile to record it on.
+Future<void> openBuyUrl(
+  BuildContext context,
+  WidgetRef ref,
+  Product product,
+) async {
   final messenger = ScaffoldMessenger.of(context);
   final uri = Uri.tryParse(product.buyUrl ?? '');
   if (uri == null) return;
+  final isMember = !ref.read(isGuestProvider);
   final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
   if (!ok) {
     messenger.showSnackBar(
       SnackBar(content: Text('Could not open ${product.buyUrl}')),
     );
+    return;
+  }
+  if (!isMember || !context.mounted) return;
+  _DidYouBuyPrompt.arm(context, ref, product);
+}
+
+/// Waits for the app to come back to the foreground once, then asks.
+class _DidYouBuyPrompt with WidgetsBindingObserver {
+  _DidYouBuyPrompt._(this.context, this.ref, this.product);
+
+  final BuildContext context;
+  final WidgetRef ref;
+  final Product product;
+  bool _asked = false;
+
+  static void arm(BuildContext context, WidgetRef ref, Product product) {
+    final prompt = _DidYouBuyPrompt._(context, ref, product);
+    WidgetsBinding.instance.addObserver(prompt);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _ask();
+  }
+
+  Future<void> _ask() async {
+    if (_asked) return;
+    _asked = true;
+    WidgetsBinding.instance.removeObserver(this);
+    if (!context.mounted) return;
+    final bought = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: const Text('Did you buy it?'),
+        content: Text(
+          'If you bought ${product.title} on their website, say so and it '
+          'goes under Bought on your profile, where you can review it later.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialog).pop(false),
+            child: const Text('Not this time'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialog).pop(true),
+            child: const Text('Yes, I bought it'),
+          ),
+        ],
+      ),
+    );
+    if (bought != true || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(directoryRepositoryProvider).reportPurchase(product.id);
+      ref.invalidate(purchasesProvider);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Added under Bought on your profile.')),
+      );
+    } on RepositoryException catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(describeError(error).body)),
+      );
+    }
   }
 }
 

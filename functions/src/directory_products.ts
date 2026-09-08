@@ -151,6 +151,54 @@ export async function saveDirectoryProduct(
   return { id: ref.id };
 }
 
+/**
+ * "Did you buy it?" A purchase made on a directory business's own website is
+ * invisible to the app, so the buyer says so when they come back. It lands
+ * under Bought (delivered, since nothing here can track it), counts toward
+ * "new from a shop you bought from", and can be reviewed. Marked
+ * self-reported, never a sale figure.
+ */
+export async function reportDirectoryPurchase(
+  uid: string,
+  productId: string,
+): Promise<{ purchaseId: string }> {
+  if (!productId.startsWith(PRODUCT_ID_PREFIX)) {
+    throw new HttpsError('invalid-argument', 'Only website-link products can be reported this way.');
+  }
+  const docId = productId.slice(PRODUCT_ID_PREFIX.length);
+  const db = getFirestore();
+  const product = (await db.collection('directoryProducts').doc(docId).get()).data();
+  if (!product) throw new HttpsError('not-found', 'That product is gone.');
+  const sellerId = str(product.ownerUid);
+  const purchaseId = `website_${docId}_${Date.now()}`;
+  const now = FieldValue.serverTimestamp();
+  const images = Array.isArray(product.imageUrls) ? product.imageUrls.map(str) : [];
+  const batch = db.batch();
+  batch.set(db.collection('users').doc(uid).collection('purchases').doc(purchaseId), {
+    orderId: 'website',
+    productId,
+    title: str(product.title) || 'Untitled',
+    sellerId,
+    imageUrl: images[0] ?? null,
+    purchasedAt: now,
+    delivered: true,
+    reviewed: false,
+    selfReported: true,
+    buyUrl: str(product.buyUrl),
+  });
+  batch.set(db.collection('users').doc(uid), { purchaseCount: FieldValue.increment(1) }, { merge: true });
+  if (sellerId && sellerId !== uid) {
+    batch.set(
+      db.collection('sellers').doc(sellerId).collection('buyers').doc(uid),
+      { lastOrderId: 'website', lastPurchaseAt: now, count: FieldValue.increment(1) },
+      { merge: true },
+    );
+  }
+  await batch.commit();
+  logger.info('Website purchase reported', { uid, productId });
+  return { purchaseId };
+}
+
 export async function deleteDirectoryProduct(uid: string, id: string): Promise<void> {
   await requireDirectoryLink(uid);
   const db = getFirestore();

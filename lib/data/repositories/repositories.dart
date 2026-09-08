@@ -309,6 +309,10 @@ abstract interface class DirectoryRepository {
 
   /// Removes one, and its feed post. [id] without the prefix.
   Future<void> deleteProduct(String id);
+
+  /// "Did you buy it?" Records a purchase the buyer made on the business's
+  /// own website, so it shows under Bought and can be reviewed.
+  Future<void> reportPurchase(String productId);
 }
 
 /// Shipments, in both directions.

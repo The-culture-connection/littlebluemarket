@@ -18,7 +18,7 @@ import {
   WP_SECRETS,
 } from './config.ts';
 import { applyListingProfile, syncAllDirectoryListings, syncDirectory } from './directory.ts';
-import { deleteDirectoryProduct, saveDirectoryProduct } from './directory_products.ts';
+import { deleteDirectoryProduct, reportDirectoryPurchase, saveDirectoryProduct } from './directory_products.ts';
 import { announceIfNew, rebuildBuyerIndexPage } from './buyer_index.ts';
 import {
   forumReplyRecipients,
@@ -399,6 +399,15 @@ export const directoryProductSave = onCall(
     const data = (request.data ?? {}) as Record<string, unknown>;
     const id = typeof data.id === 'string' && data.id ? data.id : undefined;
     return saveDirectoryProduct(uid, data, id);
+  }),
+);
+
+/** "Did you buy it?" A purchase made on a directory business's website, reported by the buyer. */
+export const directoryPurchaseReport = onCall(
+  withLoudErrors('directoryPurchaseReport', async (request) => {
+    const uid = requireUid(request.auth);
+    const productId = String((request.data ?? {}).productId ?? '');
+    return reportDirectoryPurchase(uid, productId);
   }),
 );
 
