@@ -34,7 +34,7 @@ Which Firebase project a live build talks to is decided by two committed
 files, `android/app/google-services.json` and `lib/firebase_options.dart`. The
 repo carries the **production** ones (`little-blue-cart-prod`); the dev
 project's copies live in `firebase/config/dev/` and `scripts/use-env.ps1 dev`
-swaps them in (`run-live.ps1` does that for you and swaps back when it exits).
+swaps them in (`run-live.ps1 -Dev` does that for you and swaps back when it exits; plain `run-live.ps1` is the developer build against production, Grace's default since 2026-09-09).
 `LBM_DEV` is about what the app *shows*; the config files are about *where it
 talks*. A plain `flutter run` is therefore exactly what a customer gets.
 

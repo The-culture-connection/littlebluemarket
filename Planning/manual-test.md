@@ -1,6 +1,6 @@
 # Little Blue Market — the manual test, every journey
 
-*Written for Grace on 2026-09-05. Run it on the Android emulator against the real dev project (`scripts/run-live.sh` in Git Bash, or `scripts\run-live.ps1` in PowerShell). Every step says what to tap, what "pass" looks like, and what to paste to Claude if it fails. Work top to bottom; later journeys assume earlier ones passed.*
+*Written for Grace on 2026-09-05. Run it on the Android emulator via `scripts/run-live.sh` in Git Bash or `scripts\run-live.ps1` in PowerShell (since 2026-09-09 that is production data with the developer surfaces on; add `-Dev` for the dev project and test shop). Every step says what to tap, what "pass" looks like, and what to paste to Claude if it fails. Work top to bottom; later journeys assume earlier ones passed.*
 
 **Before you start**
 
@@ -169,7 +169,7 @@
 
 ## J17 · Production (2026-09-08)
 
-*Everything here runs against little-blue-cart-prod and the REAL shop. `run-prod.ps1` (or a plain `flutter run`) is the production app; `run-live.ps1` is still the dev app on the dev project.*
+*Everything here runs against little-blue-cart-prod and the REAL shop. `run-prod.ps1` (or a plain `flutter run`) is the production app; `run-live.ps1` is the same production data with the developer surfaces on; `run-live.ps1 -Dev` is the dev project.*
 
 1. **Console, once:** Firebase console → little-blue-cart-prod → Blaze plan; Authentication → Sign-in method → Email/Password on, Anonymous on; Authentication → Settings → Authorized domains → add the Railway domain of the admin website.
 2. `scripts\doctor-prod.ps1`. *Pass:* 0 FAIL; `env params … (the real shop)`; `secrets all 8 exist`; `auth providers` green. If `SHOPIFY_LOCATION_ID` is reported empty, take the online-fulfilment location id it prints, put it in `functions\.env.little-blue-cart-prod`, then `scripts\deploy-prod.ps1`.
