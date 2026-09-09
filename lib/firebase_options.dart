@@ -50,18 +50,19 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAB5c5sH8m64cPheKdZqun3_jEBoAafFks',
-    appId: '1:19665063635:android:a62bf8d5243ffd8f9f8e26',
-    messagingSenderId: '19665063635',
-    projectId: 'little-blue-cart-prod',
-    storageBucket: 'little-blue-cart-prod.firebasestorage.app',
+    apiKey: 'AIzaSyBDC6sIcDI3kI8z7IIOmcHO3faS_Lh1cvo',
+    appId: '1:125444581085:android:0231610405fbfd9b505d34',
+    messagingSenderId: '125444581085',
+    projectId: 'little-blue-610e5',
+    storageBucket: 'little-blue-610e5.firebasestorage.app',
   );
+
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAbnnC7FjrOhFVSDiUxassfW1xnh864PKc',
-    appId: '1:19665063635:ios:d3c89b553e9409d59f8e26',
-    messagingSenderId: '19665063635',
-    projectId: 'little-blue-cart-prod',
-    storageBucket: 'little-blue-cart-prod.firebasestorage.app',
+    apiKey: 'AIzaSyCecM-XQWH7_q70Bj_IaMEgJcRljOaplgo',
+    appId: '1:125444581085:ios:ed331f13c32e915b505d34',
+    messagingSenderId: '125444581085',
+    projectId: 'little-blue-610e5',
+    storageBucket: 'little-blue-610e5.firebasestorage.app',
     iosBundleId: 'com.littleblue.market',
   );
 }
