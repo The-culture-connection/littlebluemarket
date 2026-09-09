@@ -23,10 +23,11 @@ import 'widgets/splash_overlay.dart';
 Future<void> main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
 
-  // Debug builds keep every raw failure, so the dev strip can say what broke
-  // and "Copy for Claude" can turn it into a bug report. Release builds never
-  // enable the sink, and widget tests never run main().
-  if (kDebugMode) {
+  // Developer builds (LBM_DEV=true) keep every raw failure, so the dev strip
+  // can say what broke and "Copy for Claude" can turn it into a bug report. A
+  // plain `flutter run` is the production app and never enables the sink;
+  // widget tests never run main().
+  if (kLbmDev) {
     DevErrorSink.enabled = true;
     final presentError = FlutterError.onError;
     FlutterError.onError = (details) {
@@ -57,7 +58,7 @@ Future<void> main() async {
 
   // Firebase comes up only for a live build, so a fixture build needs no
   // configuration and pays no start-up cost.
-  if (const String.fromEnvironment('LBM_BACKEND') == 'live') {
+  if (resolveBackend() == Backend.live) {
     await initializeFirebase(useEmulators: useFirebaseEmulators);
     // A background push has nothing to do in Dart (the system shows it), but
     // the handler must exist or the plugin logs a warning on every one.

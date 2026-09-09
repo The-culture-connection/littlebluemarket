@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -184,9 +183,9 @@ class LbmErrorCard extends StatelessWidget {
             described.body,
             style: TextStyle(fontSize: 13.5, height: 1.55, color: c.ink2),
           ),
-          // The raw cause, for whoever is building the app. A release build
-          // never shows it; the copy above is what a person sees.
-          if (kDebugMode && !kUnderFlutterTest) ...[
+          // The raw cause, for whoever is building the app. Only a developer
+          // build (LBM_DEV=true) shows it; the copy above is what a person sees.
+          if (kLbmDev && !kUnderFlutterTest) ...[
             const SizedBox(height: 8),
             Text(
               _rawCause(error),

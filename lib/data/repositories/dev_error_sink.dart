@@ -10,6 +10,15 @@ import 'dart:io' show Platform;
 /// there; measured 2026-09-08), hence the runtime read.
 final bool kUnderFlutterTest = _detectTest();
 
+/// True for a developer build: `flutter run --dart-define=LBM_DEV=true`
+/// (what `scripts/run-live`, `run-fixtures` and `run-emulators` pass).
+///
+/// Gates every dev-only surface: the error strip with Copy for Claude, the
+/// corner backend badge, the raw cause under an error card, the Diagnostics
+/// row. A plain `flutter run` is the production app (Grace, 2026-09-08): it
+/// shows people only the friendly copy, whatever the build mode.
+const bool kLbmDev = bool.fromEnvironment('LBM_DEV');
+
 bool _detectTest() {
   try {
     return Platform.environment.containsKey('FLUTTER_TEST');

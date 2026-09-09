@@ -1,14 +1,17 @@
-// Public Firebase web configuration for the dev project (little-blue-610e5).
-// These values are not secrets: the app ships the same kind in
-// google-services.json. Access is decided by Firebase sign-in plus the admin
-// claim, and by the adminSendAnnouncement function refusing non-admins.
-// Registered with: firebase apps:create WEB "LBM admin console" --project dev
+// Public Firebase web configuration for the PRODUCTION project
+// (little-blue-cart-prod). These values are not secrets: the app ships the
+// same kind in google-services.json. Access is decided by Firebase sign-in
+// plus the admin claim, and by the adminSendAnnouncement function and the
+// Firestore rules refusing non-admins.
+// Registered with: firebase apps:create WEB "LBM admin console" --project prod
+// The dev project's copy is firebase-config.dev.js (swap the file to point the
+// console at dev while testing).
 window.LBM_FIREBASE_CONFIG = {
-  projectId: "little-blue-610e5",
-  appId: "1:125444581085:web:c231a1e76f44f3b0505d34",
-  storageBucket: "little-blue-610e5.firebasestorage.app",
-  apiKey: "AIzaSyAM_t47TSY7tGpJPjO7kxoAekPApnOlV9Y",
-  authDomain: "little-blue-610e5.firebaseapp.com",
-  messagingSenderId: "125444581085",
+  projectId: "little-blue-cart-prod",
+  appId: "1:19665063635:web:0e8fdba94e52f5b59f8e26",
+  storageBucket: "little-blue-cart-prod.firebasestorage.app",
+  apiKey: "AIzaSyAlf9oBADYIghMrotIRFfeldtoMH3Fi7-I",
+  authDomain: "little-blue-cart-prod.firebaseapp.com",
+  messagingSenderId: "19665063635",
   functionsRegion: "us-central1",
 };

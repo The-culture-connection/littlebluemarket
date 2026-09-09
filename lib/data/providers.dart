@@ -27,19 +27,27 @@ import 'repositories/repositories.dart';
 
 /// Which backend the app is talking to.
 ///
-/// Selected at build time:
+/// Selected at build time. Since the production cutover (2026-09-08) a plain
+/// `flutter run` is the real app on the Firebase project in
+/// `lib/firebase_options.dart`; the demo backend is opted into:
 ///
 /// ```
-/// flutter run                                  # fixtures
-/// flutter run --dart-define=LBM_BACKEND=live   # Firebase + the commerce proxy
+/// flutter run                                      # Firebase + the commerce proxy
+/// flutter run --dart-define=LBM_BACKEND=fixtures   # the built-in demo data
 /// ```
+///
+/// `flutter test` always gets the fixtures, whatever the flag.
 enum Backend { fixtures, live }
 
 const _backendFlag = String.fromEnvironment('LBM_BACKEND');
 
-final backendProvider = Provider<Backend>(
-  (ref) => _backendFlag == 'live' ? Backend.live : Backend.fixtures,
-);
+/// The one place the flag is read, so `main.dart` and the providers agree.
+Backend resolveBackend() {
+  if (kUnderFlutterTest) return Backend.fixtures;
+  return _backendFlag == 'fixtures' ? Backend.fixtures : Backend.live;
+}
+
+final backendProvider = Provider<Backend>((ref) => resolveBackend());
 
 /// A human label for the corner badge and the error reports:
 /// `fixtures`, `live · little-blue-610e5`, `emulators · little-blue-610e5`.

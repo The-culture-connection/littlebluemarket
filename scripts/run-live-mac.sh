@@ -21,5 +21,5 @@ if [ -z "$device" ]; then
   exit 2
 fi
 
-echo "flutter run -d \"$device\" --dart-define=LBM_BACKEND=live"
-exec flutter run -d "$device" --dart-define=LBM_BACKEND=live
+echo "flutter run -d \"$device\" --dart-define=LBM_DEV=true"
+exec flutter run -d "$device" --dart-define=LBM_DEV=true

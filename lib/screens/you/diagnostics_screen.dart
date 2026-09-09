@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/repositories/dev_error_sink.dart';
 import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
 import '../../state/providers.dart';
@@ -49,7 +50,7 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> {
   Widget build(BuildContext context) {
     final c = context.c;
     return LbmScreen(
-      appBar: const LbmAppBar(title: 'Diagnostics (dev)'),
+      appBar: LbmAppBar(title: kLbmDev ? 'Diagnostics (dev)' : 'Staff tools'),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(14, 4, 14, 26),
         children: [

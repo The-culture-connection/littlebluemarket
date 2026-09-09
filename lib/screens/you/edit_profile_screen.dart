@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -312,15 +311,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               },
             ),
           ),
-          // The hidden dev screen. Not in release builds, not under test.
-          if (kDebugMode && !kUnderFlutterTest) ...[
+          // The staff screen (Claim admin, Sync collections, Backfill catalog,
+          // the health check). Developer builds always show it; in the
+          // production app only the merchant's own accounts and admins see
+          // the row. Every button on it is refused server-side regardless.
+          if (_showStaffTools(ref)) ...[
             const SizedBox(height: 12),
             LbmCard(
               child: ListRow(
-                title: const Text('Diagnostics (dev)'),
-                subtitle: const Text(
-                  'Who this phone thinks you are, and whether the backend '
-                  'can reach the store',
+                title: Text(kLbmDev ? 'Diagnostics (dev)' : 'Staff tools'),
+                subtitle: Text(
+                  kLbmDev
+                      ? 'Who this phone thinks you are, and whether the '
+                            'backend can reach the store'
+                      : 'Claim admin, sync the catalog, check the backend',
                 ),
                 trailing: Icon(
                   Icons.chevron_right_rounded,
@@ -502,3 +506,16 @@ class _BuyerRowsState extends ConsumerState<_BuyerRows> {
   }
 }
 
+
+/// The merchant's own domain. An account here sees Staff tools in the
+/// production app, which is how the first admin claim is made without a
+/// developer build; the claim itself is still decided by the backend's
+/// admin list.
+const kStaffEmailDomain = '@the-culture-connection.com';
+
+bool _showStaffTools(WidgetRef ref) {
+  if (kLbmDev && !kUnderFlutterTest) return true;
+  if (ref.watch(isAdminProvider)) return true;
+  final email = ref.watch(authServiceProvider).currentUser?.email ?? '';
+  return email.toLowerCase().endsWith(kStaffEmailDomain);
+}

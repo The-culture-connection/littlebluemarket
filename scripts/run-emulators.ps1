@@ -16,7 +16,7 @@ $env:FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080'
 $env:GCLOUD_PROJECT = 'little-blue-610e5'
 npm run seed
 Pop-Location
-Say "flutter run -d $Device --dart-define=LBM_BACKEND=live --dart-define=LBM_EMULATORS=true"
+Say "flutter run -d $Device --dart-define=LBM_DEV=true --dart-define=LBM_EMULATORS=true"
 Push-Location $Repo
-flutter run -d $Device --dart-define=LBM_BACKEND=live --dart-define=LBM_EMULATORS=true
+flutter run -d $Device --dart-define=LBM_DEV=true --dart-define=LBM_EMULATORS=true
 Pop-Location

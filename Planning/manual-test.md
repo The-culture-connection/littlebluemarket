@@ -167,6 +167,19 @@
 5. **Bio links (CP-F3).** Edit profile → Bio → add "Shop at www.littlebluecart.com" → Save → You tab. *Pass:* the address is underlined, tapping it opens the browser, the rest of the bio is plain. Open your profile from another account: the same.
 6. **First-time tour (CP-F4).** Uninstall and reinstall the app (the phone remembers the tour), then Create a Profile with a fresh `grace-s+tour1@…` → confirm → handle → Create a profile. *Pass:* a five-page card appears over the feed (Welcome, Find what is near you, Join the community, Your profile, Tell us what you think); **Next** pages, **Done** closes; kill and reopen: nothing; sign out and make another profile on the same phone: nothing. A guest never sees it; an existing account that only signs in never sees it.
 
+## J17 · Production (2026-09-08)
+
+*Everything here runs against little-blue-cart-prod and the REAL shop. `run-prod.ps1` (or a plain `flutter run`) is the production app; `run-live.ps1` is still the dev app on the dev project.*
+
+1. **Console, once:** Firebase console → little-blue-cart-prod → Blaze plan; Authentication → Sign-in method → Email/Password on, Anonymous on; Authentication → Settings → Authorized domains → add the Railway domain of the admin website.
+2. `scripts\doctor-prod.ps1`. *Pass:* 0 FAIL; `env params … (the real shop)`; `secrets all 8 exist`; `auth providers` green. If `SHOPIFY_LOCATION_ID` is reported empty, take the online-fulfilment location id it prints, put it in `functions\.env.little-blue-cart-prod`, then `scripts\deploy-prod.ps1`.
+3. `scripts\run-prod.ps1`. *Pass:* splash → welcome; **no** "DEV · …" badge in the corner, **no** error strip at any point; Sign in with a wrong password says only "That email and password do not match".
+4. Create a Profile with `grace-s@…` → confirm → handle → Create. *Pass:* the tour shows once; Edit profile shows **Staff tools** (your domain) but no Admin row yet.
+5. Staff tools → **Claim admin** (your address must be in the prod project's `_internal/admins` document, as on dev) → **Sync collections** → **Backfill catalog**. *Pass:* "Admin claim granted"; back in Edit profile the **Admin** row is there; the Market feed fills with the real catalog within a minute.
+6. Sign in as a test account on another email domain. *Pass:* no Staff tools row, no Admin row.
+7. Admin website: open the Railway address → sign in as `grace-s@…` → send "Hello" to Everyone. *Pass:* it lands on the phone signed in to the production app; the Recent list shows it; Firestore (prod) `announcements/<id>`.
+8. Anything red on the phone shows only the friendly line now. To see the raw cause and Copy for Claude, reproduce it on `run-live.ps1` (dev) or run `flutter run --dart-define=LBM_DEV=true` against prod, which is the production backend with the developer surfaces on.
+
 ---
 
 ### If a journey fails

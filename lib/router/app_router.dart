@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -307,13 +306,13 @@ GoRouter buildRouter(Ref ref) {
                     path: 'admin',
                     builder: (context, state) => const AdminScreen(),
                   ),
-                  // Debug builds only. Tests run in debug, so the smoke suite
-                  // still renders it.
-                  if (kDebugMode)
-                    GoRoute(
-                      path: 'diagnostics',
-                      builder: (context, state) => const DiagnosticsScreen(),
-                    ),
+                  // Always routable; the row that leads here is what is
+                  // hidden (developer builds, staff, admins), and every
+                  // button on it is refused server-side without the claim.
+                  GoRoute(
+                    path: 'diagnostics',
+                    builder: (context, state) => const DiagnosticsScreen(),
+                  ),
                   GoRoute(
                     path: 'messages',
                     builder: (context, state) => const MessagesScreen(),

@@ -144,6 +144,8 @@ function portOpen(port, host = '127.0.0.1') {
 async function main() {
   const alias = arg('project', 'dev');
   const projectId = resolveProject(alias);
+  /** Production: the real shop and the live directory are expected, not warned about. */
+  const isProd = alias === 'prod' || /-prod$/.test(projectId);
   const emulators = hasFlag('emulators');
   const stamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
   console.log(`LBM doctor · project ${projectId} (alias ${alias}) · ${stamp}${emulators ? ' · emulator mode' : ''}\n`);
@@ -176,9 +178,8 @@ async function main() {
   } else {
     const projects = JSON.parse(readFileSync(rc, 'utf8')).projects ?? {};
     const active = run('firebase', ['use']).out.split('\n').pop()?.trim();
-    if (!projects.dev) fail('.firebaserc', `no "dev" alias (has: ${Object.keys(projects).join(', ') || 'none'})`, 'add "dev": "little-blue-610e5" to .firebaserc');
-    else if (active && !active.includes(projects.dev)) warn('.firebaserc', `dev -> ${projects.dev}, but the active project is "${active}"`, 'firebase use dev');
-    else pass('.firebaserc', `dev -> ${projects.dev}`);
+    if (!projects[alias]) fail('.firebaserc', `no "${alias}" alias (has: ${Object.keys(projects).join(', ') || 'none'})`, `add "${alias}": "<project id>" to .firebaserc (dev is little-blue-610e5, prod is little-blue-cart-prod)`);
+    else pass('.firebaserc', `${alias} -> ${projects[alias]}${isProd ? ' (PRODUCTION)' : ''}`);
   }
 
   // 4. env params ---------------------------------------------------------
@@ -190,8 +191,9 @@ async function main() {
     const empty = ['SHOPIFY_STORE_DOMAIN', 'SHOPIFY_CLIENT_ID'].filter((k) => !params[k]);
     if (empty.length) fail('env params', `${empty.join(', ')} empty in ${envRel}`, `open ${envRel} and set ${empty.join(' and ')}`);
     else if (!params.SHOPIFY_STORE_DOMAIN.endsWith('.myshopify.com')) fail('env params', `SHOPIFY_STORE_DOMAIN "${params.SHOPIFY_STORE_DOMAIN}" should end in .myshopify.com (no https://, no slash)`, `fix the line in ${envRel}`);
-    else if (params.SHOPIFY_STORE_DOMAIN === PRODUCTION_DOMAIN) warn('env params', `SHOPIFY_STORE_DOMAIN is the PRODUCTION store (${PRODUCTION_DOMAIN})`, 'dev must point at little-blue-market-devtestingshop.myshopify.com');
-    else pass('env params', `${params.SHOPIFY_STORE_DOMAIN} · API ${params.SHOPIFY_API_VERSION ?? '(default)'} · client id set`);
+    else if (isProd && params.SHOPIFY_STORE_DOMAIN !== PRODUCTION_DOMAIN) fail('env params', `production points at ${params.SHOPIFY_STORE_DOMAIN}, not the real shop`, `set SHOPIFY_STORE_DOMAIN=${PRODUCTION_DOMAIN} in ${envRel}`);
+    else if (!isProd && params.SHOPIFY_STORE_DOMAIN === PRODUCTION_DOMAIN) warn('env params', `SHOPIFY_STORE_DOMAIN is the PRODUCTION store (${PRODUCTION_DOMAIN})`, 'dev must point at little-blue-market-devtestingshop.myshopify.com');
+    else pass('env params', `${params.SHOPIFY_STORE_DOMAIN}${isProd ? ' (the real shop)' : ''} · API ${params.SHOPIFY_API_VERSION ?? '(default)'} · client id set`);
   }
 
   // 4b. wordpress: the directory's staging copy ---------------------------------
@@ -211,7 +213,7 @@ async function main() {
     fail('wordpress', `WP_BASE_URL is the LIVE site (${wpHost})`, 'either point at a staging copy, or, if reading the live site is what you want (the app never writes to WordPress), add WP_LIVE_OK=yes to ' + envRel);
   } else {
     const liveByChoice = (wpHost === PRODUCTION_WP_HOST || wpHost.endsWith(`.${PRODUCTION_WP_HOST}`)) && new URL(wpBase).pathname.replace(/\/+$/, '') === '';
-    if (liveByChoice) warn('wordpress (live)', 'dev is reading the LIVE littlebluecart.com (WP_LIVE_OK=yes): read-only, but test users, orders and listings you create there are real', 'use existing accounts to test where you can, and delete any test user, order or listing you add on the live site when the checkpoint passes');
+    if (liveByChoice && !isProd) warn('wordpress (live)', 'dev is reading the LIVE littlebluecart.com (WP_LIVE_OK=yes): read-only, but test users, orders and listings you create there are real', 'use existing accounts to test where you can, and delete any test user, order or listing you add on the live site when the checkpoint passes');
     // A WP Staging copy gates visitors behind a login; the app password gets
     // through, so the public checks fall back to it and say so.
     const stagingUser = String(params.WP_APP_USER ?? '').trim();

@@ -25,11 +25,11 @@ class DevErrorEntry {
 
 /// Whether the dev-only surfaces render at all.
 ///
-/// Debug builds only, and never under `flutter test` — the smoke and scaling
-/// suites must see exactly what a release build shows. A test that wants the
-/// strip overrides this to true.
+/// Developer builds only (`LBM_DEV=true`), and never under `flutter test`:
+/// the smoke and scaling suites must see exactly what a person sees. A test
+/// that wants the strip overrides this to true.
 final devSurfaceEnabledProvider = Provider<bool>(
-  (ref) => kDebugMode && !kUnderFlutterTest,
+  (ref) => kLbmDev && !kUnderFlutterTest,
 );
 
 /// The last few failures, newest last.

@@ -8,8 +8,8 @@ replaced without a screen changing.
 
 ```bash
 flutter pub get
-flutter run                 # the demo backend — no configuration needed
-flutter test                # 291 tests
+flutter run                 # THE PRODUCTION APP: little-blue-cart-prod, the real shop (since 2026-09-08)
+flutter test                # ~455 tests, always on the demo backend
 flutter build apk --release --split-per-abi
 flutter build ipa           # macOS only
 ```
@@ -22,11 +22,21 @@ The app runs on either of two backends, chosen at build time. Both render the
 same screens; that equivalence is the test strategy.
 
 ```bash
-flutter run                                        # fixtures (the default)
-flutter run --dart-define=LBM_BACKEND=live         # Firebase + the commerce proxy
-flutter run --dart-define=LBM_BACKEND=live \
+flutter run                                        # Firebase + the commerce proxy (the default since cutover)
+flutter run --dart-define=LBM_BACKEND=fixtures     # the built-in demo data
+flutter run --dart-define=LBM_DEV=true             # a DEVELOPER build: corner badge, error strip with
+                                                   # Copy for Claude, raw causes, the Diagnostics row
+flutter run --dart-define=LBM_DEV=true \
             --dart-define=LBM_EMULATORS=true       # ...against local emulators
 ```
+
+Which Firebase project a live build talks to is decided by two committed
+files, `android/app/google-services.json` and `lib/firebase_options.dart`. The
+repo carries the **production** ones (`little-blue-cart-prod`); the dev
+project's copies live in `firebase/config/dev/` and `scripts/use-env.ps1 dev`
+swaps them in (`run-live.ps1` does that for you and swaps back when it exits).
+`LBM_DEV` is about what the app *shows*; the config files are about *where it
+talks*. A plain `flutter run` is therefore exactly what a customer gets.
 
 The fixture backend is not a stub. It honours writes, returns real empty
 states, and throws when something is missing — so screen code written against
@@ -58,8 +68,22 @@ firebase deploy --only firestore:rules,firestore:indexes,storage,functions
 firebase emulators:start --only firestore,auth,functions
 node functions/scripts/seed.mjs      # the fixture content, in Firestore
 cd little_blue_market && flutter run \
-  --dart-define=LBM_BACKEND=live --dart-define=LBM_EMULATORS=true
+  --dart-define=LBM_DEV=true --dart-define=LBM_EMULATORS=true
 ```
+
+### Production
+
+`little-blue-cart-prod` is the production Firebase project (`prod` alias in
+`.firebaserc`); `little-blue-610e5` stays the dev project (`dev`). The real
+shop is `little-blue-cart-dev.myshopify.com` (littlebluemarket.com; the word
+"dev" in its name is Shopify history). Production tooling mirrors the dev
+tooling with a `-prod` suffix: `scripts/deploy-prod.ps1` (tests → deploy →
+webhooks on the real shop → doctor), `scripts/doctor-prod.ps1`,
+`scripts/prod-secrets.ps1` (Secret Manager from `PARENT\.env.littlebluemarket`),
+`scripts/run-prod.ps1`, and `npm run <script>:prod` inside `functions/`.
+Non-secret params live in `functions/.env.little-blue-cart-prod` (gitignored,
+like the dev one). The admin website (`admin-web/`) points at production;
+`firebase-config.dev.js` is the dev copy.
 
 ## Where things live
 
