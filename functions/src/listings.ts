@@ -2,6 +2,8 @@ import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 import { HttpsError } from 'firebase-functions/v2/https';
 
+import { friendlyStoreError } from './errors.ts';
+
 import { catalogDocFor, type RestProduct } from './catalog.ts';
 import { stockLocationId } from './locations.ts';
 import { requireSeller } from './sellers.ts';
@@ -326,13 +328,15 @@ export async function publishListing(
     return { shopifyProductId: productId, adopted, stockSet };
   } catch (error) {
     // Human-readable, and left on the draft so the retry button can show it.
-    const message = error instanceof HttpsError ? error.message : `Publishing failed: ${String((error as Error)?.message ?? error)}`;
+    const raw = error instanceof HttpsError ? error.message : String((error as Error)?.message ?? error);
+    const friendly = friendlyStoreError(raw);
+    const message = friendly !== raw ? friendly : error instanceof HttpsError ? raw : `Publishing failed: ${raw}`;
     await ref.set(
       { status: 'failed', error: message, updatedAt: FieldValue.serverTimestamp() },
       { merge: true },
     );
-    if (error instanceof HttpsError) throw error;
-    throw new HttpsError('internal', message);
+    if (error instanceof HttpsError && friendly === raw) throw error;
+    throw new HttpsError(friendly !== raw ? 'failed-precondition' : 'internal', message);
   }
 }
 

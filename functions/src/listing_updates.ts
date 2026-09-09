@@ -4,6 +4,8 @@ import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 import { HttpsError } from 'firebase-functions/v2/https';
 
+import { friendlyStoreError } from './errors.ts';
+
 import {
   collectionIdsFor,
   draftTag,
@@ -404,10 +406,12 @@ export async function updateListing(
     logger.info('Updated a listing on the store', { uid, listingId, productId, mutations: mutations.map((m) => m.name) });
     return { shopifyProductId: productId, stockSet };
   } catch (error) {
-    const message = error instanceof HttpsError ? error.message : `Updating failed: ${String((error as Error)?.message ?? error)}`;
+    const raw = error instanceof HttpsError ? error.message : String((error as Error)?.message ?? error);
+    const friendly = friendlyStoreError(raw);
+    const message = friendly !== raw ? friendly : error instanceof HttpsError ? raw : `Updating failed: ${raw}`;
     await ref.set({ status: 'failed', error: message, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-    if (error instanceof HttpsError) throw error;
-    throw new HttpsError('internal', message);
+    if (error instanceof HttpsError && friendly === raw) throw error;
+    throw new HttpsError(friendly !== raw ? 'failed-precondition' : 'internal', message);
   }
 }
 

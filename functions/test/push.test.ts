@@ -94,3 +94,11 @@ test('newPost follows its own switch and has a headline', () => {
   assert.equal(shouldPush({ newProducts: false }, { type: 'newPost' }), true, 'a different switch');
   assert.equal(titleFor('newPost', 'Kali'), 'Kali posted');
 });
+
+test('a Shopify scope refusal is reworded for the seller', async () => {
+  const { friendlyStoreError } = await import('../src/errors.ts');
+  const raw = 'Access denied for productSet field. Required access: `write_products` access scope.';
+  assert.match(friendlyStoreError(raw), /add or change products/);
+  assert.match(friendlyStoreError(raw), /store owner/);
+  assert.equal(friendlyStoreError('The store refused it: title is blank'), 'The store refused it: title is blank');
+});
