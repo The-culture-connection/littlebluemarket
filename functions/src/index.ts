@@ -62,7 +62,7 @@ import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
 import { noteVendorFromCatalog, syncVendorRoster } from './roster_grant.ts';
 import { geocodeProfileIfNeeded } from './geocode.ts';
-import { mentionsToNotify, notify } from './notifications.ts';
+import { mentionsToNotify, notify, notifyMany } from './notifications.ts';
 import { syncShipturtleOrders } from './shipturtle_orders.ts';
 import { publishListing, searchCategories } from './listings.ts';
 import { refreshListings, updateListing } from './listing_updates.ts';
@@ -861,25 +861,12 @@ export const onPostWritten = onDocumentWritten(
     if (!beforeAll && afterAll) {
       const authorId = String(afterAll.authorId ?? '');
       const text = String(afterAll.text ?? afterAll.caption ?? afterAll.title ?? '').slice(0, 140);
-      // Chunks in parallel, not one await per follower: 500 sequential
-      // sends can outlive the trigger and silently drop the tail. One
-      // follower's failure does not stop the rest.
-      const subscribers = await postSubscribers(authorId);
-      for (let i = 0; i < subscribers.length; i += 25) {
-        const results = await Promise.allSettled(
-          subscribers.slice(i, i + 25).map((uid) =>
-            notify(uid, {
-              type: 'newPost',
-              postId: event.params.postId,
-              fromUid: authorId,
-              text: text || 'posted something new',
-            }),
-          ),
-        );
-        for (const r of results) {
-          if (r.status === 'rejected') logger.warn('A follower push failed', { error: String(r.reason) });
-        }
-      }
+      await notifyMany(await postSubscribers(authorId), {
+        type: 'newPost',
+        postId: event.params.postId,
+        fromUid: authorId,
+        text: text || 'posted something new',
+      });
     }
   },
 );
@@ -1068,16 +1055,14 @@ export const onThreadWritten = onDocumentWritten(
       const members = await db.collection('forums').doc(forumId).collection('members').select().get();
       const recipients = forumThreadRecipients(members.docs.map((d) => d.id), authorId);
       const text = String(thread?.title ?? thread?.body ?? '').slice(0, 140);
-      for (const uid of recipients) {
-        await notify(uid, {
-          type: 'forumThread',
-          fromUid: authorId,
-          text,
-          route: `/community/thread/${event.params.threadId}`,
-          forumId,
-          threadId: event.params.threadId,
-        });
-      }
+      await notifyMany(recipients, {
+        type: 'forumThread',
+        fromUid: authorId,
+        text,
+        route: `/community/thread/${event.params.threadId}`,
+        forumId,
+        threadId: event.params.threadId,
+      });
     }
   },
 );
@@ -1104,16 +1089,14 @@ export const onThreadCommentWritten = onDocumentWritten(
         replierId,
       );
       const forumId = typeof thread.forumId === 'string' ? thread.forumId : undefined;
-      for (const uid of recipients) {
-        await notify(uid, {
-          type: 'forumReply',
-          fromUid: replierId,
-          text: String(comment?.text ?? '').slice(0, 140),
-          route: `/community/thread/${event.params.threadId}`,
-          forumId,
-          threadId: event.params.threadId,
-        });
-      }
+      await notifyMany(recipients, {
+        type: 'forumReply',
+        fromUid: replierId,
+        text: String(comment?.text ?? '').slice(0, 140),
+        route: `/community/thread/${event.params.threadId}`,
+        forumId,
+        threadId: event.params.threadId,
+      });
     }
   },
 );

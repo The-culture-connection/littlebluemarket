@@ -102,3 +102,37 @@ export async function notify(uid: string, n: NotifyInput): Promise<void> {
     logger.warn('Push failed after the bell was written', { uid, type: n.type, message: (error as Error).message });
   }
 }
+
+/** How many sends go out at once in a fan-out. */
+export const FAN_OUT_CHUNK = 25;
+
+/**
+ * One notification to many people: a new post to its author's followers, a
+ * new thread to a forum, a reply to everyone in the thread.
+ *
+ * Chunks in parallel, not one await per person: five hundred sequential
+ * sends can outlive the trigger's timeout and silently drop the tail. One
+ * person's failure (a dead push token, a missing preferences document) is
+ * logged and does not stop the rest. Returns how it went, for the logs.
+ */
+export async function notifyMany(
+  uids: readonly string[],
+  n: NotifyInput,
+  send: (uid: string, n: NotifyInput) => Promise<void> = notify,
+): Promise<{ sent: number; failed: number }> {
+  let sent = 0;
+  let failed = 0;
+  for (let i = 0; i < uids.length; i += FAN_OUT_CHUNK) {
+    const results = await Promise.allSettled(
+      uids.slice(i, i + FAN_OUT_CHUNK).map((uid) => send(uid, n)),
+    );
+    for (const r of results) {
+      if (r.status === 'fulfilled') sent++;
+      else {
+        failed++;
+        logger.warn('A notification in a fan-out failed', { type: n.type, error: String(r.reason) });
+      }
+    }
+  }
+  return { sent, failed };
+}
