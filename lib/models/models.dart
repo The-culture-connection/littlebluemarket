@@ -302,6 +302,13 @@ class Review {
 /// Availability is three fields rather than the prototype's single free-text
 /// string, because "22 in stock", "3 left" and "Back Oct 4" are three different
 /// states and only the last is genuinely prose.
+/// True for the variant names Shopify invents when a product has no real
+/// options: "Default Title", and the bare "Default" the mappers fall back to.
+bool isPlaceholderVariantName(String name) {
+  final n = name.trim().toLowerCase();
+  return n.isEmpty || n == 'default title' || n == 'default';
+}
+
 @immutable
 class Variant {
   const Variant(
@@ -329,6 +336,11 @@ class Variant {
   final String? availabilityNote;
 
   String get price => Fmt.money(priceCents);
+
+  /// Shopify names the only variant of a one-variant product "Default
+  /// Title". That is bookkeeping, not an option a buyer chooses, so the
+  /// screens leave it out.
+  bool get isPlaceholder => isPlaceholderVariantName(name);
 
   String get stockLabel {
     final note = availabilityNote;

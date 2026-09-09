@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
 import 'photo_source.dart';
+import 'hashtag_chips.dart';
 import 'primitives.dart';
 import 'product_art.dart';
 import 'sheets.dart';
@@ -226,6 +227,7 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
                     onChanged: (rating) => setState(() => _rating = rating),
                   ),
                   const SizedBox(height: 12),
+                  HashtagChips(controller: _text),
                   LbmField(
                     label: 'What should other people know?',
                     controller: _text,
@@ -455,6 +457,7 @@ class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
           style: LbmText.tiny.copyWith(color: c.ink2),
         ),
         const SizedBox(height: 14),
+        HashtagChips(controller: _text),
         LbmField(
           label: 'Your shoutout',
           controller: _text,
@@ -647,6 +650,7 @@ class _ListingComposerState extends ConsumerState<ListingComposer> {
                 ),
               if (_picked != null) ...[
                 const SizedBox(height: 8),
+                HashtagChips(controller: _caption),
                 LbmField(
                   label: 'Say something about it (optional)',
                   controller: _caption,

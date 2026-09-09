@@ -156,23 +156,28 @@ class _Body extends ConsumerWidget {
           ),
         ),
 
-        const SectionHead('Options'),
-        LbmCard(
-          margin: const EdgeInsets.symmetric(horizontal: 14),
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Column(
-            children: [
-              for (var i = 0; i < spec.variants.length; i++)
-                _VariantRow(
-                  variant: spec.variants[i],
-                  selected: i == selected,
-                  onTap: () => ref
-                      .read(selectedVariantsProvider.notifier)
-                      .select(productId, i),
-                ),
-            ],
+        // One variant called "Default Title" is Shopify's way of saying
+        // there are no options; a tester saw the raw name and asked why.
+        if (!(spec.variants.length == 1 &&
+            spec.variants.first.isPlaceholder)) ...[
+          const SectionHead('Options'),
+          LbmCard(
+            margin: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Column(
+              children: [
+                for (var i = 0; i < spec.variants.length; i++)
+                  _VariantRow(
+                    variant: spec.variants[i],
+                    selected: i == selected,
+                    onTap: () => ref
+                        .read(selectedVariantsProvider.notifier)
+                        .select(productId, i),
+                  ),
+              ],
+            ),
           ),
-        ),
+        ],
 
         const SectionHead('Details'),
         LbmCard(

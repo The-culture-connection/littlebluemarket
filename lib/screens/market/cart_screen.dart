@@ -108,7 +108,13 @@ class _CartLineRow extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${line.variantTitle} · ${line.unitPrice} each'),
+            Text(
+              [
+                if (!isPlaceholderVariantName(line.variantTitle))
+                  line.variantTitle,
+                '${line.unitPrice} each',
+              ].join(' · '),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
