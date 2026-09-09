@@ -23,7 +23,12 @@ import { authHeaders, shipturtleConfig } from './shipturtle_config.ts';
  *   { vendorName, failedAt, reason }                             not found / ambiguous / Shipturtle silent
  */
 
-export const DIRECTORY = '_internal/vendorDirectory';
+/**
+ * A collection path needs an odd number of segments, so the vendors sit one
+ * level under the `_internal/vendorDirectory` document (the whole `_internal`
+ * tree is closed to clients by the rules).
+ */
+export const DIRECTORY = '_internal/vendorDirectory/vendors';
 
 /** A vendor not found is tried again after a day; Shipturtle silence after an hour. */
 const NOT_FOUND_RETRY_MS = 24 * 60 * 60 * 1000;
