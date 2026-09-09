@@ -370,6 +370,7 @@ class _PhotoRow extends StatelessWidget {
             Image.network(
               existing[i],
               fit: BoxFit.cover,
+              cacheWidth: 300,
               errorBuilder: (_, _, _) => ColoredBox(color: c.skyWash),
             ),
             () => onRemoveExisting(i),

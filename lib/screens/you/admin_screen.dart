@@ -341,7 +341,7 @@ class _FeedbackSectionState extends ConsumerState<_FeedbackSection> {
         child: Stack(
           children: [
             InteractiveViewer(
-              child: Image.network(url, fit: BoxFit.contain),
+              child: Image.network(url, fit: BoxFit.contain, cacheWidth: 800),
             ),
             Positioned(
               top: 4,
@@ -414,6 +414,7 @@ class _FeedbackSectionState extends ConsumerState<_FeedbackSection> {
                               width: 64,
                               height: 114,
                               fit: BoxFit.cover,
+                              cacheWidth: 128,
                               errorBuilder: (_, _, _) => Container(
                                 width: 64,
                                 height: 114,

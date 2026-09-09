@@ -227,6 +227,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                                   child: Image.network(
                                     product.imageUrls.first,
                                     fit: BoxFit.cover,
+                                    cacheWidth: 100,
                                     errorBuilder: (_, _, _) =>
                                         ColoredBox(color: c.skyWash),
                                   ),

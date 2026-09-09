@@ -436,6 +436,7 @@ class _ShoutoutBody extends ConsumerWidget {
                     : Image.network(
                         post.imageUrls.first,
                         fit: BoxFit.cover,
+                        cacheWidth: 600,
                         errorBuilder: (_, _, _) => ColoredBox(color: c.skyWash),
                       ),
               ),
@@ -877,6 +878,7 @@ class _CartItemTile extends StatelessWidget {
                   : Image.network(
                       url,
                       fit: BoxFit.cover,
+                      cacheWidth: 200,
                       errorBuilder: (_, _, _) => const SizedBox.shrink(),
                     ),
             ),

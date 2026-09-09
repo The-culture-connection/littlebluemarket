@@ -744,6 +744,7 @@ class _ExistingPhotos extends StatelessWidget {
                   : Image.network(
                       url,
                       fit: BoxFit.cover,
+                      cacheWidth: 300,
                       errorBuilder: (_, _, _) => ColoredBox(color: c.skyWash),
                     ),
             ),

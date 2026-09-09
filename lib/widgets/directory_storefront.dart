@@ -65,6 +65,7 @@ class DirectoryPhotoStrip extends ConsumerWidget {
             width: 156,
             height: 116,
             fit: BoxFit.cover,
+            cacheWidth: 312,
             errorBuilder: (_, _, _) => Container(
               width: 156,
               height: 116,

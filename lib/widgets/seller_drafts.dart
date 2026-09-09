@@ -125,6 +125,7 @@ class _DraftRowState extends ConsumerState<_DraftRow> {
               : Image.network(
                   listing.imageUrls.first,
                   fit: BoxFit.cover,
+                  cacheWidth: 100,
                   errorBuilder: (_, _, _) => ColoredBox(color: c.skyWash),
                 ),
         ),

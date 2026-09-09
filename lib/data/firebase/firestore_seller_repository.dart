@@ -47,6 +47,7 @@ class FirestoreSellerRepository implements SellerRepository {
     return _listings
         .where('sellerUid', isEqualTo: uid)
         .orderBy('updatedAt', descending: true)
+        .limit(100)
         .snapshots()
         .map(
           (snapshot) => [

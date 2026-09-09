@@ -63,6 +63,7 @@ class DirectoryListingCard extends StatelessWidget {
             child: Image.network(
               l.imageUrl,
               fit: BoxFit.cover,
+              cacheWidth: 600,
               // A dead image link is not worth a broken-picture glyph.
               errorBuilder: (_, _, _) => const SizedBox.shrink(),
             ),

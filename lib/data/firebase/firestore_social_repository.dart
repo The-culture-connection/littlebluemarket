@@ -255,6 +255,7 @@ class FirestoreSocialRepository implements SocialRepository {
       .doc(postId)
       .collection('comments')
       .orderBy('createdAt')
+      .limit(200)
       .snapshots()
       .map(
         (snapshot) => snapshot.docs
@@ -316,6 +317,7 @@ class FirestoreSocialRepository implements SocialRepository {
       .doc(productId)
       .collection('reviews')
       .orderBy('createdAt', descending: true)
+      .limit(50)
       .snapshots()
       .map(
         (snapshot) => snapshot.docs
@@ -378,6 +380,7 @@ class FirestoreSocialRepository implements SocialRepository {
   @override
   Stream<List<Forum>> watchForums() => _forums
       .orderBy('memberCount', descending: true)
+      .limit(50)
       .snapshots()
       .map(
         (snapshot) => snapshot.docs
@@ -457,6 +460,7 @@ class FirestoreSocialRepository implements SocialRepository {
   Stream<List<ForumThread>> watchThreads(String forumId) => _threads
       .where('forumId', isEqualTo: forumId)
       .orderBy('createdAt', descending: true)
+      .limit(100)
       .snapshots()
       .map(
         (snapshot) => snapshot.docs
@@ -502,6 +506,7 @@ class FirestoreSocialRepository implements SocialRepository {
       .doc(threadId)
       .collection('comments')
       .orderBy('createdAt')
+      .limit(200)
       .snapshots()
       .map(
         (snapshot) => snapshot.docs

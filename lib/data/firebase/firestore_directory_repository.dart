@@ -52,6 +52,7 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
         .doc(id)
         .collection('directoryOrders')
         .orderBy('createdAt', descending: true)
+        .limit(50)
         .snapshots()
         .map(
           (snapshot) => [
@@ -70,6 +71,7 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
         .collection('directoryListings')
         .where('ownerUid', isEqualTo: id)
         .orderBy('updatedAt', descending: true)
+        .limit(100)
         .snapshots()
         .map(
           (snapshot) => [
@@ -100,6 +102,7 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
           .where('ownerUid', isEqualTo: ownerUid)
           .where('status', isEqualTo: 'publish')
           .orderBy('updatedAt', descending: true)
+          .limit(100)
           .snapshots()
           .map(
             (snapshot) => [
@@ -115,6 +118,7 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
   Stream<List<Product>> _productsOf(String ownerUid) => _products
       .where('ownerUid', isEqualTo: ownerUid)
       .orderBy('createdAt', descending: true)
+      .limit(100)
       .snapshots()
       .map(
         (snapshot) => [

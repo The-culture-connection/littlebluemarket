@@ -109,6 +109,7 @@ class ProductPhoto extends StatelessWidget {
     return Image.network(
       url,
       fit: fit,
+      cacheWidth: 600,
       errorBuilder: (context, _, _) => fallback,
     );
   }
