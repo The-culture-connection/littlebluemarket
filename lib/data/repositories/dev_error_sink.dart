@@ -17,7 +17,16 @@ final bool kUnderFlutterTest = _detectTest();
 /// corner backend badge, the raw cause under an error card, the Diagnostics
 /// row. A plain `flutter run` is the production app (Grace, 2026-09-08): it
 /// shows people only the friendly copy, whatever the build mode.
-const bool kLbmDev = bool.fromEnvironment('LBM_DEV');
+///
+/// A Release or Profile build never counts as a developer build, whatever the
+/// flag says: Xcode reuses the last `flutter run`'s flags from
+/// `ios/Flutter/Generated.xcconfig`, and on 2026-09-09 that put the badge on
+/// a Release build. `dart.vm.product` is true only in release builds,
+/// `dart.vm.profile` only in profile builds; neither needs Flutter.
+const bool kLbmDev =
+    bool.fromEnvironment('LBM_DEV') &&
+    !bool.fromEnvironment('dart.vm.product') &&
+    !bool.fromEnvironment('dart.vm.profile');
 
 bool _detectTest() {
   try {
