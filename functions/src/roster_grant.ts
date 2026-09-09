@@ -159,7 +159,9 @@ export async function autoGrantFromRoster(
  * picked up here.
  */
 export async function syncVendorRoster(fetchImpl: typeof fetch = fetch): Promise<{ roster: number; granted: number; skipped: number }> {
-  const roster = (await listVendorUsers(fetchImpl)) ?? [];
+  // The sweep has minutes, not seconds: refresh now, and rebuild from products
+  // and company records if Shipturtle's user list does not answer.
+  const roster = (await listVendorUsers(fetchImpl, { force: true, rebuildBudgetMs: 420_000 })) ?? [];
   const byEmail = new Map<string, Set<string>>();
   for (const user of roster) {
     const set = byEmail.get(user.email) ?? new Set<string>();

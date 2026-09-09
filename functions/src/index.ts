@@ -49,6 +49,7 @@ import { linkStoreAccounts } from './linking.ts';
 import { withLoudErrors } from './errors.ts';
 import { counterDelta, starKey } from './counters.ts';
 import { claimAdmin, requireAdmin } from './admin.ts';
+import { listVendorUsers } from './shipturtle_api.ts';
 import { syncCollections } from './collections.ts';
 import { backfillCatalogPage } from './backfill.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
@@ -453,13 +454,14 @@ export const sellerSyncMe = onCall(
     if (seller.exists && !seller.data()?.revokedAt) {
       return { status: 'alreadySeller', vendorName: String(seller.data()?.shopifyVendorName ?? '') };
     }
-    // A person tapping "check" has usually just been approved. The roster
-    // and vendor caches are for the background paths; here they are dropped
-    // so the answer is what Shipturtle says right now.
-    await Promise.all([
-      db.doc('_internal/shipturtleRoster').delete().catch(() => undefined),
-      db.doc('_internal/shipturtleVendors').delete().catch(() => undefined),
-    ]);
+    // A person tapping "check" has usually just been approved. The vendor
+    // cache is for the background paths and is dropped here; the roster is
+    // asked for afresh (12 s at most). When Shipturtle's user list does not
+    // answer (the real account, 2026-09-09) the roster the two-hourly sweep
+    // rebuilt from products and company records is used instead. The link
+    // below then reads the cache.
+    await db.doc('_internal/shipturtleVendors').delete().catch(() => undefined);
+    await listVendorUsers(fetch, { force: true });
     const result = await linkStoreAccounts(uid, email.trim().toLowerCase());
     if (result.grantedVendor) return { status: 'granted', vendorName: result.grantedVendor };
     if (result.linkedVendor) return { status: 'undecided', note: result.grantNote ?? 'On the roster, but no single vendor string could be decided.' };
@@ -567,7 +569,10 @@ export const adminBackfillCatalog = onCall(
  * the vendor string their company's products carry.
  */
 export const sellerSyncVendorRoster = onSchedule(
-  { schedule: 'every 6 hours', secrets: [SHIPTURTLE_API_KEY] },
+  // Every two hours, with time to rebuild the roster from products and
+  // company records: the real account's user list does not answer, and the
+  // rebuilt roster is cached for six hours so sign-ins never pay for it.
+  { schedule: 'every 2 hours', secrets: [SHIPTURTLE_API_KEY], timeoutSeconds: 540, memory: '512MiB' },
   async () => {
     await syncVendorRoster();
   },
