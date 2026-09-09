@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../push/push_service.dart';
+import '../repositories/dev_error_sink.dart';
 import 'firestore_errors.dart';
 
 /// The Android channel every push lands in. Its id is also in the manifest
@@ -142,10 +143,36 @@ class FirebasePushService implements PushService {
   Future<void> _registerToken(String uid) async {
     String? token;
     try {
-      // On iOS this fails until APNs has handed over its token; the refresh
-      // stream delivers it a moment later.
+      // iPhone: Firebase cannot mint its token until Apple has handed over
+      // the APNs one, which arrives a moment after permission is granted.
+      // Wait for it briefly rather than giving up on the first try; a
+      // phone that never produces one (no push entitlement on the build, no
+      // APNs key in the Firebase project) is reported so the dev strip can
+      // say so instead of the test button failing silently.
+      if (!kIsWeb && Platform.isIOS) {
+        String? apns;
+        for (var attempt = 0; attempt < 8 && apns == null; attempt++) {
+          apns = await _messaging.getAPNSToken();
+          if (apns == null) {
+            await Future<void>.delayed(const Duration(milliseconds: 750));
+          }
+        }
+        if (apns == null) {
+          DevErrorSink.report(
+            StateError(
+              'iPhone gave no APNs token after 6 s: check Push Notifications is '
+              'on the signed build (Xcode → Signing & Capabilities) and the '
+              'APNs key is uploaded to this Firebase project.',
+            ),
+            StackTrace.current,
+            'push token',
+          );
+          return;
+        }
+      }
       token = await _messaging.getToken();
-    } catch (_) {
+    } catch (error, stack) {
+      DevErrorSink.report(error, stack, 'push token');
       return;
     }
     if (token == null || token.isEmpty) return;

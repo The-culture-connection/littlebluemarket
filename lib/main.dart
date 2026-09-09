@@ -121,7 +121,18 @@ class LittleBlueMarketApp extends ConsumerWidget {
             child: DevErrorSurface(
               child: Stack(
                 children: [
-                  FeedbackLayer(router: router, child: child!),
+                  // A tap anywhere outside a text field puts the keyboard
+                  // away. iPhones have no back button to do it with, and
+                  // without this every form kept the keyboard up until the
+                  // person found somewhere to scroll.
+                  GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () {
+                      final focus = FocusManager.instance.primaryFocus;
+                      if (focus != null && focus.context != null) focus.unfocus();
+                    },
+                    child: FeedbackLayer(router: router, child: child!),
+                  ),
                   const DevBackendBadge(),
                 ],
               ),

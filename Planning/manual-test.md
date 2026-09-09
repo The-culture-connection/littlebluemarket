@@ -178,7 +178,8 @@
 5. Staff tools → **Claim admin** (your address must be in the prod project's `_internal/admins` document, as on dev) → **Sync collections** → **Backfill catalog**. *Pass:* "Admin claim granted"; back in Edit profile the **Admin** row is there; the Market feed fills with the real catalog within a minute.
 6. Sign in as a test account on another email domain. *Pass:* no Staff tools row, no Admin row.
 7. Admin website: open the Railway address → sign in as `grace-s@…` → send "Hello" to Everyone. *Pass:* it lands on the phone signed in to the production app; the Recent list shows it; Firestore (prod) `announcements/<id>`.
-8. Anything red on the phone shows only the friendly line now. To see the raw cause and Copy for Claude, reproduce it on `run-live.ps1` (dev) or run `flutter run --dart-define=LBM_DEV=true` against prod, which is the production backend with the developer surfaces on.
+8. **iPhone, first production run (2026-09-09 fixes).** Near me now asks for location the first time (iOS needed the reason strings in `Info.plist`; camera and photo library have theirs too). A tap anywhere outside a text field closes the keyboard. Searching people by handle works on production (its index was missing there). Push: after **Allow notifications** the app waits up to six seconds for Apple's push token; on a developer build (`run-live-mac.sh`) a missing token shows on the error strip with the reason (no push capability on the signed build, or no APNs key on the project). The "find devices on your local network" prompt is Xcode's debugger, not the app: it does not appear in a release or TestFlight build.
+9. Anything red on the phone shows only the friendly line now. To see the raw cause and Copy for Claude, reproduce it on `run-live.ps1` (dev) or run `flutter run --dart-define=LBM_DEV=true` against prod, which is the production backend with the developer surfaces on.
 
 ---
 

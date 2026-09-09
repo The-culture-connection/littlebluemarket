@@ -243,6 +243,21 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "_comment": "People search: sellers by handle prefix. Was created by hand on the dev project (from the error link) and missed on prod until 2026-09-09.",
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isSeller",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "handleLower",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -51,6 +51,14 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Near me uses your location to show makers and shops close to you. It is never stored or shared.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo for your profile, a post, or a product you are adding.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photo for your profile, a post, or a product you are adding.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Not used. Listed only because the photo picker can record video on some phones.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
