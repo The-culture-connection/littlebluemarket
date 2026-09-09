@@ -182,6 +182,11 @@ bool requireSeller(BuildContext context, WidgetRef ref, VoidCallback action) {
 /// ignored the selected variant — and then navigated as though an order had
 /// been placed. None of that was true, and the parts that are true are only
 /// knowable at checkout.
+///
+/// **Buy** means buy now (Grace, 2026-09-09): the item goes into the cart and
+/// the checkout opens at once, with whatever else the cart already holds.
+/// The cart screen is one tap away for anyone who wants to look first; the
+/// cart icon on a card is how you add without buying.
 Future<void> showBuySheet(
   BuildContext context,
   Product product, {
@@ -189,14 +194,19 @@ Future<void> showBuySheet(
 }) async {
   final messenger = ScaffoldMessenger.of(context);
   final container = ProviderScope.containerOf(context);
+  final commerce = container.read(commerceRepositoryProvider);
   try {
-    await container
-        .read(commerceRepositoryProvider)
-        .addLine(productId: product.id, variantId: variant?.name);
+    await commerce.addLine(productId: product.id, variantId: variant?.name);
     if (!context.mounted) return;
-    context.push('${branchPrefix(context)}/cart');
+    final handoff = await commerce.beginCheckout();
+    if (!context.mounted) return;
+    await showCheckoutHandoff(context, handoff);
   } on RepositoryException catch (error) {
+    if (!context.mounted) return;
     messenger.showSnackBar(SnackBar(content: Text(describeError(error).body)));
+    // The item is in the cart even when the checkout could not open, so the
+    // cart is where to go next.
+    context.push('${branchPrefix(context)}/cart');
   }
 }
 
@@ -212,7 +222,15 @@ Future<void> showCheckoutSheet(
   BuildContext context,
   WidgetRef ref,
   CheckoutHandoff handoff,
+) => showCheckoutHandoff(context, handoff);
+
+/// The same sheet without a [WidgetRef], for callers that only have a
+/// context (the Buy button on a card).
+Future<void> showCheckoutHandoff(
+  BuildContext context,
+  CheckoutHandoff handoff,
 ) {
+  final container = ProviderScope.containerOf(context);
   return showLbmSheet(context, (sheetContext) {
     final c = sheetContext.c;
     return LbmSheet(
@@ -241,11 +259,11 @@ Future<void> showCheckoutSheet(
             // An in-app browser tab on the store's own checkout. Whether
             // the person paid is not known here; the cart empties and the
             // purchase appears when the paid-order webhook lands.
-            final opened = await ref
+            final opened = await container
                 .read(checkoutLauncherProvider)
                 .open(handoff.webUrl);
             if (opened) {
-              ref.read(checkoutPendingProvider.notifier).set(true);
+              container.read(checkoutPendingProvider.notifier).set(true);
               return;
             }
             messenger.showSnackBar(

@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/data/fixtures/fixture_data.dart';
 import 'package:little_blue_market/main.dart';
+import 'package:little_blue_market/router/app_router.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 
 /// Boots the real app straight into the market, so the tab bar and the gate
 /// under test are the ones the app actually ships.
-Future<void> _pumpApp(WidgetTester tester, {required bool guest}) async {
+Future<ProviderContainer> _pumpApp(WidgetTester tester, {required bool guest}) async {
   // The design targets a phone; the default 800x600 test surface would put
   // half the feed off-screen.
   tester.view.physicalSize = const Size(390, 844);
@@ -38,6 +39,7 @@ Future<void> _pumpApp(WidgetTester tester, {required bool guest}) async {
     container.read(sessionProvider.notifier).signIn();
     await tester.pumpAndSettle();
   }
+  return container;
 }
 
 /// Scrolls the feed until the first Buy button is on screen, then taps it.
@@ -103,18 +105,24 @@ void main() {
     await _pumpApp(tester, guest: false);
     await _tapFirstBuy(tester);
 
-    // Buy adds to the cart and opens it. The prototype's sheet confirmed an
+    // Buy means buy now (2026-09-09): the item goes into the cart and the
+    // checkout hand-off opens at once. The prototype's sheet confirmed an
     // order against a hardcoded address and an invented flat shipping rate,
     // then navigated as though an order had been placed.
-    expect(find.text('Your cart'), findsOneWidget);
+    expect(find.text('Finish in checkout'), findsOneWidget);
     expect(find.text('Make a profile to do that'), findsNothing);
   });
 
   testWidgets('the cart does not invent a total it cannot know', (
     tester,
   ) async {
-    await _pumpApp(tester, guest: false);
+    final container = await _pumpApp(tester, guest: false);
     await _tapFirstBuy(tester);
+    // Close the checkout hand-off and look at the cart itself.
+    await tester.tap(find.text('Keep shopping'));
+    await tester.pumpAndSettle();
+    container.read(routerProvider).go('/market/cart');
+    await tester.pumpAndSettle();
 
     expect(find.text('Calculated at checkout'), findsOneWidget);
     expect(find.text('Total so far'), findsOneWidget);
