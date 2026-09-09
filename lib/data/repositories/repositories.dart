@@ -151,7 +151,10 @@ abstract interface class SocialRepository {
     required String text,
     String? parentId,
   });
-  Future<void> setCommentLike(String commentId, bool liked);
+
+  /// The post id comes along because a comment lives under its post; a
+  /// collection-group lookup by document id is not something Firestore does.
+  Future<void> setCommentLike(String postId, String commentId, bool liked);
 
   /// A photo for a post, uploaded to the poster's own folder. Returns its URL.
   Future<String> uploadPostPhoto(

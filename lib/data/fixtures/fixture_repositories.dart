@@ -64,7 +64,9 @@ class FixtureCatalogRepository implements CatalogRepository {
 
   @override
   Future<ProductSpec> spec(String id) {
-    if (Product.isExternalId(id)) return _backend._delayed(kExternalProductSpec);
+    if (Product.isExternalId(id)) {
+      return _backend._delayed(kExternalProductSpec);
+    }
     final found = Fx.specs[id];
     if (found == null) throw NotFoundException('spec', id);
     return _backend._delayed(found);
@@ -433,7 +435,8 @@ class FixtureCommerceRepository implements CommerceRepository {
     int quantity = 1,
   }) async {
     await _backend._settle();
-    final product = Fx.products[productId] ?? _store.directoryProducts.value[productId];
+    final product =
+        Fx.products[productId] ?? _store.directoryProducts.value[productId];
     if (product == null) throw NotFoundException('product', productId);
     // One item, on its own; the cart is not touched.
     return CheckoutHandoff(
@@ -677,7 +680,11 @@ class FixtureSocialRepository implements SocialRepository {
   }
 
   @override
-  Future<void> setCommentLike(String commentId, bool liked) async {
+  Future<void> setCommentLike(
+    String postId,
+    String commentId,
+    bool liked,
+  ) async {
     final already = _store.likedComments.contains(commentId);
     if (already == liked) return;
     liked
@@ -1743,11 +1750,10 @@ class FixtureDirectoryRepository implements DirectoryRepository {
 
   @override
   Stream<DirectoryListing?> watchListing(String id) async* {
-    DirectoryListing? find() =>
-        _listings.cast<DirectoryListing?>().firstWhere(
-          (l) => l?.id == id,
-          orElse: () => null,
-        );
+    DirectoryListing? find() => _listings.cast<DirectoryListing?>().firstWhere(
+      (l) => l?.id == id,
+      orElse: () => null,
+    );
     yield find();
     yield* _listingChanges.stream.map((_) => find());
   }
@@ -1786,10 +1792,9 @@ class FixtureDirectoryRepository implements DirectoryRepository {
     }
     if (!draft.isValid) throw const ValidationException('Give it a name.');
     final docId = id ?? 'demo${DateTime.now().microsecondsSinceEpoch}';
-    final website = _mine().map((l) => l.website).firstWhere(
-      (w) => w.isNotEmpty,
-      orElse: () => 'https://example.com',
-    );
+    final website = _mine()
+        .map((l) => l.website)
+        .firstWhere((w) => w.isNotEmpty, orElse: () => 'https://example.com');
     final product = Product(
       id: '${Product.externalPrefix}$docId',
       title: draft.title.trim(),
@@ -1848,7 +1853,10 @@ class FixtureDirectoryRepository implements DirectoryRepository {
         'then try again.',
       );
     }
-    final listing = mine.firstWhere((l) => l.isPublished, orElse: () => mine.first);
+    final listing = mine.firstWhere(
+      (l) => l.isPublished,
+      orElse: () => mine.first,
+    );
     final handle =
         '@${listing.title.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '')}';
     final people = {..._backend.store.people.value};
@@ -1857,9 +1865,10 @@ class FixtureDirectoryRepository implements DirectoryRepository {
       people[_backend.uid] = me.copyWith(
         name: listing.title,
         handle: handle,
-        bio: [listing.description, listing.website]
-            .where((s) => s.isNotEmpty)
-            .join('\n'),
+        bio: [
+          listing.description,
+          listing.website,
+        ].where((s) => s.isNotEmpty).join('\n'),
         tags: [
           for (final t in [...listing.categories, ...listing.tags])
             '#${t.replaceAll(RegExp('[^A-Za-z0-9]'), '')}',
@@ -1948,7 +1957,8 @@ class FixtureDirectoryRepository implements DirectoryRepository {
         ownerUid: _backend.uid,
         title: 'Juniper Pop-Up Shop',
         status: 'pending',
-        link: 'https://example.com/directory-vendors/listing/field-trips-pop-up/',
+        link:
+            'https://example.com/directory-vendors/listing/field-trips-pop-up/',
         city: 'St. Petersburg',
         state: 'FL',
         address: 'St. Petersburg, FL',

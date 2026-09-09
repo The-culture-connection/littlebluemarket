@@ -47,12 +47,16 @@ class _ChatroomScreenState extends ConsumerState<ChatroomScreen> {
     final messages = ref.watch(chatroomProvider);
 
     return LbmScreen(
-      bottom: Composer(
-        hintText: 'Message the room…',
-        // Reaches the repository, so it is there when you come back.
-        onSend: (text) =>
-            ref.read(messagingRepositoryProvider).sendToChatroom(text),
-      ),
+      // A guest reads the room; the rules refuse their writes, so the bar
+      // is not shown to them rather than failing on send.
+      bottom: ref.watch(isGuestProvider)
+          ? null
+          : Composer(
+              hintText: 'Message the room…',
+              // Reaches the repository, so it is there when you come back.
+              onSend: (text) =>
+                  ref.read(messagingRepositoryProvider).sendToChatroom(text),
+            ),
       child: Column(
         children: [
           _PullTab(onTap: _openForums),

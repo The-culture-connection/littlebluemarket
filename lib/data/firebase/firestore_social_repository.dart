@@ -296,19 +296,13 @@ class FirestoreSocialRepository implements SocialRepository {
   });
 
   @override
-  Future<void> setCommentLike(String commentId, bool liked) =>
+  Future<void> setCommentLike(String postId, String commentId, bool liked) =>
       guardFirestore(() async {
         final me = _requireUid;
-        // Comment ids are unique across posts, so a collection-group lookup
-        // finds the one document without needing its parent post id.
-        final found = await _db
-            .collectionGroup('comments')
-            .where(FieldPath.documentId, isEqualTo: commentId)
-            .limit(1)
-            .get();
-        if (found.docs.isEmpty) throw NotFoundException('comment', commentId);
-
-        final comment = found.docs.first.reference;
+        final comment = _posts
+            .doc(postId)
+            .collection('comments')
+            .doc(commentId);
         final like = comment.collection('likes').doc(me);
 
         await _db.runTransaction((tx) async {
@@ -420,8 +414,9 @@ class FirestoreSocialRepository implements SocialRepository {
       'description': draft.description.trim(),
       'tags': draft.tags,
       'createdBy': me,
-      // You are the first member of a forum you create.
-      'memberCount': 1,
+      // Zero here: the membership document below is what counts you, via
+      // onForumMemberWritten. Writing 1 as well made every new forum say 2.
+      'memberCount': 0,
       'threadCount': 0,
       'createdAt': FieldValue.serverTimestamp(),
     });
@@ -583,8 +578,11 @@ class FirestoreSocialRepository implements SocialRepository {
         .guarded(operation: 'firestore notifications');
   }
 
-  DocumentReference<Map<String, dynamic>> _prefs(String me) =>
-      _db.collection('users').doc(me).collection('settings').doc('notifications');
+  DocumentReference<Map<String, dynamic>> _prefs(String me) => _db
+      .collection('users')
+      .doc(me)
+      .collection('settings')
+      .doc('notifications');
 
   @override
   Stream<NotificationPrefs> watchNotificationPrefs() {
@@ -611,18 +609,28 @@ class FirestoreSocialRepository implements SocialRepository {
   }
 
   @override
-  Future<void> setFollowing(String personId, bool on) => guardFirestore(() async {
-    final me = _requireUid;
-    if (personId == me) {
-      throw const ValidationException('You already hear about your own posts.');
-    }
-    final ref = _db.collection('users').doc(me).collection('following').doc(personId);
-    if (on) {
-      await ref.set({'personId': personId, 'createdAt': FieldValue.serverTimestamp()});
-    } else {
-      await ref.delete();
-    }
-  }, operation: 'firestore following set');
+  Future<void> setFollowing(String personId, bool on) =>
+      guardFirestore(() async {
+        final me = _requireUid;
+        if (personId == me) {
+          throw const ValidationException(
+            'You already hear about your own posts.',
+          );
+        }
+        final ref = _db
+            .collection('users')
+            .doc(me)
+            .collection('following')
+            .doc(personId);
+        if (on) {
+          await ref.set({
+            'personId': personId,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        } else {
+          await ref.delete();
+        }
+      }, operation: 'firestore following set');
 
   @override
   Future<void> saveNotificationPrefs(NotificationPrefs prefs) =>

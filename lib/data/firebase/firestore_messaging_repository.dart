@@ -108,12 +108,17 @@ class FirestoreMessagingRepository implements MessagingRepository {
       _conversations
           .doc(conversationId)
           .collection('messages')
-          .orderBy('createdAt')
+          // Newest first so the window keeps the recent messages, then
+          // reversed to read oldest to newest. Ascending with a limit froze a
+          // thread at its first 200 messages.
+          .orderBy('createdAt', descending: true)
           .limit(200)
           .snapshots()
           .map(
             (snapshot) => snapshot.docs
                 .map((doc) => FirestoreMappers.message(doc.id, doc.data()))
+                .toList()
+                .reversed
                 .toList(),
           )
           .guarded();

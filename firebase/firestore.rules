@@ -60,6 +60,27 @@ service cloud.firestore {
       return isSelf(incoming().authorId);
     }
 
+    // A client write stamps its own creation time from the server clock
+    // (FieldValue.serverTimestamp() resolves to request.time here). Anything
+    // else could pin a message or a post to the top of a feed forever.
+    function fresh() {
+      return incoming().createdAt == request.time;
+    }
+
+    // A required text field: a string, not blank, and under a cap, so one
+    // write cannot carry a 900 KB message into a thread.
+    function text(field, max) {
+      return incoming()[field] is string
+        && incoming()[field].size() > 0
+        && incoming()[field].size() <= max;
+    }
+
+    // An optional text field: absent, or a string under the cap.
+    function optText(field, max) {
+      return !(field in incoming())
+        || (incoming()[field] is string && incoming()[field].size() <= max);
+    }
+
     // ------------------------------------------------------------------ users
 
     // ------------------------------------------------------- seller identity
@@ -294,8 +315,15 @@ service cloud.firestore {
     match /posts/{postId} {
       allow read: if true;
 
+      // The kinds a phone may create. Reviews, mirrored listings and
+      // directory posts are written by the functions, so a client cannot
+      // fake one.
       allow create: if member()
         && authorIsSelf()
+        && fresh()
+        && incoming().kind in ['listing', 'cart', 'shoutout']
+        && optText('text', 2000)
+        && optText('caption', 2000)
         && incoming().likeCount == 0
         && incoming().commentCount == 0
         // A cart post is a frozen copy of at most 24 items, never a live
@@ -324,8 +352,15 @@ service cloud.firestore {
 
       match /comments/{commentId} {
         allow read: if true;
-        allow create: if member() && authorIsSelf();
-        allow update, delete: if member() && isSelf(existing().authorId);
+        allow create: if member()
+          && authorIsSelf()
+          && fresh()
+          && text('text', 2000)
+          && incoming().likeCount == 0;
+        allow update: if member()
+          && isSelf(existing().authorId)
+          && untouched(['likeCount', 'authorId', 'createdAt', 'postId']);
+        allow delete: if member() && isSelf(existing().authorId);
 
         match /likes/{uid} {
           allow read: if true;
@@ -338,8 +373,10 @@ service cloud.firestore {
 
     match /forums/{forumId} {
       allow read: if true;
+      // Counts start at zero; the creator's membership document moves
+      // memberCount to 1 through the trigger.
       allow create: if member()
-        && incoming().memberCount == 1
+        && incoming().memberCount == 0
         && incoming().threadCount == 0;
       allow update: if member()
         && untouched(['memberCount', 'threadCount', 'createdBy']);
@@ -354,16 +391,27 @@ service cloud.firestore {
 
     match /threads/{threadId} {
       allow read: if true;
-      allow create: if member() && authorIsSelf() && incoming().commentCount == 0;
+      allow create: if member()
+        && authorIsSelf()
+        && fresh()
+        && text('title', 200)
+        && optText('body', 5000)
+        && incoming().commentCount == 0;
       allow update: if member()
         && isSelf(existing().authorId)
-        && untouched(['commentCount', 'authorId', 'createdAt']);
+        && untouched(['commentCount', 'authorId', 'createdAt', 'forumId']);
       allow delete: if member() && isSelf(existing().authorId);
 
       match /comments/{commentId} {
         allow read: if true;
-        allow create: if member() && authorIsSelf();
-        allow update, delete: if member() && isSelf(existing().authorId);
+        allow create: if member()
+          && authorIsSelf()
+          && fresh()
+          && text('text', 2000);
+        allow update: if member()
+          && isSelf(existing().authorId)
+          && untouched(['authorId', 'createdAt']);
+        allow delete: if member() && isSelf(existing().authorId);
       }
     }
 
@@ -373,7 +421,10 @@ service cloud.firestore {
     // history.
     match /chatroom/{messageId} {
       allow read: if signedIn();
-      allow create: if member() && authorIsSelf();
+      allow create: if member()
+        && authorIsSelf()
+        && fresh()
+        && text('text', 2000);
       allow update: if false;
       allow delete: if member() && isSelf(existing().authorId);
     }
@@ -388,17 +439,41 @@ service cloud.firestore {
         && request.auth.uid in existing().participantIds;
       allow create: if member()
         && request.auth.uid in incoming().participantIds
-        && incoming().participantIds.size() == 2;
+        && incoming().participantIds.size() == 2
+        && fresh()
+        && optText('preview', 2000);
+      // A participant may do two things to the summary: clear their own
+      // unread count, and (alongside a message) set the preview, the time
+      // and add one to the other side's count. Nothing else moves.
       allow update: if signedIn()
         && request.auth.uid in existing().participantIds
-        && untouched(['participantIds']);
+        && incoming().diff(existing()).affectedKeys()
+            .hasOnly(['unread', 'preview', 'lastMessageAt'])
+        && optText('preview', 2000)
+        && (!('lastMessageAt' in incoming().diff(existing()).affectedKeys())
+            || incoming().lastMessageAt == request.time)
+        && unreadSane(existing().participantIds[0])
+        && unreadSane(existing().participantIds[1]);
       allow delete: if false;
+
+      // Your own count only ever goes down; the other person's only ever
+      // goes up by one, which is what one sent message does.
+      function unreadSane(uid) {
+        return (
+          request.auth.uid == uid
+            ? incoming().get('unread', {}).get(uid, 0) <= existing().get('unread', {}).get(uid, 0)
+            : (incoming().get('unread', {}).get(uid, 0) == existing().get('unread', {}).get(uid, 0)
+                || incoming().get('unread', {}).get(uid, 0) == existing().get('unread', {}).get(uid, 0) + 1)
+        ) && incoming().get('unread', {}).get(uid, 0) >= 0;
+      }
 
       match /messages/{messageId} {
         allow read: if signedIn()
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
         allow create: if member()
           && authorIsSelf()
+          && fresh()
+          && text('text', 2000)
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
         allow update, delete: if false;
       }

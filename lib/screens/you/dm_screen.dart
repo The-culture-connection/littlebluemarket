@@ -39,18 +39,6 @@ class DmScreen extends ConsumerStatefulWidget {
 
 class _DmScreenState extends ConsumerState<DmScreen> {
   @override
-  void initState() {
-    super.initState();
-    // Reading a thread clears its badge.
-    final id = widget.conversationId;
-    if (id != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) ref.read(messagingRepositoryProvider).markRead(id);
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final direct = widget.conversationId;
     if (direct != null) return _Conversation(conversationId: direct);
@@ -73,15 +61,48 @@ class _DmScreenState extends ConsumerState<DmScreen> {
   }
 }
 
-class _Conversation extends ConsumerWidget {
+class _Conversation extends ConsumerStatefulWidget {
   const _Conversation({required this.conversationId});
 
   final String conversationId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Conversation> createState() => _ConversationState();
+}
+
+class _ConversationState extends ConsumerState<_Conversation> {
+  String get conversationId => widget.conversationId;
+
+  /// Reading a thread clears its badge. Best effort: a failure here is not
+  /// worth a card, the badge simply stays until the next open.
+  void _markRead() {
+    ref
+        .read(messagingRepositoryProvider)
+        .markRead(conversationId)
+        .catchError((_) {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Once on open, on both paths (from the inbox and from a storefront).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _markRead();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final uid = ref.watch(currentUidProvider) ?? '';
     final messages = ref.watch(conversationProvider(conversationId));
+    // And again for every message that arrives while the thread is open,
+    // otherwise the badge counts messages you have already seen.
+    ref.listen(conversationProvider(conversationId), (_, next) {
+      final list = next.asData?.value;
+      if (list != null && list.isNotEmpty && list.last.authorId != uid) {
+        _markRead();
+      }
+    });
     final otherId = ref
         .watch(inboxProvider)
         .value

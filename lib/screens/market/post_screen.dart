@@ -324,10 +324,21 @@ class _CommentLike extends ConsumerWidget {
       children: [
         InkResponse(
           radius: 20,
-          onTap: () => requireProfile(context, ref, () {
-            ref
-                .read(socialRepositoryProvider)
-                .setCommentLike(comment.id, !comment.likedByMe);
+          onTap: () => requireProfile(context, ref, () async {
+            final messenger = ScaffoldMessenger.of(context);
+            try {
+              await ref
+                  .read(socialRepositoryProvider)
+                  .setCommentLike(
+                    comment.postId,
+                    comment.id,
+                    !comment.likedByMe,
+                  );
+            } catch (error) {
+              messenger.showSnackBar(
+                SnackBar(content: Text(describeError(error).body)),
+              );
+            }
           }),
           child: Semantics(
             button: true,

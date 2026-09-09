@@ -51,7 +51,7 @@ import { normalizeOrder, recordFulfillment, recordPaidOrder } from './orders.ts'
 import { addTracking } from './fulfillment.ts';
 import { linkStoreAccounts } from './linking.ts';
 import { withLoudErrors } from './errors.ts';
-import { counterDelta, starKey } from './counters.ts';
+import { bumpCounter, counterDelta, starKey } from './counters.ts';
 import { claimAdmin, requireAdmin } from './admin.ts';
 import { banUser, unbanUser } from './moderation.ts';
 import { listVendorUsers } from './shipturtle_api.ts';
@@ -861,13 +861,24 @@ export const onPostWritten = onDocumentWritten(
     if (!beforeAll && afterAll) {
       const authorId = String(afterAll.authorId ?? '');
       const text = String(afterAll.text ?? afterAll.caption ?? afterAll.title ?? '').slice(0, 140);
-      for (const uid of await postSubscribers(authorId)) {
-        await notify(uid, {
-          type: 'newPost',
-          postId: event.params.postId,
-          fromUid: authorId,
-          text: text || 'posted something new',
-        });
+      // Chunks in parallel, not one await per follower: 500 sequential
+      // sends can outlive the trigger and silently drop the tail. One
+      // follower's failure does not stop the rest.
+      const subscribers = await postSubscribers(authorId);
+      for (let i = 0; i < subscribers.length; i += 25) {
+        const results = await Promise.allSettled(
+          subscribers.slice(i, i + 25).map((uid) =>
+            notify(uid, {
+              type: 'newPost',
+              postId: event.params.postId,
+              fromUid: authorId,
+              text: text || 'posted something new',
+            }),
+          ),
+        );
+        for (const r of results) {
+          if (r.status === 'rejected') logger.warn('A follower push failed', { error: String(r.reason) });
+        }
       }
     }
   },
@@ -994,7 +1005,7 @@ export const onCommentWritten = onDocumentWritten(
     if (delta === 0) return;
     const db = getFirestore();
     const postRef = db.collection('posts').doc(event.params.postId);
-    await postRef.set({ commentCount: FieldValue.increment(delta) }, { merge: true });
+    await bumpCounter(postRef, 'commentCount', delta);
 
     // A new comment tells the post's author, unless they wrote it.
     if (delta === 1) {
@@ -1019,12 +1030,15 @@ export const onCommentLikeWritten = onDocumentWritten(
   async (event) => {
     const delta = counterDelta(Boolean(event.data?.before?.exists), Boolean(event.data?.after?.exists));
     if (delta === 0) return;
-    await getFirestore()
-      .collection('posts')
-      .doc(event.params.postId)
-      .collection('comments')
-      .doc(event.params.commentId)
-      .set({ likeCount: FieldValue.increment(delta) }, { merge: true });
+    await bumpCounter(
+      getFirestore()
+        .collection('posts')
+        .doc(event.params.postId)
+        .collection('comments')
+        .doc(event.params.commentId),
+      'likeCount',
+      delta,
+    );
   },
 );
 
@@ -1033,10 +1047,7 @@ export const onForumMemberWritten = onDocumentWritten(
   async (event) => {
     const delta = counterDelta(Boolean(event.data?.before?.exists), Boolean(event.data?.after?.exists));
     if (delta === 0) return;
-    await getFirestore()
-      .collection('forums')
-      .doc(event.params.forumId)
-      .set({ memberCount: FieldValue.increment(delta) }, { merge: true });
+    await bumpCounter(getFirestore().collection('forums').doc(event.params.forumId), 'memberCount', delta);
   },
 );
 
@@ -1049,10 +1060,7 @@ export const onThreadWritten = onDocumentWritten(
     const forumId = thread?.forumId;
     if (typeof forumId !== 'string' || !forumId) return;
     const db = getFirestore();
-    await db
-      .collection('forums')
-      .doc(forumId)
-      .set({ threadCount: FieldValue.increment(delta) }, { merge: true });
+    await bumpCounter(db.collection('forums').doc(forumId), 'threadCount', delta);
 
     // Stage 12: a new thread reaches every member of the forum but its author.
     if (delta === 1) {
@@ -1081,7 +1089,7 @@ export const onThreadCommentWritten = onDocumentWritten(
     if (delta === 0) return;
     const db = getFirestore();
     const threadRef = db.collection('threads').doc(event.params.threadId);
-    await threadRef.set({ commentCount: FieldValue.increment(delta) }, { merge: true });
+    await bumpCounter(threadRef, 'commentCount', delta);
 
     // Stage 12: a reply reaches the thread's author and the earlier
     // commenters, not the whole forum.

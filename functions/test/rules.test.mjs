@@ -5,7 +5,8 @@
  * write its own money.** Everything else in the app can be re-derived; a seller
  * who can set their own revenue cannot.
  *
- * Not part of `npm test`, because they need a running emulator:
+ * Needs the Firestore emulator, so it is its own step (scripts/test-all runs it
+ * after `npm test`):
  *
  *   npm run test:rules
  */
@@ -20,6 +21,11 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
+
+/** What the app writes for createdAt: the rules require it to be the server clock. */
+const now = () => firebase.firestore.FieldValue.serverTimestamp();
 
 // Resolved against this file, not the process cwd, so the suite runs the same
 // from `functions/` and from the repo root.
@@ -230,13 +236,13 @@ describe('conversations are private to their two participants', () => {
 });
 
 describe('forums', () => {
-  test('a new forum starts with one member and no threads', async () => {
+  test('a new forum starts at zero; the creator\'s membership counts them', async () => {
     await assertSucceeds(
       member('maya').doc('forums/new1').set({
         title: 'Refills',
         description: 'x',
         createdBy: 'maya',
-        memberCount: 1,
+        memberCount: 0,
         threadCount: 0,
       }),
     );
@@ -542,7 +548,7 @@ describe("listings are the seller's own drafts", () => {
 describe('cart posts are frozen copies, capped at 24', () => {
   const item = (i) => ({ productId: 'p' + i, title: 'Thing ' + i, imageUrl: null, sellerId: 'kali', priceCents: 100 });
   const post = (n) => ({
-    kind: 'cart', authorId: 'maya', tags: [], likeCount: 0, commentCount: 0,
+    kind: 'cart', authorId: 'maya', tags: [], likeCount: 0, commentCount: 0, createdAt: now(),
     items: Array.from({ length: n }, (_, i) => item(i)), itemCount: n,
   });
 
@@ -568,7 +574,7 @@ describe("counters are the functions' to move", () => {
       await admin.firestore().doc('posts/cp1').set({ kind: 'shoutout', authorId: 'kali', text: 'hi', tags: [], likeCount: 0, commentCount: 0 });
     });
     await assertSucceeds(
-      member('maya').collection('posts/cp1/comments').add({ postId: 'cp1', authorId: 'maya', text: 'lovely', likeCount: 0 }),
+      member('maya').collection('posts/cp1/comments').add({ postId: 'cp1', authorId: 'maya', text: 'lovely', likeCount: 0, createdAt: now() }),
     );
     await assertFails(member('maya').doc('posts/cp1').update({ commentCount: 1 }));
     // Comments can be found across posts (the like button's lookup).
@@ -618,5 +624,84 @@ describe('reviews across products', () => {
       await admin.firestore().doc('catalog/p1/reviews/r1').set({ authorId: 'kali', rating: 5, tags: ['#PlasticFree'] });
     });
     await assertSucceeds(guest().collectionGroup('reviews').where('tags', 'array-contains', '#PlasticFree').get());
+  });
+});
+
+describe('writes are fresh, typed and capped', () => {
+  const long = 'x'.repeat(2001);
+
+  before(async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      const db = admin.firestore();
+      await db.doc('conversations/kali_maya2').set({ participantIds: ['kali', 'maya'], preview: '', unread: { kali: 0, maya: 3 } });
+      await db.doc('threads/wt1').set({ forumId: 'f1', authorId: 'kali', title: 'T', body: '', commentCount: 0 });
+      await db.doc('posts/wp1').set({ kind: 'shoutout', authorId: 'kali', text: 'hi', tags: [], likeCount: 0, commentCount: 0 });
+    });
+  });
+
+  test('chatroom: a member posts with the server clock; nothing stale, blank, huge or spoofed', async () => {
+    const ok = { conversationId: 'chatroom', authorId: 'maya', text: 'hello room', createdAt: now() };
+    await assertSucceeds(member('maya').collection('chatroom').add(ok));
+    await assertFails(member('maya').collection('chatroom').add({ ...ok, createdAt: new Date(2020, 0, 1) }));
+    await assertFails(member('maya').collection('chatroom').add({ conversationId: 'chatroom', authorId: 'maya', text: 'no clock' }));
+    await assertFails(member('maya').collection('chatroom').add({ ...ok, text: '' }));
+    await assertFails(member('maya').collection('chatroom').add({ ...ok, text: long }));
+    await assertFails(member('maya').collection('chatroom').add({ ...ok, text: 42 }));
+    await assertFails(member('maya').collection('chatroom').add({ ...ok, authorId: 'kali' }));
+    await assertFails(guest().collection('chatroom').add({ ...ok, authorId: 'anon' }));
+  });
+
+  test('direct messages: a participant writes; a stranger, a spoof or a stale clock cannot', async () => {
+    const ok = { conversationId: 'kali_maya2', authorId: 'maya', text: 'are these in stock?', createdAt: now() };
+    await assertSucceeds(member('maya').collection('conversations/kali_maya2/messages').add(ok));
+    await assertFails(member('rae').collection('conversations/kali_maya2/messages').add({ ...ok, authorId: 'rae' }));
+    await assertFails(member('maya').collection('conversations/kali_maya2/messages').add({ ...ok, authorId: 'kali' }));
+    await assertFails(member('maya').collection('conversations/kali_maya2/messages').add({ ...ok, createdAt: new Date(2020, 0, 1) }));
+    await assertFails(member('maya').collection('conversations/kali_maya2/messages').add({ ...ok, text: long }));
+  });
+
+  test('the thread summary: clear your own count, add one to theirs with a message, nothing else', async () => {
+    const doc = () => member('maya').doc('conversations/kali_maya2');
+    await assertSucceeds(doc().set({ unread: { maya: 0 } }, { merge: true }));
+    await assertFails(doc().set({ unread: { maya: 9 } }, { merge: true }));
+    await assertFails(doc().set({ unread: { kali: 50 } }, { merge: true }));
+    await assertSucceeds(doc().set({ preview: 'hi', lastMessageAt: now(), unread: { kali: firebase.firestore.FieldValue.increment(1) } }, { merge: true }));
+    await assertFails(doc().set({ preview: long }, { merge: true }));
+    await assertFails(doc().set({ lastMessageAt: new Date(2020, 0, 1) }, { merge: true }));
+    await assertFails(doc().set({ participantIds: ['maya', 'rae'] }, { merge: true }));
+    await assertFails(member('rae').doc('conversations/kali_maya2').set({ unread: { rae: 0 } }, { merge: true }));
+  });
+
+  test('thread comments: fresh, capped, in your own name', async () => {
+    const ok = { threadId: 'wt1', authorId: 'maya', text: 'agreed', createdAt: now() };
+    await assertSucceeds(member('maya').collection('threads/wt1/comments').add(ok));
+    await assertFails(member('maya').collection('threads/wt1/comments').add({ ...ok, authorId: 'kali' }));
+    await assertFails(member('maya').collection('threads/wt1/comments').add({ ...ok, text: long }));
+    await assertFails(member('maya').collection('threads/wt1/comments').add({ threadId: 'wt1', authorId: 'maya', text: 'no clock' }));
+  });
+
+  test('a new thread carries a title under 200 and a fresh clock', async () => {
+    const ok = { forumId: 'f1', authorId: 'maya', title: 'Refill day', body: '', commentCount: 0, createdAt: now() };
+    await assertSucceeds(member('maya').collection('threads').add(ok));
+    await assertFails(member('maya').collection('threads').add({ ...ok, title: 'x'.repeat(201) }));
+    await assertFails(member('maya').collection('threads').add({ ...ok, createdAt: new Date(2020, 0, 1) }));
+  });
+
+  test('post comments: fresh, capped, in your own name, never pre-liked', async () => {
+    const ok = { postId: 'wp1', authorId: 'maya', text: 'nice', likeCount: 0, createdAt: now() };
+    await assertSucceeds(member('maya').collection('posts/wp1/comments').add(ok));
+    await assertFails(member('maya').collection('posts/wp1/comments').add({ ...ok, authorId: 'kali' }));
+    await assertFails(member('maya').collection('posts/wp1/comments').add({ ...ok, likeCount: 40 }));
+    await assertFails(member('maya').collection('posts/wp1/comments').add({ ...ok, text: long }));
+  });
+
+  test('a phone creates listings, cart posts and shoutouts; never a review or a directory post', async () => {
+    const base = { authorId: 'maya', tags: [], likeCount: 0, commentCount: 0, createdAt: now() };
+    await assertSucceeds(member('maya').collection('posts').add({ ...base, kind: 'shoutout', text: 'go see @kali' }));
+    await assertSucceeds(member('maya').collection('posts').add({ ...base, kind: 'listing', productId: 'p1' }));
+    await assertFails(member('maya').collection('posts').add({ ...base, kind: 'review', productId: 'p1', rating: 5, text: 'fake' }));
+    await assertFails(member('maya').collection('posts').add({ ...base, kind: 'directory', listingId: '1' }));
+    await assertFails(member('maya').collection('posts').add({ ...base, kind: 'shoutout', text: long }));
+    await assertFails(member('maya').collection('posts').add({ ...base, kind: 'shoutout', text: 'stale', createdAt: new Date(2020, 0, 1) }));
   });
 });

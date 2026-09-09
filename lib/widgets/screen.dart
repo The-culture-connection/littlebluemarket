@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
+import 'async.dart';
 import 'primitives.dart';
 
 /// The frame every screen inside the tab shell sits in.
@@ -106,11 +107,17 @@ class LbmAppBar extends StatelessWidget {
 }
 
 /// The composer pinned above the tab bar on the chatroom, threads and DMs.
+/// The shared send bar: DMs, the chatroom, thread replies, post comments.
+///
+/// [onSend] is awaited. The field keeps its text and the button stays off
+/// until the write lands; a rejected or offline write puts the text back and
+/// says why, instead of the message silently vanishing. A second tap while
+/// one is in flight does nothing, so a double tap is one message.
 class Composer extends StatelessWidget {
   const Composer({super.key, required this.hintText, this.onSend});
 
   final String hintText;
-  final ValueChanged<String>? onSend;
+  final Future<void> Function(String text)? onSend;
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +134,7 @@ class _ComposerBody extends StatefulWidget {
   });
 
   final String hintText;
-  final ValueChanged<String>? onSend;
+  final Future<void> Function(String text)? onSend;
   final LbmColors colors;
 
   @override
@@ -136,6 +143,7 @@ class _ComposerBody extends StatefulWidget {
 
 class _ComposerBodyState extends State<_ComposerBody> {
   final _controller = TextEditingController();
+  var _sending = false;
 
   @override
   void dispose() {
@@ -143,11 +151,23 @@ class _ComposerBodyState extends State<_ComposerBody> {
     super.dispose();
   }
 
-  void _send() {
+  Future<void> _send() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
-    widget.onSend?.call(text);
-    _controller.clear();
+    final onSend = widget.onSend;
+    if (text.isEmpty || onSend == null || _sending) return;
+    setState(() => _sending = true);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      await onSend(text);
+      if (mounted) _controller.clear();
+    } catch (error) {
+      // The text is still in the field; say why it did not go.
+      messenger?.showSnackBar(
+        SnackBar(content: Text(describeError(error).body)),
+      );
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   @override
@@ -163,18 +183,19 @@ class _ComposerBodyState extends State<_ComposerBody> {
               controller: _controller,
               hintText: widget.hintText,
               pill: true,
+              readOnly: _sending,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _send(),
             ),
           ),
           const SizedBox(width: 9),
           CircleIconButton(
-            icon: Icons.send_rounded,
+            icon: _sending ? Icons.hourglass_top_rounded : Icons.send_rounded,
             iconSize: 20,
-            tooltip: 'Send',
+            tooltip: _sending ? 'Sending' : 'Send',
             background: c.accentDeep,
             color: c.accentInk,
-            onPressed: _send,
+            onPressed: _sending ? null : _send,
           ),
         ],
       ),
