@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../push/push_service.dart';
@@ -151,18 +152,28 @@ class FirebasePushService implements PushService {
       // say so instead of the test button failing silently.
       if (!kIsWeb && Platform.isIOS) {
         String? apns;
-        for (var attempt = 0; attempt < 8 && apns == null; attempt++) {
+        for (var attempt = 0; attempt < 12 && apns == null; attempt++) {
           apns = await _messaging.getAPNSToken();
           if (apns == null) {
+            // The native side may hold a token Firebase missed (it arrived
+            // before Firebase was configured); hand it over and look again.
+            if (await _nativePush('handApnsTokenToFirebase') == true) {
+              apns = await _messaging.getAPNSToken();
+              if (apns != null) break;
+            }
+            if (attempt == 5) await _nativePush('registerAgain');
             await Future<void>.delayed(const Duration(milliseconds: 750));
           }
         }
         if (apns == null) {
+          final outcome = await _nativePush('apnsOutcome');
           DevErrorSink.report(
             StateError(
-              'iPhone gave no APNs token after 6 s: check Push Notifications is '
-              'on the signed build (Xcode → Signing & Capabilities) and the '
-              'APNs key is uploaded to this Firebase project.',
+              'iPhone gave Firebase no APNs token after 9 s. Apple said: '
+              '${outcome ?? 'unknown'}. "FAILED … aps-environment" means the '
+              'signed build has no push entitlement (Xcode → Signing & '
+              'Capabilities, paid team). "no answer yet" means Apple never '
+              'replied: check the phone has internet and try cellular.',
             ),
             StackTrace.current,
             'push token',
@@ -177,6 +188,19 @@ class FirebasePushService implements PushService {
     }
     if (token == null || token.isEmpty) return;
     await _writeToken(uid, token);
+  }
+
+  /// The iOS side's "lbm/push" channel (AppDelegate.swift): what Apple said
+  /// about the push token, and a nudge to hand it to Firebase. Null on
+  /// Android and wherever the channel is absent.
+  static const _native = MethodChannel('lbm/push');
+  Future<Object?> _nativePush(String method) async {
+    if (kIsWeb || !Platform.isIOS) return null;
+    try {
+      return await _native.invokeMethod<Object?>(method);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _writeToken(String uid, String token) async {
