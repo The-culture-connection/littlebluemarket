@@ -6,6 +6,7 @@
 //   node scripts/peek.mjs --doc catalog/123                 # one document
 //   node scripts/peek.mjs --collection catalog/123/reviews  # a collection
 //   node scripts/peek.mjs --reviews                         # recent review posts + their product's rating
+//   node scripts/peek.mjs --find catalog --field title --value "Exact title"   # documents where field == value
 import { arg, firebaseApiKey, hasFlag, identityDelete, identitySignUp, resolveProject } from './lib/shopify-admin.mjs';
 
 const projectId = resolveProject(arg('project', 'dev'));
@@ -66,6 +67,10 @@ try {
     console.log(JSON.stringify(await getDoc(arg('doc')), null, 2));
   } else if (arg('collection')) {
     console.log(JSON.stringify(await listCol(arg('collection')), null, 2));
+  } else if (arg('find')) {
+    // --find catalog --field title --value "Mobile App Development"
+    const rows = await query(arg('find'), arg('field', 'title'), arg('value', ''));
+    console.log(JSON.stringify(rows, null, 2));
   } else if (hasFlag('reviews')) {
     const posts = await query('posts', 'kind', 'review');
     console.log(`${posts.length} review post(s)`);

@@ -28,6 +28,8 @@
     "webhooks:check:prod": "node scripts/register-webhooks.mjs --project prod --check",
     "touch-products": "node scripts/touch-products.mjs --project dev",
     "touch-products:prod": "node scripts/touch-products.mjs --project prod",
+    "publish-to-app": "node scripts/publish-to-app.mjs --project dev",
+    "publish-to-app:prod": "node scripts/publish-to-app.mjs --project prod",
     "seed": "node scripts/seed.mjs",
     "verify:security": "firebase emulators:exec --only firestore \"node scripts/verify-security.mjs\"",
     "claim-code": "node scripts/claim-code-hash.mjs",
