@@ -50,15 +50,13 @@ final productsByIdsProvider =
       return ref.watch(catalogRepositoryProvider).productsByIds(ids);
     });
 
-final sellerProductsProvider = FutureProvider.family<List<Product>, String>((
+/// Live, not a cached one-shot: a product the store mirrored after the
+/// profile was first opened used to stay hidden until a pull-to-refresh.
+final sellerProductsProvider = StreamProvider.family<List<Product>, String>((
   ref,
   sellerId,
-) async {
-  ref.keepCached();
-  final page = await ref
-      .watch(catalogRepositoryProvider)
-      .productsBySeller(sellerId);
-  return page.items;
+) {
+  return ref.watch(catalogRepositoryProvider).watchProductsBySeller(sellerId);
 });
 
 // -------------------------------------------------------------- collections
@@ -262,9 +260,10 @@ final postProvider = FutureProvider.family<Post, String>((ref, id) {
   return ref.watch(socialRepositoryProvider).post(id);
 });
 
-final postsByProvider = FutureProvider.family<List<Post>, String>((ref, id) {
-  ref.keepCached();
-  return ref.watch(socialRepositoryProvider).postsBy(id);
+/// Live for the same reason as [sellerProductsProvider]: the feed is a
+/// stream, and a profile grid that lagged behind it read as a lost post.
+final postsByProvider = StreamProvider.family<List<Post>, String>((ref, id) {
+  return ref.watch(socialRepositoryProvider).watchPostsBy(id);
 });
 
 final commentsProvider = StreamProvider.family<List<Comment>, String>((

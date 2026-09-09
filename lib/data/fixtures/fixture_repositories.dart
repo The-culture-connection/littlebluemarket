@@ -88,6 +88,11 @@ class FixtureCatalogRepository implements CatalogRepository {
   }
 
   @override
+  Stream<List<Product>> watchProductsBySeller(String sellerId) => Stream.value(
+    Fx.products.values.where((p) => p.sellerId == sellerId).toList(),
+  );
+
+  @override
   Future<List<Variant>> liveVariants(String productId) async {
     if (Product.isExternalId(productId)) return const [];
     final spec = Fx.specs[productId];
@@ -484,6 +489,14 @@ class FixtureSocialRepository implements SocialRepository {
           if (post.authorId == personId && (kind == null || post.kind == kind))
             post,
       ]);
+
+  @override
+  Stream<List<Post>> watchPostsBy(String personId) => _store.posts.stream.map(
+    (posts) => [
+      for (final post in posts)
+        if (post.authorId == personId) post,
+    ],
+  );
 
   @override
   Future<String> createPost(NewPost draft) async {

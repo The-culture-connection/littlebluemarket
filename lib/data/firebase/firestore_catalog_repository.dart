@@ -131,6 +131,19 @@ class FirestoreCatalogRepository implements CatalogRepository {
       }, operation: 'firestore catalog productsBySeller');
 
   @override
+  Stream<List<Product>> watchProductsBySeller(String sellerId) => _catalog
+      .where('sellerId', isEqualTo: sellerId)
+      .orderBy('createdAt', descending: true)
+      .limit(30)
+      .snapshots()
+      .map(
+        (snapshot) => snapshot.docs
+            .map((doc) => FirestoreMappers.product(doc.id, doc.data()))
+            .toList(),
+      )
+      .guarded(operation: 'firestore catalog by seller');
+
+  @override
   Future<List<Variant>> liveVariants(String productId) =>
       guardFirestore(() async {
         // A website-link product has no variants here; the website does.

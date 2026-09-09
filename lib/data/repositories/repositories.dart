@@ -42,6 +42,10 @@ abstract interface class CatalogRepository {
 
   Future<Page<Product>> productsBySeller(String sellerId, {String? cursor});
 
+  /// The first page of a seller's products, live: a product mirrored a
+  /// moment ago appears without a pull-to-refresh.
+  Stream<List<Product>> watchProductsBySeller(String sellerId);
+
   /// Authoritative price and stock, straight from the provider. The only read
   /// that must not be served from the mirror, because overselling is worse
   /// than a spinner.
@@ -130,6 +134,10 @@ abstract interface class SocialRepository {
   Future<Page<Post>> feedPage({String? cursor, int limit = 20});
   Future<Post> post(String id);
   Future<List<Post>> postsBy(String personId, {PostKind? kind});
+
+  /// The same list, live. The profile grid reads this so a post made a
+  /// moment ago lands there the way it lands in the feed.
+  Stream<List<Post>> watchPostsBy(String personId);
   Future<String> createPost(NewPost draft);
   Future<void> deletePost(String id);
 

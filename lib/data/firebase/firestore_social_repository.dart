@@ -183,6 +183,15 @@ class FirestoreSocialRepository implements SocialRepository {
       });
 
   @override
+  Stream<List<Post>> watchPostsBy(String personId) => _posts
+      .where('authorId', isEqualTo: personId)
+      .orderBy('createdAt', descending: true)
+      .limit(60)
+      .snapshots()
+      .asyncMap(_hydrate)
+      .guarded(operation: 'firestore posts by author');
+
+  @override
   Future<String> createPost(NewPost draft) => guardFirestore(() async {
     final me = _requireUid;
     final doc = _posts.doc();
