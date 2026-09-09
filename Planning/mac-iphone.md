@@ -20,14 +20,10 @@
    flutter pub get
    ```
    Git asks for your GitHub login the first time; a personal access token is the password.
-6. **Firebase's iPhone file.** Still in `little_blue_market`:
-   ```
-   flutterfire configure --project=little-blue-610e5 --platforms=ios
-   ```
-   Pick the existing iOS app (`com.littleblue.market`) if it asks. This writes `ios/Runner/GoogleService-Info.plist`. Commit it: `git add ios/Runner/GoogleService-Info.plist && git commit -m "iOS Firebase config" && git push`. It is public configuration, safe in the repo.
+6. **Firebase's iPhone file.** Already in the repo since 2026-09-09: `ios/Runner/GoogleService-Info.plist` is the **production** project's (little-blue-cart-prod); the dev project's copy is in `firebase/config/dev/` and `scripts/use-env.sh dev` swaps it in for a dev session. Nothing to generate. One Xcode step the first time: in Xcode's left panel, right-click the **Runner** folder → **Add Files to "Runner"…** → pick `ios/Runner/GoogleService-Info.plist` → make sure **Runner** is ticked under Targets → Add. That puts the file in the app bundle.
 7. **Your iPhone.** Settings → Privacy & Security → **Developer Mode** → on (iOS 16 and newer; the phone restarts). Plug it into the Mac with a cable and tap **Trust** on the phone.
 8. **Signing, once.** `open ios/Runner.xcworkspace` (the workspace, not the project). In Xcode: click **Runner** at the top of the left panel → the **Runner** target → **Signing & Capabilities**. Tick **Automatically manage signing** and pick your **Team** (your Apple Developer account; add it under Xcode → Settings → Accounts if it is not listed). Bundle identifier is `com.littleblue.market`. **Push Notifications** and **Background Modes → Remote notifications** are already listed; if Xcode shows a red error about them, click **Try Again** once it has registered the identifier with Apple.
-9. **Push key, once (Apple + Firebase consoles).** Apple Developer → Certificates, Identifiers & Profiles → **Identifiers** → `com.littleblue.market` → tick **Push Notifications** → Save. **Keys** → **+** → name `LBM FCM` → tick **Apple Push Notifications service (APNs)** → Continue → Register → **Download** the `.p8` (offered once; keep it outside the repo) and note the **Key ID** and your **Team ID** (top right of the developer site). Firebase console → Project settings → **Cloud Messaging** → Apple app configuration → **APNs Authentication Key → Upload**: the `.p8`, Key ID, Team ID.
+9. **Push key, once (Apple + Firebase consoles).** Apple Developer → Certificates, Identifiers & Profiles → **Identifiers** → `com.littleblue.market` → tick **Push Notifications** → Save. **Keys** → **+** → name `LBM FCM` → tick **Apple Push Notifications service (APNs)** → Continue → Register → **Download** the `.p8` (offered once; keep it outside the repo) and note the **Key ID** and your **Team ID** (top right of the developer site). Firebase console → **little-blue-cart-prod** (production; the same upload on little-blue-610e5 only if you also test iPhone push against dev) → Project settings → **Cloud Messaging** → Apple app configuration → **APNs Authentication Key → Upload**: the `.p8`, Key ID, Team ID. The consoles part of this step needs no Mac and can be done any time (Planning/checkpoints.md, CP-P7).
 
 ## Every time: run the app on the phone
 
@@ -39,7 +35,7 @@ scripts/run-live-mac.sh
 
 The script lists the devices it can see; run it again with your phone's name in quotes, e.g. `scripts/run-live-mac.sh "Grace's iPhone"`. The first build takes several minutes (CocoaPods). The first time the app opens on the phone iOS may say the developer is untrusted: Settings → General → VPN & Device Management → your account → **Trust**, then open the app again.
 
-The corner badge must read **DEV · live · little-blue-610e5**. If it says fixtures, the `--dart-define` did not reach the build; use the script, not Xcode's Run button.
+`run-live-mac.sh` is the **developer build against production** (it passes `LBM_DEV=true`, so the corner badge and the error strip are on; the project is whatever `ios/Runner/GoogleService-Info.plist` says, production unless you ran `scripts/use-env.sh dev` first). The badge should read **DEV · live · little-blue-cart-prod**. A plain `flutter run -d "<phone>"` is the production app exactly as customers get it: no badge, no strip.
 
 ## What the phone can and cannot test
 
@@ -57,14 +53,15 @@ An archive is the signed, release build Apple distributes. `flutter run` puts a 
 
 ```
 git pull
-flutter build ipa --release --dart-define=LBM_BACKEND=live
+scripts/use-env.sh prod
+flutter build ipa --release
 ```
 
-That takes five to ten minutes and prints where the archive is, `build/ios/archive/Runner.xcarchive`, and the `.ipa` next to it. The `--dart-define` is essential: without it the archive is the demo-data app.
+That takes five to ten minutes and prints where the archive is, `build/ios/archive/Runner.xcarchive`, and the `.ipa` next to it. Since the production cutover (2026-09-08) a plain build **is** the production app: no `--dart-define` needed, and none must be added (`LBM_DEV=true` would ship the developer surfaces). `use-env.sh prod` only makes sure a dev session did not leave the dev config in place.
 
 **Upload it:** `open build/ios/archive/Runner.xcarchive` opens Xcode's Organizer on that archive → **Distribute App** → **TestFlight & App Store** (or "App Store Connect") → keep the defaults → **Upload**. Xcode signs it with your Team, switches the push entitlement to production on its own, and uploads. Ten to thirty minutes later the build appears in App Store Connect → your app → **TestFlight**. Add yourself and any testers under **Internal Testing**; they install the TestFlight app from the App Store and get an invite by email. Apple may ask one export-compliance question the first time; the app uses only standard https, so the answer is that it does not use non-exempt encryption.
 
-**Version numbers:** each upload needs a higher build number. It comes from `pubspec.yaml`'s `version:` line (`0.3.0+1`: the `+1` is the build number). Bump the number after the `+` before each archive, or run `flutter build ipa --release --dart-define=LBM_BACKEND=live --build-number=2`.
+**Version numbers:** each upload needs a higher build number. It comes from `pubspec.yaml`'s `version:` line (`0.3.0+1`: the `+1` is the build number). Bump the number after the `+` before each archive, or run `flutter build ipa --release --build-number=2`.
 
 **What an archive today would contain:** the dev backend, the dev Shopify test shop and the live littlebluecart.com directory. That is right for TestFlight testers now. It is **not** right for the App Store: that needs the cutover (a production Firebase project, the real shop, the checklist in `answers-to-open-questions.md` Part 2) and a build made against it. Do not submit for App Store review before the cutover is done.
 
