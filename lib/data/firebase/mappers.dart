@@ -121,6 +121,22 @@ abstract final class FirestoreMappers {
           announcementsSeenAt: timeOrNull(data['announcementsSeenAt']),
         );
 
+  static Report report(String id, Map<String, dynamic> data) => Report(
+    id: id,
+    reporterUid: str(data['reporterUid']),
+    reporterName: str(data['reporterName']),
+    subjectUid: str(data['subjectUid']),
+    subjectName: str(data['subjectName']),
+    subjectHandle: str(data['subjectHandle']),
+    kind: ReportKind.fromValue(str(data['kind'])),
+    reason: ReportReason.fromValue(str(data['reason'])),
+    text: str(data['text']),
+    createdAt: time(data['createdAt']),
+    status: ReportStatus.fromValue(str(data['status'])),
+    postId: data['postId'] is String ? data['postId'] as String : null,
+    subjectBanned: boolean(data['subjectBanned']),
+  );
+
   static FeedbackItem feedback(String id, Map<String, dynamic> data) =>
       FeedbackItem(
         id: id,

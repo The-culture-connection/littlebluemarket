@@ -408,6 +408,18 @@ describe('selling is a grant, not a client write', () => {
     await assertFails(member('kali').collection('directoryListings').where('ownerUid', '==', 'maya').get());
   });
 
+  test('reports: a member reports someone else; only admins read, resolve, never delete', async () => {
+    await assertSucceeds(member('maya').doc('reports/r1').set({ reporterUid: 'maya', subjectUid: 'kali', kind: 'user', reason: 'spam', text: 'Sends the same link everywhere' }));
+    await assertFails(member('maya').doc('reports/r2').set({ reporterUid: 'kali', subjectUid: 'dee', kind: 'user', reason: 'spam', text: 'as someone else' }));
+    await assertFails(member('maya').doc('reports/r3').set({ reporterUid: 'maya', subjectUid: 'maya', kind: 'user', reason: 'spam', text: 'myself' }));
+    await assertFails(guest().doc('reports/r4').set({ reporterUid: 'anon', subjectUid: 'kali', kind: 'user', reason: 'spam', text: 'a guest' }));
+    await assertFails(member('maya').doc('reports/r1').get());
+    await assertSucceeds(adminUser('grace').collection('reports').orderBy('createdAt', 'desc').get());
+    await assertSucceeds(adminUser('grace').doc('reports/r1').update({ status: 'resolved' }));
+    await assertFails(member('maya').doc('reports/r1').update({ status: 'resolved' }));
+    await assertFails(adminUser('grace').doc('reports/r1').delete());
+  });
+
   test('feedback: anyone signed in leaves a note about themselves; only admins read or close it', async () => {
     await assertSucceeds(member('maya').doc('feedback/f1').set({ uid: 'maya', kind: 'bug', text: 'The cart spins', route: '/market' }));
     await assertSucceeds(guest().doc('feedback/f2').set({ uid: 'anon', kind: 'idea', text: 'Bigger photos', route: '/market' }));

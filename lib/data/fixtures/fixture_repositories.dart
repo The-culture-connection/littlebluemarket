@@ -1992,3 +1992,100 @@ class FixtureFeedbackRepository implements FeedbackRepository {
     ];
   }
 }
+
+/// Reports on the demo backend: they land in the store, the demo Admin
+/// screen lists them, and a ban removes the person's posts from the feed.
+class FixtureReportRepository implements ReportRepository {
+  FixtureReportRepository(this._backend);
+
+  final FixtureBackend _backend;
+
+  FixtureStore get _store => _backend.store;
+
+  @override
+  Future<void> submit(NewReport draft) async {
+    await _backend._settle();
+    if (!draft.isValid) {
+      throw const ValidationException('Say what happened, in a few words.');
+    }
+    if (draft.subjectUid == _backend.uid) {
+      throw const ValidationException('You cannot report yourself.');
+    }
+    final reporter = _store.people.value[_backend.uid];
+    _store.reports.value = [
+      Report(
+        id: 'r${DateTime.now().microsecondsSinceEpoch}',
+        reporterUid: _backend.uid,
+        reporterName: reporter?.name ?? draft.reporterName,
+        subjectUid: draft.subjectUid,
+        subjectName: draft.subjectName,
+        subjectHandle: draft.subjectHandle,
+        kind: draft.kind,
+        reason: draft.reason,
+        text: draft.text.trim(),
+        createdAt: DateTime.now(),
+        status: ReportStatus.open,
+        postId: draft.postId,
+      ),
+      ..._store.reports.value,
+    ];
+  }
+
+  @override
+  Stream<List<Report>> watchAll({int limit = 200}) =>
+      _store.reports.stream.map((list) => list.take(limit).toList());
+
+  Report _withStatus(Report r, ReportStatus status, {bool? banned}) => Report(
+    id: r.id,
+    reporterUid: r.reporterUid,
+    reporterName: r.reporterName,
+    subjectUid: r.subjectUid,
+    subjectName: r.subjectName,
+    subjectHandle: r.subjectHandle,
+    kind: r.kind,
+    reason: r.reason,
+    text: r.text,
+    createdAt: r.createdAt,
+    status: status,
+    postId: r.postId,
+    subjectBanned: banned ?? r.subjectBanned,
+  );
+
+  @override
+  Future<void> resolve(String id) async {
+    await _backend._settle();
+    _store.reports.value = [
+      for (final r in _store.reports.value)
+        if (r.id == id) _withStatus(r, ReportStatus.resolved) else r,
+    ];
+  }
+
+  @override
+  Future<void> banUser(String uid, {String? reportId, String? reason}) async {
+    await _backend._settle();
+    _store.banned.value = {..._store.banned.value, uid};
+    _store.posts.value = [
+      for (final p in _store.posts.value)
+        if (p.authorId != uid) p,
+    ];
+    _store.reports.value = [
+      for (final r in _store.reports.value)
+        if (r.subjectUid == uid && r.isOpen)
+          _withStatus(r, ReportStatus.banned, banned: true)
+        else if (r.subjectUid == uid)
+          _withStatus(r, r.status, banned: true)
+        else
+          r,
+    ];
+  }
+
+  @override
+  Future<void> unbanUser(String uid) async {
+    await _backend._settle();
+    _store.banned.value = {..._store.banned.value}..remove(uid);
+    _store.reports.value = [
+      for (final r in _store.reports.value)
+        if (r.subjectUid == uid) _withStatus(r, r.status, banned: false) else r,
+    ];
+  }
+}

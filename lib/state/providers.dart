@@ -119,6 +119,12 @@ final feedbackListProvider = StreamProvider<List<FeedbackItem>>((ref) {
   return ref.watch(feedbackRepositoryProvider).watchAll();
 });
 
+/// Reports about members, newest first. Admins only; empty for anyone else.
+final reportsProvider = StreamProvider<List<Report>>((ref) {
+  if (!ref.watch(isAdminProvider)) return Stream.value(const []);
+  return ref.watch(reportRepositoryProvider).watchAll();
+});
+
 final announcementsProvider = StreamProvider<List<Announcement>>((ref) {
   final uid = ref.watch(currentUidProvider);
   if (uid == null) return Stream.value(const <Announcement>[]);

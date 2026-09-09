@@ -268,6 +268,27 @@ abstract interface class FeedbackRepository {
   Future<void> setStatus(String id, FeedbackStatus status);
 }
 
+/// Reports members make about other members, and what the merchant does
+/// about them. Reading, resolving and banning are admin-only; the backend
+/// refuses everyone else regardless of what the app shows.
+abstract interface class ReportRepository {
+  /// Files a report. Members only.
+  Future<void> submit(NewReport draft);
+
+  /// Newest first. Admins only.
+  Stream<List<Report>> watchAll({int limit = 200});
+
+  /// Closes a report without further action. Admins only.
+  Future<void> resolve(String id);
+
+  /// Bans the person: their sign-in is disabled, their posts are removed,
+  /// and every open report about them is marked banned. Admins only.
+  Future<void> banUser(String uid, {String? reportId, String? reason});
+
+  /// Lets a banned person back in. Their removed posts do not return.
+  Future<void> unbanUser(String uid);
+}
+
 abstract interface class AdminRepository {
   /// One announcement to everyone or to a role. Returns what was stored.
   Future<Announcement> sendAnnouncement(NewAnnouncement draft);

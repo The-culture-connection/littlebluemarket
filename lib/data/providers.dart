@@ -10,6 +10,7 @@ import 'firebase/firestore_diagnostics_repository.dart';
 import 'firebase/firestore_admin_repository.dart';
 import 'firebase/firestore_directory_repository.dart';
 import 'firebase/firestore_feedback_repository.dart';
+import 'firebase/firestore_report_repository.dart';
 import 'firebase/firebase_push_service.dart';
 import 'fixtures/fixture_push_service.dart';
 import 'push/push_service.dart';
@@ -240,6 +241,20 @@ final feedbackRepositoryProvider = Provider<FeedbackRepository>((ref) {
     Backend.live => FirestoreFeedbackRepository(
       firestore: ref.watch(firestoreProvider),
       storage: ref.watch(firebaseStorageProvider),
+      uid: ref.watch(_uidProvider),
+    ),
+  };
+});
+
+/// Reports about members, and the merchant's resolve / ban actions.
+final reportRepositoryProvider = Provider<ReportRepository>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => FixtureReportRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
+    Backend.live => FirestoreReportRepository(
+      firestore: ref.watch(firestoreProvider),
+      functions: ref.watch(firebaseFunctionsProvider),
       uid: ref.watch(_uidProvider),
     ),
   };

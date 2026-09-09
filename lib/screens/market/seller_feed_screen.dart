@@ -8,6 +8,7 @@ import '../../widgets/async.dart';
 import '../../widgets/directory_listing_card.dart';
 import '../../widgets/directory_storefront.dart';
 import '../../widgets/primitives.dart';
+import '../../widgets/report_sheet.dart';
 import '../../widgets/profile_identity.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/seller_products_grid.dart';
@@ -47,7 +48,17 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
           CircleIconButton(
             icon: Icons.more_horiz_rounded,
             tooltip: 'More',
-            onPressed: () {},
+            onPressed: () {
+              final p = person.value;
+              if (p == null) return;
+              showMoreSheet(
+                context,
+                ref,
+                subjectUid: p.id,
+                subjectName: p.name,
+                subjectHandle: p.handle,
+              );
+            },
           ),
         ],
       ),

@@ -10,6 +10,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
+import 'admin_reports_section.dart';
 
 /// The merchant's screen, in release builds too (Diagnostics is dev-only).
 /// Today: an announcement to everyone or to a role. The screen hides from
@@ -264,6 +265,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          const SectionHead('Reports about members'),
+          const SizedBox(height: 8),
+          const AdminReportsSection(),
           const SizedBox(height: 16),
           const SectionHead('Bugs and critiques'),
           const SizedBox(height: 8),

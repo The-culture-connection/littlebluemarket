@@ -227,7 +227,10 @@ class FirebaseAuthService implements AuthService {
       ),
       'network-request-failed' => const OfflineException(),
       'too-many-requests' => const RateLimitException(),
-      'user-disabled' => const PermissionException('This account is disabled'),
+      'user-disabled' => const PermissionException(
+        'This account has been suspended by Little Blue Market. If you think '
+        'that is a mistake, write to us from the website.',
+      ),
       // Someone already signed up with this email while browsing as a guest.
       // Their real account wins; the anonymous one is abandoned.
       'credential-already-in-use' ||

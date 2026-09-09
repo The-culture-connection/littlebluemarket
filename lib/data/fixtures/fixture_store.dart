@@ -95,6 +95,12 @@ class FixtureStore {
   /// Notes from the floating bug button. Empty until someone sends one.
   final feedback = Watchable<List<FeedbackItem>>([]);
 
+  /// Reports members made about each other. Empty until someone reports.
+  final reports = Watchable<List<Report>>([]);
+
+  /// Who the demo Admin screen has banned.
+  final banned = Watchable<Set<String>>({});
+
   /// Website-link products of directory businesses (Stage 13). One belongs
   /// to `dee` from the start so the product page and feed card can render.
   final directoryProducts = Watchable<Map<String, Product>>({
@@ -365,6 +371,8 @@ class FixtureStore {
       listings,
       notifications,
       feedback,
+      reports,
+      banned,
     ]) {
       w.dispose();
     }

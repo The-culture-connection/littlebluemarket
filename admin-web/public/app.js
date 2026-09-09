@@ -80,6 +80,57 @@ function renderFeedback() {
   }
 }
 
+let unsubscribeReports = null;
+let reportDocs = [];
+
+const REASONS = { spam: 'Spam or scam', harassment: 'Harassment or hate', inappropriate: 'Inappropriate content', fake: 'Fake shop or counterfeit', other: 'Something else' };
+
+function renderReports() {
+  const list = $('reports');
+  const showClosed = $('showClosedReports').checked;
+  const shown = reportDocs.filter((d) => showClosed || (d.data().status || 'open') === 'open');
+  list.innerHTML = '';
+  if (shown.length === 0) {
+    const open = reportDocs.filter((d) => (d.data().status || 'open') === 'open').length;
+    list.innerHTML = `<li class="meta">${reportDocs.length === 0 ? 'Nothing reported yet.' : `Nothing open. ${reportDocs.length - open} closed.`}</li>`;
+    return;
+  }
+  for (const d of shown) {
+    const r = d.data();
+    const when = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : '';
+    const status = r.status || 'open';
+    const subject = r.subjectName ? `${r.subjectName} (${r.subjectHandle || ''})` : (r.subjectHandle || r.subjectUid);
+    const li = document.createElement('li');
+    const head = document.createElement('div');
+    const tag = document.createElement('span'); tag.className = `tag ${r.reason === 'spam' || r.reason === 'harassment' || r.reason === 'fake' ? 'bug' : ''}`; tag.textContent = REASONS[r.reason] || r.reason || '';
+    const st = document.createElement('span'); st.className = 'tag'; st.textContent = status === 'open' ? 'open' : status + (r.subjectBanned && status !== 'banned' ? ' · banned' : '');
+    const who = document.createElement('strong'); who.textContent = `${r.kind === 'post' ? 'A post by ' : ''}${subject}`;
+    head.append(tag, st, who);
+    const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = `reported by ${r.reporterName || r.reporterUid || ''} · ${when}`;
+    const text = document.createElement('div'); text.className = 'text'; text.textContent = r.text || '';
+    const actions = document.createElement('div');
+    const mk = (label, cls, fn) => { const b = document.createElement('button'); b.className = `${cls} tiny`; b.textContent = label; b.style.marginRight = '6px'; b.addEventListener('click', async () => { b.disabled = true; try { await fn(); } catch (e) { window.alert(describe(e)); b.disabled = false; } }); return b; };
+    if (status === 'open') actions.appendChild(mk('Resolve', 'quiet', () => updateDoc(doc(db, 'reports', d.id), { status: 'resolved', resolvedAt: serverTimestamp(), resolvedBy: auth.currentUser?.uid ?? null })));
+    if (!r.subjectBanned) {
+      actions.appendChild(mk(`Ban ${r.subjectHandle || 'this member'}`, 'primary', async () => {
+        if (!window.confirm(`Ban ${subject}?\n\nTheir sign-in is disabled, their posts are removed, and every open report about them is closed.`)) return;
+        await httpsCallable(functions, 'adminBanUser')({ uid: r.subjectUid, reportId: d.id, reason: REASONS[r.reason] || r.reason || '' });
+      }));
+    } else {
+      actions.appendChild(mk('Unban', 'quiet', async () => { await httpsCallable(functions, 'adminUnbanUser')({ uid: r.subjectUid }); }));
+    }
+    li.append(head, meta, text, actions);
+    list.appendChild(li);
+  }
+}
+
+function watchReports() {
+  unsubscribeReports?.();
+  const q = query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(200));
+  unsubscribeReports = onSnapshot(q, (snap) => { reportDocs = snap.docs; renderReports(); },
+    (error) => { $('reports').innerHTML = `<li class="meta">${describe(error)}</li>`; });
+}
+
 function watchFeedback() {
   unsubscribeFeedback?.();
   const q = query(collection(db, 'feedback'), orderBy('createdAt', 'desc'), limit(200));
@@ -120,10 +171,11 @@ function watchRecent() {
 
 async function refreshGate(user) {
   if (!user) {
-    show('signin', true); show('notadmin', false); show('send', false); show('recentCard', false); show('feedbackCard', false); show('signout', false);
+    show('signin', true); show('notadmin', false); show('send', false); show('recentCard', false); show('feedbackCard', false); show('reportsCard', false); show('signout', false);
     $('who').textContent = '';
     unsubscribeRecent?.(); unsubscribeRecent = null;
     unsubscribeFeedback?.(); unsubscribeFeedback = null;
+    unsubscribeReports?.(); unsubscribeReports = null;
     return;
   }
   const token = await user.getIdTokenResult(true);
@@ -135,9 +187,11 @@ async function refreshGate(user) {
   show('send', isAdmin);
   show('recentCard', isAdmin);
   show('feedbackCard', isAdmin);
-  if (isAdmin) { watchRecent(); watchFeedback(); }
+  show('reportsCard', isAdmin);
+  if (isAdmin) { watchRecent(); watchFeedback(); watchReports(); }
 }
 $('showDone').addEventListener('change', renderFeedback);
+$('showClosedReports').addEventListener('change', renderReports);
 
 onAuthStateChanged(auth, (user) => { refreshGate(user).catch((e) => notice('signinNotice', describe(e), false)); });
 

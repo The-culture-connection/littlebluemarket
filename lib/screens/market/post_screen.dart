@@ -10,6 +10,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/post_card.dart';
 import '../../widgets/primitives.dart';
+import '../../widgets/report_sheet.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
@@ -35,7 +36,19 @@ class PostScreen extends ConsumerWidget {
           CircleIconButton(
             icon: Icons.more_horiz_rounded,
             tooltip: 'More',
-            onPressed: () {},
+            onPressed: () {
+              final p = post.value;
+              if (p == null) return;
+              final author = ref.read(personProvider(p.authorId)).value;
+              showMoreSheet(
+                context,
+                ref,
+                subjectUid: p.authorId,
+                subjectName: author?.name ?? '',
+                subjectHandle: author?.handle ?? '@${p.authorId}',
+                postId: p.id,
+              );
+            },
           ),
         ],
       ),

@@ -49,6 +49,7 @@ import { linkStoreAccounts } from './linking.ts';
 import { withLoudErrors } from './errors.ts';
 import { counterDelta, starKey } from './counters.ts';
 import { claimAdmin, requireAdmin } from './admin.ts';
+import { banUser, unbanUser } from './moderation.ts';
 import { listVendorUsers } from './shipturtle_api.ts';
 import { resolvePendingVendors } from './vendor_directory.ts';
 import { syncCollections } from './collections.ts';
@@ -345,6 +346,31 @@ export const onCatalogWritten = onDocumentWritten(
       await noteVendorFromCatalog(vendorName);
     }
   },
+);
+
+/** Moderation: bans a member (sign-in disabled, posts removed, reports marked). Admin only. */
+export const adminBanUser = onCall(
+  { timeoutSeconds: 120 },
+  withLoudErrors('adminBanUser', async (request) => {
+    const by = requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    return banUser(String(data.uid ?? ''), by, {
+      reportId: typeof data.reportId === 'string' ? data.reportId : undefined,
+      reason: typeof data.reason === 'string' ? data.reason : undefined,
+    });
+  }),
+);
+
+/** Moderation: lets a banned member back in. Admin only. */
+export const adminUnbanUser = onCall(
+  withLoudErrors('adminUnbanUser', async (request) => {
+    const by = requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    await unbanUser(String(data.uid ?? ''), by);
+    return { ok: true };
+  }),
 );
 
 /** Stage 12: rebuilds the buyer index from every account's purchases, a page of people per call. Admin only. */
