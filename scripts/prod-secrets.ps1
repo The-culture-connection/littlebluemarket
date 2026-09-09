@@ -76,10 +76,15 @@ if (-not $plan['SHIPTURTLE_WEBHOOK_SECRET']) { $plan['SHIPTURTLE_WEBHOOK_SECRET'
 # A Shipturtle key is a JWT (three base64url parts joined by dots). A note pasted after it on the
 # same line (it happened, 2026-09-08: 63 characters of text after the token) would break every call,
 # so keep the token and drop whatever follows.
-$jwt = [regex]::Match($plan['SHIPTURTLE_API_KEY'], '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+')
+# The token is found wherever it sits on the line: a quote in front of it, or text after it, is
+# dropped (a line of the form  KEY="<token>" — a note  happened on 2026-09-08 and reached
+# Secret Manager with the quote and the note attached).
+$jwt = [regex]::Match($plan['SHIPTURTLE_API_KEY'], '[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}')
 if ($jwt.Success -and $jwt.Value.Length -lt $plan['SHIPTURTLE_API_KEY'].Length) {
-  Write-Host "SHIPTURTLE_API_KEY: ignoring $($plan['SHIPTURTLE_API_KEY'].Length - $jwt.Value.Length) characters of text after the token" -ForegroundColor Yellow
+  Write-Host "SHIPTURTLE_API_KEY: keeping the $($jwt.Value.Length)-character token, ignoring $($plan['SHIPTURTLE_API_KEY'].Length - $jwt.Value.Length) other characters on that line" -ForegroundColor Yellow
   $plan['SHIPTURTLE_API_KEY'] = $jwt.Value
+} elseif ($plan['SHIPTURTLE_API_KEY'] -and -not $jwt.Success) {
+  Write-Host "SHIPTURTLE_API_KEY does not look like a Shipturtle token (three dot-separated parts); check the line in $(Split-Path $EnvFile -Leaf)" -ForegroundColor Yellow
 }
 
 $failed = @()

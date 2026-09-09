@@ -114,9 +114,22 @@ const ROSTER_DOC = '_internal/shipturtleRoster';
 const ROSTER_TTL_MS = 15 * 60 * 1000;
 
 /**
+ * How long one roster request may take, and how long a failure is remembered.
+ *
+ * Measured 2026-09-08: the real Little Blue Market account's `/api/v1/users`
+ * never answered inside 170 s (the dev account's answers in 4 s). Without a
+ * limit that call hung every sign-in (`linkAccounts`) and every "Check my
+ * seller status" until the function timed out. So: a bounded wait, and a
+ * short memory of the failure so a burst of sign-ins does not each pay it.
+ * The fallback is the merchant's `vendorMappings` document and claim codes.
+ */
+export const ROSTER_TIMEOUT_MS = 12 * 1000;
+export const ROSTER_FAILURE_TTL_MS = 10 * 60 * 1000;
+
+/**
  * The vendor roster, or null when Shipturtle is not configured or did not
  * answer. Cached in `_internal` for fifteen minutes so a burst of sign-ins
- * does not hammer their API.
+ * does not hammer their API; a failure is cached for ten.
  */
 export async function listVendorUsers(
   fetchImpl: typeof fetch = fetch,
@@ -127,7 +140,7 @@ export async function listVendorUsers(
   const db = getFirestore();
   const cacheRef = db.doc(ROSTER_DOC);
   const cached = (await cacheRef.get()).data() as
-    | { fetchedAt?: Timestamp; users?: VendorUser[] }
+    | { fetchedAt?: Timestamp; users?: VendorUser[]; failedAt?: Timestamp }
     | undefined;
   if (
     cached?.fetchedAt &&
@@ -136,19 +149,52 @@ export async function listVendorUsers(
   ) {
     return cached.users;
   }
+  if (
+    cached?.failedAt &&
+    Date.now() - cached.failedAt.toMillis() < ROSTER_FAILURE_TTL_MS
+  ) {
+    return null;
+  }
 
-  const response = await fetchImpl(`${base}${path}`, {
-    headers: { Accept: 'application/json', ...authHeaders(key, header) },
-  });
+  const endpoint = `${base}${path}`;
+  const rememberFailure = (reason: string) =>
+    cacheRef.set(
+      { failedAt: Timestamp.now(), failedReason: reason },
+      { merge: true },
+    );
+
+  let response: Response;
+  try {
+    response = await fetchImpl(endpoint, {
+      headers: { Accept: 'application/json', ...authHeaders(key, header) },
+      signal: AbortSignal.timeout(ROSTER_TIMEOUT_MS),
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.name : String(error);
+    logger.warn('Shipturtle roster request did not answer', {
+      endpoint,
+      reason,
+      timeoutMs: ROSTER_TIMEOUT_MS,
+    });
+    await rememberFailure(reason);
+    return null;
+  }
   if (!response.ok) {
     logger.warn('Shipturtle roster request failed', {
       status: response.status,
-      endpoint: `${base}${path}`,
+      endpoint,
     });
+    await rememberFailure(`HTTP ${response.status}`);
     return null;
   }
   const users = extractVendorUsers(await response.json());
-  await cacheRef.set({ fetchedAt: Timestamp.now(), users, count: users.length });
+  await cacheRef.set({
+    fetchedAt: Timestamp.now(),
+    users,
+    count: users.length,
+    failedAt: null,
+    failedReason: null,
+  });
   return users;
 }
 
