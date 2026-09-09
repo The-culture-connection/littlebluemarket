@@ -100,6 +100,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   Future<void> _save() async {
     if (_saving) return;
+    if (_name.text.trim().length < 2) {
+      setState(() => _error = 'Your name cannot be empty. It is what people see on your posts.');
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;

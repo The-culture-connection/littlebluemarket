@@ -722,6 +722,7 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
+  final _name = TextEditingController();
   final _handle = TextEditingController(text: '@');
   final _bio = TextEditingController();
   bool _busy = false;
@@ -730,10 +731,25 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   String _photoType = 'image/jpeg';
 
   @override
+  void initState() {
+    super.initState();
+    // The Create button follows the name: a profile is never made without
+    // one, so nobody appears as "Someone" (Grace, 2026-09-09).
+    _name.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
+    _name.dispose();
     _handle.dispose();
     _bio.dispose();
     super.dispose();
+  }
+
+  /// The name as it will be stored, or null when it is not one yet.
+  String? get _validName {
+    final name = _name.text.trim().replaceAll(RegExp(r'\s+'), ' ');
+    return name.length >= 2 ? name : null;
   }
 
   /// The photo is only picked here; it is uploaded with the profile, so a
@@ -763,17 +779,23 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   Future<void> _finish() async {
     if (_busy) return;
+    final name = _validName;
+    if (name == null) {
+      setState(() => _error = 'Add your name first. It is what people see on your posts.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      // The handle and bio are written, not discarded. The prototype collected
-      // both and threw them away.
+      // The name, handle and bio are written, not discarded. The prototype
+      // collected the handle and bio and threw them away.
       await ref
           .read(sessionProvider.notifier)
           .createProfile(
             ProfileEdit(
+              name: name,
               handle: _handle.text.trim().isEmpty ? null : _handle.text.trim(),
               bio: _bio.text.trim().isEmpty ? null : _bio.text.trim(),
             ),
@@ -846,6 +868,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         ),
         const SizedBox(height: 8),
         LbmField(
+          label: 'Your name',
+          controller: _name,
+          hintText: 'The name people see on your posts',
+          onDark: true,
+          autofocus: true,
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: 13),
+        LbmField(
           label: 'Handle',
           controller: _handle,
           hintText: '@yourshop',
@@ -875,7 +906,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       actions: [
         _SlateButton(
           label: _busy ? 'One moment…' : 'Create a profile',
-          onPressed: _busy ? null : _finish,
+          onPressed: _busy || _validName == null ? null : _finish,
         ),
       ],
     );
