@@ -160,7 +160,7 @@
 
 ## J16 · Polish: bug button, splash, bio links, first-time tour (2026-09-08)
 
-1. **Splash (CP-F2).** Force-close the app and open it. *Pass:* blue immediately, the cart-and-wordmark artwork for about a second and a half, then the welcome screen, no white flash. (Android 12+ draws the app icon on the blue first; that is the phone's own splash.)
+1. **Splash and icon (CP-F2).** After a fresh `run-live`, the app icon on the home screen is the cart on blue (Android shapes it round or squircle; the wheels stay inside). Force-close the app and open it. *Pass:* blue immediately, the cart-and-wordmark artwork for about a second and a half, then the welcome screen, no white flash. (Android 12+ draws the app icon on the blue first; that is the phone's own splash.)
 2. **Bug button (CP-F1).** As `+buyer1`, open any product → the small round button at the bottom right → **Something is broken** → "The price looks wrong" → **Send**. *Pass:* the sheet showed a thumbnail of the product page; toast "Sent. Thank you for telling us." Try it from inside a sheet (the cart) and as a guest: both work. On the welcome screen the button is not there.
 3. As `grace-s@…`: Edit profile → **Admin** → **Bugs and critiques**. *Pass:* the note is listed with its thumbnail, "Bug", the sender's name, the route and "android"; tapping the thumbnail shows the full screenshot; **Mark done** moves it under **Show done**; **Reopen** brings it back. On the admin website (J15 step 20) the same list, the same buttons, the picture opens in a new tab.
 4. If the note arrives without a picture: the phone refused the capture (rare; the note still counts). If nothing arrives: Copy for Claude from the sheet's red line.

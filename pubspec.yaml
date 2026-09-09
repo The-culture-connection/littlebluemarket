@@ -29,6 +29,19 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+# The app icon (Grace's cart on the splash blue). Regenerate after changing
+# the images with: dart run flutter_launcher_icons
+# The adaptive foreground is the same cart padded to Android's safe zone, so
+# round and squircle masks never clip the wheels.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: assets/icon/app-icon.png
+  adaptive_icon_background: "#70A0D1"
+  adaptive_icon_foreground: assets/icon/app-icon-fg.png
 
 flutter:
   uses-material-design: true
