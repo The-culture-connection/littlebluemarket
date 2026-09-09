@@ -50,11 +50,12 @@ import { withLoudErrors } from './errors.ts';
 import { counterDelta, starKey } from './counters.ts';
 import { claimAdmin, requireAdmin } from './admin.ts';
 import { listVendorUsers } from './shipturtle_api.ts';
+import { resolvePendingVendors } from './vendor_directory.ts';
 import { syncCollections } from './collections.ts';
 import { backfillCatalogPage } from './backfill.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
-import { syncVendorRoster } from './roster_grant.ts';
+import { noteVendorFromCatalog, syncVendorRoster } from './roster_grant.ts';
 import { geocodeProfileIfNeeded } from './geocode.ts';
 import { mentionsToNotify, notify } from './notifications.ts';
 import { syncShipturtleOrders } from './shipturtle_orders.ts';
@@ -330,11 +331,19 @@ export const pushTestMe = onCall(
  * seller's buyers. The stamp is written before anyone is told.
  */
 export const onCatalogWritten = onDocumentWritten(
-  'catalog/{productId}',
+  // The Shipturtle key is for the vendor directory: a new vendor name is
+  // resolved against Shipturtle the first time a product carries it.
+  { document: 'catalog/{productId}', secrets: [SHIPTURTLE_API_KEY], timeoutSeconds: 120 },
   async (event) => {
     const before = event.data?.before?.data() as Record<string, unknown> | undefined;
     const after = event.data?.after?.data() as Record<string, unknown> | undefined;
     await announceIfNew(event.params.productId, before, after);
+    // A vendor name the directory has not seen: resolve it against Shipturtle
+    // (one lookup, the first time only) and grant any waiting account.
+    const vendorName = String(after?.vendorName ?? '').trim();
+    if (vendorName && vendorName !== String(before?.vendorName ?? '').trim()) {
+      await noteVendorFromCatalog(vendorName);
+    }
   },
 );
 
@@ -461,6 +470,9 @@ export const sellerSyncMe = onCall(
     // rebuilt from products and company records is used instead. The link
     // below then reads the cache.
     await db.doc('_internal/shipturtleVendors').delete().catch(() => undefined);
+    // Catch the directory up on any catalog vendor it has not resolved yet
+    // (five seconds each, up to about a minute), then refresh the roster.
+    await resolvePendingVendors({ budgetMs: 70_000 });
     await listVendorUsers(fetch, { force: true });
     const result = await linkStoreAccounts(uid, email.trim().toLowerCase());
     if (result.grantedVendor) return { status: 'granted', vendorName: result.grantedVendor };

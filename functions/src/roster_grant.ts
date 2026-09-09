@@ -5,6 +5,47 @@ import { logger } from 'firebase-functions';
 import { SHIPTURTLE_API_KEY, SHIPTURTLE_AUTH_HEADER, SHIPTURTLE_BASE_URL } from './config.ts';
 import { grantSellerDirect, normalizeVendorName } from './sellers.ts';
 import { authHeaders, listVendorUsers } from './shipturtle_api.ts';
+import { resolvePendingVendors, resolveVendor, type VendorEntry } from './vendor_directory.ts';
+
+/**
+ * A product just arrived from Shopify under a vendor name. Make sure the
+ * directory knows the vendor (one lookup, only the first time) and, if any
+ * of the company's emails already belongs to a verified app account that
+ * does not sell yet, grant it now. Nobody has to do anything: the vendor's
+ * approval in Shipturtle put the products on the shop, the shop told us.
+ */
+export async function noteVendorFromCatalog(
+  vendorName: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ entry: VendorEntry | null; granted: number }> {
+  const name = vendorName.trim();
+  if (!name) return { entry: null, granted: 0 };
+  let entry: VendorEntry | null = null;
+  try {
+    entry = await resolveVendor(name, fetchImpl);
+  } catch (error) {
+    logger.warn('Vendor resolution failed', { vendorName: name, error: String(error).slice(0, 120) });
+  }
+  if (!entry) return { entry: null, granted: 0 };
+  return { entry, granted: await grantDirectoryEntry(entry, fetchImpl) };
+}
+
+/** Grants every verified, not-yet-selling app account behind a directory entry. */
+export async function grantDirectoryEntry(entry: VendorEntry, fetchImpl: typeof fetch = fetch): Promise<number> {
+  let granted = 0;
+  for (const email of entry.emails) {
+    let account;
+    try {
+      account = await getAuth().getUserByEmail(email);
+    } catch {
+      continue; // no app account with that email yet; the sign-in link handles it later
+    }
+    if (!account.emailVerified || account.customClaims?.seller === true) continue;
+    const result = await autoGrantFromRoster(account.uid, email, entry.companyId, fetchImpl, entry.brandName);
+    if ('vendorName' in result) granted += 1;
+  }
+  return granted;
+}
 
 /**
  * Selling without a claim code.
@@ -131,10 +172,12 @@ export async function autoGrantFromRoster(
   email: string,
   companyId: string,
   fetchImpl: typeof fetch = fetch,
+  knownBrand?: string,
 ): Promise<{ vendorName: string } | { reason: string }> {
-  // The company record first (works before the vendor has products); the
-  // products' vendor strings as the fallback.
-  const brand = await companyBrandName(companyId, fetchImpl);
+  // The vendor directory's brand when it has one, else the company record
+  // (works before the vendor has products); the products' vendor strings as
+  // the last resort.
+  const brand = knownBrand?.trim() || (await companyBrandName(companyId, fetchImpl));
   const byCompany = brand ? new Map<string, string[]>() : await vendorStringsByCompany(fetchImpl);
   const strings = brand ? [brand] : (byCompany.get(companyId) ?? []);
   const db = getFirestore();
@@ -159,9 +202,11 @@ export async function autoGrantFromRoster(
  * picked up here.
  */
 export async function syncVendorRoster(fetchImpl: typeof fetch = fetch): Promise<{ roster: number; granted: number; skipped: number }> {
-  // The sweep has minutes, not seconds: refresh now, and rebuild from products
-  // and company records if Shipturtle's user list does not answer.
-  const roster = (await listVendorUsers(fetchImpl, { force: true, rebuildBudgetMs: 420_000 })) ?? [];
+  // The sweep has minutes, not seconds: first resolve every catalog vendor
+  // the directory does not know yet (about five seconds each), then match
+  // the roster, whichever source answers, against the app's accounts.
+  await resolvePendingVendors({ budgetMs: 400_000, fetchImpl });
+  const roster = (await listVendorUsers(fetchImpl, { force: true, retryFailed: true })) ?? [];
   const byEmail = new Map<string, Set<string>>();
   for (const user of roster) {
     const set = byEmail.get(user.email) ?? new Set<string>();
