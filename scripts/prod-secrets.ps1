@@ -13,10 +13,42 @@
 #   WP_APP_PASSWORD, WC_CONSUMER_KEY, WC_CONSUMER_SECRET   .env.littlebluemarket (the live site; same as dev)
 #
 # Re-running overwrites (a new secret version), which is how a rotated key gets in.
-#   scripts\prod-secrets.ps1            # all of them
+#   scripts\prod-secrets.ps1            # all of them, from .env.littlebluemarket (the real shop's keys)
 #   scripts\prod-secrets.ps1 -Only SHIPTURTLE_API_KEY
-param([string]$Only = '', [string]$EnvFile = '')
+#   scripts\prod-secrets.ps1 -FromDev   # INTERIM (Grace, 2026-09-08): copy every secret from the dev
+#                                       # project's Secret Manager instead, i.e. the dev test shop's keys.
+#                                       # Pair it with SHOPIFY_STORE_DOMAIN = the dev shop in
+#                                       # functions\.env.little-blue-cart-prod, or nothing will mint.
+param([string]$Only = '', [string]$EnvFile = '', [switch]$FromDev)
 . "$PSScriptRoot\_common.ps1"
+
+if ($FromDev) {
+  $names = 'SHOPIFY_CLIENT_SECRET','SHOPIFY_STOREFRONT_PRIVATE_TOKEN','SHOPIFY_WEBHOOK_SECRET','SHIPTURTLE_API_KEY','SHIPTURTLE_WEBHOOK_SECRET','WP_APP_PASSWORD','WC_CONSUMER_KEY','WC_CONSUMER_SECRET'
+  $failed = @()
+  Push-Location "$Repo\functions"
+  foreach ($name in $names) {
+    if ($Only -and $name -ne $Only) { continue }
+    Say "copy $name  dev -> prod  (value not shown)"
+    $tmp = New-TemporaryFile
+    try {
+      $value = (firebase functions:secrets:access $name --project dev 2>$null | Out-String)
+      # secrets:access prints the value followed by a newline; keep the value exactly.
+      $value = $value -replace "(\r?\n)+$", ''
+      if (-not $value) { Write-Host "SKIP  $name  (dev has no value)" -ForegroundColor Yellow; $failed += $name; continue }
+      [System.IO.File]::WriteAllText($tmp.FullName, $value)
+      firebase functions:secrets:set $name --project prod --data-file $tmp.FullName --force
+      if ($LASTEXITCODE -ne 0) { $failed += $name }
+    } finally {
+      Remove-Item $tmp.FullName -Force -ErrorAction SilentlyContinue
+      $value = $null
+    }
+  }
+  Pop-Location
+  if ($failed.Count) { Fail "not copied: $($failed -join ', ')"; exit 1 }
+  Write-Host "`nProduction now holds the DEV secrets. Next: scripts\deploy-prod.ps1 (functions must be redeployed to pick up new secret versions)." -ForegroundColor Green
+  exit 0
+}
+
 if (-not $EnvFile) { $EnvFile = Join-Path (Split-Path -Parent $Repo) ".env.littlebluemarket" }
 if (-not (Test-Path $EnvFile)) { Fail "$EnvFile not found. It is the file with the real shop's keys (SHOPIFY_CLIENT_SECRET, SHOPIFY_STOREFRONT_PRIVATE_TOKEN, SHIPTURTLE_API_KEY_ORDER, WP_APP_PASSWORD, WC_CONSUMER_KEY, WC_CONSUMER_SECRET)."; exit 1 }
 

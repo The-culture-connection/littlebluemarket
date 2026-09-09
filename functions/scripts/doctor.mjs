@@ -191,7 +191,7 @@ async function main() {
     const empty = ['SHOPIFY_STORE_DOMAIN', 'SHOPIFY_CLIENT_ID'].filter((k) => !params[k]);
     if (empty.length) fail('env params', `${empty.join(', ')} empty in ${envRel}`, `open ${envRel} and set ${empty.join(' and ')}`);
     else if (!params.SHOPIFY_STORE_DOMAIN.endsWith('.myshopify.com')) fail('env params', `SHOPIFY_STORE_DOMAIN "${params.SHOPIFY_STORE_DOMAIN}" should end in .myshopify.com (no https://, no slash)`, `fix the line in ${envRel}`);
-    else if (isProd && params.SHOPIFY_STORE_DOMAIN !== PRODUCTION_DOMAIN) fail('env params', `production points at ${params.SHOPIFY_STORE_DOMAIN}, not the real shop`, `set SHOPIFY_STORE_DOMAIN=${PRODUCTION_DOMAIN} in ${envRel}`);
+    else if (isProd && params.SHOPIFY_STORE_DOMAIN !== PRODUCTION_DOMAIN) warn('env params', `PRODUCTION is on ${params.SHOPIFY_STORE_DOMAIN}, not the real shop (interim, Grace 2026-09-08: dev credentials)`, `when ready: Planning/checkpoints.md CP-P6, then SHOPIFY_STORE_DOMAIN=${PRODUCTION_DOMAIN} in ${envRel}`);
     else if (!isProd && params.SHOPIFY_STORE_DOMAIN === PRODUCTION_DOMAIN) warn('env params', `SHOPIFY_STORE_DOMAIN is the PRODUCTION store (${PRODUCTION_DOMAIN})`, 'dev must point at little-blue-market-devtestingshop.myshopify.com');
     else pass('env params', `${params.SHOPIFY_STORE_DOMAIN}${isProd ? ' (the real shop)' : ''} · API ${params.SHOPIFY_API_VERSION ?? '(default)'} · client id set`);
   }
