@@ -265,6 +265,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          const SectionHead('Bugs and critiques'),
+          const SizedBox(height: 8),
+          const _FeedbackSection(),
+          const SizedBox(height: 16),
           const SectionHead('Recent announcements'),
           const SizedBox(height: 8),
           LbmAsync<List<Announcement>>(
@@ -297,6 +301,192 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// What the floating bug button collected: newest first, open ones on top,
+/// each with the screen it came from. Tap the picture to see it large;
+/// Mark done moves it out of the way without deleting anything.
+class _FeedbackSection extends ConsumerStatefulWidget {
+  const _FeedbackSection();
+
+  @override
+  ConsumerState<_FeedbackSection> createState() => _FeedbackSectionState();
+}
+
+class _FeedbackSectionState extends ConsumerState<_FeedbackSection> {
+  bool _showDone = false;
+  final _busy = <String>{};
+
+  Future<void> _setStatus(FeedbackItem item, FeedbackStatus status) async {
+    setState(() => _busy.add(item.id));
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(feedbackRepositoryProvider).setStatus(item.id, status);
+    } on RepositoryException catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(describeError(error).body)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy.remove(item.id));
+    }
+  }
+
+  void _showShot(String url) {
+    showDialog<void>(
+      context: context,
+      builder: (dialog) => Dialog(
+        insetPadding: const EdgeInsets.all(12),
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              child: Image.network(url, fit: BoxFit.contain),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: IconButton.filledTonal(
+                onPressed: () => Navigator.of(dialog).pop(),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final all = ref.watch(feedbackListProvider);
+    return LbmAsync<List<FeedbackItem>>(
+      all,
+      skeleton: const SizedBox(height: 60),
+      data: (list) {
+        final open = list.where((f) => f.isOpen).toList();
+        final done = list.where((f) => !f.isOpen).toList();
+        final shown = _showDone ? list : open;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LbmCard(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      open.isEmpty
+                          ? 'Nothing open. ${done.length} done.'
+                          : '${open.length} open · ${done.length} done',
+                      style: LbmText.tiny.copyWith(
+                        color: c.ink2,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (done.isNotEmpty)
+                    TextButton(
+                      onPressed: () => setState(() => _showDone = !_showDone),
+                      child: Text(_showDone ? 'Hide done' : 'Show done'),
+                    ),
+                ],
+              ),
+            ),
+            for (final item in shown) ...[
+              const SizedBox(height: 8),
+              LbmCard(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (item.screenshotUrl != null &&
+                        item.screenshotUrl!.startsWith('http'))
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: GestureDetector(
+                          onTap: () => _showShot(item.screenshotUrl!),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              item.screenshotUrl!,
+                              width: 64,
+                              height: 114,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Container(
+                                width: 64,
+                                height: 114,
+                                color: c.skyMist,
+                                child: Icon(
+                                  Icons.broken_image_outlined,
+                                  color: c.ink3,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              LbmChip(
+                                item.kind == FeedbackKind.bug
+                                    ? 'Bug'
+                                    : 'Critique',
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${item.isGuest ? 'a guest' : (item.fromName.isEmpty ? item.uid : item.fromName)} · ${item.age}',
+                                  style: LbmText.tiny.copyWith(color: c.ink3),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            item.text,
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              height: 1.5,
+                              color: c.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${item.route} · ${item.platform}',
+                            style: LbmText.tiny.copyWith(color: c.ink3),
+                          ),
+                          const SizedBox(height: 10),
+                          PillButton(
+                            item.isOpen ? 'Mark done' : 'Reopen',
+                            style: PillStyle.quiet,
+                            small: true,
+                            expand: false,
+                            onPressed: _busy.contains(item.id)
+                                ? null
+                                : () => _setStatus(
+                                    item,
+                                    item.isOpen
+                                        ? FeedbackStatus.done
+                                        : FeedbackStatus.open,
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }

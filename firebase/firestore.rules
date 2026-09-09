@@ -96,6 +96,20 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // The floating bug button. Anyone signed in (guests included) may leave a
+    // note about themselves; only the merchant reads them or marks them done.
+    // Nothing is ever deleted from the phone.
+    match /feedback/{id} {
+      allow read: if admin();
+      allow create: if signedIn()
+        && incoming().uid == request.auth.uid
+        && incoming().text is string
+        && incoming().text.size() > 0
+        && incoming().text.size() <= 2000;
+      allow update: if admin();
+      allow delete: if false;
+    }
+
     // littlebluecart.com. The link to a WordPress member and WooCommerce
     // customer is decided by the functions from the verified email; yours to
     // read, nobody's to write. Same shape as sellers/, same reason.

@@ -9,6 +9,7 @@ import 'firebase/firestore_collection_repository.dart';
 import 'firebase/firestore_diagnostics_repository.dart';
 import 'firebase/firestore_admin_repository.dart';
 import 'firebase/firestore_directory_repository.dart';
+import 'firebase/firestore_feedback_repository.dart';
 import 'firebase/firebase_push_service.dart';
 import 'fixtures/fixture_push_service.dart';
 import 'push/push_service.dart';
@@ -21,6 +22,7 @@ import 'shopify/commerce_proxy_repository.dart';
 import 'shopify/fulfillment_proxy_repository.dart';
 import 'fixtures/fixture_repositories.dart';
 import 'fixtures/fixture_store.dart';
+import 'repositories/dev_error_sink.dart';
 import 'repositories/repositories.dart';
 
 /// Which backend the app is talking to.
@@ -55,8 +57,7 @@ final backendLabelProvider = Provider<String>((ref) {
 /// zero everywhere else — a widget test that pays this on every read turns
 /// `pumpAndSettle` into a stall.
 final fixtureLatencyProvider = Provider<Duration>((ref) {
-  const underTest = bool.fromEnvironment('FLUTTER_TEST');
-  if (underTest || !kDebugMode) return Duration.zero;
+  if (kUnderFlutterTest || !kDebugMode) return Duration.zero;
   return const Duration(milliseconds: 250);
 });
 
@@ -218,6 +219,20 @@ final adminRepositoryProvider = Provider<AdminRepository>((ref) {
     Backend.live => FirestoreAdminRepository(
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),
+    ),
+  };
+});
+
+/// The floating bug button's notes and screenshots.
+final feedbackRepositoryProvider = Provider<FeedbackRepository>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => FixtureFeedbackRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
+    Backend.live => FirestoreFeedbackRepository(
+      firestore: ref.watch(firestoreProvider),
+      storage: ref.watch(firebaseStorageProvider),
+      uid: ref.watch(_uidProvider),
     ),
   };
 });

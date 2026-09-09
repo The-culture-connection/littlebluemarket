@@ -112,6 +112,13 @@ final notificationPrefsProvider = StreamProvider<NotificationPrefs>((ref) {
 });
 
 /// News from Little Blue Market, every audience.
+/// Notes from the floating bug button, newest first. Admins only: for
+/// anyone else the stream is empty rather than a permission error.
+final feedbackListProvider = StreamProvider<List<FeedbackItem>>((ref) {
+  if (!ref.watch(isAdminProvider)) return Stream.value(const []);
+  return ref.watch(feedbackRepositoryProvider).watchAll();
+});
+
 final announcementsProvider = StreamProvider<List<Announcement>>((ref) {
   final uid = ref.watch(currentUidProvider);
   if (uid == null) return Stream.value(const <Announcement>[]);

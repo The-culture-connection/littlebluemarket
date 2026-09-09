@@ -250,6 +250,12 @@ abstract final class LbmConst {
 
   /// Ink used on top of [welcomeBlue].
   static const onWelcome = Color(0xFFF3F8FE);
+
+  /// The exact background of the splash artwork (`assets/images/splash-body.png`,
+  /// sampled), and of the native launch screens on both phones
+  /// (`android/.../values/colors.xml` `lbm_splash`, `LaunchScreen.storyboard`).
+  /// Keep the three in step or the launch flashes.
+  static const splashBlue = Color(0xFF70A0D1);
 }
 
 /// Corner radii. "Cute and soft, not rigid" — rounded everything, and no hard

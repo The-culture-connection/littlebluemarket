@@ -8,6 +8,8 @@ import 'package:little_blue_market/models/models.dart';
 /// backend has to keep. The behaviours asserted here are the ones the prototype
 /// got wrong in ways that only become visible with real data.
 void main() {
+  feedbackTests();
+
   late FixtureBackend backend;
 
   setUp(() {
@@ -521,6 +523,59 @@ void main() {
         ),
         throwsA(isA<ValidationException>()),
       );
+    });
+  });
+}
+
+void feedbackTests() {
+  group('the bug button', () {
+    late FixtureBackend backend;
+    setUp(() => backend = FixtureBackend(store: FixtureStore()));
+
+    test('a note lands in the store with its screen and screenshot', () async {
+      final repo = FixtureFeedbackRepository(backend);
+      await repo.submit(
+        const NewFeedback(
+          kind: FeedbackKind.bug,
+          text: 'The cart spins forever',
+          route: '/market/cart',
+          fromName: 'Maya',
+        ),
+        screenshot: List.filled(12, 0),
+      );
+      final list = backend.store.feedback.value;
+      expect(list, hasLength(1));
+      expect(list.single.kind, FeedbackKind.bug);
+      expect(list.single.route, '/market/cart');
+      expect(list.single.screenshotUrl, isNotNull);
+      expect(list.single.isOpen, isTrue);
+
+      await repo.setStatus(list.single.id, FeedbackStatus.done);
+      expect(backend.store.feedback.value.single.isOpen, isFalse);
+    });
+
+    test('an empty note is refused', () async {
+      final repo = FixtureFeedbackRepository(backend);
+      await expectLater(
+        repo.submit(
+          const NewFeedback(kind: FeedbackKind.idea, text: '  ', route: '/'),
+        ),
+        throwsA(isA<ValidationException>()),
+      );
+    });
+
+    test('the screenshot is left out when the sender says so', () async {
+      final repo = FixtureFeedbackRepository(backend);
+      await repo.submit(
+        const NewFeedback(
+          kind: FeedbackKind.idea,
+          text: 'Bigger photos please',
+          route: '/market',
+          includeScreenshot: false,
+        ),
+        screenshot: List.filled(12, 0),
+      );
+      expect(backend.store.feedback.value.single.screenshotUrl, isNull);
     });
   });
 }

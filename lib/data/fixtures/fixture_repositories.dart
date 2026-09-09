@@ -1931,3 +1931,64 @@ class FixtureDirectoryRepository implements DirectoryRepository {
     );
   }
 }
+
+/// The bug button on the demo backend: notes land in the store, so the demo
+/// Admin screen lists them straight away. The screenshot is kept only as a
+/// size, since fixtures have nowhere to put bytes.
+class FixtureFeedbackRepository implements FeedbackRepository {
+  FixtureFeedbackRepository(this._backend);
+
+  final FixtureBackend _backend;
+
+  @override
+  Future<void> submit(NewFeedback draft, {List<int>? screenshot}) async {
+    await _backend._settle();
+    if (!draft.isValid) {
+      throw const ValidationException('Say what happened, in a few words.');
+    }
+    final item = FeedbackItem(
+      id: 'fb${DateTime.now().microsecondsSinceEpoch}',
+      uid: _backend.uid,
+      kind: draft.kind,
+      text: draft.text.trim(),
+      route: draft.route,
+      platform: 'fixtures',
+      createdAt: DateTime.now(),
+      status: FeedbackStatus.open,
+      screenshotUrl: screenshot != null && draft.includeScreenshot
+          ? 'fixture://screenshot/${screenshot.length}'
+          : null,
+      fromName: draft.fromName,
+      isGuest: draft.isGuest,
+    );
+    _backend.store.feedback.value = [item, ..._backend.store.feedback.value];
+  }
+
+  @override
+  Stream<List<FeedbackItem>> watchAll({int limit = 100}) =>
+      _backend.store.feedback.stream.map((list) => list.take(limit).toList());
+
+  @override
+  Future<void> setStatus(String id, FeedbackStatus status) async {
+    await _backend._settle();
+    _backend.store.feedback.value = [
+      for (final f in _backend.store.feedback.value)
+        if (f.id == id)
+          FeedbackItem(
+            id: f.id,
+            uid: f.uid,
+            kind: f.kind,
+            text: f.text,
+            route: f.route,
+            platform: f.platform,
+            createdAt: f.createdAt,
+            status: status,
+            screenshotUrl: f.screenshotUrl,
+            fromName: f.fromName,
+            isGuest: f.isGuest,
+          )
+        else
+          f,
+    ];
+  }
+}

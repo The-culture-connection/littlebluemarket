@@ -47,6 +47,17 @@ service firebase.storage {
         && underSize(10);
     }
 
+    // Screenshots sent with the floating bug button. Written once by the
+    // sender, seen by the merchant. The document carries a download URL, so
+    // the admin website needs no Storage read of its own.
+    match /feedback/{uid}/{file} {
+      allow read: if signedIn() && request.auth.token.admin == true;
+      allow write: if signedIn()
+        && request.auth.uid == uid
+        && isImage()
+        && underSize(5);
+    }
+
     match /{path=**} {
       allow read, write: if false;
     }

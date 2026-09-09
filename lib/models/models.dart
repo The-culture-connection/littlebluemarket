@@ -12,6 +12,7 @@ export 'collection.dart';
 export 'comment.dart';
 export 'diagnostics.dart';
 export 'directory.dart';
+export 'feedback.dart';
 export 'formatting.dart';
 export 'geo.dart';
 export 'link_result.dart';

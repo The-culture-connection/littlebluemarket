@@ -8,7 +8,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import {
-  getFirestore, collection, query, orderBy, limit, onSnapshot,
+  getFirestore, collection, query, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const config = window.LBM_FIREBASE_CONFIG;
@@ -26,6 +26,66 @@ const show = (id, on) => { $(id).hidden = !on; };
 const notice = (id, text, ok) => { const el = $(id); el.textContent = text; el.className = `notice ${ok ? 'ok' : 'bad'}`; el.hidden = !text; };
 
 let unsubscribeRecent = null;
+let unsubscribeFeedback = null;
+let feedbackDocs = [];
+
+function renderFeedback() {
+  const list = $('feedback');
+  const showDone = $('showDone').checked;
+  const shown = feedbackDocs.filter((d) => showDone || (d.data().status || 'open') !== 'done');
+  list.innerHTML = '';
+  if (shown.length === 0) {
+    const open = feedbackDocs.filter((d) => (d.data().status || 'open') !== 'done').length;
+    list.innerHTML = `<li class="meta">${feedbackDocs.length === 0 ? 'Nothing sent yet.' : `Nothing open. ${feedbackDocs.length - open} done.`}</li>`;
+    return;
+  }
+  for (const d of shown) {
+    const f = d.data();
+    const when = f.createdAt?.toDate ? f.createdAt.toDate().toLocaleString() : '';
+    const who = f.isGuest ? 'a guest' : (f.fromName || f.uid || '');
+    const isDone = (f.status || 'open') === 'done';
+    const li = document.createElement('li');
+    li.className = 'fb';
+    if (f.screenshotUrl && /^https?:/.test(f.screenshotUrl)) {
+      const a = document.createElement('a');
+      a.href = f.screenshotUrl; a.target = '_blank'; a.rel = 'noopener';
+      const img = document.createElement('img');
+      img.src = f.screenshotUrl; img.alt = 'Screenshot';
+      a.appendChild(img);
+      li.appendChild(a);
+    }
+    const body = document.createElement('div');
+    body.className = 'body';
+    const tag = document.createElement('span');
+    tag.className = `tag ${f.kind === 'bug' ? 'bug' : ''}`;
+    tag.textContent = f.kind === 'bug' ? 'Bug' : 'Critique';
+    const meta = document.createElement('span'); meta.className = 'meta'; meta.textContent = `${who} · ${when}`;
+    const text = document.createElement('div'); text.className = 'text'; text.textContent = f.text || '';
+    const where = document.createElement('div'); where.className = 'meta'; where.textContent = `${f.route || ''} · ${f.platform || ''}${isDone ? ' · done' : ''}`;
+    const btn = document.createElement('button');
+    btn.className = 'quiet tiny';
+    btn.textContent = isDone ? 'Reopen' : 'Mark done';
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        await updateDoc(doc(db, 'feedback', d.id), { status: isDone ? 'open' : 'done', statusAt: serverTimestamp() });
+      } catch (error) {
+        window.alert(describe(error));
+        btn.disabled = false;
+      }
+    });
+    body.append(tag, meta, text, where, btn);
+    li.appendChild(body);
+    list.appendChild(li);
+  }
+}
+
+function watchFeedback() {
+  unsubscribeFeedback?.();
+  const q = query(collection(db, 'feedback'), orderBy('createdAt', 'desc'), limit(200));
+  unsubscribeFeedback = onSnapshot(q, (snap) => { feedbackDocs = snap.docs; renderFeedback(); },
+    (error) => { $('feedback').innerHTML = `<li class="meta">${describe(error)}</li>`; });
+}
 
 function describe(error) {
   const code = error?.code || '';
@@ -60,9 +120,10 @@ function watchRecent() {
 
 async function refreshGate(user) {
   if (!user) {
-    show('signin', true); show('notadmin', false); show('send', false); show('recentCard', false); show('signout', false);
+    show('signin', true); show('notadmin', false); show('send', false); show('recentCard', false); show('feedbackCard', false); show('signout', false);
     $('who').textContent = '';
     unsubscribeRecent?.(); unsubscribeRecent = null;
+    unsubscribeFeedback?.(); unsubscribeFeedback = null;
     return;
   }
   const token = await user.getIdTokenResult(true);
@@ -73,8 +134,10 @@ async function refreshGate(user) {
   show('notadmin', !isAdmin);
   show('send', isAdmin);
   show('recentCard', isAdmin);
-  if (isAdmin) watchRecent();
+  show('feedbackCard', isAdmin);
+  if (isAdmin) { watchRecent(); watchFeedback(); }
 }
+$('showDone').addEventListener('change', renderFeedback);
 
 onAuthStateChanged(auth, (user) => { refreshGate(user).catch((e) => notice('signinNotice', describe(e), false)); });
 

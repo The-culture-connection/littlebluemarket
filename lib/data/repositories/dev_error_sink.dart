@@ -1,8 +1,22 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 /// True under `flutter test`. Dev-only surfaces check this so the smoke and
-/// scaling suites render exactly what a release build renders.
-const bool kUnderFlutterTest = bool.fromEnvironment('FLUTTER_TEST');
+/// scaling suites render exactly what a release build renders, and nothing
+/// starts a timer the test harness would trip over.
+///
+/// `flutter test` sets FLUTTER_TEST as a process environment variable, not
+/// as a compile-time define (`bool.fromEnvironment('FLUTTER_TEST')` is false
+/// there; measured 2026-09-08), hence the runtime read.
+final bool kUnderFlutterTest = _detectTest();
+
+bool _detectTest() {
+  try {
+    return Platform.environment.containsKey('FLUTTER_TEST');
+  } catch (_) {
+    return false;
+  }
+}
 
 /// One failure, as it happened, before anything friendly was made of it.
 ///

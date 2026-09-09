@@ -121,6 +121,23 @@ abstract final class FirestoreMappers {
           announcementsSeenAt: timeOrNull(data['announcementsSeenAt']),
         );
 
+  static FeedbackItem feedback(String id, Map<String, dynamic> data) =>
+      FeedbackItem(
+        id: id,
+        uid: str(data['uid']),
+        kind: FeedbackKind.fromValue(str(data['kind'])),
+        text: str(data['text']),
+        route: str(data['route']),
+        platform: str(data['platform']),
+        createdAt: time(data['createdAt']),
+        status: FeedbackStatus.fromValue(str(data['status'])),
+        screenshotUrl: data['screenshotUrl'] is String
+            ? data['screenshotUrl'] as String
+            : null,
+        fromName: str(data['fromName']),
+        isGuest: boolean(data['isGuest']),
+      );
+
   static Announcement announcement(String id, Map<String, dynamic> data) =>
       Announcement(
         id: id,

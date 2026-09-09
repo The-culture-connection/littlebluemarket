@@ -254,6 +254,20 @@ abstract interface class ProfileRepository {
 
 /// What the merchant's own account can do from the phone. Every call is
 /// refused server-side without the admin claim; the screen only hides.
+/// The floating bug button: a note and a screenshot from anyone, read by
+/// admins in the app and on the admin website.
+abstract interface class FeedbackRepository {
+  /// Stores the note; [screenshot] is PNG bytes of the screen it came from,
+  /// uploaded alongside when the sender left it in.
+  Future<void> submit(NewFeedback draft, {List<int>? screenshot});
+
+  /// Newest first. Admins only; anyone else gets a permission error.
+  Stream<List<FeedbackItem>> watchAll({int limit = 100});
+
+  /// Open or done. Admins only.
+  Future<void> setStatus(String id, FeedbackStatus status);
+}
+
 abstract interface class AdminRepository {
   /// One announcement to everyone or to a role. Returns what was stored.
   Future<Announcement> sendAnnouncement(NewAnnouncement draft);

@@ -407,6 +407,20 @@ describe('selling is a grant, not a client write', () => {
     );
     await assertFails(member('kali').collection('directoryListings').where('ownerUid', '==', 'maya').get());
   });
+
+  test('feedback: anyone signed in leaves a note about themselves; only admins read or close it', async () => {
+    await assertSucceeds(member('maya').doc('feedback/f1').set({ uid: 'maya', kind: 'bug', text: 'The cart spins', route: '/market' }));
+    await assertSucceeds(guest().doc('feedback/f2').set({ uid: 'anon', kind: 'idea', text: 'Bigger photos', route: '/market' }));
+    await assertFails(member('maya').doc('feedback/f3').set({ uid: 'kali', kind: 'bug', text: 'Pretending to be Kali', route: '/' }));
+    await assertFails(member('maya').doc('feedback/f4').set({ uid: 'maya', kind: 'bug', text: '', route: '/' }));
+    await assertFails(member('maya').doc('feedback/f5').set({ uid: 'maya', kind: 'bug', text: 'x'.repeat(2001), route: '/' }));
+    await assertFails(member('maya').doc('feedback/f1').get());
+    await assertFails(member('kali').collection('feedback').get());
+    await assertSucceeds(adminUser('grace').collection('feedback').orderBy('createdAt', 'desc').get());
+    await assertSucceeds(adminUser('grace').doc('feedback/f1').update({ status: 'done' }));
+    await assertFails(member('maya').doc('feedback/f1').update({ status: 'done' }));
+    await assertFails(adminUser('grace').doc('feedback/f1').delete());
+  });
 });
 
 describe('creating a profile', () => {

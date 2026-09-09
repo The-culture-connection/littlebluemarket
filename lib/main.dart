@@ -17,6 +17,8 @@ import 'state/push_coordinator.dart';
 import 'state/session.dart';
 import 'theme/app_theme.dart';
 import 'widgets/dev_error_surface.dart';
+import 'widgets/feedback_button.dart';
+import 'widgets/splash_overlay.dart';
 
 Future<void> main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
@@ -47,9 +49,10 @@ Future<void> main() async {
   // be ready before the GIF is taken away or the handoff would flash, and the
   // native splash covers the wait.
   binding.deferFirstFrame();
-  await _decode(
-    LbmAssets.welcomeStill,
-  ).timeout(const Duration(seconds: 5), onTimeout: () {});
+  await Future.wait([
+    _decode(LbmAssets.welcomeStill),
+    _decode(LbmAssets.splash),
+  ]).timeout(const Duration(seconds: 5), onTimeout: () => const []);
   binding.allowFirstFrame();
 
   // Firebase comes up only for a live build, so a fixture build needs no
@@ -110,9 +113,18 @@ class LittleBlueMarketApp extends ConsumerWidget {
         ).clamp(minScaleFactor: 0.85, maxScaleFactor: 1.35);
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaler: scale),
-          // Both overlays render nothing in release and under test.
-          child: DevErrorSurface(
-            child: Stack(children: [child!, const DevBackendBadge()]),
+          // Both dev overlays render nothing in release and under test. The
+          // splash artwork holds for a moment on launch; the bug button sits
+          // over every screen and photographs what is under it.
+          child: SplashOverlay(
+            child: DevErrorSurface(
+              child: Stack(
+                children: [
+                  FeedbackLayer(router: router, child: child!),
+                  const DevBackendBadge(),
+                ],
+              ),
+            ),
           ),
         );
       },

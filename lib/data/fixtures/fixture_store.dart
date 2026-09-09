@@ -92,6 +92,9 @@ class FixtureStore {
   /// News from the demo merchant. Empty until the Admin screen sends one.
   final announcements = Watchable<List<Announcement>>([]);
 
+  /// Notes from the floating bug button. Empty until someone sends one.
+  final feedback = Watchable<List<FeedbackItem>>([]);
+
   /// Website-link products of directory businesses (Stage 13). One belongs
   /// to `dee` from the start so the product page and feed card can render.
   final directoryProducts = Watchable<Map<String, Product>>({
@@ -361,6 +364,7 @@ class FixtureStore {
       receiving,
       listings,
       notifications,
+      feedback,
     ]) {
       w.dispose();
     }

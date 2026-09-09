@@ -10,4 +10,9 @@ abstract final class LbmAssets {
   static const welcomeStill = 'assets/images/welcome-still.png';
 
   static const cartMark = 'assets/images/logo-cart.png';
+
+  /// The splash artwork (Grace's Body.png): the cart and wordmark on
+  /// `LbmConst.splashBlue`, 1080×1920. Shown full-bleed for a moment after
+  /// the native launch screen, which is the same blue.
+  static const splash = 'assets/images/splash-body.png';
 }

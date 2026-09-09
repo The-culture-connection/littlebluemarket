@@ -1,6 +1,6 @@
 # Little Blue Market admin console
 
-A one-page website for sending an announcement (a push to every phone in the audience, and a line under their bell) to everyone, sellers, buyers or directory businesses. It is the same function the app's Admin screen calls (`adminSendAnnouncement`), reached from a laptop instead of a phone. Sign-in is the app's own Firebase account; the page only shows the form to an account that holds the admin claim, and the function refuses everyone else regardless.
+A one-page website for sending an announcement (a push to every phone in the audience, and a line under their bell) to everyone, sellers, buyers or directory businesses, and for reading what people sent from the app's floating bug button (each note with a screenshot of the screen it came from; Mark done hides it, nothing is deleted). Announcements go through the same function the app's Admin screen calls (`adminSendAnnouncement`); the bug list reads `feedback/` directly, which the Firestore rules open to the admin claim only. Sign-in is the app's own Firebase account; the page only shows the form to an account that holds the admin claim, and the function refuses everyone else regardless.
 
 There is no server logic: `server.js` only serves the static page. All the values in `public/firebase-config.js` are public configuration (the same kind the app ships in `google-services.json`); the security is Firebase's sign-in plus the admin claim.
 
