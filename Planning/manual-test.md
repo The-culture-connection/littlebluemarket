@@ -158,6 +158,17 @@
 
 ---
 
+## J16 · Polish: bug button, splash, bio links, first-time tour (2026-09-08)
+
+1. **Splash (CP-F2).** Force-close the app and open it. *Pass:* blue immediately, the cart-and-wordmark artwork for about a second and a half, then the welcome screen, no white flash. (Android 12+ draws the app icon on the blue first; that is the phone's own splash.)
+2. **Bug button (CP-F1).** As `+buyer1`, open any product → the small round button at the bottom right → **Something is broken** → "The price looks wrong" → **Send**. *Pass:* the sheet showed a thumbnail of the product page; toast "Sent. Thank you for telling us." Try it from inside a sheet (the cart) and as a guest: both work. On the welcome screen the button is not there.
+3. As `grace-s@…`: Edit profile → **Admin** → **Bugs and critiques**. *Pass:* the note is listed with its thumbnail, "Bug", the sender's name, the route and "android"; tapping the thumbnail shows the full screenshot; **Mark done** moves it under **Show done**; **Reopen** brings it back. On the admin website (J15 step 20) the same list, the same buttons, the picture opens in a new tab.
+4. If the note arrives without a picture: the phone refused the capture (rare; the note still counts). If nothing arrives: Copy for Claude from the sheet's red line.
+5. **Bio links (CP-F3).** Edit profile → Bio → add "Shop at www.littlebluecart.com" → Save → You tab. *Pass:* the address is underlined, tapping it opens the browser, the rest of the bio is plain. Open your profile from another account: the same.
+6. **First-time tour (CP-F4).** Uninstall and reinstall the app (the phone remembers the tour), then Create a Profile with a fresh `grace-s+tour1@…` → confirm → handle → Create a profile. *Pass:* a five-page card appears over the feed (Welcome, Find what is near you, Join the community, Your profile, Tell us what you think); **Next** pages, **Done** closes; kill and reopen: nothing; sign out and make another profile on the same phone: nothing. A guest never sees it; an existing account that only signs in never sees it.
+
+---
+
 ### If a journey fails
 
 Paste the **Copy for Claude** block (or the doctor output) and say the journey and step, e.g. "J5 step 2". Claude names the file and line, quotes the message, gives one command, and stops.

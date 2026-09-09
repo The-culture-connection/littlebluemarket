@@ -12,6 +12,8 @@ import '../../data/repositories/repositories.dart';
 import '../../models/onboarding.dart';
 import '../../widgets/async.dart';
 import '../../state/session.dart';
+import '../../state/tips.dart';
+import '../../state/tour.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/photo_source.dart';
@@ -784,6 +786,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             .uploadAvatar(photo, contentType: _photoType);
       }
       if (!mounted) return;
+      // A first profile gets the tour, once. The shell shows it as soon as
+      // the landing screen is up; a phone that has seen it never sees it
+      // again, whichever account signs in.
+      if (!ref.read(tipsProvider).contains(Tips.firstTour)) {
+        ref.read(tourPendingProvider.notifier).request();
+      }
       // The door decides the first screen: a directory owner lands on the
       // Directory page already linking, a Market seller on Sell with us
       // already checking, everyone else on the feed.

@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../state/session.dart';
+import '../state/tips.dart';
+import '../state/tour.dart';
 import '../theme/tokens.dart';
+import 'first_tour.dart';
 import 'sheets.dart';
 
 /// Branch order inside the shell. Guests never reach 1 or 2.
@@ -28,6 +31,18 @@ class AppShell extends ConsumerWidget {
     // The tab bar gets out of the way when the keyboard is up, so a composer
     // sits directly above the keys.
     final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+
+    // The first-time tour: requested when a profile has just been created,
+    // shown once the shell is on screen, remembered on the phone so it never
+    // comes back.
+    if (ref.watch(tourPendingProvider)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!context.mounted) return;
+        if (!ref.read(tourPendingProvider.notifier).consume()) return;
+        await showFirstTour(context);
+        await ref.read(tipsProvider.notifier).markSeen(Tips.firstTour);
+      });
+    }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(

@@ -53,4 +53,7 @@ final tipsProvider = NotifierProvider<TipsNotifier, Set<String>>(
 /// clears.
 abstract final class Tips {
   static const cartIsTheLike = 'cartIsTheLike';
+
+  /// The click-through tour shown once, right after a profile is created.
+  static const firstTour = 'firstTour';
 }
