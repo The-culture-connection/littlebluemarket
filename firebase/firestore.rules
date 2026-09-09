@@ -233,6 +233,18 @@ service cloud.firestore {
       match /settings/{doc} {
         allow read, write: if isSelf(uid) && member() && doc == 'notifications';
       }
+
+      // People you follow for post notifications ("Notify me" on a profile).
+      // Yours alone; the functions mirror it into the person's subscribers.
+      match /following/{personId} {
+        allow read, write: if isSelf(uid) && member() && personId != uid;
+      }
+
+      // Who follows this person: the fan-out list the functions send to.
+      // Nobody reads it from a phone, so nobody can list someone's followers.
+      match /subscribers/{subscriberUid} {
+        allow read, write: if false;
+      }
     }
 
     // ---------------------------------------------------------------- catalog

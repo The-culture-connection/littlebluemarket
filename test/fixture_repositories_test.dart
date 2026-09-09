@@ -19,6 +19,25 @@ void main() {
 
   tearDown(() => backend.store.dispose());
 
+  group('following', () {
+    test('is off until you turn it on, and off again after', () async {
+      final social = FixtureSocialRepository(backend);
+      expect(await social.watchFollowing('kali').first, isFalse);
+      await social.setFollowing('kali', true);
+      expect(await social.watchFollowing('kali').first, isTrue);
+      expect(await social.watchFollowing('dee').first, isFalse, reason: 'per person');
+      await social.setFollowing('kali', false);
+      expect(await social.watchFollowing('kali').first, isFalse);
+    });
+
+    test('you cannot follow yourself', () {
+      expect(
+        () => FixtureSocialRepository(backend).setFollowing(backend.uid, true),
+        throwsA(isA<ValidationException>()),
+      );
+    });
+  });
+
   group('catalog says no', () {
     test('a missing product throws instead of substituting another', () {
       final catalog = FixtureCatalogRepository(backend);

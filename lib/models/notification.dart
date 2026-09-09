@@ -10,6 +10,8 @@ enum NotificationKind {
   forumThread,
   forumReply,
   newProduct,
+  /// Someone you follow posted.
+  newPost,
   announcement,
   other,
 }
@@ -54,6 +56,7 @@ class AppNotification {
     NotificationKind.forumThread => 'started a thread in a forum you joined',
     NotificationKind.forumReply => 'replied in a thread you are in',
     NotificationKind.newProduct => 'added something new',
+    NotificationKind.newPost => 'posted something new',
     NotificationKind.announcement => '',
     NotificationKind.other => 'sent you a note',
   };
@@ -69,6 +72,7 @@ class NotificationPrefs {
     this.forums = true,
     this.reviews = true,
     this.newProducts = true,
+    this.newPosts = true,
     this.announcements = true,
     this.mutedForums = const [],
     this.announcementsSeenAt,
@@ -79,6 +83,9 @@ class NotificationPrefs {
   final bool forums;
   final bool reviews;
   final bool newProducts;
+
+  /// A post from someone you follow (the Notify me button on a profile).
+  final bool newPosts;
   final bool announcements;
   final List<String> mutedForums;
 
@@ -92,6 +99,7 @@ class NotificationPrefs {
     bool? forums,
     bool? reviews,
     bool? newProducts,
+    bool? newPosts,
     bool? announcements,
     List<String>? mutedForums,
     DateTime? announcementsSeenAt,
@@ -101,6 +109,7 @@ class NotificationPrefs {
     forums: forums ?? this.forums,
     reviews: reviews ?? this.reviews,
     newProducts: newProducts ?? this.newProducts,
+    newPosts: newPosts ?? this.newPosts,
     announcements: announcements ?? this.announcements,
     mutedForums: mutedForums ?? this.mutedForums,
     announcementsSeenAt: announcementsSeenAt ?? this.announcementsSeenAt,
@@ -112,6 +121,7 @@ class NotificationPrefs {
     'forums': forums,
     'reviews': reviews,
     'newProducts': newProducts,
+    'newPosts': newPosts,
     'announcements': announcements,
     'mutedForums': mutedForums,
   };

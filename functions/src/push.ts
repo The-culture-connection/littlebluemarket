@@ -24,6 +24,7 @@ export type PushType =
   | 'forumThread'
   | 'forumReply'
   | 'newProduct'
+  | 'newPost'
   | 'announcement'
   | 'test';
 
@@ -34,6 +35,8 @@ export interface NotificationPrefs {
   forums?: boolean;
   reviews?: boolean;
   newProducts?: boolean;
+  /** A post from someone you follow. */
+  newPosts?: boolean;
   announcements?: boolean;
   mutedForums?: string[];
 }
@@ -59,6 +62,8 @@ export function shouldPush(prefs: NotificationPrefs | undefined, event: PushEven
       return on(prefs?.forums);
     case 'newProduct':
       return on(prefs?.newProducts);
+    case 'newPost':
+      return on(prefs?.newPosts);
     case 'announcement':
       return on(prefs?.announcements);
     case 'test':
@@ -96,6 +101,8 @@ export function titleFor(type: PushType, fromName: string, fallbackTitle?: strin
       return `${who} replied`;
     case 'newProduct':
       return `New from ${who}`;
+    case 'newPost':
+      return `${who} posted`;
     case 'announcement':
       return fallbackTitle || 'Little Blue Market';
     case 'test':
@@ -306,4 +313,20 @@ export async function sendPushToUids(uids: Iterable<string>, payload: PushPayloa
     }
   }
   return sent;
+}
+
+/**
+ * Who follows this person (the reverse of users/{me}/following, kept by
+ * onFollowWritten), minus the person themself. Capped like the forum list:
+ * a wildly popular seller still gets a bounded fan-out per post.
+ */
+export async function postSubscribers(authorUid: string, cap = 500): Promise<string[]> {
+  if (!authorUid) return [];
+  const snapshot = await getFirestore()
+    .collection('users')
+    .doc(authorUid)
+    .collection('subscribers')
+    .limit(cap)
+    .get();
+  return snapshot.docs.map((d) => d.id).filter((id) => id && id !== authorUid);
 }

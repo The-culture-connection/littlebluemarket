@@ -150,4 +150,31 @@ void main() {
     expect(find.text('Following'), findsNothing);
     expect(find.text('Follow'), findsNothing);
   });
+  testWidgets('Notify me on a profile follows and unfollows in one tap', (
+    tester,
+  ) async {
+    final container = await _pumpApp(tester, guest: false);
+    container.read(routerProvider).go('/market/seller/kali');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Notify me'), findsOneWidget);
+    await tester.tap(find.text('Notify me'));
+    await tester.pumpAndSettle();
+    expect(find.text('Notifying you'), findsOneWidget);
+    expect(find.text('You will hear when they post.'), findsOneWidget);
+
+    await tester.tap(find.text('Notifying you'));
+    await tester.pumpAndSettle();
+    expect(find.text('Notify me'), findsOneWidget);
+  });
+
+  testWidgets('a guest tapping Notify me gets the gate', (tester) async {
+    final container = await _pumpApp(tester, guest: true);
+    container.read(routerProvider).go('/market/seller/kali');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Notify me'));
+    await tester.pumpAndSettle();
+    expect(find.text('Make a profile to do that'), findsOneWidget);
+  });
 }

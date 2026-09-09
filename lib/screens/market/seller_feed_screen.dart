@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/models.dart';
 import '../../router/nav.dart';
 import '../../state/providers.dart';
+import '../../state/session.dart';
 import '../../widgets/async.dart';
 import '../../widgets/directory_listing_card.dart';
 import '../../widgets/directory_storefront.dart';
@@ -80,6 +81,8 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
                     () => context.goToDm(person.id),
                   ),
                 ),
+                if (ref.watch(currentUidProvider) != person.id)
+                  _NotifyMeButton(personId: person.id),
               ],
             ),
             // A business listed on littlebluecart.com shows its listing the
@@ -142,6 +145,61 @@ class _DirectorySection extends ConsumerWidget {
                 ],
               ),
             ),
+    );
+  }
+}
+
+/// Follow someone for a push when they post. One tap on, one tap off; the
+/// label says which state you are in so the button never needs a tooltip.
+class _NotifyMeButton extends ConsumerStatefulWidget {
+  const _NotifyMeButton({required this.personId});
+
+  final String personId;
+
+  @override
+  ConsumerState<_NotifyMeButton> createState() => _NotifyMeButtonState();
+}
+
+class _NotifyMeButtonState extends ConsumerState<_NotifyMeButton> {
+  var _busy = false;
+
+  Future<void> _toggle(bool on) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(socialRepositoryProvider)
+          .setFollowing(widget.personId, on);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            on
+                ? 'You will hear when they post.'
+                : 'No more posts from them.',
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(describeError(e).body)));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final following =
+        ref.watch(followingProvider(widget.personId)).value ?? false;
+    return PillButton(
+      following ? 'Notifying you' : 'Notify me',
+      icon: following
+          ? Icons.notifications_active_rounded
+          : Icons.notifications_none_rounded,
+      style: following ? PillStyle.quiet : PillStyle.ghost,
+      onPressed: _busy
+          ? null
+          : () => requireProfile(context, ref, () => _toggle(!following)),
     );
   }
 }

@@ -159,6 +159,11 @@ abstract interface class SocialRepository {
   Stream<NotificationPrefs> watchNotificationPrefs();
   Future<void> saveNotificationPrefs(NotificationPrefs prefs);
 
+  /// Following someone means a push when they post ("Notify me" on their
+  /// profile). Yours alone; the backend keeps the reverse list it sends to.
+  Stream<bool> watchFollowing(String personId);
+  Future<void> setFollowing(String personId, bool on);
+
   /// News from Little Blue Market, newest first, every audience: the phone
   /// keeps the ones meant for this viewer.
   Stream<List<Announcement>> watchAnnouncements({int limit = 20});

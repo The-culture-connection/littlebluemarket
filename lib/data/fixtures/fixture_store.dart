@@ -101,6 +101,9 @@ class FixtureStore {
   /// Who the demo Admin screen has banned.
   final banned = Watchable<Set<String>>({});
 
+  /// People the demo user follows for post notifications.
+  final following = Watchable<Set<String>>({});
+
   /// Website-link products of directory businesses (Stage 13). One belongs
   /// to `dee` from the start so the product page and feed card can render.
   final directoryProducts = Watchable<Map<String, Product>>({
@@ -373,6 +376,7 @@ class FixtureStore {
       feedback,
       reports,
       banned,
+      following,
     ]) {
       w.dispose();
     }

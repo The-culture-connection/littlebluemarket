@@ -209,6 +209,12 @@ class _NotificationSettingsScreenState
                     onChanged: (v) => _save(p.copyWith(newProducts: v)),
                   ),
                   _Switch(
+                    title: 'Posts from people you follow',
+                    subtitle: 'Anyone you tapped Notify me on posts something',
+                    value: p.newPosts,
+                    onChanged: (v) => _save(p.copyWith(newPosts: v)),
+                  ),
+                  _Switch(
                     title: 'Announcements',
                     subtitle: 'News from Little Blue Market',
                     value: p.announcements,

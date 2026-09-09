@@ -588,6 +588,34 @@ class FirestoreSocialRepository implements SocialRepository {
   }
 
   @override
+  Stream<bool> watchFollowing(String personId) {
+    final me = uid;
+    if (me == null) return Stream.value(false);
+    return _db
+        .collection('users')
+        .doc(me)
+        .collection('following')
+        .doc(personId)
+        .snapshots()
+        .map((doc) => doc.exists)
+        .guarded(operation: 'firestore following');
+  }
+
+  @override
+  Future<void> setFollowing(String personId, bool on) => guardFirestore(() async {
+    final me = _requireUid;
+    if (personId == me) {
+      throw const ValidationException('You already hear about your own posts.');
+    }
+    final ref = _db.collection('users').doc(me).collection('following').doc(personId);
+    if (on) {
+      await ref.set({'personId': personId, 'createdAt': FieldValue.serverTimestamp()});
+    } else {
+      await ref.delete();
+    }
+  }, operation: 'firestore following set');
+
+  @override
   Future<void> saveNotificationPrefs(NotificationPrefs prefs) =>
       guardFirestore(() async {
         final me = _requireUid;

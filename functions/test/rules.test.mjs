@@ -408,6 +408,17 @@ describe('selling is a grant, not a client write', () => {
     await assertFails(member('kali').collection('directoryListings').where('ownerUid', '==', 'maya').get());
   });
 
+  test('following: yours alone, never yourself; subscribers are server-only', async () => {
+    await assertSucceeds(member('maya').doc('users/maya/following/kali').set({ personId: 'kali' }));
+    await assertSucceeds(member('maya').doc('users/maya/following/kali').delete());
+    await assertFails(member('maya').doc('users/maya/following/maya').set({ personId: 'maya' }));
+    await assertFails(member('kali').doc('users/maya/following/dee').set({ personId: 'dee' }));
+    await assertFails(guest().doc('users/anon/following/kali').set({ personId: 'kali' }));
+    await assertFails(member('kali').collection('users/maya/following').get());
+    await assertFails(member('kali').doc('users/kali/subscribers/maya').get());
+    await assertFails(member('maya').doc('users/kali/subscribers/maya').set({ since: 1 }));
+  });
+
   test('reports: a member reports someone else; only admins read, resolve, never delete', async () => {
     await assertSucceeds(member('maya').doc('reports/r1').set({ reporterUid: 'maya', subjectUid: 'kali', kind: 'user', reason: 'spam', text: 'Sends the same link everywhere' }));
     await assertFails(member('maya').doc('reports/r2').set({ reporterUid: 'kali', subjectUid: 'dee', kind: 'user', reason: 'spam', text: 'as someone else' }));

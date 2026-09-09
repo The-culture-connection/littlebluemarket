@@ -104,6 +104,13 @@ final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
   return ref.watch(socialRepositoryProvider).watchNotifications();
 });
 
+/// Whether you follow this person for post notifications. False for guests.
+final followingProvider = StreamProvider.family<bool, String>((ref, personId) {
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null || uid == personId) return Stream.value(false);
+  return ref.watch(socialRepositoryProvider).watchFollowing(personId);
+});
+
 /// The notification switches. Defaults until saved once.
 final notificationPrefsProvider = StreamProvider<NotificationPrefs>((ref) {
   final uid = ref.watch(currentUidProvider);

@@ -24,6 +24,7 @@ import {
   forumReplyRecipients,
   forumThreadRecipients,
   isAudience,
+  postSubscribers,
   sendAnnouncement,
   sendPushToUid,
   shoutoutSellerToNotify,
@@ -834,6 +835,39 @@ export const onPostWritten = onDocumentWritten(
         fromUid: String(afterAll?.authorId ?? ''),
         text: `Gave you a shoutout: ${String(afterAll?.text ?? '')}`.slice(0, 140),
       });
+    }
+    // Followers ("Notify me" on the author's profile) hear about a new post,
+    // once: only when the post is created, never on an edit or a counter.
+    if (!beforeAll && afterAll) {
+      const authorId = String(afterAll.authorId ?? '');
+      const text = String(afterAll.text ?? afterAll.caption ?? afterAll.title ?? '').slice(0, 140);
+      for (const uid of await postSubscribers(authorId)) {
+        await notify(uid, {
+          type: 'newPost',
+          postId: event.params.postId,
+          fromUid: authorId,
+          text: text || 'posted something new',
+        });
+      }
+    }
+  },
+);
+
+/**
+ * Following, mirrored: users/{uid}/following/{personId} is the phone's own
+ * list; users/{personId}/subscribers/{uid} is the list the post trigger
+ * sends to, and only the functions may touch it.
+ */
+export const onFollowWritten = onDocumentWritten(
+  'users/{uid}/following/{personId}',
+  async (event) => {
+    const { uid, personId } = event.params;
+    if (!uid || !personId || uid === personId) return;
+    const ref = getFirestore().collection('users').doc(personId).collection('subscribers').doc(uid);
+    if (event.data?.after?.exists) {
+      await ref.set({ since: FieldValue.serverTimestamp() }, { merge: true });
+    } else {
+      await ref.delete().catch(() => undefined);
     }
   },
 );

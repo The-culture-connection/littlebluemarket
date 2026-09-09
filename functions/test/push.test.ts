@@ -87,3 +87,10 @@ test('titles name the person, except announcements, which carry their own', () =
   assert.equal(titleFor('announcement', ''), 'Little Blue Market');
   assert.equal(titleFor('test', ''), 'Little Blue Market');
 });
+
+test('newPost follows its own switch and has a headline', () => {
+  assert.equal(shouldPush(undefined, { type: 'newPost' }), true, 'on by default');
+  assert.equal(shouldPush({ newPosts: false }, { type: 'newPost' }), false);
+  assert.equal(shouldPush({ newProducts: false }, { type: 'newPost' }), true, 'a different switch');
+  assert.equal(titleFor('newPost', 'Kali'), 'Kali posted');
+});

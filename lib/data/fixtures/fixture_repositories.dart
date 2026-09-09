@@ -785,6 +785,25 @@ class FixtureSocialRepository implements SocialRepository {
   }
 
   @override
+  Stream<bool> watchFollowing(String personId) =>
+      _store.following.stream.map((set) => set.contains(personId));
+
+  @override
+  Future<void> setFollowing(String personId, bool on) async {
+    await _backend._settle();
+    if (personId == _backend.uid) {
+      throw const ValidationException('You already hear about your own posts.');
+    }
+    final next = {..._store.following.value};
+    if (on) {
+      next.add(personId);
+    } else {
+      next.remove(personId);
+    }
+    _store.following.value = next;
+  }
+
+  @override
   Stream<List<Announcement>> watchAnnouncements({int limit = 20}) =>
       _store.announcements.stream.map((all) => all.take(limit).toList());
 
