@@ -73,6 +73,14 @@ $plan = [ordered]@{
   'WC_CONSUMER_SECRET'               = (Pick @('WC_CONSUMER_SECRET'))
 }
 if (-not $plan['SHIPTURTLE_WEBHOOK_SECRET']) { $plan['SHIPTURTLE_WEBHOOK_SECRET'] = 'unsigned' }
+# A Shipturtle key is a JWT (three base64url parts joined by dots). A note pasted after it on the
+# same line (it happened, 2026-09-08: 63 characters of text after the token) would break every call,
+# so keep the token and drop whatever follows.
+$jwt = [regex]::Match($plan['SHIPTURTLE_API_KEY'], '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+')
+if ($jwt.Success -and $jwt.Value.Length -lt $plan['SHIPTURTLE_API_KEY'].Length) {
+  Write-Host "SHIPTURTLE_API_KEY: ignoring $($plan['SHIPTURTLE_API_KEY'].Length - $jwt.Value.Length) characters of text after the token" -ForegroundColor Yellow
+  $plan['SHIPTURTLE_API_KEY'] = $jwt.Value
+}
 
 $failed = @()
 Push-Location "$Repo\functions"
