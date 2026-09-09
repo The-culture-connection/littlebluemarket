@@ -4,6 +4,7 @@ import '../models/models.dart';
 import '../router/nav.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
+import 'linked_text.dart';
 import 'primitives.dart';
 
 /// The identity block shared by your own profile and any seller's feed.
@@ -75,9 +76,11 @@ class ProfileIdentity extends StatelessWidget {
             style: LbmText.display.copyWith(fontSize: 18, color: c.ink),
           ),
           const SizedBox(height: 3),
-          Text(
+          // Web addresses in the bio open in the browser.
+          LinkedText(
             person.bio,
             style: TextStyle(fontSize: 13.5, height: 1.55, color: c.ink2),
+            linkColor: c.ink,
           ),
           if (person.tags.isNotEmpty) ...[
             const SizedBox(height: 14),

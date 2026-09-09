@@ -223,7 +223,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             controller: _handle,
           ),
           const SizedBox(height: 16),
-          LbmField(label: 'Bio', controller: _bio, maxLines: 3),
+          LbmField(
+            label: 'Bio',
+            controller: _bio,
+            maxLines: 4,
+            helper:
+                'Paste a web address (your shop, Instagram, a booking page) '
+                'and it becomes a tappable link on your profile.',
+          ),
           const SizedBox(height: 16),
           LbmField(
             label: 'City, State',
