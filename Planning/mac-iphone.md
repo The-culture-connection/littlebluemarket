@@ -35,7 +35,9 @@ scripts/run-live-mac.sh
 
 The script lists the devices it can see; run it again with your phone's name in quotes, e.g. `scripts/run-live-mac.sh "Grace's iPhone"`. The first build takes several minutes (CocoaPods). The first time the app opens on the phone iOS may say the developer is untrusted: Settings → General → VPN & Device Management → your account → **Trust**, then open the app again.
 
-`run-live-mac.sh` is the **developer build against production** (it passes `LBM_DEV=true`, so the corner badge and the error strip are on; the project is whatever `ios/Runner/GoogleService-Info.plist` says, production unless you ran `scripts/use-env.sh dev` first). The badge should read **DEV · live · little-blue-cart-prod**. A plain `flutter run -d "<phone>"` is the production app exactly as customers get it: no badge, no strip.
+`run-live-mac.sh` is the **developer build** (it passes `LBM_DEV=true`, so the corner badge and the error strip are on; the project is whatever `ios/Runner/GoogleService-Info.plist` says, production unless you ran `scripts/use-env.sh dev` first). The badge should read **DEV · live · little-blue-cart-prod**. `scripts/run-prod-mac.sh <device id>`, or a plain `flutter run -d <device id>`, is the production app exactly as customers get it: no badge, no strip.
+
+**Xcode's own Run button** builds with whatever flags the *last* `flutter run` wrote into `ios/Flutter/Generated.xcconfig`. After a `run-live-mac.sh` session that used to mean a DEV build from Xcode too; since 2026-09-09 the script puts the production settings back when it exits. If Xcode ever shows the badge anyway, run `flutter build ios --config-only` once in `little_blue_market` and build again.
 
 ## What the phone can and cannot test
 
