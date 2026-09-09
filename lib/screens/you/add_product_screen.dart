@@ -13,6 +13,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/photo_source.dart';
 import '../../widgets/primitives.dart';
+import '../../widgets/tag_entry.dart';
 import '../../widgets/screen.dart';
 
 /// Journey B: a seller adds a product.
@@ -80,7 +81,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _price = TextEditingController();
   final _quantity = TextEditingController(text: '1');
   final _sku = TextEditingController();
-  final _tags = TextEditingController();
+  var _tags = <String>[];
   final _photos = <_PickedPhoto>[];
   final _existingUrls = <String>[];
 
@@ -115,7 +116,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       _price.text = (existing.priceCents / 100).toStringAsFixed(2);
       _quantity.text = existing.quantity.toString();
       _sku.text = existing.sku ?? '';
-      _tags.text = existing.tags.join(', ');
+      _tags = [...existing.tags];
       _collections.addAll(existing.collectionHandles);
       _existingUrls.addAll(existing.imageUrls);
       if (existing.categoryId != null) {
@@ -164,7 +165,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _categoryQuery
       ..removeListener(_onCategoryTyped)
       ..dispose();
-    for (final c in [_title, _description, _price, _quantity, _sku, _tags]) {
+    for (final c in [_title, _description, _price, _quantity, _sku]) {
       c.dispose();
     }
     super.dispose();
@@ -318,11 +319,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         imageUrls: urls,
         collectionHandles: _collections.toList()..sort(),
         category: _category,
-        tags: _tags.text
-            .split(',')
-            .map((t) => t.trim())
-            .where((t) => t.isNotEmpty)
-            .toList(),
+        tags: _tags,
       );
       _draftId = await repo.saveDraft(draft, id: _draftId);
 
@@ -527,11 +524,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   readOnly: _busy,
                 ),
                 const SizedBox(height: 12),
-                LbmField(
-                  label: 'Tags (optional, comma-separated)',
-                  controller: _tags,
-                  hintText: 'gift, handmade',
-                  readOnly: _busy,
+                Text('Tags (optional)', style: LbmText.fieldLabel),
+                const SizedBox(height: 8),
+                TagEntry(
+                  tags: _tags,
+                  enabled: !_busy,
+                  onChanged: (tags) => setState(() => _tags = tags),
                 ),
               ],
             ),

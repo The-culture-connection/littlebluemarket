@@ -12,10 +12,10 @@ import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
 import 'photo_source.dart';
-import 'hashtag_chips.dart';
 import 'primitives.dart';
 import 'product_art.dart';
 import 'sheets.dart';
+import 'tag_entry.dart';
 import 'skeleton.dart';
 
 /// The uids of the members a text names with @, looked up by handle. A
@@ -136,6 +136,7 @@ class ReviewComposer extends ConsumerStatefulWidget {
 
 class _ReviewComposerState extends ConsumerState<ReviewComposer> {
   final _text = TextEditingController();
+  var _tags = <String>[];
   Purchase? _picked;
   int _rating = 5;
   bool _saving = false;
@@ -164,7 +165,7 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
               rating: _rating,
               text: _text.text.trim(),
               purchaseId: picked.id,
-              tags: parseHashtags(_text.text),
+              tags: {..._tags, ...parseHashtags(_text.text)}.toList(),
               mentionedUids: mentioned,
             ),
           );
@@ -227,11 +228,15 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
                     onChanged: (rating) => setState(() => _rating = rating),
                   ),
                   const SizedBox(height: 12),
-                  HashtagChips(controller: _text),
                   LbmField(
                     label: 'What should other people know?',
                     controller: _text,
                     maxLines: 4,
+                  ),
+                  const SizedBox(height: 10),
+                  TagEntry(
+                    tags: _tags,
+                    onChanged: (tags) => setState(() => _tags = tags),
                   ),
                   const SizedBox(height: 14),
                   PillButton(
@@ -345,6 +350,7 @@ class ShoutoutComposer extends ConsumerStatefulWidget {
 
 class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
   final _text = TextEditingController();
+  var _tags = <String>[];
   Person? _mentioned;
   List<Person> _matches = const [];
   bool _saving = false;
@@ -425,7 +431,7 @@ class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
         NewPost.shoutout(
           text: _text.text.trim(),
           aboutSellerId: _mentioned?.id,
-          tags: parseHashtags(_text.text),
+          tags: {..._tags, ...parseHashtags(_text.text)}.toList(),
           imageUrls: imageUrls,
           mentionedUids: mentioned,
         ),
@@ -457,12 +463,16 @@ class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
           style: LbmText.tiny.copyWith(color: c.ink2),
         ),
         const SizedBox(height: 14),
-        HashtagChips(controller: _text),
         LbmField(
           label: 'Your shoutout',
           controller: _text,
           maxLines: 4,
           autofocus: true,
+        ),
+        const SizedBox(height: 10),
+        TagEntry(
+          tags: _tags,
+          onChanged: (tags) => setState(() => _tags = tags),
         ),
         if (_matches.isNotEmpty) ...[
           const SizedBox(height: 10),
@@ -550,6 +560,7 @@ class ListingComposer extends ConsumerStatefulWidget {
 
 class _ListingComposerState extends ConsumerState<ListingComposer> {
   final _caption = TextEditingController();
+  var _tags = <String>[];
   Product? _picked;
   bool _saving = false;
 
@@ -576,7 +587,11 @@ class _ListingComposerState extends ConsumerState<ListingComposer> {
               caption: _caption.text.trim().isEmpty
                   ? null
                   : _caption.text.trim(),
-              tags: {...picked.tags, ...parseHashtags(_caption.text)}.toList(),
+              tags: {
+                ...picked.tags,
+                ..._tags,
+                ...parseHashtags(_caption.text),
+              }.toList(),
               mentionedUids: mentioned,
             ),
           );
@@ -650,11 +665,15 @@ class _ListingComposerState extends ConsumerState<ListingComposer> {
                 ),
               if (_picked != null) ...[
                 const SizedBox(height: 8),
-                HashtagChips(controller: _caption),
                 LbmField(
                   label: 'Say something about it (optional)',
                   controller: _caption,
                   maxLines: 3,
+                ),
+                const SizedBox(height: 10),
+                TagEntry(
+                  tags: _tags,
+                  onChanged: (tags) => setState(() => _tags = tags),
                 ),
                 const SizedBox(height: 14),
                 PillButton(

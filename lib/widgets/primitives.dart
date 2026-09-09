@@ -595,6 +595,7 @@ class LbmField extends StatelessWidget {
     super.key,
     this.label,
     this.controller,
+    this.focusNode,
     this.initialValue,
     this.hintText,
     this.maxLines = 1,
@@ -612,6 +613,7 @@ class LbmField extends StatelessWidget {
 
   final String? label;
   final TextEditingController? controller;
+  final FocusNode? focusNode;
   final String? initialValue;
   final String? hintText;
   final int maxLines;
@@ -651,6 +653,7 @@ class LbmField extends StatelessWidget {
     final field = TextField(
       controller: controller,
       readOnly: readOnly,
+      focusNode: focusNode,
       autofocus: autofocus,
       obscureText: obscureText,
       autofillHints: autofillHints,

@@ -15,6 +15,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/photo_source.dart';
 import '../../widgets/primitives.dart';
+import '../../widgets/tag_entry.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
 
@@ -34,7 +35,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _handle = TextEditingController();
   final _bio = TextEditingController();
   final _city = TextEditingController();
-  final _newTag = TextEditingController();
   List<String>? _tags;
   bool _saving = false;
   String? _error;
@@ -45,7 +45,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _handle.dispose();
     _bio.dispose();
     _city.dispose();
-    _newTag.dispose();
     super.dispose();
   }
 
@@ -101,7 +100,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Future<void> _save() async {
     if (_saving) return;
     if (_name.text.trim().length < 2) {
-      setState(() => _error = 'Your name cannot be empty. It is what people see on your posts.');
+      setState(
+        () => _error =
+            'Your name cannot be empty. It is what people see on your posts.',
+      );
       return;
     }
     setState(() {
@@ -131,17 +133,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         _error = describeError(error).body;
       });
     }
-  }
-
-  void _addTag() {
-    final raw = _newTag.text.trim();
-    if (raw.isEmpty) return;
-    final tag = raw.startsWith('#') ? raw : '#$raw';
-    setState(() {
-      final current = _tags ?? <String>[];
-      _tags = [...current, if (!current.contains(tag)) tag];
-      _newTag.clear();
-    });
   }
 
   @override
@@ -247,41 +238,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             style: LbmText.fieldLabel.copyWith(color: c.ink2),
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 7,
-            runSpacing: 7,
-            children: [
-              for (final tag in _tags ?? const <String>[])
-                LbmChip(
-                  tag,
-                  style: ChipStyle.initiative,
-                  trailingIcon: Icons.close_rounded,
-                  onTap: () => setState(() => _tags = [...?_tags]..remove(tag)),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                // The prototype's "+ add" chip was inert.
-                child: LbmField(
-                  controller: _newTag,
-                  hintText: 'Add a hashtag',
-                  pill: true,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _addTag(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              PillButton(
-                'Add',
-                small: true,
-                expand: false,
-                style: PillStyle.quiet,
-                onPressed: _addTag,
-              ),
-            ],
+          TagEntry(
+            tags: _tags ?? const <String>[],
+            onChanged: (tags) => setState(() => _tags = tags),
           ),
           const SizedBox(height: 8),
           Text(
@@ -398,7 +357,9 @@ class _ShipturtleRow extends ConsumerWidget {
         final uri = Uri.tryParse(url);
         if (uri == null ||
             !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-          messenger.showSnackBar(SnackBar(content: Text('Could not open $url')));
+          messenger.showSnackBar(
+            SnackBar(content: Text('Could not open $url')),
+          );
         }
       },
     );
@@ -430,9 +391,7 @@ class _DirectoryRow extends ConsumerWidget {
           ),
         ListRow(
           title: const Text('Little Blue Cart directory'),
-          subtitle: const Text(
-            'Your website orders and your business listing',
-          ),
+          subtitle: const Text('Your website orders and your business listing'),
           trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
           onTap: () => context.push('/you/directory'),
         ),
@@ -446,8 +405,9 @@ class _DirectoryRow extends ConsumerWidget {
             final messenger = ScaffoldMessenger.of(context);
             String url = '';
             try {
-              url = (await ref.read(appConfigProvider.future))
-                  .directoryAddListingUrl;
+              url = (await ref.read(
+                appConfigProvider.future,
+              )).directoryAddListingUrl;
             } on Object {
               url = '';
             }
@@ -509,7 +469,6 @@ class _BuyerRowsState extends ConsumerState<_BuyerRows> {
     );
   }
 }
-
 
 /// The merchant's own domain. An account here sees Staff tools in the
 /// production app, which is how the first admin claim is made without a
