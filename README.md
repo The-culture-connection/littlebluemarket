@@ -126,35 +126,30 @@ outside it knows where the data came from.
 
 ### 1. The welcome handoff
 
-`welcome-still.png` is the GIF's exact final frame. Both are drawn into the same
-`540 × 960` box on a container painted `#70A0D0`, so the letterboxing is
-invisible and **nothing moves** when the GIF is removed — the buttons simply
-become tappable.
-
-Hotspot rectangles live in `_Hotspot` in
-[welcome_screen.dart](lib/screens/onboarding/welcome_screen.dart), as fractions
-of the artwork. They are measured against the animation's resting frame: **if
-the GIF is ever re-exported, re-measure them.** Nothing in the layout will tell
-you they have drifted — the buttons will just stop working.
+`welcome-still.png` is the GIF's exact resting frame. Both are drawn into the
+same `540 × 623` box on a screen painted `#70A0D0`, so the artwork has no
+visible edge and **nothing moves** when the GIF is removed. The three buttons
+(Create a Profile, Sign in, Continue as a guest) are ordinary widgets *below*
+the artwork since 2026-09-08 (Grace's `Body.gif` re-export, which drops the
+painted buttons): crisp at any size, readable by a screen reader, tappable from
+the first frame. There are no hotspots to re-measure any more.
 `test/welcome_handoff_test.dart` asserts the two images share a rect, that the
-hotspots sit where the artwork draws its buttons, and that nothing moves at the
+buttons sit under the artwork and never overlap, and that nothing moves at the
 handoff.
 
 Details worth knowing:
 
-- **The duration is 4190 ms, not the 4070 ms the prototype's README prose says.**
-  4190 is what the prototype's own script uses, so it is the value that has
-  actually been watched against the asset. The countdown does not start until the
-  GIF's first frame has painted, and a backstop timer guarantees the intro ends
-  even if the GIF never decodes.
-- The hotspots sit **above** the GIF, matching the prototype's z-order, so an
-  impatient tap during the animation works rather than being swallowed.
+- **The asset is made from `Body.gif` (1080×1920, 123 frames) with gifsicle:**
+  frames 0–121 (frame 122 is the loop's jump back to the start), cropped to
+  the top `1080×1245` (below that the source is empty), halved to 540 wide,
+  128 colours, `--lossy=60 -O3 --no-loopcount`. 774 KB, 4070 ms, stops on the
+  resting frame. The still is frame 115 of the source, cropped the same way.
+- **The duration constant is 4190 ms**: a little margin past the 4070 ms of
+  frames. The countdown does not start until the GIF's first frame has
+  painted, and a backstop timer guarantees the intro ends even if the GIF
+  never decodes.
 - Reduce-motion skips the animation entirely, as the prototype's
   `prefers-reduced-motion` rule does.
-- "Continue as a guest" is only 4.2% of the artwork tall, which is under a
-  comfortable touch target on a phone. Its *touch* area is grown around its own
-  centre; the drawn position is untouched, and a test asserts it cannot collide
-  with the button above it.
 
 ### 2. The accent contrast split
 
@@ -231,7 +226,7 @@ API.
 
 ```
 design_tokens_test.dart    contrast ratios, including the accent split
-welcome_handoff_test.dart  the handoff, hotspot geometry, touch targets
+welcome_handoff_test.dart  the handoff, the buttons under the artwork, touch targets
 guest_gating_test.dart     what a guest can and cannot reach
 screens_smoke_test.dart    every screen renders and scrolls, light and dark
 text_scaling_test.dart     every screen at 2.0 text scale (the app clamps to 1.35)

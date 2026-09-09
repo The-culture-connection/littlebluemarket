@@ -7,53 +7,30 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_assets.dart';
 import '../../state/session.dart';
+import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 
 /// How long the intro runs before the GIF is taken away.
 ///
-/// The prototype's script uses 4190 ms; the README's prose says 4070 ms. The
-/// script value is the one that has actually been watched against the asset, so
-/// it is the one used here — it leaves a little margin past the last frame
-/// rather than clipping it. The timer does not start until the GIF's first
-/// frame is on screen, so a slow decode cannot cut the animation short.
+/// The re-exported artwork (Grace's `Body.gif`, 2026-09-08) plays for 4070 ms
+/// and stops on its resting frame; this leaves a little margin past the last
+/// frame rather than clipping it. The timer does not start until the GIF's
+/// first frame is on screen, so a slow decode cannot cut the animation short.
 const kIntroDuration = Duration(milliseconds: 4190);
 
-/// The animation's own resting frame is 540 x 960. Both images are laid out in
-/// a box of exactly this ratio so they sit on top of each other pixel for
-/// pixel.
-const kWelcomeAspect = 540 / 960;
-
-/// Where the buttons are in the artwork, as fractions of the image.
-///
-/// These are measured from the animation's resting frame. If the GIF is ever
-/// re-exported these must be re-measured — nothing in the layout will tell you
-/// they have drifted, the buttons will just stop working.
-enum _Hotspot {
-  signIn('Sign in', 0.184, 0.669, 0.651, 0.085),
-  createProfile('Create a Profile', 0.184, 0.786, 0.653, 0.085),
-  guest('Continue as a guest', 0.288, 0.900, 0.441, 0.042);
-
-  const _Hotspot(this.label, this.left, this.top, this.width, this.height);
-
-  final String label;
-  final double left;
-  final double top;
-  final double width;
-  final double height;
-}
-
-/// The smallest comfortable touch height. The "Continue as a guest" target is
-/// only 4.2% of the artwork, which lands under this on a phone, so its touch
-/// area is grown around its own centre. The rectangle above it is far enough
-/// away that the two never overlap.
-const _kMinTouchHeight = 44.0;
+/// The artwork's own frame is 540 x 623: the animation with the painted
+/// buttons cut off, since the buttons are real widgets now. The still and the
+/// GIF are laid out in a box of exactly this ratio so they sit on top of each
+/// other pixel for pixel.
+const kWelcomeAspect = 540 / 623;
 
 /// The welcome handoff.
 ///
-/// The still is the GIF's exact final frame. Both are drawn in the same box, so
-/// when the GIF is taken away nothing moves — the buttons simply become
-/// tappable. The hotspots sit above both images, which also means an impatient
-/// tap during the animation works rather than being swallowed.
+/// The artwork (cart, bounce, wordmark) plays at the top; the still is its
+/// exact final frame, drawn underneath in the same box, so when the GIF is
+/// taken away nothing moves. The three buttons below it are ordinary widgets:
+/// crisp at any size, readable by a screen reader, and tappable from the
+/// first frame.
 class WelcomeScreen extends ConsumerStatefulWidget {
   const WelcomeScreen({super.key, this.playIntro = true});
 
@@ -82,8 +59,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Honour the platform's reduce-motion setting: skip straight to the
-    // resting frame, exactly as the prototype's prefers-reduced-motion rule
-    // does.
+    // resting frame.
     if (_showIntro && MediaQuery.disableAnimationsOf(context)) {
       _timer?.cancel();
       _showIntro = false;
@@ -117,14 +93,13 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     if (_showIntro) setState(() => _showIntro = false);
   }
 
+  /// Returning to the app.
   void _onSignIn() {
     _dismissIntro();
     context.push('/signin');
   }
 
-  /// The artwork's Create a Profile opens "Are you…", the seven doors, and
-  /// its Sign in is the returning-to-the-app door. The labels are painted
-  /// into the GIF, so the split lives here rather than on the buttons.
+  /// "Are you…", the seven doors.
   void _onCreateProfile() {
     _dismissIntro();
     context.push('/orient');
@@ -135,12 +110,6 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     ref.read(sessionProvider.notifier).continueAsGuest();
     context.go('/market');
   }
-
-  VoidCallback _actionFor(_Hotspot spot) => switch (spot) {
-    _Hotspot.signIn => _onSignIn,
-    _Hotspot.createProfile => _onCreateProfile,
-    _Hotspot.guest => _onGuest,
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -153,54 +122,116 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        // The container is painted the animation's own blue, so the letterboxing
-        // above and below the artwork is invisible.
+        // The whole screen is the animation's own blue, so the artwork has no
+        // visible edge and the buttons sit on the same ground.
         backgroundColor: LbmConst.welcomeBlue,
         body: SafeArea(
-          bottom: false,
-          child: Center(
-            child: AspectRatio(
-              aspectRatio: kWelcomeAspect,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final w = constraints.maxWidth;
-                  final h = constraints.maxHeight;
-                  return Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      // The resting frame, underneath and always present.
-                      Image.asset(
-                        LbmAssets.welcomeStill,
-                        fit: BoxFit.fill,
-                        semanticLabel:
-                            'little blue market — sign in, create a profile, '
-                            'or continue as a guest',
-                      ),
-
-                      // The animation, on top, removed when it finishes.
-                      if (_showIntro)
+          child: Column(
+            children: [
+              Expanded(
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: kWelcomeAspect,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // The resting frame, underneath and always present.
                         Image.asset(
-                          LbmAssets.welcomeIntro,
+                          LbmAssets.welcomeStill,
                           fit: BoxFit.fill,
-                          excludeFromSemantics: true,
-                          frameBuilder: (context, child, frame, _) {
-                            if (frame != null) _onFirstFrame();
-                            return child;
-                          },
+                          semanticLabel: 'little blue market',
                         ),
+                        // The animation, on top, removed when it finishes.
+                        if (_showIntro)
+                          Image.asset(
+                            LbmAssets.welcomeIntro,
+                            fit: BoxFit.fill,
+                            excludeFromSemantics: true,
+                            frameBuilder: (context, child, frame, _) {
+                              if (frame != null) _onFirstFrame();
+                              return child;
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(28, 8, 28, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _WelcomeButton(
+                      label: 'Create a Profile',
+                      onPressed: _onCreateProfile,
+                    ),
+                    const SizedBox(height: 12),
+                    _WelcomeButton(
+                      label: 'Sign in',
+                      outlined: true,
+                      onPressed: _onSignIn,
+                    ),
+                    const SizedBox(height: 6),
+                    _QuietLink(
+                      label: 'Continue as a guest',
+                      onPressed: _onGuest,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-                      // Invisible targets over the artwork's buttons. Above the
-                      // GIF so they stay tappable while it plays.
-                      for (final spot in _Hotspot.values)
-                        _HotspotTarget(
-                          spot: spot,
-                          boxWidth: w,
-                          boxHeight: h,
-                          onTap: _actionFor(spot),
-                        ),
-                    ],
-                  );
-                },
+/// The two big buttons: a filled slate pill and an outlined one, the same
+/// shape the sign-in screens use, so the artwork and the forms read as one
+/// flow.
+class _WelcomeButton extends StatelessWidget {
+  const _WelcomeButton({
+    required this.label,
+    required this.onPressed,
+    this.outlined = false,
+  });
+
+  final String label;
+  final VoidCallback onPressed;
+  final bool outlined;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: outlined ? Colors.transparent : LbmConst.slate,
+        borderRadius: LbmRadius.pillR,
+        border: outlined
+            ? Border.all(color: LbmConst.onWelcome.withValues(alpha: 0.9), width: 1.6)
+            : null,
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: LbmRadius.pillR,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 52),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: kBodyFont,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: LbmConst.onWelcome,
+                  ),
+                ),
               ),
             ),
           ),
@@ -210,45 +241,29 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   }
 }
 
-class _HotspotTarget extends StatelessWidget {
-  const _HotspotTarget({
-    required this.spot,
-    required this.boxWidth,
-    required this.boxHeight,
-    required this.onTap,
-  });
+class _QuietLink extends StatelessWidget {
+  const _QuietLink({required this.label, required this.onPressed});
 
-  final _Hotspot spot;
-  final double boxWidth;
-  final double boxHeight;
-  final VoidCallback onTap;
+  final String label;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final left = spot.left * boxWidth;
-    final width = spot.width * boxWidth;
-    final drawnTop = spot.top * boxHeight;
-    final drawnHeight = spot.height * boxHeight;
-
-    // Grow the touch area around the artwork button's own centre when it is
-    // smaller than a comfortable target. The drawn position never moves.
-    final height = drawnHeight < _kMinTouchHeight
-        ? _kMinTouchHeight
-        : drawnHeight;
-    final top = drawnTop - (height - drawnHeight) / 2;
-
-    return Positioned(
-      left: left,
-      top: top,
-      width: width,
-      height: height,
-      child: Semantics(
-        button: true,
-        label: spot.label,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: const SizedBox.expand(),
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        minimumSize: const Size.fromHeight(44),
+        padding: const EdgeInsets.all(10),
+        foregroundColor: LbmConst.onWelcome,
+      ),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontFamily: kBodyFont,
+          fontSize: 13.5,
+          fontWeight: FontWeight.w700,
+          color: LbmConst.onWelcome.withValues(alpha: 0.88),
         ),
       ),
     );

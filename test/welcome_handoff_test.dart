@@ -20,6 +20,10 @@ Widget _harness({bool playIntro = true}) {
         builder: (context, state) => const Scaffold(body: Text('signin')),
       ),
       GoRoute(
+        path: '/orient',
+        builder: (context, state) => const Scaffold(body: Text('orient')),
+      ),
+      GoRoute(
         path: '/market',
         builder: (context, state) => const Scaffold(body: Text('market')),
       ),
@@ -33,31 +37,37 @@ Widget _harness({bool playIntro = true}) {
   );
 }
 
-/// The still and the GIF have to occupy exactly the same box, or the handoff
-/// moves when the animation is taken away.
+Finder _asset(String asset) => find.byWidgetPredicate(
+  (w) =>
+      w is Image &&
+      w.image is AssetImage &&
+      (w.image as AssetImage).assetName == asset,
+);
+
+/// The still and the GIF have to occupy exactly the same box, or the artwork
+/// jumps when the animation is taken away.
 Rect _rectOf(WidgetTester tester, String asset) {
-  final finder = find.byWidgetPredicate(
-    (w) =>
-        w is Image &&
-        w.image is AssetImage &&
-        (w.image as AssetImage).assetName == asset,
-  );
+  final finder = _asset(asset);
   expect(finder, findsOneWidget, reason: 'expected exactly one $asset');
   return tester.getRect(finder);
 }
+
+const _labels = ['Create a Profile', 'Sign in', 'Continue as a guest'];
 
 void main() {
   testWidgets('the still and the GIF are laid out identically', (tester) async {
     await tester.pumpWidget(_harness());
     await tester.pump();
 
+    final box = _rectOf(tester, Fx.still);
     expect(
-      _rectOf(tester, Fx.still),
+      box,
       _rectOf(tester, Fx.gif),
       reason:
-          'If these ever differ the buttons will jump when the intro ends. '
-          'Both must be drawn into the same 540x960 box.',
+          'If these ever differ the artwork will jump when the intro ends. '
+          'Both must be drawn into the same 540x623 box.',
     );
+    expect(box.width / box.height, closeTo(kWelcomeAspect, 0.01));
   });
 
   testWidgets('the GIF is removed once the intro is over, the still stays', (
@@ -66,22 +76,22 @@ void main() {
     await tester.pumpWidget(_harness());
     await tester.pump();
 
-    final gif = find.byWidgetPredicate(
-      (w) =>
-          w is Image &&
-          w.image is AssetImage &&
-          (w.image as AssetImage).assetName == Fx.gif,
-    );
-    expect(gif, findsOneWidget);
-
+    expect(_asset(Fx.gif), findsOneWidget);
     final before = _rectOf(tester, Fx.still);
+    final buttonsBefore = [
+      for (final l in _labels) tester.getRect(find.bySemanticsLabel(l)),
+    ];
 
     await tester.pump(kIntroDuration + const Duration(milliseconds: 50));
     await tester.pump();
 
-    expect(gif, findsNothing);
-    // Nothing moves — that is the whole point of the handoff.
+    expect(_asset(Fx.gif), findsNothing);
+    // Nothing moves: not the artwork, not the buttons under it.
     expect(_rectOf(tester, Fx.still), before);
+    expect(
+      [for (final l in _labels) tester.getRect(find.bySemanticsLabel(l))],
+      buttonsBefore,
+    );
   });
 
   testWidgets('the intro is skipped entirely when it is not requested', (
@@ -89,82 +99,47 @@ void main() {
   ) async {
     await tester.pumpWidget(_harness(playIntro: false));
     await tester.pump();
-
-    expect(
-      find.byWidgetPredicate(
-        (w) =>
-            w is Image &&
-            w.image is AssetImage &&
-            (w.image as AssetImage).assetName == Fx.gif,
-      ),
-      findsNothing,
-    );
+    expect(_asset(Fx.gif), findsNothing);
+    expect(_asset(Fx.still), findsOneWidget);
   });
 
-  testWidgets('all three hotspots are present and tappable', (tester) async {
-    await tester.pumpWidget(_harness());
-    await tester.pump();
-
-    for (final label in [
-      'Sign in',
-      'Create a Profile',
-      'Continue as a guest',
-    ]) {
-      expect(
-        find.bySemanticsLabel(label),
-        findsOneWidget,
-        reason: '$label hotspot is missing',
-      );
-    }
-  });
-
-  testWidgets('the hotspots sit where the artwork draws its buttons', (
+  testWidgets('the three buttons are real widgets below the artwork', (
     tester,
   ) async {
     await tester.pumpWidget(_harness());
     await tester.pump();
 
-    final box = _rectOf(tester, Fx.still);
-    final signIn = tester.getRect(find.bySemanticsLabel('Sign in'));
-
-    // 18.4% from the left, 65.1% wide, 66.9% down.
-    expect(signIn.left - box.left, closeTo(box.width * 0.184, 0.5));
-    expect(signIn.width, closeTo(box.width * 0.651, 0.5));
-    expect(signIn.top - box.top, closeTo(box.height * 0.669, 0.5));
-  });
-
-  testWidgets('every hotspot meets the minimum touch height', (tester) async {
-    await tester.pumpWidget(_harness());
-    await tester.pump();
-
-    for (final label in [
-      'Sign in',
-      'Create a Profile',
-      'Continue as a guest',
-    ]) {
+    final art = _rectOf(tester, Fx.still);
+    for (final label in _labels) {
+      final finder = find.bySemanticsLabel(label);
+      expect(finder, findsOneWidget, reason: '$label is missing');
+      final rect = tester.getRect(finder);
       expect(
-        tester.getRect(find.bySemanticsLabel(label)).height,
+        rect.top,
+        greaterThanOrEqualTo(art.bottom),
+        reason: '$label must sit under the artwork, never over it',
+      );
+      expect(
+        rect.height,
         greaterThanOrEqualTo(44.0),
         reason: '$label is too small to hit comfortably',
       );
     }
+    // The text is drawn by Flutter, not baked into the picture.
+    for (final label in _labels) {
+      expect(find.text(label), findsOneWidget);
+    }
   });
 
-  testWidgets('hotspots do not overlap each other', (tester) async {
+  testWidgets('the buttons do not overlap each other', (tester) async {
     await tester.pumpWidget(_harness());
     await tester.pump();
 
     final rects = [
-      tester.getRect(find.bySemanticsLabel('Sign in')),
-      tester.getRect(find.bySemanticsLabel('Create a Profile')),
-      tester.getRect(find.bySemanticsLabel('Continue as a guest')),
+      for (final l in _labels) tester.getRect(find.bySemanticsLabel(l)),
     ];
     for (var i = 0; i < rects.length - 1; i++) {
-      expect(
-        rects[i].bottom,
-        lessThanOrEqualTo(rects[i + 1].top),
-        reason: 'growing a touch target must not collide with its neighbour',
-      );
+      expect(rects[i].bottom, lessThanOrEqualTo(rects[i + 1].top));
     }
   });
 
@@ -172,23 +147,26 @@ void main() {
     await tester.pumpWidget(_harness());
     await tester.pump();
 
-    // The hotspots sit above the GIF, so an impatient tap is not swallowed.
-    await tester.tap(find.bySemanticsLabel('Sign in'), warnIfMissed: false);
+    await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
-
     expect(find.text('signin'), findsOneWidget);
+  });
+
+  testWidgets('Create a Profile opens the doors', (tester) async {
+    await tester.pumpWidget(_harness());
+    await tester.pump();
+
+    await tester.tap(find.text('Create a Profile'));
+    await tester.pumpAndSettle();
+    expect(find.text('orient'), findsOneWidget);
   });
 
   testWidgets('continuing as a guest lands in the market', (tester) async {
     await tester.pumpWidget(_harness());
     await tester.pump();
 
-    await tester.tap(
-      find.bySemanticsLabel('Continue as a guest'),
-      warnIfMissed: false,
-    );
+    await tester.tap(find.text('Continue as a guest'));
     await tester.pumpAndSettle();
-
     expect(find.text('market'), findsOneWidget);
   });
 }
