@@ -13,8 +13,8 @@
     "test:rules": "firebase emulators:exec --only firestore \"node --test test/rules.test.mjs\"",
     "serve": "npm run build && firebase emulators:start --only functions",
     "deploy": "npm run build && firebase deploy --only functions",
-    "deploy:dev": "npm run build && firebase deploy --only functions,firestore:rules,firestore:indexes,storage --project dev",
-    "deploy:prod": "npm run build && firebase deploy --only functions,firestore:rules,firestore:indexes,storage --project prod",
+    "deploy:dev": "npm run build && firebase deploy --only functions,firestore:rules,firestore:indexes,storage,hosting --project dev",
+    "deploy:prod": "npm run build && firebase deploy --only functions,firestore:rules,firestore:indexes,storage,hosting --project prod",
     "logs": "firebase functions:log --project dev",
     "logs:prod": "firebase functions:log --project prod",
     "secrets:dev": "firebase functions:secrets:set --project dev",
@@ -41,16 +41,20 @@
     "peek:prod": "node scripts/peek.mjs --project prod",
     "replay-order": "node scripts/replay-order.mjs --project dev",
     "wp:probe": "node scripts/wp-probe.mjs --project dev",
-    "wp:probe:prod": "node scripts/wp-probe.mjs --project prod"
+    "wp:probe:prod": "node scripts/wp-probe.mjs --project prod",
+    "deploy:hosting": "firebase deploy --only hosting --project dev",
+    "deploy:hosting:prod": "firebase deploy --only hosting --project prod"
   },
   "dependencies": {
     "firebase-admin": "^13.0.2",
     "firebase-functions": "^6.3.1",
-    "google-auth-library": "^10.9.1"
+    "google-auth-library": "^10.9.1",
+    "nodemailer": "^6.10.1"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",
     "@types/node": "^22.10.0",
+    "@types/nodemailer": "^6.4.24",
     "typescript": "^5.7.0"
   }
 }

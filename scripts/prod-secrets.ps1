@@ -11,6 +11,8 @@
 #   SHIPTURTLE_API_KEY                .env.littlebluemarket SHIPTURTLE_API_KEY_ORDER (or SHIPTURTLE_API_KEY if present)
 #   SHIPTURTLE_WEBHOOK_SECRET         .env.littlebluemarket SHIPTURTLE_WEBHOOK_SECRET, else "unsigned" (Shipturtle does not sign)
 #   WP_APP_PASSWORD, WC_CONSUMER_KEY, WC_CONSUMER_SECRET   .env.littlebluemarket (the live site; same as dev)
+#   SMTP_PASS                         .env.littlebluemarket SMTP_PASS (the mailbox's App Password for the
+#                                     branded confirmation email, CP-M1), else "unset" (Firebase's plain mail)
 #
 # Re-running overwrites (a new secret version), which is how a rotated key gets in.
 #   scripts\prod-secrets.ps1            # all of them, from .env.littlebluemarket (the real shop's keys)
@@ -23,7 +25,7 @@ param([string]$Only = '', [string]$EnvFile = '', [switch]$FromDev)
 . "$PSScriptRoot\_common.ps1"
 
 if ($FromDev) {
-  $names = 'SHOPIFY_CLIENT_SECRET','SHOPIFY_STOREFRONT_PRIVATE_TOKEN','SHOPIFY_WEBHOOK_SECRET','SHIPTURTLE_API_KEY','SHIPTURTLE_WEBHOOK_SECRET','WP_APP_PASSWORD','WC_CONSUMER_KEY','WC_CONSUMER_SECRET'
+  $names = 'SHOPIFY_CLIENT_SECRET','SHOPIFY_STOREFRONT_PRIVATE_TOKEN','SHOPIFY_WEBHOOK_SECRET','SHIPTURTLE_API_KEY','SHIPTURTLE_WEBHOOK_SECRET','WP_APP_PASSWORD','WC_CONSUMER_KEY','WC_CONSUMER_SECRET','SMTP_PASS'
   $failed = @()
   Push-Location "$Repo\functions"
   foreach ($name in $names) {
@@ -71,8 +73,11 @@ $plan = [ordered]@{
   'WP_APP_PASSWORD'                  = (Pick @('WP_APP_PASSWORD'))
   'WC_CONSUMER_KEY'                  = (Pick @('WC_CONSUMER_KEY'))
   'WC_CONSUMER_SECRET'               = (Pick @('WC_CONSUMER_SECRET'))
+  'SMTP_PASS'                        = (Pick @('SMTP_PASS'))
 }
 if (-not $plan['SHIPTURTLE_WEBHOOK_SECRET']) { $plan['SHIPTURTLE_WEBHOOK_SECRET'] = 'unsigned' }
+# No mailbox password yet: the placeholder keeps the deploy going and the app on Firebase's plain mail.
+if (-not $plan['SMTP_PASS']) { $plan['SMTP_PASS'] = 'unset' }
 # A Shipturtle key is a JWT (three base64url parts joined by dots). A note pasted after it on the
 # same line (it happened, 2026-09-08: 63 characters of text after the token) would break every call,
 # so keep the token and drop whatever follows.

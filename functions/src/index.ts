@@ -16,7 +16,9 @@ import {
   REGISTRATION_URL,
   DIRECTORY_ADD_LISTING_URL,
   WP_SECRETS,
+  SMTP_PASS,
 } from './config.ts';
+import { sendVerificationEmailFor } from './verify_email.ts';
 import { applyListingProfile, syncAllDirectoryListings, syncDirectory } from './directory.ts';
 import { deleteDirectoryProduct, reportDirectoryPurchase, saveDirectoryProduct } from './directory_products.ts';
 import { announceIfNew, rebuildBuyerIndexPage } from './buyer_index.ts';
@@ -201,6 +203,24 @@ export const linkAccounts = onCall({ secrets: ALL_SECRETS }, withLoudErrors('lin
   }
   return linkStoreAccounts(uid, email);
 }));
+
+// ------------------------------------------------------- the confirmation
+
+/**
+ * Sends the branded "confirm your email" mail to the caller's own address
+ * (Stage 16). The link is Firebase's, minted server-side; the message and
+ * the page it opens are ours. No address is taken from the request: the
+ * account decides where the mail goes. While SMTP is not set up the call
+ * says so (`failed-precondition`, reason `mail-not-configured`) and the app
+ * falls back to Firebase's plain mail, so an account is never left without
+ * a link.
+ */
+export const sendVerificationEmail = onCall(
+  { secrets: [SMTP_PASS] },
+  withLoudErrors('sendVerificationEmail', async (request) =>
+    sendVerificationEmailFor(requireUid(request.auth)),
+  ),
+);
 
 // --------------------------------------------------------------- the seller
 

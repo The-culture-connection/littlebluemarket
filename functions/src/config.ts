@@ -161,3 +161,36 @@ export const ALL_SECRETS = [
 
 /** The three the directory functions need; nothing else. */
 export const WP_SECRETS = [WP_APP_PASSWORD, WC_CONSUMER_KEY, WC_CONSUMER_SECRET];
+
+// ------------------------------------------------------------------- mail
+
+/**
+ * The branded confirmation email (Stage 16).
+ *
+ * Firebase's own "verify your email" mail is plain text from a Google
+ * address, so the app sends its own instead: the link comes from the Admin
+ * SDK, the HTML from `verify_email.ts`, and delivery goes over SMTP. Any
+ * mailbox that offers SMTP works — a Google Workspace address with an App
+ * Password, Brevo, SendGrid's SMTP relay, Resend's SMTP endpoint.
+ *
+ * Only the password is a secret; the host, port, login and From line are
+ * identifiers and live in `.env.<projectId>`. While `SMTP_HOST` is empty or
+ * `SMTP_PASS` is still the `unset` placeholder, `sendVerificationEmail`
+ * says so and the app falls back to Firebase's plain mail, so nobody is
+ * ever left without a link.
+ */
+export const SMTP_PASS = defineSecret('SMTP_PASS');
+
+export const SMTP_HOST = defineString('SMTP_HOST', { default: '' });
+export const SMTP_PORT = defineString('SMTP_PORT', { default: '465' });
+export const SMTP_USER = defineString('SMTP_USER', { default: '' });
+
+/** The From line, e.g. `Little Blue Market <hello@littlebluecart.com>`. */
+export const MAIL_FROM = defineString('MAIL_FROM', { default: '' });
+
+/**
+ * Where the confirmation page and the email's cart image are served from:
+ * the project's Firebase Hosting site (`hosting/` in the repo). Empty means
+ * `https://<projectId>.web.app`, which every project has without setup.
+ */
+export const PUBLIC_WEB_URL = defineString('PUBLIC_WEB_URL', { default: '' });

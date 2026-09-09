@@ -1,0 +1,178 @@
+/* The onboarding look, on the web: the welcome blue, the cart mark, a white
+   card, the slate pill button. Colours are the app's tokens (theme/tokens.dart);
+   keep them in step with the email template in functions/src/verify_email.ts. */
+
+:root {
+  --welcome-blue: #70A0D0;
+  --on-welcome: #F3F8FE;
+  --slate: #5F6A82;
+  --surface: #FFFFFF;
+  --ink: #152E52;
+  --ink2: #31507B;
+  --ink3: #6B87AD;
+  --sky-deep: #2A5992;
+  --sky-mist: #DCE9F7;
+  --sky-wash: #F0F5FC;
+  --sage: #4E8A69;
+  --sage-mist: #DDEDE4;
+  --clay: #C4796B;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--welcome-blue);
+  color: var(--ink);
+  font-family: Nunito, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 16px 32px;
+}
+
+.mark {
+  display: block;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 18px;
+}
+
+.card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--surface);
+  border-radius: 22px;
+  padding: 34px 30px 30px;
+  box-shadow: 0 10px 28px -10px rgba(13, 35, 66, .45);
+  text-align: center;
+}
+
+h1 {
+  margin: 0 0 10px;
+  font-family: Fraunces, Georgia, "Times New Roman", serif;
+  font-size: 27px;
+  line-height: 1.15;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+p {
+  margin: 0 0 18px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink2);
+}
+
+p.small {
+  font-size: 12.5px;
+  color: var(--ink3);
+  margin-bottom: 0;
+}
+
+.badge {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--sage-mist);
+  color: var(--sage);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badge.error {
+  background: #F7E6E2;
+  color: var(--clay);
+}
+
+.badge svg { width: 36px; height: 36px; }
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  margin: 8px auto 20px;
+  border-radius: 50%;
+  border: 4px solid var(--sky-mist);
+  border-top-color: var(--sky-deep);
+  animation: spin .9s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+}
+
+.button {
+  display: block;
+  width: 100%;
+  margin: 6px 0 0;
+  padding: 14px 24px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--slate);
+  color: var(--on-welcome);
+  font: 800 15px/1 Nunito, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button:disabled { opacity: .5; cursor: default; }
+
+.quiet {
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--sky-deep);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.field {
+  display: block;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 13px 16px;
+  border: 1.5px solid var(--sky-mist);
+  border-radius: 14px;
+  background: var(--sky-wash);
+  color: var(--ink);
+  font: 600 15px/1.3 Nunito, "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.field:focus { outline: none; border-color: var(--sky-deep); }
+
+.notice {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--clay);
+}
+
+.address {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--sky-mist);
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+footer {
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--on-welcome);
+}
+
+footer a { color: inherit; }
+
+[hidden] { display: none !important; }

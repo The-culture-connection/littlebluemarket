@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Little Blue Market</title>
+<link rel="icon" href="/email/cart.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/lbm.css">
+</head>
+<body>
+<img class="mark" src="/email/cart.png" alt="Little Blue Market">
+
+<!-- The email link lands here. Firebase mints the code, this page hands it
+     back: confirm an email, set a new password, undo an email change. The
+     Firebase config comes from Hosting's reserved /__/firebase/init.js, so
+     the same file works on the dev and the production project. -->
+
+<main class="card">
+
+  <section id="working">
+    <div class="spinner" aria-hidden="true"></div>
+    <h1>One moment</h1>
+    <p>Checking your link.</p>
+  </section>
+
+  <section id="verified" hidden>
+    <div class="badge" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+    </div>
+    <h1>You're confirmed</h1>
+    <p>Thank you. Your shop orders, and your shop if you sell, can now be linked to your Little Blue Market profile.</p>
+    <p class="small">Go back to the app. It notices on its own within a few seconds, or tap <strong>I've confirmed it</strong>.</p>
+  </section>
+
+  <section id="reset" hidden>
+    <h1>Choose a new password</h1>
+    <p>For <span class="address" id="reset-email"></span></p>
+    <form id="reset-form">
+      <input class="field" id="password" type="password" autocomplete="new-password" minlength="6" placeholder="New password (6 or more characters)" required>
+      <input class="field" id="password2" type="password" autocomplete="new-password" minlength="6" placeholder="Type it once more" required>
+      <div class="notice" id="reset-notice" hidden></div>
+      <button class="button" id="reset-button" type="submit">Save password</button>
+    </form>
+  </section>
+
+  <section id="reset-done" hidden>
+    <div class="badge" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+    </div>
+    <h1>Password saved</h1>
+    <p>Go back to the app and sign in with it.</p>
+  </section>
+
+  <section id="recovered" hidden>
+    <div class="badge" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+    </div>
+    <h1>Email restored</h1>
+    <p>Your account is back on <span class="address" id="recovered-email"></span>. If you did not ask for the change, set a new password from the app's Sign in screen.</p>
+  </section>
+
+  <section id="failed" hidden>
+    <div class="badge error" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10M17 7L7 17"/></svg>
+    </div>
+    <h1 id="failed-title">That link did not work</h1>
+    <p id="failed-body">It may have been used already, or it expired. Open the app and tap <strong>Send it again</strong> for a fresh one.</p>
+    <p class="small" id="failed-detail" hidden></p>
+  </section>
+
+</main>
+
+<footer>Little Blue Market &middot; <a href="https://littlebluecart.com">littlebluecart.com</a></footer>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="/__/firebase/init.js"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var mode = params.get('mode');
+  var code = params.get('oobCode');
+
+  var sections = ['working', 'verified', 'reset', 'reset-done', 'recovered', 'failed'];
+  function show(id) {
+    sections.forEach(function (s) { document.getElementById(s).hidden = s !== id; });
+  }
+
+  function fail(error) {
+    var codeText = error && error.code ? String(error.code) : '';
+    var title = document.getElementById('failed-title');
+    var body = document.getElementById('failed-body');
+    var detail = document.getElementById('failed-detail');
+    if (codeText === 'auth/expired-action-code') {
+      title.textContent = 'That link has expired';
+      body.innerHTML = 'Links work for a day. Open the app and tap <strong>Send it again</strong> for a fresh one.';
+    } else if (codeText === 'auth/invalid-action-code') {
+      title.textContent = 'That link was already used';
+      body.innerHTML = 'If you already confirmed, you are done. Otherwise open the app and tap <strong>Send it again</strong>.';
+    } else if (codeText === 'auth/user-disabled') {
+      title.textContent = 'This account is suspended';
+      body.textContent = 'Write to us from the website if you think that is a mistake.';
+    } else if (codeText === 'auth/user-not-found') {
+      title.textContent = 'That account no longer exists';
+      body.textContent = 'Create a profile again from the app.';
+    } else if (codeText === 'auth/weak-password') {
+      title.textContent = 'Use at least 6 characters';
+      body.textContent = 'Go back and try a longer password.';
+    } else if (codeText === 'auth/network-request-failed') {
+      title.textContent = 'No connection';
+      body.textContent = 'Check the network and reload this page.';
+    } else if (codeText) {
+      detail.textContent = codeText + (error.message ? ' · ' + error.message : '');
+      detail.hidden = false;
+    } else if (error && error.message) {
+      detail.textContent = error.message;
+      detail.hidden = false;
+    }
+    show('failed');
+  }
+
+  if (!window.firebase || !firebase.apps || !firebase.apps.length) {
+    fail({ message: 'Firebase did not start on this page (the /__/firebase/init.js script). Paste this to Claude.' });
+    return;
+  }
+  if (!mode || !code) {
+    fail({ message: 'The link is missing its code.' });
+    return;
+  }
+
+  var auth = firebase.auth();
+
+  if (mode === 'verifyEmail' || mode === 'verifyAndChangeEmail') {
+    auth.applyActionCode(code).then(function () { show('verified'); }).catch(fail);
+    return;
+  }
+
+  if (mode === 'recoverEmail') {
+    auth.checkActionCode(code).then(function (info) {
+      var restored = info && info.data ? info.data.email : '';
+      return auth.applyActionCode(code).then(function () {
+        document.getElementById('recovered-email').textContent = restored || 'your previous address';
+        show('recovered');
+      });
+    }).catch(fail);
+    return;
+  }
+
+  if (mode === 'resetPassword') {
+    auth.verifyPasswordResetCode(code).then(function (email) {
+      document.getElementById('reset-email').textContent = email;
+      show('reset');
+      var form = document.getElementById('reset-form');
+      var notice = document.getElementById('reset-notice');
+      var button = document.getElementById('reset-button');
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var a = document.getElementById('password').value;
+        var b = document.getElementById('password2').value;
+        notice.hidden = true;
+        if (a.length < 6) {
+          notice.textContent = 'Use at least 6 characters.';
+          notice.hidden = false;
+          return;
+        }
+        if (a !== b) {
+          notice.textContent = 'The two passwords do not match.';
+          notice.hidden = false;
+          return;
+        }
+        button.disabled = true;
+        button.textContent = 'Saving…';
+        auth.confirmPasswordReset(code, a).then(function () {
+          show('reset-done');
+        }).catch(function (error) {
+          button.disabled = false;
+          button.textContent = 'Save password';
+          if (error && error.code === 'auth/weak-password') {
+            notice.textContent = 'Use at least 6 characters.';
+            notice.hidden = false;
+          } else {
+            fail(error);
+          }
+        });
+      });
+    }).catch(fail);
+    return;
+  }
+
+  fail({ message: 'This is not a link we recognise (mode "' + mode + '").' });
+})();
+</script>
+</body>
+</html>

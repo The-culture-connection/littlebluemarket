@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 
 import '../auth/auth_service.dart';
@@ -13,17 +14,57 @@ import '../repositories/repositories.dart';
 /// Not what the prototype drew — that was a six-digit code — but Firebase does
 /// not issue codes, only links, and the link had to travel through Dynamic
 /// Links, which shut down in August 2025. Password auth is the one option that
-/// needs no email infrastructure of our own: Firebase sends the verification
-/// and reset mail itself.
+/// needs no email infrastructure of our own: Firebase sends the reset mail
+/// itself, and the verification mail too when ours is not set up.
 ///
 /// The account here is not the shop account. Someone who already buys on the
 /// website signs up with the same address and a Cloud Function links their
 /// existing customer record once the address is **verified** — so to them this
 /// still reads as logging in.
 class FirebaseAuthService implements AuthService {
-  FirebaseAuthService(this._auth);
+  FirebaseAuthService(this._auth, {FirebaseFunctions? functions})
+    : _functions = functions;
 
   final fb.FirebaseAuth _auth;
+
+  /// Where the branded confirmation mail is sent from. Null in tests that
+  /// build the service without Cloud Functions; Firebase's own mail then.
+  final FirebaseFunctions? _functions;
+
+  /// The Cloud Function that sends the branded mail (Stage 16).
+  static const _sendVerificationFunction = 'sendVerificationEmail';
+
+  /// The branded mail first, Firebase's own as the fallback.
+  ///
+  /// `sendVerificationEmail` mints the same Firebase link and sends it in
+  /// the app's own message, from the app's own address, to a page in the
+  /// app's own style. It refuses while SMTP is not set up on the project,
+  /// when the mail server does, or when it is not deployed yet, and for all
+  /// of those the plain Firebase mail goes out instead, so an account is
+  /// never left without a link. The dev strip still hears why. The one
+  /// refusal that is not a fallback is the 30-second throttle, which the
+  /// screen shows as "give it a minute".
+  Future<void> _sendVerification(fb.User user) async {
+    final functions = _functions;
+    if (functions != null) {
+      try {
+        await functions.httpsCallable(_sendVerificationFunction).call<void>();
+        return;
+      } on FirebaseFunctionsException catch (error) {
+        if (error.code == 'resource-exhausted') {
+          throw const RateLimitException();
+        }
+        DevErrorSink.report(
+          error,
+          null,
+          '$_sendVerificationFunction ${error.code}: ${error.message}',
+        );
+      } catch (error, stack) {
+        DevErrorSink.report(error, stack, _sendVerificationFunction);
+      }
+    }
+    await user.sendEmailVerification();
+  }
 
   AuthUser? _wrap(
     fb.User? user, {
@@ -121,11 +162,10 @@ class FirebaseAuthService implements AuthService {
         throw const BackendException('Sign-up returned no user');
       }
 
-      // Fire and forget. Firebase sends this from its own domain with no
-      // setup, but a failure here must not strand an account that already
-      // exists — the account is made either way, and the screen offers a
-      // resend.
-      unawaited(result.user!.sendEmailVerification().catchError((_) {}));
+      // Fire and forget. A failure here must not strand an account that
+      // already exists — the account is made either way, and the screen
+      // offers a resend.
+      unawaited(_sendVerification(result.user!).catchError((_) {}));
       return user;
     } on fb.FirebaseAuthException catch (error) {
       throw _translate(error);
@@ -158,7 +198,7 @@ class FirebaseAuthService implements AuthService {
     final user = _auth.currentUser;
     if (user == null || user.emailVerified) return;
     try {
-      await user.sendEmailVerification();
+      await _sendVerification(user);
     } on fb.FirebaseAuthException catch (error) {
       throw _translate(error);
     }

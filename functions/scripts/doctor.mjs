@@ -267,6 +267,34 @@ async function main() {
     if (absent.length) fail('secrets', `missing in Secret Manager: ${absent.join(', ')}`, absent.map((n) => `firebase functions:secrets:set ${n} --project ${alias}`).join('  |  '));
     else pass('secrets', `all ${secretNames.length} exist (${secretNames.join(', ')})`);
 
+    // 5c. mail: the branded confirmation email (Stage 16) --------------------
+    // Yellow, never red, while it is off: the app falls back to Firebase's own
+    // plain mail, so nobody is stranded. Red only when our page is missing.
+    {
+      const smtpHost = String(params.SMTP_HOST ?? '').trim();
+      const mailFrom = String(params.MAIL_FROM ?? '').trim();
+      const smtpUser = String(params.SMTP_USER ?? '').trim() || mailFrom.replace(/^.*<([^>]+)>.*$/, '$1').trim();
+      const smtpPort = String(params.SMTP_PORT ?? '').trim() || '465';
+      const which = isProd ? 'prod' : 'dev';
+      const setupFix = `in ${envRel}: SMTP_HOST=smtp.gmail.com  SMTP_PORT=465  SMTP_USER=<the mailbox>  MAIL_FROM="Little Blue Market <the mailbox>"; then in functions\\: npm run secrets:${which} -- SMTP_PASS  (paste a Google App Password: myaccount.google.com -> Security -> 2-Step Verification -> App passwords); then scripts\\deploy-${which}.ps1  (Planning/checkpoints.md CP-M1)`;
+      const smtpPass = absent.includes('SMTP_PASS') ? '' : secretValue('SMTP_PASS', projectId);
+      if (!smtpHost || !smtpUser) warn('mail', `branded confirmation email OFF (SMTP_HOST / SMTP_USER empty in ${envRel}); Firebase's plain email goes out instead`, setupFix);
+      else if (!smtpPass || smtpPass === 'unset') warn('mail', `branded confirmation email OFF (SMTP_PASS is still the "unset" placeholder); Firebase's plain email goes out instead`, setupFix);
+      else pass('mail', `branded confirmation email via ${smtpHost}:${smtpPort} as ${smtpUser}${mailFrom ? ` · from "${mailFrom}"` : ''}`);
+
+      // The page the email's button opens (hosting/auth/action.html).
+      const webUrl = String(params.PUBLIC_WEB_URL ?? '').trim().replace(/\/+$/, '') || `https://${projectId}.web.app`;
+      const hostingFix = `in functions\\: npm run deploy:hosting${isProd ? ':prod' : ''}   (puts hosting/ on ${webUrl})`;
+      try {
+        const res = await fetch(`${webUrl}/auth/action`, { redirect: 'follow', signal: AbortSignal.timeout(8000) });
+        const body = await res.text();
+        if (res.ok && /You're confirmed/.test(body)) pass('confirm page', `${webUrl}/auth/action is live`);
+        else fail('confirm page', `${webUrl}/auth/action answered ${res.status}${res.ok ? ' but it is not our page' : ''}`, hostingFix);
+      } catch (error) {
+        fail('confirm page', `${webUrl}/auth/action: ${String(error.message).slice(0, 120)}`, hostingFix);
+      }
+    }
+
     // 5b. wordpress credentials + woocommerce (Stage 10) ---------------------
     if (!wpPublicOk) {
       skip('wp credentials', 'needs the wordpress line above to pass');

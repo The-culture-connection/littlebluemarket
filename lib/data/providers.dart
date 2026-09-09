@@ -299,7 +299,10 @@ final authServiceProvider = Provider<AuthService>((ref) {
       ref.onDispose(service.dispose);
       return service;
     }(),
-    Backend.live => FirebaseAuthService(ref.watch(firebaseAuthProvider)),
+    Backend.live => FirebaseAuthService(
+      ref.watch(firebaseAuthProvider),
+      functions: ref.watch(firebaseFunctionsProvider),
+    ),
   };
 });
 

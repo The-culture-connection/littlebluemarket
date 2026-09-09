@@ -589,10 +589,11 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
       if (!mounted) return;
       if (user?.emailVerified == true) {
         _pollTimer?.cancel();
+        _resendTimer?.cancel();
         setState(() {
           _verified = true;
           _error = null;
-          _notice = 'Confirmed. Thank you.';
+          _notice = null;
         });
       } else if (!quiet) {
         setState(() {
@@ -652,6 +653,19 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Once confirmed, the screen becomes the same "You're confirmed" card
+    // the email's link opens in the browser: the check, the same words.
+    if (_verified) {
+      return _OnboardingScaffold(
+        title: "You're confirmed",
+        subtitle:
+            'Thank you. Your shop orders — and your shop, if you sell — can '
+            'now be linked to this profile.',
+        fields: const [_ConfirmedBadge()],
+        actions: [_SlateButton(label: 'Continue', onPressed: _continue)],
+      );
+    }
+
     return _OnboardingScaffold(
       title: 'Confirm your email',
       subtitle:
@@ -689,16 +703,37 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
         // Two buttons on purpose. Confirming is what unlocks linking a shop
         // account later; continuing is always allowed, because slow mail
         // must not strand anyone at the door.
-        if (_verified)
-          _SlateButton(label: 'Continue', onPressed: _continue)
-        else ...[
-          _SlateButton(
-            label: _checking ? 'Checking…' : "I've confirmed it",
-            onPressed: _checking ? null : () => _check(),
-          ),
-          _QuietAction('Continue for now', onPressed: _continue),
-        ],
+        _SlateButton(
+          label: _checking ? 'Checking…' : "I've confirmed it",
+          onPressed: _checking ? null : () => _check(),
+        ),
+        _QuietAction('Continue for now', onPressed: _continue),
       ],
+    );
+  }
+}
+
+/// The check the confirmation page in the browser shows, drawn the same way
+/// here: a pale disc on the welcome blue with the hero blue check in it.
+class _ConfirmedBadge extends StatelessWidget {
+  const _ConfirmedBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 64,
+        height: 64,
+        decoration: const BoxDecoration(
+          color: LbmConst.onWelcome,
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.check_rounded,
+          size: 38,
+          color: LbmConst.welcomeBlue,
+        ),
+      ),
     );
   }
 }
