@@ -163,7 +163,7 @@ class FirebaseAuthService implements AuthService {
       }
 
       // Fire and forget. A failure here must not strand an account that
-      // already exists — the account is made either way, and the screen
+      // already exists; the account is made either way, and the screen
       // offers a resend.
       unawaited(_sendVerification(result.user!).catchError((_) {}));
       return user;

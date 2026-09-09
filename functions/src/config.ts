@@ -170,7 +170,7 @@ export const WP_SECRETS = [WP_APP_PASSWORD, WC_CONSUMER_KEY, WC_CONSUMER_SECRET]
  * Firebase's own "verify your email" mail is plain text from a Google
  * address, so the app sends its own instead: the link comes from the Admin
  * SDK, the HTML from `verify_email.ts`, and delivery goes over SMTP. Any
- * mailbox that offers SMTP works — a Google Workspace address with an App
+ * mailbox that offers SMTP works: a Google Workspace address with an App
  * Password, Brevo, SendGrid's SMTP relay, Resend's SMTP endpoint.
  *
  * Only the password is a secret; the host, port, login and From line are

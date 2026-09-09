@@ -659,7 +659,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
       return _OnboardingScaffold(
         title: "You're confirmed",
         subtitle:
-            'Thank you. Your shop orders — and your shop, if you sell — can '
+            'Thank you. Your shop orders, and your shop if you sell, can '
             'now be linked to this profile.',
         fields: const [_ConfirmedBadge()],
         actions: [_SlateButton(label: 'Continue', onPressed: _continue)],
@@ -669,8 +669,8 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
     return _OnboardingScaffold(
       title: 'Confirm your email',
       subtitle:
-          'We sent a link to ${widget.email}. Open it when you get a moment — '
-          "you'll need it before your shop orders can be linked to this profile.",
+          'We sent a link to ${widget.email}. Open it when you get a moment. '
+          "You'll need it before your shop orders can be linked to this profile.",
       fields: [
         if (_error != null || _notice != null) ...[
           Text(

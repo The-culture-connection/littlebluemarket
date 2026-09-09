@@ -1,4 +1,4 @@
-# hosting/ — the pages the app's emails open
+# hosting/: the pages the app's emails open
 
 Static files, served by Firebase Hosting on the project's default site
 (`https://little-blue-610e5.web.app` for dev, `https://little-blue-cart-prod.web.app`
