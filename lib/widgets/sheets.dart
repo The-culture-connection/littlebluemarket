@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../app_assets.dart';
 import '../data/repositories/repositories.dart';
 import '../models/models.dart';
-import '../router/nav.dart';
 import '../state/providers.dart';
 import '../state/session.dart';
 import '../theme/app_theme.dart';
@@ -183,10 +182,10 @@ bool requireSeller(BuildContext context, WidgetRef ref, VoidCallback action) {
 /// been placed. None of that was true, and the parts that are true are only
 /// knowable at checkout.
 ///
-/// **Buy** means buy now (Grace, 2026-09-09): the item goes into the cart and
-/// the checkout opens at once, with whatever else the cart already holds.
-/// The cart screen is one tap away for anyone who wants to look first; the
-/// cart icon on a card is how you add without buying.
+/// **Buy** means buy now (Grace, 2026-09-09): a checkout for this one item,
+/// opened at once, with the cart left exactly as it was. The cart icon on a
+/// card is how you add without buying; the cart screen has its own Checkout
+/// for everything in it.
 Future<void> showBuySheet(
   BuildContext context,
   Product product, {
@@ -194,19 +193,15 @@ Future<void> showBuySheet(
 }) async {
   final messenger = ScaffoldMessenger.of(context);
   final container = ProviderScope.containerOf(context);
-  final commerce = container.read(commerceRepositoryProvider);
   try {
-    await commerce.addLine(productId: product.id, variantId: variant?.name);
-    if (!context.mounted) return;
-    final handoff = await commerce.beginCheckout();
+    final handoff = await container
+        .read(commerceRepositoryProvider)
+        .buyNow(productId: product.id, variantId: variant?.name);
     if (!context.mounted) return;
     await showCheckoutHandoff(context, handoff);
   } on RepositoryException catch (error) {
     if (!context.mounted) return;
     messenger.showSnackBar(SnackBar(content: Text(describeError(error).body)));
-    // The item is in the cart even when the checkout could not open, so the
-    // cart is where to go next.
-    context.push('${branchPrefix(context)}/cart');
   }
 }
 

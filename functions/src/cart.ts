@@ -344,6 +344,79 @@ export async function beginCheckout(
 }
 
 /**
+ * Buy now: a checkout for one item, on its own, leaving the person's cart
+ * exactly as it was (Grace, 2026-09-09: "the buy flow for just that item,
+ * quick"). The same Storefront cart creation as [beginCheckout], with one
+ * line and the same attribution attributes, but nothing is written to the
+ * person's cart document, so a paid order from this checkout does not
+ * empty a cart it never came from.
+ */
+export async function buyNow(
+  uid: string,
+  input: { productId: string; variantId?: string; quantity?: number },
+): Promise<{ cartId: string; checkoutUrl: string }> {
+  const variant = await resolveVariant(input.productId, input.variantId);
+  if (!variant.available) {
+    throw new HttpsError('failed-precondition', `${variant.variantTitle} is sold out.`);
+  }
+  const product = await getFirestore().collection('catalog').doc(input.productId).get();
+  if (!product.exists) {
+    throw new HttpsError('not-found', 'That listing is gone.');
+  }
+  const quantity = Math.max(1, Math.floor(input.quantity ?? 1));
+  const sellerUid = String(product.data()?.sellerId ?? '');
+  const line = {
+    id: `${input.productId}_${variant.variantId}`,
+    productId: input.productId,
+    variantId: variant.variantId,
+    title: variant.title,
+    variantTitle: variant.variantTitle,
+    unitPriceCents: variant.unitPriceCents,
+    quantity,
+    sellerUid,
+    imageUrl: variant.imageUrl ?? null,
+  };
+
+  const mutation = [
+    'mutation CreateCart($input: CartInput!) {',
+    '  cartCreate(input: $input) {',
+    '    cart { id checkoutUrl }',
+    '    userErrors { message }',
+    '  }',
+    '}',
+  ].join('\n');
+  const result = await storefrontGraphQL<{
+    cartCreate: {
+      cart: { id: string; checkoutUrl: string } | null;
+      userErrors: Array<{ message: string }>;
+    };
+  }>(mutation, {
+    input: {
+      lines: [
+        {
+          merchandiseId: `gid://shopify/ProductVariant/${variant.variantId}`,
+          quantity,
+          attributes: [{ key: 'app_seller_uid', value: sellerUid }],
+        },
+      ],
+      attributes: [
+        { key: 'app_uid', value: uid },
+        { key: 'app_buy_now', value: 'true' },
+      ],
+    },
+  });
+  const errors = result.cartCreate.userErrors;
+  if (errors?.length) {
+    throw new HttpsError('failed-precondition', explainCheckoutError(errors[0]?.message, [line]));
+  }
+  const created = result.cartCreate.cart;
+  if (!created) {
+    throw new HttpsError('internal', 'Checkout did not return a cart.');
+  }
+  return { cartId: created.id, checkoutUrl: created.checkoutUrl };
+}
+
+/**
  * Authoritative stock, live.
  *
  * The one read that must not come from the mirror: being a few minutes stale on

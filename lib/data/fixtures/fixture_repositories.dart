@@ -422,6 +422,22 @@ class FixtureCommerceRepository implements CommerceRepository {
   }
 
   @override
+  Future<CheckoutHandoff> buyNow({
+    required String productId,
+    String? variantId,
+    int quantity = 1,
+  }) async {
+    await _backend._settle();
+    final product = Fx.products[productId] ?? _store.directoryProducts.value[productId];
+    if (product == null) throw NotFoundException('product', productId);
+    // One item, on its own; the cart is not touched.
+    return CheckoutHandoff(
+      cartId: 'buynow-$productId',
+      webUrl: Uri.parse('https://example.invalid/checkout/buynow/$productId'),
+    );
+  }
+
+  @override
   Future<Page<Order>> orders({String? cursor}) =>
       _backend._delayed(const Page<Order>.empty());
 

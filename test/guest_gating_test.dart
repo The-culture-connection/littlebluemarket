@@ -117,10 +117,9 @@ void main() {
     tester,
   ) async {
     final container = await _pumpApp(tester, guest: false);
-    await _tapFirstBuy(tester);
-    // Close the checkout hand-off and look at the cart itself.
-    await tester.tap(find.text('Keep shopping'));
-    await tester.pumpAndSettle();
+    // Buy is buy-now and leaves the cart alone, so put something in the cart
+    // the way the cart icon does, then look at the cart screen.
+    await container.read(commerceRepositoryProvider).addLine(productId: 'p1');
     container.read(routerProvider).go('/market/cart');
     await tester.pumpAndSettle();
 

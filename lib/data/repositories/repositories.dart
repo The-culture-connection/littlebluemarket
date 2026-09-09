@@ -109,6 +109,13 @@ abstract interface class CommerceRepository {
   /// can be attributed back to this account.
   Future<CheckoutHandoff> beginCheckout();
 
+  /// Buy now: a checkout for this one item, the cart left as it was.
+  Future<CheckoutHandoff> buyNow({
+    required String productId,
+    String? variantId,
+    int quantity = 1,
+  });
+
   Future<Page<Order>> orders({String? cursor});
   Future<Order> order(String id);
 

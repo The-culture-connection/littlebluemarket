@@ -45,6 +45,8 @@ export interface NormalizedOrder {
   placedAt: Date;
   status: string;
   buyerUid: string | null;
+  /** A Buy-now checkout: one item on its own, so the person's cart is not the thing that was paid for. */
+  buyNow: boolean;
   buyerEmail: string | null;
   totalCents: number;
   lines: NormalizedLine[];
@@ -122,6 +124,7 @@ export async function normalizeOrder(
     // The app stamps this on the cart at checkout, which is what makes an
     // app-originated order self-identifying.
     buyerUid: attribute(noteAttributes, 'app_uid') ?? null,
+    buyNow: attribute(noteAttributes, 'app_buy_now') === 'true',
     buyerEmail: (payload.email ?? payload.contact_email ?? null) as string | null,
     totalCents: toCents(payload.total_price ?? '0'),
     lines,
@@ -226,17 +229,18 @@ export async function recordPaidOrder(
       );
     }
 
-    // An order the app started is the app's cart, paid for. Empty the cart
-    // now, or the person comes back from checkout to the things they just
-    // bought. Website orders carry no app_uid and touch no cart.
-    if (order.buyerUid) {
+    // An order the app started from the cart is the app's cart, paid for.
+    // Empty the cart now, or the person comes back from checkout to the
+    // things they just bought. Website orders carry no app_uid and touch no
+    // cart; a Buy-now order was one item on its own and leaves the cart too.
+    if (order.buyerUid && !order.buyNow) {
       tx.set(
         db.collection('carts').doc(order.buyerUid),
         { lines: [], clearedByOrder: order.id, updatedAt: FieldValue.serverTimestamp() },
         { merge: true },
       );
     }
-    clearedCart = order.buyerUid
+    clearedCart = order.buyerUid && !order.buyNow
       ? ((cartBefore?.lines ?? []) as Array<{ productId: string }>)
       : [];
 

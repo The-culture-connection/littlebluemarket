@@ -126,6 +126,27 @@ class CommerceProxyRepository implements CommerceRepository {
   }
 
   @override
+  Future<CheckoutHandoff> buyNow({
+    required String productId,
+    String? variantId,
+    int quantity = 1,
+  }) async {
+    final data = await _call('commerceBuyNow', {
+      'productId': productId,
+      'variantId': ?variantId,
+      'quantity': quantity,
+    });
+    final url = data['checkoutUrl'];
+    if (url is! String) {
+      throw const BackendException('Checkout did not return a URL');
+    }
+    return CheckoutHandoff(
+      cartId: FirestoreMappers.str(data['cartId']),
+      webUrl: Uri.parse(url),
+    );
+  }
+
+  @override
   Future<CheckoutHandoff> beginCheckout() async {
     final data = await _call('commerceBeginCheckout');
     final url = data['checkoutUrl'];

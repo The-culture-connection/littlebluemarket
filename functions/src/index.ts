@@ -38,6 +38,7 @@ import {
   addLine,
   addManyLines,
   beginCheckout,
+  buyNow,
   clearCart,
   liveVariants,
   removeLine,
@@ -138,6 +139,20 @@ export const commerceClearCart = onCall(commerceOptions, withLoudErrors('commerc
 
 export const commerceBeginCheckout = onCall(commerceOptions, withLoudErrors('commerceBeginCheckout', async (request) => beginCheckout(requireUid(request.auth)),
 ));
+
+/** Buy now: a checkout for one item, the cart untouched. */
+export const commerceBuyNow = onCall(commerceOptions, withLoudErrors('commerceBuyNow', async (request) => {
+  const uid = requireUid(request.auth);
+  const { productId, variantId, quantity } = request.data ?? {};
+  if (typeof productId !== 'string') {
+    throw new HttpsError('invalid-argument', 'A product is required.');
+  }
+  return buyNow(uid, {
+    productId,
+    variantId: typeof variantId === 'string' ? variantId : undefined,
+    quantity: Number(quantity ?? 1),
+  });
+}));
 
 export const commerceLiveVariants = onCall(commerceOptions, withLoudErrors('commerceLiveVariants', async (request) => {
   requireUid(request.auth);
