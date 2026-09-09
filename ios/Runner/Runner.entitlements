@@ -2,9 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Push (CP-N4). "development" is right for a phone plugged into Xcode
-	     and for TestFlight builds signed by Xcode; App Store builds get
-	     "production" from Xcode's archive step automatically. -->
 	<key>aps-environment</key>
 	<string>development</string>
 </dict>
