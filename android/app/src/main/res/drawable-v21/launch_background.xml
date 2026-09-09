@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The launch screen before Flutter draws: the splash artwork's blue, so the
-     hand-off to the full artwork (SplashOverlay) is seamless. -->
+<!-- The launch screen before Flutter draws: the app icon centred on its own
+     blue. SplashOverlay then shows the same icon in the same place, so the
+     hand-off is seamless. Regenerate the icon with
+     `dart run tool/make_brand_images.dart`. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/lbm_splash" />
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/launch_icon" />
+    </item>
 </layer-list>

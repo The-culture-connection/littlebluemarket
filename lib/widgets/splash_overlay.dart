@@ -4,12 +4,13 @@ import '../app_assets.dart';
 import '../data/repositories/dev_error_sink.dart';
 import '../theme/tokens.dart';
 
-/// The splash artwork, held over the app for a moment after launch.
+/// The app icon, centred on its blue and held over the app for a moment
+/// after launch.
 ///
-/// The native launch screen is the same blue, so the phone goes blue →
-/// artwork → welcome without a flash. The artwork stays for [hold], then
-/// fades and is removed from the tree entirely. Under test nothing is
-/// shown: a timer here would fail every widget test.
+/// The native launch screen is the same icon centred on the same blue, so
+/// the phone goes native splash → this → welcome without a flash. The icon
+/// stays for [hold], then fades and is removed from the tree entirely. Under
+/// test nothing is shown: a timer here would fail every widget test.
 class SplashOverlay extends StatefulWidget {
   const SplashOverlay({
     super.key,
@@ -21,6 +22,10 @@ class SplashOverlay extends StatefulWidget {
   final Widget child;
   final Duration hold;
   final Duration fade;
+
+  /// The icon's size in logical pixels. Matches the native launch screens
+  /// (200dp on Android, 200pt on iOS) so nothing jumps at the hand-off.
+  static const double iconSize = 200;
 
   @override
   State<SplashOverlay> createState() => _SplashOverlayState();
@@ -57,10 +62,13 @@ class _SplashOverlayState extends State<SplashOverlay> {
             curve: Curves.easeOut,
             child: ColoredBox(
               color: LbmConst.splashBlue,
-              child: Image.asset(
-                LbmAssets.splash,
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
+              child: Center(
+                child: Image.asset(
+                  LbmAssets.splash,
+                  width: SplashOverlay.iconSize,
+                  height: SplashOverlay.iconSize,
+                  filterQuality: FilterQuality.medium,
+                ),
               ),
             ),
           ),

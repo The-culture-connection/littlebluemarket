@@ -251,7 +251,7 @@ abstract final class LbmConst {
   /// Ink used on top of [welcomeBlue].
   static const onWelcome = Color(0xFFF3F8FE);
 
-  /// The exact background of the splash artwork (`assets/images/splash-body.png`,
+  /// The exact background of the app icon (`assets/images/splash-icon.png`,
   /// sampled), and of the native launch screens on both phones
   /// (`android/.../values/colors.xml` `lbm_splash`, `LaunchScreen.storyboard`).
   /// Keep the three in step or the launch flashes.
