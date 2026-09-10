@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -64,5 +61,15 @@ class DefaultFirebaseOptions {
     projectId: 'little-blue-610e5',
     storageBucket: 'little-blue-610e5.firebasestorage.app',
     iosBundleId: 'com.littleblue.market',
+  );
+  // The web app registered on the project (the same one the admin console
+  // uses). Public values: access is decided by sign-in and the rules.
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyAM_t47TSY7tGpJPjO7kxoAekPApnOlV9Y',
+    appId: '1:125444581085:web:c231a1e76f44f3b0505d34',
+    messagingSenderId: '125444581085',
+    projectId: 'little-blue-610e5',
+    authDomain: 'little-blue-610e5.firebaseapp.com',
+    storageBucket: 'little-blue-610e5.firebasestorage.app',
   );
 }

@@ -267,3 +267,19 @@ the real fonts into `test/shots/` so you can look at them:
 flutter test test/visual_check.dart --update-goldens
 ```
 # littlebluemarket
+
+## The web app on Railway
+
+The same Flutter app, built for the browser and served from Railway. In a
+desktop browser it sits inside a phone-sized frame; on a phone's browser it
+fills the screen. It talks to the production Firebase project, exactly like the
+phone app; push notifications are the one thing it does not do.
+
+- `Dockerfile.web` builds it (Flutter, then a small Node server in `web-server/`).
+- Locally: `flutter build web --release`, then `cd web-server && npm install && LBM_WEB_DIR=../build/web npm start`, open http://localhost:3000.
+- Railway: New service from this GitHub repo, root directory `/`, variable
+  `RAILWAY_DOCKERFILE_PATH=Dockerfile.web`, then Generate Domain. Add that
+  domain under Firebase console → Authentication → Settings → Authorized
+  domains, or sign-in is refused in the browser.
+- The first build takes 10 to 15 minutes (it downloads Flutter); later ones are
+  faster. Every push to `main` redeploys.

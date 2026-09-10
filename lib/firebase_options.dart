@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -50,19 +47,28 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBDC6sIcDI3kI8z7IIOmcHO3faS_Lh1cvo',
-    appId: '1:125444581085:android:0231610405fbfd9b505d34',
-    messagingSenderId: '125444581085',
-    projectId: 'little-blue-610e5',
-    storageBucket: 'little-blue-610e5.firebasestorage.app',
+    apiKey: 'AIzaSyAB5c5sH8m64cPheKdZqun3_jEBoAafFks',
+    appId: '1:19665063635:android:a62bf8d5243ffd8f9f8e26',
+    messagingSenderId: '19665063635',
+    projectId: 'little-blue-cart-prod',
+    storageBucket: 'little-blue-cart-prod.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCecM-XQWH7_q70Bj_IaMEgJcRljOaplgo',
-    appId: '1:125444581085:ios:ed331f13c32e915b505d34',
-    messagingSenderId: '125444581085',
-    projectId: 'little-blue-610e5',
-    storageBucket: 'little-blue-610e5.firebasestorage.app',
+    apiKey: 'AIzaSyAbnnC7FjrOhFVSDiUxassfW1xnh864PKc',
+    appId: '1:19665063635:ios:d3c89b553e9409d59f8e26',
+    messagingSenderId: '19665063635',
+    projectId: 'little-blue-cart-prod',
+    storageBucket: 'little-blue-cart-prod.firebasestorage.app',
     iosBundleId: 'com.littleblue.market',
+  );
+  // The web app registered on the project (the same one the admin console
+  // uses). Public values: access is decided by sign-in and the rules.
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyAlf9oBADYIghMrotIRFfeldtoMH3Fi7-I',
+    appId: '1:19665063635:web:0e8fdba94e52f5b59f8e26',
+    messagingSenderId: '19665063635',
+    projectId: 'little-blue-cart-prod',
+    authDomain: 'little-blue-cart-prod.firebaseapp.com',
+    storageBucket: 'little-blue-cart-prod.firebasestorage.app',
   );
 }

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import '../../platform/platform_info.dart';
 
 /// True under `flutter test`. Dev-only surfaces check this so the smoke and
 /// scaling suites render exactly what a release build renders, and nothing
@@ -28,13 +28,7 @@ const bool kLbmDev =
     !bool.fromEnvironment('dart.vm.product') &&
     !bool.fromEnvironment('dart.vm.profile');
 
-bool _detectTest() {
-  try {
-    return Platform.environment.containsKey('FLUTTER_TEST');
-  } catch (_) {
-    return false;
-  }
-}
+bool _detectTest() => environmentHas('FLUTTER_TEST');
 
 /// One failure, as it happened, before anything friendly was made of it.
 ///

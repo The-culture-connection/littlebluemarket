@@ -264,6 +264,9 @@ final reportRepositoryProvider = Provider<ReportRepository>((ref) {
 final pushServiceProvider = Provider<PushService>((ref) {
   return switch (ref.watch(backendProvider)) {
     Backend.fixtures => FixturePushService(),
+    // No push in a browser: the web build has no service worker or APNs, so
+    // the switches show and nothing registers. Everything else is live.
+    Backend.live when kIsWeb => FixturePushService(),
     Backend.live => FirebasePushService(
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -8,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../../platform/platform_info.dart';
 import '../push/push_service.dart';
 import '../repositories/dev_error_sink.dart';
 import 'firestore_errors.dart';
@@ -135,11 +135,11 @@ class FirebasePushService implements PushService {
 
   String get _platform => kIsWeb
       ? 'web'
-      : Platform.isIOS
+      : platformIsIOS
       ? 'ios'
-      : Platform.isAndroid
+      : platformIsAndroid
       ? 'android'
-      : Platform.operatingSystem;
+      : platformName;
 
   Future<void> _registerToken(String uid) async {
     String? token;
@@ -150,7 +150,7 @@ class FirebasePushService implements PushService {
       // phone that never produces one (no push entitlement on the build, no
       // APNs key in the Firebase project) is reported so the dev strip can
       // say so instead of the test button failing silently.
-      if (!kIsWeb && Platform.isIOS) {
+      if (!kIsWeb && platformIsIOS) {
         String? apns;
         for (var attempt = 0; attempt < 12 && apns == null; attempt++) {
           apns = await _messaging.getAPNSToken();
@@ -195,7 +195,7 @@ class FirebasePushService implements PushService {
   /// Android and wherever the channel is absent.
   static const _native = MethodChannel('lbm/push');
   Future<Object?> _nativePush(String method) async {
-    if (kIsWeb || !Platform.isIOS) return null;
+    if (kIsWeb || !platformIsIOS) return null;
     try {
       return await _native.invokeMethod<Object?>(method);
     } catch (_) {
@@ -229,7 +229,7 @@ class FirebasePushService implements PushService {
     final notification = message.notification;
     if (notification == null) return;
     // iOS presents it itself (see the presentation options above).
-    if (!kIsWeb && Platform.isIOS) return;
+    if (!kIsWeb && platformIsIOS) return;
     unawaited(
       _local.show(
         id: message.hashCode,

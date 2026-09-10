@@ -18,6 +18,7 @@ import 'state/session.dart';
 import 'theme/app_theme.dart';
 import 'widgets/dev_error_surface.dart';
 import 'widgets/feedback_button.dart';
+import 'widgets/phone_frame.dart';
 import 'widgets/splash_overlay.dart';
 
 Future<void> main() async {
@@ -62,7 +63,9 @@ Future<void> main() async {
     await initializeFirebase(useEmulators: useFirebaseEmulators);
     // A background push has nothing to do in Dart (the system shows it), but
     // the handler must exist or the plugin logs a warning on every one.
-    FirebaseMessaging.onBackgroundMessage(lbmBackgroundMessageHandler);
+    if (!kIsWeb) {
+      FirebaseMessaging.onBackgroundMessage(lbmBackgroundMessageHandler);
+    }
   }
 
   runApp(ProviderScope(retry: lbmRetry, child: const LittleBlueMarketApp()));
@@ -117,24 +120,29 @@ class LittleBlueMarketApp extends ConsumerWidget {
           // Both dev overlays render nothing in release and under test. The
           // splash artwork holds for a moment on launch; the bug button sits
           // over every screen and photographs what is under it.
-          child: SplashOverlay(
-            child: DevErrorSurface(
-              child: Stack(
-                children: [
-                  // A tap anywhere outside a text field puts the keyboard
-                  // away. iPhones have no back button to do it with, and
-                  // without this every form kept the keyboard up until the
-                  // person found somewhere to scroll.
-                  GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () {
-                      final focus = FocusManager.instance.primaryFocus;
-                      if (focus != null && focus.context != null) focus.unfocus();
-                    },
-                    child: FeedbackLayer(router: router, child: child!),
-                  ),
-                  const DevBackendBadge(),
-                ],
+          // On the web the whole app sits inside a phone-sized frame.
+          child: PhoneFrame(
+            child: SplashOverlay(
+              child: DevErrorSurface(
+                child: Stack(
+                  children: [
+                    // A tap anywhere outside a text field puts the keyboard
+                    // away. iPhones have no back button to do it with, and
+                    // without this every form kept the keyboard up until the
+                    // person found somewhere to scroll.
+                    GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: () {
+                        final focus = FocusManager.instance.primaryFocus;
+                        if (focus != null && focus.context != null) {
+                          focus.unfocus();
+                        }
+                      },
+                      child: FeedbackLayer(router: router, child: child!),
+                    ),
+                    const DevBackendBadge(),
+                  ],
+                ),
               ),
             ),
           ),

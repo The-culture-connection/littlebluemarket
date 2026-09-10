@@ -1,0 +1,23 @@
+# The mobile app as a website, for Railway.
+#
+# Stage 1 compiles the Flutter app for the web (release, production Firebase
+# project: the committed config). Stage 2 is a small Node server that hands
+# out those files. Railway builds this when the service's Dockerfile path is
+# set to Dockerfile.web (see README, "The web app on Railway").
+
+FROM ghcr.io/cirruslabs/flutter:stable AS build
+WORKDIR /app
+COPY pubspec.yaml pubspec.lock ./
+RUN flutter pub get
+COPY . .
+RUN flutter build web --release --no-tree-shake-icons
+
+FROM node:22-alpine
+WORKDIR /srv
+ENV NODE_ENV=production
+COPY web-server/package.json ./
+RUN npm install --omit=dev
+COPY web-server/server.js ./
+COPY --from=build /app/build/web ./site
+EXPOSE 3000
+CMD ["node", "server.js"]

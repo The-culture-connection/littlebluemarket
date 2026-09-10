@@ -1,0 +1,16 @@
+# What Dockerfile.web does not need to upload to the builder.
+.git
+.dart_tool
+build
+android
+ios
+functions
+admin-web
+hosting
+Planning
+scripts
+tool
+test
+node_modules
+**/node_modules
+*.md

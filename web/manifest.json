@@ -1,0 +1,35 @@
+{
+    "name": "Little Blue Market",
+    "short_name": "Little Blue",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#70A0D1",
+    "theme_color": "#70A0D1",
+    "description": "Shop small makers and talk with the people behind them.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
