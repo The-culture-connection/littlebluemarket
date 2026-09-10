@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/repositories/dev_error_sink.dart';
+import '../../legal_links.dart';
 import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
 import '../../router/app_router.dart';
@@ -258,6 +259,25 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 16),
           if (me.isSeller) const _SellerRows() else const _BuyerRows(),
           const SizedBox(height: 12),
+          // The store's policies, on littlebluemarket.com. App review asks
+          // that both be reachable from inside the app.
+          LbmCard(
+            child: RowStack(
+              children: [
+                _PolicyRow(
+                  icon: Icons.privacy_tip_outlined,
+                  title: 'Privacy policy',
+                  url: LegalLinks.privacyPolicy,
+                ),
+                _PolicyRow(
+                  icon: Icons.gavel_rounded,
+                  title: 'Terms of service',
+                  url: LegalLinks.termsOfService,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           LbmCard(
             child: ListRow(
               leading: Icon(Icons.logout_rounded, color: c.ink3),
@@ -481,4 +501,36 @@ bool _showStaffTools(WidgetRef ref) {
   if (ref.watch(isAdminProvider)) return true;
   final email = ref.watch(authServiceProvider).currentUser?.email ?? '';
   return email.toLowerCase().endsWith(kStaffEmailDomain);
+}
+
+/// One policy link: opens on littlebluemarket.com in the browser.
+class _PolicyRow extends StatelessWidget {
+  const _PolicyRow({
+    required this.icon,
+    required this.title,
+    required this.url,
+  });
+
+  final IconData icon;
+  final String title;
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return ListRow(
+      leading: Icon(icon, color: c.ink3),
+      title: Text(title),
+      subtitle: const Text('littlebluemarket.com'),
+      trailing: Icon(Icons.open_in_new_rounded, size: 18, color: c.ink3),
+      onTap: () async {
+        final messenger = ScaffoldMessenger.of(context);
+        if (!await openLegalLink(url)) {
+          messenger.showSnackBar(
+            SnackBar(content: Text('Could not open $url')),
+          );
+        }
+      },
+    );
+  }
 }

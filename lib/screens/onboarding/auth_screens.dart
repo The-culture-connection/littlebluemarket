@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../app_assets.dart';
+import '../../legal_links.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/repositories.dart';
 import '../../models/onboarding.dart';
@@ -482,6 +484,7 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
             '${widget.intent.querySuffix}',
           ),
         ),
+        if (widget.creating) const _LegalNote(),
       ],
     );
   }
@@ -744,10 +747,7 @@ class _ConfirmedBadge extends StatelessWidget {
 ///
 /// The handle is asked first because it doubles as the storefront address.
 class ProfileSetupScreen extends ConsumerStatefulWidget {
-  const ProfileSetupScreen({
-    super.key,
-    this.intent = OnboardingIntent.newHere,
-  });
+  const ProfileSetupScreen({super.key, this.intent = OnboardingIntent.newHere});
 
   /// Where to land once the profile exists: the door chosen on "Are you…".
   final OnboardingIntent intent;
@@ -816,7 +816,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (_busy) return;
     final name = _validName;
     if (name == null) {
-      setState(() => _error = 'Add your name first. It is what people see on your posts.');
+      setState(
+        () => _error =
+            'Add your name first. It is what people see on your posts.',
+      );
       return;
     }
     setState(() {
@@ -943,8 +946,70 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           label: _busy ? 'One moment…' : 'Create a profile',
           onPressed: _busy || _validName == null ? null : _finish,
         ),
+        const _LegalNote(),
       ],
     );
   }
 }
 
+/// "By creating a profile you agree to…", with the two policies tappable.
+/// Sits under the create buttons on both sign-up steps.
+class _LegalNote extends StatefulWidget {
+  const _LegalNote();
+
+  @override
+  State<_LegalNote> createState() => _LegalNoteState();
+}
+
+class _LegalNoteState extends State<_LegalNote> {
+  late final _terms = TapGestureRecognizer()
+    ..onTap = () => _open(LegalLinks.termsOfService);
+  late final _privacy = TapGestureRecognizer()
+    ..onTap = () => _open(LegalLinks.privacyPolicy);
+
+  Future<void> _open(String url) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (!await openLegalLink(url)) {
+      messenger?.showSnackBar(SnackBar(content: Text('Could not open $url')));
+    }
+  }
+
+  @override
+  void dispose() {
+    _terms.dispose();
+    _privacy.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final base = TextStyle(
+      fontFamily: kBodyFont,
+      fontSize: 11.5,
+      height: 1.4,
+      fontWeight: FontWeight.w600,
+      color: LbmConst.onWelcome.withValues(alpha: 0.75),
+    );
+    final link = base.copyWith(
+      color: LbmConst.onWelcome,
+      decoration: TextDecoration.underline,
+      decorationColor: LbmConst.onWelcome,
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+      child: Text.rich(
+        TextSpan(
+          style: base,
+          children: [
+            const TextSpan(text: 'By creating a profile you agree to our '),
+            TextSpan(text: 'Terms of Service', style: link, recognizer: _terms),
+            const TextSpan(text: ' and '),
+            TextSpan(text: 'Privacy Policy', style: link, recognizer: _privacy),
+            const TextSpan(text: '.'),
+          ],
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+}
