@@ -214,6 +214,10 @@ export function catalogDocFor(
         `${title} ${stripHtml(String(payload.body_html ?? ''))} ${String(payload.product_type ?? '')}`,
       ).slice(0, 300),
       active: payload.status === 'active',
+      // The store's word for it: active, draft or archived. A deleted product
+      // is marked 'deleted' by removeMirroredProduct. The seller's own grid
+      // shows active and draft; everyone else sees active only.
+      status: storeStatus(payload.status),
       shopifyProductId: id,
       createdAt: payload.created_at ? new Date(payload.created_at) : null,
     },
@@ -415,13 +419,22 @@ export async function backfillSellerForVendor(
  * turn every one of those into a broken card.
  */
 export async function removeMirroredProduct(id: string): Promise<void> {
-  await getFirestore()
+  const db = getFirestore();
+  await db
     .collection('catalog')
     .doc(id)
     .set(
-      { active: false, deletedAt: FieldValue.serverTimestamp() },
+      { active: false, status: 'deleted', deletedAt: FieldValue.serverTimestamp() },
       { merge: true },
     );
+  // A product the store no longer has should not sit in the feed either.
+  await db.collection('posts').doc(`listing_${id}`).delete().catch(() => undefined);
+}
+
+/** 'active' | 'draft' | 'archived', whatever case the store sent it in. */
+export function storeStatus(raw: unknown): 'active' | 'draft' | 'archived' {
+  const s = String(raw ?? '').toLowerCase();
+  return s === 'active' || s === 'archived' ? s : 'draft';
 }
 
 /**

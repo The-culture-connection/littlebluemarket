@@ -612,7 +612,14 @@ class _ListingComposerState extends ConsumerState<ListingComposer> {
     final uid = ref.watch(currentUidProvider);
     final products = uid == null
         ? const AsyncValue<List<Product>>.data([])
-        : ref.watch(sellerProductsProvider(uid));
+        : ref
+              .watch(sellerProductsProvider(uid))
+              .whenData(
+                (all) => [
+                  for (final p in all)
+                    if (!p.isGone) p,
+                ],
+              );
 
     return LbmSheet(
       children: [

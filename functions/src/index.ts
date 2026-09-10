@@ -65,7 +65,7 @@ import { geocodeProfileIfNeeded } from './geocode.ts';
 import { mentionsToNotify, notify } from './notifications.ts';
 import { syncShipturtleOrders } from './shipturtle_orders.ts';
 import { publishListing, searchCategories } from './listings.ts';
-import { refreshListings, updateListing } from './listing_updates.ts';
+import { pruneSellerCatalog, refreshListings, updateListing } from './listing_updates.ts';
 import { verifyShopifyHmac, webhookHmacHeader, webhookTopic } from './webhooks.ts';
 import {
   authenticateShipTurtleWebhook,
@@ -288,7 +288,11 @@ export const sellerRefreshListings = onCall(
   { secrets: [SHOPIFY_CLIENT_SECRET] },
   withLoudErrors('sellerRefreshListings', async (request) => {
     const uid = requireUid(request.auth);
-    return refreshListings(uid, request.auth?.token);
+    const listings = await refreshListings(uid, request.auth?.token);
+    // And the mirror itself: products deleted or archived on the store
+    // (through Shipturtle or the Shopify admin) leave the seller's grid.
+    const catalog = await pruneSellerCatalog(uid, request.auth?.token);
+    return { ...listings, catalog };
   }),
 );
 

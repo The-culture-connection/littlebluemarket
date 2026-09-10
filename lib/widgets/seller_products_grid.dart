@@ -30,7 +30,16 @@ class SellerProductsGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final products = ref.watch(sellerProductsProvider(sellerId));
+    // The seller sees what is on sale and what is under review; everyone
+    // else sees what is on sale. Deleted and archived products show to nobody.
+    final products = ref
+        .watch(sellerProductsProvider(sellerId))
+        .whenData(
+          (all) => [
+            for (final p in all)
+              if (own ? !p.isGone : p.active) p,
+          ],
+        );
 
     return LbmAsync<List<Product>>(
       products,

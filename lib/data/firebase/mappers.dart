@@ -166,7 +166,6 @@ abstract final class FirestoreMappers {
         createdAt: time(data['createdAt']),
       );
 
-
   /// A deterministic avatar colour from a uid.
   ///
   /// Hue only: saturation and lightness are fixed so every generated tint sits
@@ -218,6 +217,16 @@ abstract final class FirestoreMappers {
     buyUrl: data['buyUrl'] is String && (data['buyUrl'] as String).isNotEmpty
         ? data['buyUrl'] as String
         : null,
+    active: boolean(data['active'], true),
+    // Older mirror rows carry no status: read it off the flags they do have.
+    status: str(
+      data['status'],
+      data['deletedAt'] != null
+          ? 'deleted'
+          : boolean(data['active'], true)
+          ? 'active'
+          : 'draft',
+    ),
   );
 
   /// A `directoryProducts` document as a [Product], id prefixed so every

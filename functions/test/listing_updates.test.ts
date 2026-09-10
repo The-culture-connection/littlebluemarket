@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { statusFromStore, updateMutations, type StoreProduct } from '../src/listing_updates.ts';
+import { catalogPrunePlan, statusFromStore, updateMutations, type StoreProduct } from '../src/listing_updates.ts';
 
 /**
  * Editing an existing product. The assertion that matters: `productSet` is
@@ -130,4 +130,27 @@ test('the store\'s status maps onto the chip', () => {
   assert.equal(statusFromStore('DRAFT'), 'submitted');
   assert.equal(statusFromStore('ARCHIVED'), 'rejected');
   assert.equal(statusFromStore(null), 'rejected');
+});
+
+test('pruning settles the mirror against the store: gone, archived, back to active', () => {
+  const rows = [
+    { id: '1', active: true, status: 'active' },   // still active: untouched
+    { id: '2', active: true, status: 'active' },   // deleted on the store
+    { id: '3', active: true, status: 'active' },   // archived on the store
+    { id: '4', active: false, status: 'draft' },   // approved since: back to active
+    { id: '5', active: false, status: 'draft' },   // still a draft: untouched
+  ];
+  const nodes = [
+    { id: 'gid://shopify/Product/1', status: 'ACTIVE' },
+    null,
+    { id: 'gid://shopify/Product/3', status: 'ARCHIVED' },
+    { id: 'gid://shopify/Product/4', status: 'ACTIVE' },
+    { id: 'gid://shopify/Product/5', status: 'DRAFT' },
+  ];
+  const plan = catalogPrunePlan(rows, nodes);
+  assert.deepEqual(plan.map((p) => [p.id, p.status, p.active, p.dropPost]), [
+    ['2', 'deleted', false, true],
+    ['3', 'archived', false, true],
+    ['4', 'active', true, false],
+  ]);
 });

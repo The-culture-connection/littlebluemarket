@@ -164,12 +164,24 @@ class Product {
     this.tileFrom,
     this.tileTo,
     this.buyUrl,
+    this.active = true,
+    this.status = 'active',
   });
 
   final String id;
   final String title;
   final int priceCents;
   final String sellerId;
+
+  /// On sale in the store right now. Off for drafts under review, archived
+  /// products and anything the store deleted.
+  final bool active;
+
+  /// The store's word: active, draft, archived or deleted.
+  final String status;
+
+  /// Deleted or archived on the store: shown to nobody, the seller included.
+  bool get isGone => status == 'deleted' || status == 'archived';
 
   /// Set for a product a directory business sells on its own website: Buy
   /// opens this address instead of the cart, and nothing here is in Shopify.

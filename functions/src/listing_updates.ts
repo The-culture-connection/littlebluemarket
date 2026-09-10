@@ -109,6 +109,112 @@ export async function refreshListings(
   return { checked: due.length, changed };
 }
 
+// ------------------------------------------------------------------ prune
+//
+// The mirror learns about a deletion from the products/delete webhook. When
+// that webhook is missed, or the product was removed some other way, the
+// seller's grid keeps showing something the store no longer has. Pull to
+// refresh asks the store about every product the seller owns and settles
+// the mirror: gone -> 'deleted', archived -> 'archived', and the active flag
+// made true again for anything the store says is active.
+
+/** A mirror row as the planner sees it. */
+export interface MirrorRow {
+  id: string;
+  active: boolean;
+  status: string;
+}
+
+/** What the store said about one product; null when it no longer exists. */
+export type StoreNode = { id: string; status: string } | null;
+
+export interface PrunePatch {
+  id: string;
+  active: boolean;
+  status: 'active' | 'draft' | 'archived' | 'deleted';
+  /** True when the feed entry should go too. */
+  dropPost: boolean;
+}
+
+/** Pure: which rows disagree with the store, and what to write. */
+export function catalogPrunePlan(rows: MirrorRow[], nodes: StoreNode[]): PrunePatch[] {
+  const out: PrunePatch[] = [];
+  rows.forEach((row, i) => {
+    const node = nodes[i];
+    let status: PrunePatch['status'];
+    if (!node) status = 'deleted';
+    else {
+      const s = node.status.toLowerCase();
+      status = s === 'active' ? 'active' : s === 'archived' ? 'archived' : 'draft';
+    }
+    const active = status === 'active';
+    if (row.status === status && row.active === active) return;
+    out.push({ id: row.id, active, status, dropPost: status === 'deleted' || status === 'archived' });
+  });
+  return out;
+}
+
+/** One prune per seller per minute, like refresh. */
+export const PRUNE_MIN_MS = 60_000;
+const PRUNE_LIMIT = 300;
+
+export async function pruneSellerCatalog(
+  uid: string,
+  claims: Record<string, unknown> | undefined,
+  deps: PublishDeps = {},
+): Promise<{ checked: number; changed: number; removed: number }> {
+  const graphql = deps.graphql ?? adminGraphQL;
+  const gate = deps.requireSeller ?? requireSeller;
+  await gate(uid, claims);
+
+  const db = getFirestore();
+  const memo = db.collection('_internal').doc('catalogPrune').collection('sellers').doc(uid);
+  const last = (await memo.get()).data()?.at?.toMillis?.() ?? 0;
+  if (Date.now() - last < PRUNE_MIN_MS) return { checked: 0, changed: 0, removed: 0 };
+  await memo.set({ at: FieldValue.serverTimestamp() }, { merge: true });
+
+  const snapshot = await db.collection('catalog').where('sellerId', '==', uid).limit(PRUNE_LIMIT).get();
+  const rows: MirrorRow[] = snapshot.docs
+    .filter((doc) => doc.data().status !== 'deleted')
+    .map((doc) => ({
+      id: doc.id,
+      active: doc.data().active === true,
+      status: String(doc.data().status ?? (doc.data().active === true ? 'active' : 'draft')),
+    }));
+  if (rows.length === 0) return { checked: 0, changed: 0, removed: 0 };
+
+  const nodes: StoreNode[] = [];
+  for (let i = 0; i < rows.length; i += 100) {
+    const slice = rows.slice(i, i + 100);
+    const data = await graphql<{ nodes: StoreNode[] }>(
+      `query Statuses($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id status } } }`,
+      { ids: slice.map((r) => `gid://shopify/Product/${r.id}`) },
+    );
+    nodes.push(...data.nodes);
+  }
+
+  const plan = catalogPrunePlan(rows, nodes);
+  const batch = db.batch();
+  let removed = 0;
+  for (const patch of plan) {
+    const write: Record<string, unknown> = {
+      active: patch.active,
+      status: patch.status,
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+    if (patch.status === 'deleted') {
+      write.deletedAt = FieldValue.serverTimestamp();
+      removed += 1;
+    }
+    batch.set(db.collection('catalog').doc(patch.id), write, { merge: true });
+    if (patch.dropPost) batch.delete(db.collection('posts').doc(`listing_${patch.id}`));
+  }
+  if (plan.length) await batch.commit();
+
+  logger.info('Pruned a seller catalog against the store', { uid, checked: rows.length, changed: plan.length, removed });
+  return { checked: rows.length, changed: plan.length, removed };
+}
+
 // ----------------------------------------------------------------- update
 //
 // Since API 2026-07 the inventory mutations must carry an @idempotent key.
