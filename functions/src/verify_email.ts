@@ -321,10 +321,11 @@ export async function sendVerificationEmailFor(
   }
 
   const webUrl = publicWebUrl();
-  const minted = await getAuth().generateEmailVerificationLink(email, {
-    url: `${webUrl}/verified`,
-    handleCodeInApp: false,
-  });
+  // No continue URL on purpose. Firebase refuses one whose domain is not
+  // on the project's authorized-domain list (found on production,
+  // 2026-09-09: UNAUTHORIZED_DOMAIN), and our page does not need one: it
+  // shows "You're confirmed" itself. Nothing for Grace to add in a console.
+  const minted = await getAuth().generateEmailVerificationLink(email);
   const link = rebrandActionLink(minted, webUrl);
   const mail = renderVerificationEmail({
     displayName: user.displayName,
