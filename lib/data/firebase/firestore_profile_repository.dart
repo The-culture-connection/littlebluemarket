@@ -132,7 +132,12 @@ class FirestoreProfileRepository implements ProfileRepository {
       },
       if (edit.bio != null) 'bio': edit.bio!.trim(),
       if (edit.cityState != null) 'cityState': edit.cityState!.trim(),
-      if (edit.tags != null) 'tags': edit.tags,
+      if (edit.tags != null) ...{
+        'tags': edit.tags,
+        // Searched case-insensitively; the trigger keeps this in step for
+        // profiles the directory sync writes.
+        'tagsLower': lowerTags(edit.tags!),
+      },
       if (edit.avatarUrl != null) 'avatarUrl': edit.avatarUrl,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));

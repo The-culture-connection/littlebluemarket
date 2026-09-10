@@ -68,7 +68,9 @@ class FirestoreAdminRepository implements AdminRepository {
       reset = false;
       final data = result.data;
       final done = FirestoreMappers.boolean(data['done']);
-      cursor = data['nextCursor'] is String ? data['nextCursor'] as String : null;
+      cursor = data['nextCursor'] is String
+          ? data['nextCursor'] as String
+          : null;
       if (done || cursor == null) {
         return BackfillProgress(
           processed: FirestoreMappers.integer(data['processed']),

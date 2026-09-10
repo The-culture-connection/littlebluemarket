@@ -222,10 +222,12 @@ class FixtureSearchRepository implements SearchRepository {
         : Fx.people.values
               .where(
                 (person) =>
-                    person.isSeller &&
-                    (person.name.toLowerCase().contains(q) ||
-                        person.handle.toLowerCase().contains(q) ||
-                        person.tags.any((t) => t.toLowerCase() == q)),
+                    // A hashtag finds anyone who carries it; a name or handle
+                    // finds a shop.
+                    person.tags.any((t) => t.toLowerCase() == q) ||
+                    (person.isSeller &&
+                        (person.name.toLowerCase().contains(q) ||
+                            person.handle.toLowerCase().contains(q))),
               )
               .toList();
 
@@ -1632,6 +1634,10 @@ class FixtureDiagnosticsRepository implements DiagnosticsRepository {
 
   @override
   Future<int> syncCollections() async => Fx.collections.length;
+
+  @override
+  Future<({int checked, int updated})> backfillProfileTags() async =>
+      (checked: Fx.people.length, updated: 0);
 
   @override
   Future<String> setSellerVendor({

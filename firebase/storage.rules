@@ -51,7 +51,11 @@ service firebase.storage {
     // sender, seen by the merchant. The document carries a download URL, so
     // the admin website needs no Storage read of its own.
     match /feedback/{uid}/{file} {
-      allow read: if signedIn() && request.auth.token.admin == true;
+      // The sender reads their own, because the app asks Storage for the
+      // download URL right after uploading and writes it onto the document;
+      // admin-only read meant every non-admin's bug report failed there.
+      allow read: if signedIn()
+        && (request.auth.uid == uid || request.auth.token.admin == true);
       allow write: if signedIn()
         && request.auth.uid == uid
         && isImage()

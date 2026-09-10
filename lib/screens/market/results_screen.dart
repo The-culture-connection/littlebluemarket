@@ -129,7 +129,7 @@ class _Results extends StatelessWidget {
           _ProductGrid(products: results.products),
         ],
         if (results.sellers.isNotEmpty) ...[
-          SectionHead('${results.sellers.length} sellers'),
+          SectionHead('${results.sellers.length} people'),
           LbmCard(
             margin: const EdgeInsets.symmetric(horizontal: 14),
             child: RowStack(

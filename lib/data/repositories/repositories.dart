@@ -441,6 +441,10 @@ abstract interface class DiagnosticsRepository {
   /// Mirrors the store's collections; returns how many.
   Future<int> syncCollections();
 
+  /// Rebuilds the lowercase hashtag mirror on every profile, so a search
+  /// finds a profile's hashtags whatever case they were typed in. Idempotent.
+  Future<({int checked, int updated})> backfillProfileTags();
+
   /// One page of the catalog import. Call until [BackfillProgress.done].
   Future<BackfillProgress> backfillCatalog({bool reset = false});
 

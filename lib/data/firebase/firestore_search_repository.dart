@@ -50,18 +50,19 @@ class FirestoreSearchRepository implements SearchRepository {
             ? await _geoSearch(filters)
             : await _plainSearch(filters);
 
-        final sellers = filters.scope == SearchScope.productType
-            ? const <Person>[]
-            : await _sellers(query);
-
         final tag = await _canonicalTag(query, filters.scope);
+
+        final people = filters.scope == SearchScope.productType
+            ? const <Person>[]
+            : await _people(query, tag);
+
         final reviews = tag != null
             ? await _taggedReviews(tag)
             : const <TaggedReview>[];
 
         return SearchResults(
           products: _sorted(products, filters),
-          sellers: sellers,
+          sellers: people,
           reviews: reviews,
         );
       });
@@ -206,6 +207,51 @@ class FirestoreSearchRepository implements SearchRepository {
               lower,
             ),
     };
+  }
+
+  /// The people a search should show: sellers whose handle starts with the
+  /// query, plus anyone carrying the hashtag on their profile.
+  ///
+  /// The second half is what makes a profile's initiative hashtags mean
+  /// something. They were stored and shown as tappable chips, but only the
+  /// catalog was ever searched, so tapping one found nothing.
+  Future<List<Person>> _people(String query, String? tag) async {
+    final byHandle = await _sellers(query);
+    if (tag == null) return byHandle;
+
+    final byTag = await _peopleByTag(tag);
+    final out = <String, Person>{};
+    // Sellers first: a shop is the more useful answer to a hashtag.
+    for (final person in [...byHandle, ...byTag]) {
+      out.putIfAbsent(person.id, () => person);
+    }
+    final people = out.values.toList();
+    people.sort((a, b) {
+      if (a.isSeller == b.isSeller) return 0;
+      return a.isSeller ? -1 : 1;
+    });
+    return people;
+  }
+
+  /// Profiles carrying this hashtag. Two reads: the lowercase mirror, and the
+  /// tags as typed, for profiles saved before the mirror existed.
+  Future<List<Person>> _peopleByTag(String tag) async {
+    final users = _db.collection('users');
+    final lower = tag.toLowerCase();
+    final snapshots = await Future.wait([
+      users.where('tagsLower', arrayContains: lower).limit(20).get(),
+      if (lower != tag) users.where('tags', arrayContains: tag).limit(20).get(),
+    ]);
+    final found = <String, Person>{};
+    for (final snapshot in snapshots) {
+      for (final doc in snapshot.docs) {
+        found.putIfAbsent(
+          doc.id,
+          () => FirestoreMappers.person(doc.id, doc.data()),
+        );
+      }
+    }
+    return found.values.toList();
   }
 
   Future<List<Person>> _sellers(String query) async {

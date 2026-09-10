@@ -282,6 +282,11 @@ class _AdminCardState extends ConsumerState<_AdminCard> {
     return 'Admin claim granted to this account.';
   }
 
+  Future<String> _reindexTags() async {
+    final result = await _repo.backfillProfileTags();
+    return 'Checked ${result.checked} profiles, reindexed ${result.updated}.';
+  }
+
   Future<String> _sync() async {
     final count = await _repo.syncCollections();
     return 'Synced $count collections. Pull the Market feed to refresh.';
@@ -345,6 +350,15 @@ class _AdminCardState extends ConsumerState<_AdminCard> {
                 expand: false,
                 style: PillStyle.quiet,
                 onPressed: _busy ? null : () => _run('Syncing…', _sync),
+              ),
+              PillButton(
+                'Reindex hashtags',
+                small: true,
+                expand: false,
+                style: PillStyle.quiet,
+                onPressed: _busy
+                    ? null
+                    : () => _run('Reindexing…', _reindexTags),
               ),
               PillButton(
                 'Backfill catalog',

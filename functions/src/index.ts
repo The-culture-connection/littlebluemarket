@@ -62,6 +62,7 @@ import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
 import { noteVendorFromCatalog, syncVendorRoster } from './roster_grant.ts';
 import { geocodeProfileIfNeeded } from './geocode.ts';
+import { backfillProfileTagsLower, syncProfileTagsLower } from './profile_tags.ts';
 import { mentionsToNotify, notify } from './notifications.ts';
 import { syncShipturtleOrders } from './shipturtle_orders.ts';
 import { publishListing, searchCategories } from './listings.ts';
@@ -414,6 +415,16 @@ export const adminUnbanUser = onCall(
 );
 
 /** Stage 12: rebuilds the buyer index from every account's purchases, a page of people per call. Admin only. */
+/** Rebuilds users/{uid}.tagsLower for every profile. Admin only, idempotent. */
+export const adminBackfillProfileTags = onCall(
+  { timeoutSeconds: 300 },
+  withLoudErrors('adminBackfillProfileTags', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    return backfillProfileTagsLower();
+  }),
+);
+
 export const adminBackfillBuyerIndex = onCall(
   { timeoutSeconds: 300, memory: '512MiB' },
   withLoudErrors('adminBackfillBuyerIndex', async (request) => {
@@ -688,11 +699,12 @@ export const syncCollectionsScheduled = onSchedule(
 export const onUserWritten = onDocumentWritten(
   'users/{uid}',
   async (event) => {
-    await geocodeProfileIfNeeded(
-      event.params.uid,
-      event.data?.before?.data() as Record<string, unknown> | undefined,
-      event.data?.after?.data() as Record<string, unknown> | undefined,
-    );
+    const before = event.data?.before?.data() as Record<string, unknown> | undefined;
+    const after = event.data?.after?.data() as Record<string, unknown> | undefined;
+    await geocodeProfileIfNeeded(event.params.uid, before, after);
+    // The lowercase hashtag mirror the search reads. Written here rather than
+    // trusted from the phone, because the directory sync writes tags too.
+    await syncProfileTagsLower(event.params.uid, after);
   },
 );
 

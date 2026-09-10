@@ -3,6 +3,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../models/models.dart';
+import '../repositories/dev_error_sink.dart';
 import '../repositories/repositories.dart';
 import 'firestore_errors.dart';
 import 'mappers.dart';
@@ -39,12 +40,23 @@ class FirestoreFeedbackRepository implements FeedbackRepository {
         final doc = _col.doc();
         String? url;
         if (screenshot != null && draft.includeScreenshot) {
-          final ref = _storage.ref('feedback/$me/${doc.id}.png');
-          await ref.putData(
-            Uint8List.fromList(screenshot),
-            SettableMetadata(contentType: 'image/png'),
-          );
-          url = await ref.getDownloadURL();
+          // Best effort. A failed upload must not lose the note: the words
+          // are the report, the picture is a bonus, and this used to throw
+          // and drop the whole thing.
+          try {
+            final ref = _storage.ref('feedback/$me/${doc.id}.png');
+            await ref.putData(
+              Uint8List.fromList(screenshot),
+              SettableMetadata(contentType: 'image/png'),
+            );
+            url = await ref.getDownloadURL();
+          } on Object catch (error) {
+            DevErrorSink.report(
+              error,
+              StackTrace.current,
+              'feedback screenshot',
+            );
+          }
         }
         await doc.set({
           'uid': me,

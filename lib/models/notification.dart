@@ -10,6 +10,7 @@ enum NotificationKind {
   forumThread,
   forumReply,
   newProduct,
+
   /// Someone you follow posted.
   newPost,
   announcement,
@@ -152,6 +153,18 @@ List<String> parseHashtags(String text) {
     if (seen.add(tag.toLowerCase())) out.add(tag);
   }
   return out;
+}
+
+/// The lowercase mirror of a set of hashtags, deduped: what a profile stores
+/// in `tagsLower` so a search finds it whatever case it was typed in.
+List<String> lowerTags(Iterable<String> tags) {
+  final seen = <String>{};
+  for (final raw in tags) {
+    final tag = raw.trim().toLowerCase();
+    if (tag.isEmpty) continue;
+    seen.add(tag.startsWith('#') ? tag : '#$tag');
+  }
+  return seen.toList();
 }
 
 /// A search that must find every word, not only the first.
