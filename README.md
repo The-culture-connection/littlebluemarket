@@ -283,3 +283,20 @@ phone app; push notifications are the one thing it does not do.
   domains, or sign-in is refused in the browser.
 - The first build takes 10 to 15 minutes (it downloads Flutter); later ones are
   faster. Every push to `main` redeploys.
+
+## Android release (.aab)
+
+The Play Store takes an Android App Bundle signed with the upload key.
+
+- The key and its passwords live outside the repo in `..\android-signing\`
+  (`upload-keystore.jks`, `key.properties`, and a `README.txt` that explains
+  how to recreate the setup). Back that folder up; git never sees it.
+- `android\key.properties` is a copy the Gradle build reads; it is gitignored,
+  and the build script restores it from `android-signing\` when missing.
+- Raise `version:` in `pubspec.yaml` (the number after `+` must go up every
+  upload), then run `scripts\build-android-release.ps1`. It builds
+  `flutter build appbundle --release`, copies the bundle to
+  `..\android-signing\releases\` named by version, and prints the upload
+  certificate's fingerprints.
+- On a machine without the key the release build falls back to the debug key,
+  so `flutter run --release` keeps working; only the Play upload needs the key.
