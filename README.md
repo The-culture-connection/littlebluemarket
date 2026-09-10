@@ -284,6 +284,22 @@ phone app; push notifications are the one thing it does not do.
 - The first build takes 10 to 15 minutes (it downloads Flutter); later ones are
   faster. Every push to `main` redeploys.
 
+### Before an iPhone archive
+
+On the Mac, in the project folder:
+
+```
+git pull origin main
+scripts/preflight-ios.sh
+```
+
+It checks that the folder matches GitHub, that Firebase points at the
+production project in all three config files, and that no developer flag is
+left in Xcode's build settings from the last `flutter run`; then it runs
+`flutter build ios --config-only`, which is what actually puts the version,
+the build number and a clean set of defines into Xcode. Archive only after it
+says "Ready to archive".
+
 ## Android release (.aab)
 
 The Play Store takes an Android App Bundle signed with the upload key.
