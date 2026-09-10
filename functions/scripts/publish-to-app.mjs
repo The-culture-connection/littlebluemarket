@@ -98,15 +98,17 @@ async function publish(node) {
   await sleep(60);
 }
 
-if (onlyTitle) {
+const onlyQuery = arg('query');
+if (onlyTitle || onlyQuery) {
+  // --query takes Shopify's own search syntax, e.g. "created_at:>2026-09-09".
   const data = await gql(
-    `query($q: String!, $pub: ID!) { products(first: 10, query: $q) { nodes { id title status publishedOnPublication(publicationId: $pub) } } }`,
-    { q: `title:*${onlyTitle.replace(/"/g, '')}*`, pub: headless.id },
+    `query($q: String!, $pub: ID!) { products(first: 10, query: $q, sortKey: CREATED_AT, reverse: true) { nodes { id title status vendor createdAt publishedOnPublication(publicationId: $pub) } } }`,
+    { q: onlyQuery ?? `title:*${onlyTitle.replace(/"/g, '')}*`, pub: headless.id },
   );
   if (!data.products.nodes.length) console.log(`  no product with "${onlyTitle}" in its title`);
   for (const node of data.products.nodes) {
     seen += 1;
-    console.log(`  ${node.id.replace('gid://shopify/Product/', '')} · ${node.title} · ${node.status} · on app channel: ${node.publishedOnPublication}`);
+    console.log(`  ${node.id.replace('gid://shopify/Product/', '')} · ${node.title} · ${node.vendor} · ${node.status} · created ${node.createdAt} · on app channel: ${node.publishedOnPublication}`);
     if (node.publishedOnPublication) already += 1;
     else if (node.status === 'ACTIVE') {
       missing += 1;
