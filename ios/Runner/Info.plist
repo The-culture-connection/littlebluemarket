@@ -51,6 +51,8 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Near me uses your location to show makers and shops close to you. It is never stored or shared.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Near me uses your location to show makers and shops close to you. It is never stored or shared.</string>
 	<key>NSCameraUsageDescription</key>
