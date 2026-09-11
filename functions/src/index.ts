@@ -54,6 +54,7 @@ import { withLoudErrors } from './errors.ts';
 import { bumpCounter, counterDelta, starKey } from './counters.ts';
 import { claimAdmin, requireAdmin } from './admin.ts';
 import { banUser, unbanUser } from './moderation.ts';
+import { deleteAccountData, requestAccountDeletion as fileDeletionRequest } from './account_deletion.ts';
 import { listVendorUsers } from './shipturtle_api.ts';
 import { resolvePendingVendors } from './vendor_directory.ts';
 import { syncCollections } from './collections.ts';
@@ -390,6 +391,35 @@ export const onCatalogWritten = onDocumentWritten(
 );
 
 /** Moderation: bans a member (sign-in disabled, posts removed, reports marked). Admin only. */
+/**
+ * "Delete my account", from the public page. No sign-in required: the page
+ * has to work for someone who cannot get into their account, which is the
+ * case both app stores ask about. A signed-in caller's address comes from
+ * their token, never from the request.
+ */
+export const requestAccountDeletion = onCall(
+  withLoudErrors('requestAccountDeletion', async (request) =>
+    fileDeletionRequest(request.data ?? {}, request.auth),
+  ),
+);
+
+/** Carries a deletion out. Admin only. */
+export const adminDeleteAccount = onCall(
+  { timeoutSeconds: 300 },
+  withLoudErrors('adminDeleteAccount', async (request) => {
+    const by = requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const { uid, requestId, keepAccount } = request.data ?? {};
+    if (typeof uid !== 'string' || !uid) {
+      throw new HttpsError('invalid-argument', 'Which account?');
+    }
+    return deleteAccountData(uid, by, {
+      requestId: typeof requestId === 'string' ? requestId : undefined,
+      keepAccount: keepAccount === true,
+    });
+  }),
+);
+
 export const adminBanUser = onCall(
   { timeoutSeconds: 120 },
   withLoudErrors('adminBanUser', async (request) => {

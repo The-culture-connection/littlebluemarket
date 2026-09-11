@@ -705,3 +705,32 @@ describe('writes are fresh, typed and capped', () => {
     await assertFails(member('maya').collection('posts').add({ ...base, kind: 'shoutout', text: 'stale', createdAt: new Date(2020, 0, 1) }));
   });
 });
+
+describe('deletion requests are the callable\'s to write and the merchant\'s to read', () => {
+  before(async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('deletionRequests/d1').set({
+        email: 'maya@example.com',
+        uid: 'maya',
+        scope: 'account',
+        status: 'open',
+      });
+    });
+  });
+
+  test('no client writes one, not even about themselves', async () => {
+    const row = { email: 'maya@example.com', uid: 'maya', scope: 'account', status: 'open' };
+    await assertFails(member('maya').collection('deletionRequests').add(row));
+    await assertFails(guest().collection('deletionRequests').add(row));
+    await assertFails(adminUser().collection('deletionRequests').add(row));
+  });
+
+  test('only an admin reads and closes them; nobody deletes one', async () => {
+    await assertSucceeds(adminUser().doc('deletionRequests/d1').get());
+    await assertSucceeds(adminUser().doc('deletionRequests/d1').update({ status: 'done' }));
+    await assertFails(member('maya').doc('deletionRequests/d1').get());
+    await assertFails(member('maya').doc('deletionRequests/d1').update({ status: 'done' }));
+    await assertFails(guest().collection('deletionRequests').get());
+    await assertFails(adminUser().doc('deletionRequests/d1').delete());
+  });
+});

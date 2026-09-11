@@ -88,8 +88,13 @@ The part before the `+` is what people see in the store listing.
   deleted. No data is sold, and there is no advertising or analytics SDK in
   the app.
 - **Government apps, Financial features, Health**: no to all.
-- **Data deletion**: point it at the same privacy policy page and give a
-  contact address that answers.
+- **Data deletion**: the app has its own page for this, reachable without
+  signing in, on the phone and in a browser:
+  `https://lbm-web-production.up.railway.app/delete-account`
+  Paste that as the **Data deletion URL**. It offers both answers Google asks
+  about: delete the account and everything with it, or delete the data and
+  keep the account. Requests land in the app's Admin screen under "Delete my
+  account requests".
 
 ## 5. Every upload after the first
 

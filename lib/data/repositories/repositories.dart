@@ -128,6 +128,26 @@ abstract interface class CommerceRepository {
   Stream<List<Purchase>> watchPurchases(String uid);
 }
 
+/// Asking for an account, or the data behind it, to be removed.
+///
+/// The request half works for someone who is not signed in, because both app
+/// stores require a page anyone can reach. The rest is the merchant's.
+abstract interface class AccountRepository {
+  Future<void> requestDeletion(NewDeletionRequest draft);
+
+  /// Admins only; empty for anyone else rather than an error.
+  Stream<List<DeletionRequest>> watchDeletionRequests({int limit = 100});
+
+  Future<void> setDeletionStatus(String id, DeletionStatus status);
+
+  /// Carries the deletion out. Returns how many posts went with it.
+  Future<int> deleteAccountNow({
+    required String uid,
+    required String requestId,
+    required bool keepAccount,
+  });
+}
+
 /// Posts, likes, comments, reviews, forums, threads. Everything social.
 abstract interface class SocialRepository {
   Stream<List<Post>> watchFeed({List<String> tags = const [], int limit = 20});

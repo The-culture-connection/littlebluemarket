@@ -123,6 +123,23 @@ abstract final class FirestoreMappers {
           announcementsSeenAt: timeOrNull(data['announcementsSeenAt']),
         );
 
+  static DeletionRequest deletionRequest(
+    String id,
+    Map<String, dynamic> data,
+  ) => DeletionRequest(
+    id: id,
+    email: str(data['email']),
+    uid: data['uid'] is String && (data['uid'] as String).isNotEmpty
+        ? data['uid'] as String
+        : null,
+    name: str(data['name']),
+    scope: DeletionScope.fromValue(str(data['scope'])),
+    note: str(data['note']),
+    status: DeletionStatus.fromValue(str(data['status'])),
+    createdAt: time(data['createdAt']),
+    handledAt: timeOrNull(data['handledAt']),
+  );
+
   static Report report(String id, Map<String, dynamic> data) => Report(
     id: id,
     reporterUid: str(data['reporterUid']),

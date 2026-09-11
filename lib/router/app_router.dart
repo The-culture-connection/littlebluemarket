@@ -16,6 +16,7 @@ import '../screens/market/results_screen.dart';
 import '../screens/market/reviews_screen.dart';
 import '../screens/market/search_screen.dart';
 import '../screens/market/seller_feed_screen.dart';
+import '../screens/you/delete_account_screen.dart';
 import '../screens/onboarding/auth_screens.dart';
 import '../screens/onboarding/welcome_screen.dart';
 import '../screens/you/dm_screen.dart';
@@ -127,6 +128,11 @@ GoRouter buildRouter(Ref ref) {
         if (session is GuestSession && session.uid != null) return '/market';
       }
 
+      // The delete-my-data page is reachable by anyone, signed in or not:
+      // both app stores require that, and the website address of it is what
+      // goes in their forms.
+      if (path.startsWith('/delete-account')) return null;
+
       // The onboarding routes decide their own next step.
       if (path == '/' ||
           path.startsWith('/welcome') ||
@@ -163,6 +169,11 @@ GoRouter buildRouter(Ref ref) {
       // only matters when linking a shop record later.
       // "Are you…": the seven doors behind Create a Profile. The door rides
       // along as ?intent= through the three routes below.
+      // Public on purpose; see the redirect above.
+      GoRoute(
+        path: '/delete-account',
+        builder: (context, state) => const DeleteAccountScreen(),
+      ),
       GoRoute(
         path: '/orient',
         builder: (context, state) => const OrientScreen(),

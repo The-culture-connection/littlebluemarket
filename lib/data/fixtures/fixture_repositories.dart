@@ -2059,6 +2059,82 @@ class FixtureFeedbackRepository implements FeedbackRepository {
 
 /// Reports on the demo backend: they land in the store, the demo Admin
 /// screen lists them, and a ban removes the person's posts from the feed.
+class FixtureAccountRepository implements AccountRepository {
+  FixtureAccountRepository(this._backend);
+
+  final FixtureBackend _backend;
+
+  FixtureStore get _store => _backend.store;
+
+  @override
+  Future<void> requestDeletion(NewDeletionRequest draft) async {
+    await _backend._settle();
+    if (!draft.isValid) {
+      throw const ValidationException(
+        'Check the email address and try again.',
+        field: 'email',
+      );
+    }
+    final email = draft.email.trim().toLowerCase();
+    // One open request per address, the way the callable does it.
+    if (_store.deletionRequests.value.any(
+      (r) => r.email == email && r.isOpen,
+    )) {
+      return;
+    }
+    _store.deletionRequests.value = [
+      DeletionRequest(
+        id: 'del${DateTime.now().microsecondsSinceEpoch}',
+        email: email,
+        uid: _backend.uid,
+        name: _store.people.value[_backend.uid]?.name ?? '',
+        scope: draft.scope,
+        note: draft.note.trim(),
+        status: DeletionStatus.open,
+        createdAt: DateTime.now(),
+      ),
+      ..._store.deletionRequests.value,
+    ];
+  }
+
+  @override
+  Stream<List<DeletionRequest>> watchDeletionRequests({int limit = 100}) =>
+      _store.deletionRequests.stream.map((all) => all.take(limit).toList());
+
+  @override
+  Future<void> setDeletionStatus(String id, DeletionStatus status) async {
+    await _backend._settle();
+    _store.deletionRequests.value = [
+      for (final request in _store.deletionRequests.value)
+        if (request.id == id)
+          DeletionRequest(
+            id: request.id,
+            email: request.email,
+            uid: request.uid,
+            name: request.name,
+            scope: request.scope,
+            note: request.note,
+            status: status,
+            createdAt: request.createdAt,
+            handledAt: DateTime.now(),
+          )
+        else
+          request,
+    ];
+  }
+
+  @override
+  Future<int> deleteAccountNow({
+    required String uid,
+    required String requestId,
+    required bool keepAccount,
+  }) async {
+    await _backend._settle();
+    await setDeletionStatus(requestId, DeletionStatus.done);
+    return 0;
+  }
+}
+
 class FixtureReportRepository implements ReportRepository {
   FixtureReportRepository(this._backend);
 

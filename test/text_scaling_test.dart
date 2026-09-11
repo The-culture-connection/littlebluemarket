@@ -38,6 +38,7 @@ const _routes = <String, String>{
   'add a website-link product': '/you/directory-product',
   'notifications': '/you/notifications',
   'notification settings': '/you/notification-settings',
+  'delete account': '/delete-account',
   'admin': '/you/admin',
   'edit product (missing)': '/you/edit-product/nope',
   'diagnostics (dev)': '/you/diagnostics',

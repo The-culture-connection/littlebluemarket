@@ -10,6 +10,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
+import 'admin_deletion_section.dart';
 import 'admin_reports_section.dart';
 
 /// The merchant's screen, in release builds too (Diagnostics is dev-only).
@@ -85,9 +86,9 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       _notice = null;
     });
     try {
-      final sent = await ref.read(adminRepositoryProvider).sendAnnouncement(
-        draft,
-      );
+      final sent = await ref
+          .read(adminRepositoryProvider)
+          .sendAnnouncement(draft);
       if (!mounted) return;
       _title.clear();
       _body.clear();
@@ -107,7 +108,9 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       _rebuildNote = null;
     });
     try {
-      final progress = await ref.read(adminRepositoryProvider).rebuildBuyerIndex();
+      final progress = await ref
+          .read(adminRepositoryProvider)
+          .rebuildBuyerIndex();
       if (!mounted) return;
       setState(
         () => _rebuildNote =
@@ -181,10 +184,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                   helper: bodyLeft < 0 ? '${-bodyLeft} over' : '$bodyLeft left',
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  'Who',
-                  style: LbmText.xtiny.copyWith(color: c.ink3),
-                ),
+                Text('Who', style: LbmText.xtiny.copyWith(color: c.ink3)),
                 SegmentedTabs(
                   labels: [for (final a in _audiences) a.label],
                   selected: _audience,
@@ -270,6 +270,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           const SizedBox(height: 8),
           const AdminReportsSection(),
           const SizedBox(height: 16),
+          const SectionHead('Delete my account requests'),
+          const AdminDeletionSection(),
+          const SizedBox(height: 18),
+
           const SectionHead('Bugs and critiques'),
           const SizedBox(height: 8),
           const _FeedbackSection(),

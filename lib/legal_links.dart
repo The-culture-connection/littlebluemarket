@@ -7,6 +7,13 @@ abstract final class LegalLinks {
       'https://littlebluemarket.com/policies/privacy-policy';
   static const termsOfService =
       'https://littlebluemarket.com/policies/terms-of-service';
+
+  /// Where someone asks for their account or their data to be removed. A
+  /// route inside the app, so it works on a phone and in a browser; the
+  /// website address below is what the app stores ask for.
+  static const deleteAccountRoute = '/delete-account';
+  static const deleteAccountUrl =
+      'https://lbm-web-production.up.railway.app/delete-account';
 }
 
 /// Opens a policy in the phone's browser. False when nothing could open it,

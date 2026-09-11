@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth/auth_service.dart';
 import 'firebase/firebase_auth_service.dart';
 import 'firebase/firebase_bootstrap.dart';
+import 'firebase/firestore_account_repository.dart';
 import 'firebase/firestore_catalog_repository.dart';
 import 'firebase/firestore_collection_repository.dart';
 import 'firebase/firestore_diagnostics_repository.dart';
@@ -247,6 +248,18 @@ final feedbackRepositoryProvider = Provider<FeedbackRepository>((ref) {
 });
 
 /// Reports about members, and the merchant's resolve / ban actions.
+final accountRepositoryProvider = Provider<AccountRepository>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => FixtureAccountRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
+    Backend.live => FirestoreAccountRepository(
+      firestore: ref.watch(firestoreProvider),
+      functions: ref.watch(firebaseFunctionsProvider),
+    ),
+  };
+});
+
 final reportRepositoryProvider = Provider<ReportRepository>((ref) {
   return switch (ref.watch(backendProvider)) {
     Backend.fixtures => FixtureReportRepository(

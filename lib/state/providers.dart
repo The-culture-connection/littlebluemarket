@@ -124,6 +124,12 @@ final feedbackListProvider = StreamProvider<List<FeedbackItem>>((ref) {
   return ref.watch(feedbackRepositoryProvider).watchAll();
 });
 
+/// People asking for their account or data to go. Admins only.
+final deletionRequestsProvider = StreamProvider<List<DeletionRequest>>((ref) {
+  if (!ref.watch(isAdminProvider)) return Stream.value(const []);
+  return ref.watch(accountRepositoryProvider).watchDeletionRequests();
+});
+
 /// Reports about members, newest first. Admins only; empty for anyone else.
 final reportsProvider = StreamProvider<List<Report>>((ref) {
   if (!ref.watch(isAdminProvider)) return Stream.value(const []);

@@ -274,6 +274,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   title: 'Terms of service',
                   url: LegalLinks.termsOfService,
                 ),
+                ListRow(
+                  leading: Icon(Icons.delete_outline_rounded, color: c.ink3),
+                  title: const Text('Delete my account or data'),
+                  subtitle: const Text('Ask us to remove your information'),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 22,
+                    color: c.ink3,
+                  ),
+                  onTap: () => context.push(LegalLinks.deleteAccountRoute),
+                ),
               ],
             ),
           ),

@@ -98,6 +98,9 @@ class FixtureStore {
   /// Reports members made about each other. Empty until someone reports.
   final reports = Watchable<List<Report>>([]);
 
+  /// People asking for their account or data to go.
+  final deletionRequests = Watchable<List<DeletionRequest>>([]);
+
   /// Who the demo Admin screen has banned.
   final banned = Watchable<Set<String>>({});
 
@@ -375,6 +378,7 @@ class FixtureStore {
       notifications,
       feedback,
       reports,
+      deletionRequests,
       banned,
       following,
     ]) {
