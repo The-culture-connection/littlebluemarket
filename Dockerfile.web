@@ -17,7 +17,7 @@ WORKDIR /srv
 ENV NODE_ENV=production
 COPY web-server/package.json ./
 RUN npm install --omit=dev
-COPY web-server/server.js ./
+COPY web-server/server.js web-server/delete-account.html ./
 COPY --from=build /app/build/web ./site
 EXPOSE 3000
 CMD ["node", "server.js"]

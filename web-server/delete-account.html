@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delete your account or your data · Little Blue Market</title>
+<meta name="description" content="Ask Little Blue Market to delete your account, or the data held about you.">
+<meta name="robots" content="index, follow">
+<style>
+  /* Everything is inline on purpose. This page is the address the app stores
+     are given, so it must render even when the app itself will not: no
+     scripts to download, no fonts to fetch, nothing that a stale cache or a
+     slow connection can take away. */
+  :root {
+    --blue: #70a0d1;
+    --deep: #3f6fa3;
+    --ink: #1f2a37;
+    --ink2: #55627a;
+    --line: #d6e2f0;
+    --paper: #ffffff;
+    --ground: #dfe9f3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 48px;
+    background: var(--ground);
+    color: var(--ink);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 640px; margin: 0 auto; }
+  .card {
+    background: var(--paper);
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(31, 42, 55, 0.08);
+  }
+  h1 { font-size: 25px; line-height: 1.25; margin: 0 0 6px; }
+  h2 { font-size: 18px; margin: 28px 0 8px; }
+  p { margin: 0 0 14px; color: var(--ink2); }
+  .brand { font-weight: 700; color: var(--deep); margin: 0 0 18px; letter-spacing: 0.02em; }
+  fieldset { border: 0; margin: 0 0 18px; padding: 0; }
+  legend { font-weight: 700; color: var(--ink); padding: 0 0 8px; }
+  .choice {
+    display: flex; gap: 12px; align-items: flex-start;
+    border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px; margin-bottom: 10px; cursor: pointer;
+  }
+  .choice:focus-within, .choice.on { border-color: var(--deep); background: #f2f7fc; }
+  .choice input { margin: 3px 0 0; width: 18px; height: 18px; accent-color: var(--deep); }
+  .choice b { display: block; }
+  .choice span { color: var(--ink2); font-size: 14px; }
+  label.field { display: block; font-weight: 700; margin: 0 0 6px; }
+  input[type=email], textarea {
+    width: 100%; font: inherit; color: inherit;
+    border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fbfdff;
+  }
+  input[type=email]:focus, textarea:focus { outline: 2px solid var(--deep); outline-offset: 1px; }
+  .hint { font-size: 13.5px; color: var(--ink2); margin: 6px 0 18px; }
+  button {
+    font: inherit; font-weight: 700; color: #fff; background: var(--deep);
+    border: 0; border-radius: 999px; padding: 14px 22px; cursor: pointer; width: 100%;
+  }
+  button[disabled] { opacity: 0.6; cursor: default; }
+  a { color: var(--deep); }
+  .note { font-size: 14px; color: var(--ink2); }
+  .error { color: #a33a3a; font-weight: 600; margin: 12px 0 0; }
+  .done { background: #eaf4ec; border-radius: 14px; padding: 18px; }
+  .done h2 { margin-top: 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <p class="brand">Little Blue Market</p>
+
+  <div class="card">
+    <div id="form-side">
+      <h1>Delete your account or your data</h1>
+      <p>
+        Tell us which, and we will do it by hand and write back. Nothing is
+        removed the moment you press send, because an account can have a shop
+        and live orders behind it.
+      </p>
+
+      <form id="form" novalidate>
+        <fieldset>
+          <legend>What would you like removed?</legend>
+
+          <label class="choice on" id="c-account">
+            <input type="radio" name="scope" value="account" checked>
+            <span>
+              <b>My account and everything with it</b>
+              <span>Your sign-in, your profile, your photos, your posts and
+              comments, your saved addresses and your notification settings.</span>
+            </span>
+          </label>
+
+          <label class="choice" id="c-data">
+            <input type="radio" name="scope" value="data">
+            <span>
+              <b>My data, but keep my account</b>
+              <span>Your profile details, photos and posts, while your sign-in
+              stays so you can start again.</span>
+            </span>
+          </label>
+        </fieldset>
+
+        <label class="field" for="email">The email address on the account</label>
+        <input id="email" name="email" type="email" autocomplete="email"
+               inputmode="email" placeholder="you@example.com" required>
+        <p class="hint">The address you signed up with, so we can find you.</p>
+
+        <label class="field" for="note">Anything else we should know (optional)</label>
+        <textarea id="note" name="note" rows="3" maxlength="1000"></textarea>
+        <p class="hint">&nbsp;</p>
+
+        <button id="send" type="submit">Send my request</button>
+        <p class="error" id="error" hidden></p>
+      </form>
+    </div>
+
+    <div id="done-side" class="done" hidden>
+      <h2>Request received</h2>
+      <p id="done-text"></p>
+      <p class="note">You can close this page.</p>
+    </div>
+
+    <h2>What we keep, and why</h2>
+    <p>
+      Orders stay. A completed order is a financial record for us and for the
+      maker who sold to you, and the law asks us to keep it. Your own copy of
+      it inside the app goes with your account. Everything else listed above is
+      removed, usually within a few days and always within 30.
+    </p>
+    <p class="note">
+      <a href="https://littlebluemarket.com/policies/privacy-policy">Read the privacy policy</a>
+      &nbsp;·&nbsp;
+      Already signed in to the app? You can also do this from Edit profile.
+    </p>
+  </div>
+</main>
+
+<script>
+  (function () {
+    var ENDPOINT = 'https://us-central1-little-blue-cart-prod.cloudfunctions.net/requestAccountDeletion';
+    var form = document.getElementById('form');
+    var button = document.getElementById('send');
+    var error = document.getElementById('error');
+
+    // The chosen row is outlined, so the answer is obvious without colour.
+    var choices = [document.getElementById('c-account'), document.getElementById('c-data')];
+    form.addEventListener('change', function () {
+      choices.forEach(function (row) {
+        row.classList.toggle('on', row.querySelector('input').checked);
+      });
+    });
+
+    function fail(message) {
+      error.textContent = message;
+      error.hidden = false;
+      button.disabled = false;
+      button.textContent = 'Send my request';
+    }
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      error.hidden = true;
+      var email = document.getElementById('email').value.trim();
+      if (email.length < 5 || email.indexOf('@') < 0 || email.indexOf('.') < 0) {
+        fail('Check the email address and try again.');
+        return;
+      }
+      button.disabled = true;
+      button.textContent = 'Sending…';
+
+      fetch(ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            email: email,
+            scope: form.querySelector('input[name=scope]:checked').value,
+            note: document.getElementById('note').value.trim()
+          }
+        })
+      }).then(function (response) {
+        return response.json().then(function (body) {
+          if (!response.ok) {
+            throw new Error((body && body.error && body.error.message) || 'That did not send.');
+          }
+          document.getElementById('form-side').hidden = true;
+          document.getElementById('done-text').textContent =
+            'We will write to ' + email + ' when it is done, usually within a ' +
+            'few days and always within 30. If you asked for your account to ' +
+            'go, you can keep using it until then.';
+          document.getElementById('done-side').hidden = false;
+          window.scrollTo(0, 0);
+        });
+      }).catch(function (e) {
+        fail(e && e.message ? e.message : 'That did not send. Try again in a moment.');
+      });
+    });
+  })();
+</script>
+</body>
+</html>

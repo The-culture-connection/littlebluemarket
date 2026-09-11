@@ -28,6 +28,15 @@ app.use((req, res, next) => {
 });
 app.get('/healthz', (req, res) => res.send('ok'));
 
+// The page the app stores are given, served as plain HTML rather than by the
+// app. Nothing on it is downloaded, so it renders whatever the browser has
+// cached of the app, and whether or not the app loads at all. Inside the web
+// app the same address is a screen, reached without asking the server, so
+// both ways of arriving do the same thing.
+app.get('/delete-account', (req, res) =>
+  res.sendFile(join(here, 'delete-account.html')),
+);
+
 // A build that registers no service worker still ships one, and Flutter makes
 // it a worker that removes itself: it unregisters and reloads the open tabs.
 // That is what recovers anyone who visited a version which did register one,
