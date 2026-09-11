@@ -28,29 +28,10 @@ app.use((req, res, next) => {
 });
 app.get('/healthz', (req, res) => res.send('ok'));
 
-// The old service worker, replaced by one that removes itself.
-//
-// Earlier builds registered a worker that caches the whole app. The current
-// build registers none, which on its own would leave anyone who visited
-// before running the old app for good: their worker keeps serving the old
-// files, including the bootstrap that would have removed it. A browser does
-// re-fetch the worker's own script when it checks for updates, so this is
-// what it finds: a worker that drops every cache, unregisters itself, and
-// reloads the open tabs onto the real site. It must be served before the
-// static handler, which still holds the file Flutter generated.
-app.get('/flutter_service_worker.js', (req, res) => {
-  res.type('application/javascript').send(`self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (event) => {
-  event.waitUntil((async () => {
-    for (const key of await caches.keys()) await caches.delete(key);
-    await self.registration.unregister();
-    for (const client of await self.clients.matchAll({ type: 'window' })) {
-      client.navigate(client.url);
-    }
-  })());
-});
-`);
-});
+// A build that registers no service worker still ships one, and Flutter makes
+// it a worker that removes itself: it unregisters and reloads the open tabs.
+// That is what recovers anyone who visited a version which did register one,
+// and it is served from the build like every other file.
 app.use(express.static(site, { etag: true, lastModified: true, index: 'index.html' }));
 // Every app route (/market, /you/...) is the same page; the app routes it.
 app.get(/.*/, (req, res) => res.sendFile(join(site, 'index.html')));
