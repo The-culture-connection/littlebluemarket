@@ -314,5 +314,7 @@ The Play Store takes an Android App Bundle signed with the upload key.
   `flutter build appbundle --release`, copies the bundle to
   `..\android-signing\releases\` named by version, and prints the upload
   certificate's fingerprints.
+- The Play Store walkthrough, including what every SHA error means and how to
+  answer the data safety form, is in `Planning/play-store.md`.
 - On a machine without the key the release build falls back to the debug key,
   so `flutter run --release` keeps working; only the Play upload needs the key.
