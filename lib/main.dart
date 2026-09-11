@@ -11,6 +11,7 @@ import 'app_assets.dart';
 import 'data/firebase/firebase_bootstrap.dart';
 import 'data/firebase/firebase_push_service.dart';
 import 'data/repositories/dev_error_sink.dart';
+import 'platform/url_strategy.dart';
 import 'router/app_router.dart';
 import 'state/providers.dart';
 import 'state/push_coordinator.dart';
@@ -40,6 +41,10 @@ Future<void> main() async {
       return false;
     };
   }
+
+  // Web addresses without the '#', so a link to a page lands on that page.
+  // Must run before the router reads the address.
+  useAppUrlStrategy();
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

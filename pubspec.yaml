@@ -9,6 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Web only: lets the app read its route from the path instead of after a
+  # '#', so a link like /delete-account lands on that page.
+  flutter_web_plugins:
+    sdk: flutter
   go_router: ^17.2.1
   flutter_riverpod: ^3.0.3
   flutter_svg: ^2.3.0
