@@ -19,15 +19,15 @@ app.disable('x-powered-by');
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  // The shell and the service worker must never be cached: a stale
-  // index.html would point at a main.dart.js that no longer exists.
-  if (/\/(index\.html|flutter_service_worker\.js|flutter_bootstrap\.js|version\.json)?$/.test(req.path)) {
-    res.setHeader('Cache-Control', 'no-cache');
-  }
+  // Nothing is cached without asking first. Flutter gives main.dart.js the
+  // same name in every build, so a cached copy is simply the old app, which
+  // is how a freshly deployed page kept showing the previous one. ETags make
+  // the revalidation a 304 in the normal case, so this costs almost nothing.
+  res.setHeader('Cache-Control', 'no-cache');
   next();
 });
 app.get('/healthz', (req, res) => res.send('ok'));
-app.use(express.static(site, { maxAge: '1h', index: 'index.html' }));
+app.use(express.static(site, { etag: true, lastModified: true, index: 'index.html' }));
 // Every app route (/market, /you/...) is the same page; the app routes it.
 app.get(/.*/, (req, res) => res.sendFile(join(site, 'index.html')));
 
