@@ -702,6 +702,43 @@ abstract final class Fx {
     'half day photography',
   ];
 
+  // ------------------------------------------------------------------ promos
+
+  /// One advert and one announcement, so the fading popup can be seen with
+  /// no backend at all (`run-fixtures`). Live ones come from `promos`,
+  /// written from the admin website.
+  static final promos = <Promo>[
+    Promo(
+      id: 'promo_demo_ad',
+      kind: PromoKind.ad,
+      title: 'Holiday market, December 14',
+      caption:
+          'Forty makers, one room, all day. Free entry, and the first fifty '
+          'shoppers get a tote.',
+      audience: AnnouncementAudience.all,
+      imageUrls: const [_stickers],
+      ctaLabel: 'See who is coming',
+      ctaUrl: 'https://littlebluecart.com',
+      createdAt: _now.subtract(const Duration(hours: 5)),
+      impressions: 218,
+      clicks: 34,
+    ),
+    Promo(
+      id: 'promo_demo_news',
+      kind: PromoKind.announcement,
+      title: 'Directory listings are in the app',
+      caption:
+          'Every business on littlebluecart.com can now be browsed by '
+          'category, right here. Claim yours from your profile.',
+      audience: AnnouncementAudience.all,
+      ctaLabel: 'Browse the directory',
+      ctaUrl: 'https://littlebluecart.com/directory',
+      createdAt: _now.subtract(const Duration(days: 2)),
+      impressions: 1240,
+      clicks: 96,
+    ),
+  ];
+
   // --------------------------------------------------------------- community
 
   static const forums = <Forum>[

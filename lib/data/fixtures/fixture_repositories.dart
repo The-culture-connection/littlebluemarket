@@ -2229,3 +2229,52 @@ class FixtureReportRepository implements ReportRepository {
     ];
   }
 }
+
+/// Demo adverts and announcements. The counters move in memory, which is
+/// enough to see the popup work with no backend.
+class FixturePromoRepository implements PromoRepository {
+  FixturePromoRepository(this._backend);
+
+  final FixtureBackend _backend;
+
+  @override
+  Future<List<Promo>> live({int limit = 20}) async {
+    await _backend._settle();
+    final now = DateTime.now();
+    return [
+      for (final promo in _backend.store.promos.value)
+        if (promo.isLiveAt(now)) promo,
+    ].take(limit).toList();
+  }
+
+  @override
+  Future<void> recordSeen(String id) => _bump(id, seen: true);
+
+  @override
+  Future<void> recordTap(String id) => _bump(id, seen: false);
+
+  Future<void> _bump(String id, {required bool seen}) async {
+    _backend.store.promos.value = [
+      for (final promo in _backend.store.promos.value)
+        if (promo.id == id)
+          Promo(
+            id: promo.id,
+            kind: promo.kind,
+            title: promo.title,
+            caption: promo.caption,
+            audience: promo.audience,
+            imageUrls: promo.imageUrls,
+            ctaLabel: promo.ctaLabel,
+            ctaUrl: promo.ctaUrl,
+            active: promo.active,
+            createdAt: promo.createdAt,
+            startsAt: promo.startsAt,
+            endsAt: promo.endsAt,
+            impressions: promo.impressions + (seen ? 1 : 0),
+            clicks: promo.clicks + (seen ? 0 : 1),
+          )
+        else
+          promo,
+    ];
+  }
+}

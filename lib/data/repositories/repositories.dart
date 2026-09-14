@@ -342,6 +342,24 @@ abstract interface class AdminRepository {
   Future<BackfillProgress> rebuildBuyerIndex();
 }
 
+/// Adverts and Little Blue announcements: the cards that fade in over
+/// whatever is on screen.
+///
+/// Read by everyone, written only from the admin website through callables
+/// that check the admin claim, which is why there is no save method here.
+/// The audience filter is applied on the phone from facts the session
+/// already holds, so showing a popup costs one query and no per-person read.
+abstract interface class PromoRepository {
+  /// Everything switched on and inside its window right now, newest first.
+  Future<List<Promo>> live({int limit = 20});
+
+  /// One phone saw it, or tapped its button. Counted with
+  /// `FieldValue.increment` inside a callable, because `promos` is
+  /// `allow write: if false` like every other function-owned collection.
+  Future<void> recordSeen(String id);
+  Future<void> recordTap(String id);
+}
+
 /// littlebluecart.com, the directory: this account's link to a WordPress
 /// member and WooCommerce customer, and the website orders that came with it.
 ///

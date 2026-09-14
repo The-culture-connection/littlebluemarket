@@ -26,6 +26,7 @@ import {
   forumReplyRecipients,
   forumThreadRecipients,
   isAudience,
+  type Audience,
   postSubscribers,
   sendAnnouncement,
   sendPushToUid,
@@ -58,6 +59,15 @@ import { deleteAccountData, requestAccountDeletion as fileDeletionRequest } from
 import { listVendorUsers } from './shipturtle_api.ts';
 import { resolvePendingVendors } from './vendor_directory.ts';
 import { syncCollections } from './collections.ts';
+import {
+  deletePromo,
+  recordPromoEvent,
+  savePromo,
+  setPromoActive,
+  validatePromo,
+  type PromoInput,
+  type PromoKind,
+} from './promos.ts';
 import { backfillCatalogPage } from './backfill.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
@@ -478,13 +488,101 @@ export const adminSendAnnouncement = onCall(
     if (!isAudience(audience)) {
       throw new HttpsError('invalid-argument', 'Pick who this goes to: all, sellers, buyers or directory.');
     }
-    return sendAnnouncement({
+
+    // Stage 17: an announcement may now carry a photo and a button, which
+    // is what the popup draws. Validated BEFORE anything is sent, so a
+    // mistyped link cannot leave a push behind with no way to undo it.
+    const wantsPopup =
+      Array.isArray(data.imageUrls) && data.imageUrls.length > 0
+        ? true
+        : Boolean(typeof data.ctaUrl === 'string' && data.ctaUrl.trim());
+    const popup: PromoInput | null = wantsPopup
+      ? {
+          kind: 'announcement',
+          title: String(data.title ?? ''),
+          caption: String(data.body ?? ''),
+          audience,
+          imageUrls: data.imageUrls,
+          ctaLabel: typeof data.ctaLabel === 'string' ? data.ctaLabel : '',
+          ctaUrl: typeof data.ctaUrl === 'string' ? data.ctaUrl : '',
+        }
+      : null;
+    if (popup) validatePromo(popup);
+
+    const sent = await sendAnnouncement({
       title: String(data.title ?? ''),
       body: String(data.body ?? ''),
       audience,
       route: typeof data.route === 'string' ? data.route : undefined,
       byUid: uid,
     });
+
+    // The bell and the push are the announcement; the popup is a second,
+    // optional face on the same news. A failure here has already been ruled
+    // out by the validation above, so it would be a Firestore outage, and
+    // the announcement itself has landed either way.
+    const promoId = popup ? (await savePromo(popup, uid)).id : '';
+    return { ...sent, promoId };
+  }),
+);
+
+/**
+ * Stage 17: adverts and Little Blue announcements, posted from the admin
+ * website. Admin claim only; the validation lives in `promos.ts` so the
+ * caps and the https-only rule are unit-tested without Firestore.
+ */
+export const adminPromoSave = onCall(
+  withLoudErrors('adminPromoSave', async (request) => {
+    const uid = requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    const id = typeof data.id === 'string' && data.id ? data.id : undefined;
+    return savePromo(
+      {
+        kind: data.kind as PromoKind,
+        title: String(data.title ?? ''),
+        caption: String(data.caption ?? ''),
+        audience: data.audience as Audience,
+        imageUrls: data.imageUrls,
+        ctaLabel: typeof data.ctaLabel === 'string' ? data.ctaLabel : '',
+        ctaUrl: typeof data.ctaUrl === 'string' ? data.ctaUrl : '',
+        startsAt: typeof data.startsAt === 'string' ? data.startsAt : undefined,
+        endsAt: typeof data.endsAt === 'string' ? data.endsAt : undefined,
+      },
+      uid,
+      id,
+    );
+  }),
+);
+
+export const adminPromoSetActive = onCall(
+  withLoudErrors('adminPromoSetActive', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    return setPromoActive(String(data.id ?? ''), data.active === true);
+  }),
+);
+
+export const adminPromoDelete = onCall(
+  withLoudErrors('adminPromoDelete', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    return deletePromo(String(data.id ?? ''));
+  }),
+);
+
+/**
+ * A phone saw a popup, or tapped its button. Any signed-in caller: that is
+ * who sees one. It can only add one to one of two numbers, and nothing in
+ * the app's behaviour reads them.
+ */
+export const promoRecord = onCall(
+  withLoudErrors('promoRecord', async (request) => {
+    requireUid(request.auth);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    return recordPromoEvent(String(data.id ?? ''), data.event);
   }),
 );
 

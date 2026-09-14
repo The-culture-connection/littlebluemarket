@@ -406,6 +406,28 @@ describe('selling is a grant, not a client write', () => {
     await assertFails(member('maya').doc('directoryProducts/dp1').set({ title: 'Edited on the phone' }));
     await assertFails(member('maya').doc('directoryProducts/dp2').set({ ownerUid: 'maya', title: 'New' }));
 
+    // Stage 17: a live promo is readable by anyone, a guest included, since
+    // that is who a popup is shown to. A paused one is Grace's business.
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('promos/p1').set({ kind: 'ad', title: 'Market', caption: 'Saturday', active: true });
+      await admin.firestore().doc('promos/p2').set({ kind: 'ad', title: 'Old', caption: 'Last year', active: false });
+    });
+    await assertSucceeds(guest().doc('promos/p1').get());
+    await assertSucceeds(member('kali').doc('promos/p1').get());
+    await assertFails(guest().doc('promos/p2').get());
+    await assertFails(member('kali').doc('promos/p2').get());
+    await assertSucceeds(guest().collection('promos').where('active', '==', true).get());
+    // The admin website lists paused ones too, or Resume would be
+    // unreachable the moment Pause was pressed.
+    await assertSucceeds(adminUser('grace').doc('promos/p2').get());
+    await assertSucceeds(adminUser('grace').collection('promos').get());
+    await assertFails(member('kali').collection('promos').get());
+    // Even an admin posts through the callable, never from a client, and
+    // nobody may touch the counters directly.
+    await assertFails(adminUser('grace').doc('promos/p3').set({ kind: 'ad', title: 'From a client', active: true }));
+    await assertFails(member('maya').doc('promos/p1').set({ impressions: 9999 }));
+    await assertFails(adminUser('grace').doc('promos/p1').delete());
+
     // The owner's own list and the public list are both answerable queries.
     await assertSucceeds(member('maya').collection('directoryListings').where('ownerUid', '==', 'maya').get());
     await assertSucceeds(

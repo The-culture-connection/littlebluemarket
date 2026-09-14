@@ -2,6 +2,30 @@
 
 A one-page website for sending an announcement (a push to every phone in the audience, and a line under their bell) to everyone, sellers, buyers or directory businesses, and for reading what people sent from the app's floating bug button (each note with a screenshot of the screen it came from; Mark done hides it, nothing is deleted). Announcements go through the same function the app's Admin screen calls (`adminSendAnnouncement`); the bug list reads `feedback/` directly, which the Firestore rules open to the admin claim only. Sign-in is the app's own Firebase account; the page only shows the form to an account that holds the admin claim, and the function refuses everyone else regardless.
 
+## Adverts and popups (Stage 17)
+
+The **Adverts and popups** card posts the card that fades in gently over the
+app: a title, a caption, up to four photos, the wording on the button and
+where the button goes. Two kinds:
+
+- **Advert** is the popup and nothing else. No push, no bell.
+- **Announcement** is the same popup **plus** the push and the bell line, so
+  it goes through the same `adminSendAnnouncement` function the older card
+  uses. The older **Send an announcement** card is still there for words-only
+  news, and still has the "a tap opens" choice.
+
+A person is shown at most one popup per app opening, and never the same one
+twice. **Live now** lists everything posted with **seen** (how many phones it
+faded in on) and **tapped** (how many tapped the button); **Pause** takes one
+out of the app without deleting it.
+
+Photos upload from this page straight into Storage under `promos/`, which the
+Storage rules allow only for an account holding the admin claim. The page
+waits for each upload before the Post button lights up, so a slow connection
+cannot post an advert whose photo is not there yet. Links must be `https`:
+the function refuses anything else, because the button opens whatever it says
+in the phone's browser.
+
 There is no server logic: `server.js` only serves the static page. All the values in `public/firebase-config.js` are public configuration (the same kind the app ships in `google-services.json`); the security is Firebase's sign-in plus the admin claim.
 
 ## Run it on your computer

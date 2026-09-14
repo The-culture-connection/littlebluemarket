@@ -20,6 +20,7 @@ import 'theme/app_theme.dart';
 import 'widgets/dev_error_surface.dart';
 import 'widgets/feedback_button.dart';
 import 'widgets/phone_frame.dart';
+import 'widgets/promo_popup.dart';
 import 'widgets/splash_overlay.dart';
 
 Future<void> main() async {
@@ -143,7 +144,12 @@ class LittleBlueMarketApp extends ConsumerWidget {
                           focus.unfocus();
                         }
                       },
-                      child: FeedbackLayer(router: router, child: child!),
+                      // PromoLayer inside FeedbackLayer, so a bug report's
+                      // screenshot shows the popup the person was looking at.
+                      child: FeedbackLayer(
+                        router: router,
+                        child: PromoLayer(router: router, child: child!),
+                      ),
                     ),
                     const DevBackendBadge(),
                   ],

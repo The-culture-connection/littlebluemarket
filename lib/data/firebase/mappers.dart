@@ -183,6 +183,23 @@ abstract final class FirestoreMappers {
         createdAt: time(data['createdAt']),
       );
 
+  static Promo promo(String id, Map<String, dynamic> data) => Promo(
+    id: id,
+    kind: PromoKind.fromValue(str(data['kind'])),
+    title: str(data['title']),
+    caption: str(data['caption']),
+    audience: AnnouncementAudience.fromValue(str(data['audience'])),
+    imageUrls: strings(data['imageUrls']),
+    ctaLabel: str(data['ctaLabel']),
+    ctaUrl: str(data['ctaUrl']),
+    active: boolean(data['active'], true),
+    createdAt: timeOrNull(data['createdAt']),
+    startsAt: timeOrNull(data['startsAt']),
+    endsAt: timeOrNull(data['endsAt']),
+    impressions: integer(data['impressions']),
+    clicks: integer(data['clicks']),
+  );
+
   /// A deterministic avatar colour from a uid.
   ///
   /// Hue only: saturation and lightness are fixed so every generated tint sits

@@ -17,6 +17,7 @@ import 'fixtures/fixture_push_service.dart';
 import 'push/push_service.dart';
 import 'firebase/firestore_messaging_repository.dart';
 import 'firebase/firestore_profile_repository.dart';
+import 'firebase/firestore_promo_repository.dart';
 import 'firebase/firestore_search_repository.dart';
 import 'firebase/firestore_seller_repository.dart';
 import 'firebase/firestore_social_repository.dart';
@@ -227,6 +228,19 @@ final adminRepositoryProvider = Provider<AdminRepository>((ref) {
       ref.watch(fixtureBackendProvider),
     ),
     Backend.live => FirestoreAdminRepository(
+      firestore: ref.watch(firestoreProvider),
+      functions: ref.watch(firebaseFunctionsProvider),
+    ),
+  };
+});
+
+/// Adverts and Little Blue announcements, for the fading popup.
+final promoRepositoryProvider = Provider<PromoRepository>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => FixturePromoRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
+    Backend.live => FirestorePromoRepository(
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),
     ),

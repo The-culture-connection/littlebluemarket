@@ -92,6 +92,10 @@ class FixtureStore {
   /// News from the demo merchant. Empty until the Admin screen sends one.
   final announcements = Watchable<List<Announcement>>([]);
 
+  /// One advert and one announcement, so the fading popup is visible with no
+  /// backend at all. Live ones are written from the admin website.
+  late final promos = Watchable<List<Promo>>([...Fx.promos]);
+
   /// Notes from the floating bug button. Empty until someone sends one.
   final feedback = Watchable<List<FeedbackItem>>([]);
 

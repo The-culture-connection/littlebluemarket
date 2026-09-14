@@ -171,6 +171,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Adverts and Little Blue announcements, for the fading popup. Anyone
+    // may read a live one, a guest included: a popup is among the first
+    // things a curious visitor sees, and nothing in one is private. A paused
+    // one is the merchant's business only, so the read stays conditional,
+    // plus admin(): without that the admin website could not list a paused
+    // one to press Resume on. Written only by the admin callables in promos.ts;
+    // the two counters are moved by promoRecord, never from a phone.
+    match /promos/{id} {
+      allow read: if resource.data.active == true || admin();
+      allow write: if false;
+    }
+
     // Products a directory business sells on its own website. Everyone reads
     // them; only the two callables write them, and only for an account that
     // holds the directory link.

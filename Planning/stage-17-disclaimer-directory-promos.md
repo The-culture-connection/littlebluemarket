@@ -91,8 +91,10 @@ endsAt      timestamp, optional
 impressions int, clicks int   (FieldValue.increment, never read-modify-write)
 ```
 
-Rules: `allow read: if resource.data.active == true;` and
-`allow write: if false;`. Storage gets `promos/{file}`, public read, written
+Rules: `allow read: if resource.data.active == true || admin();` and
+`allow write: if false;`. The `admin()` half is not decoration: without it,
+pressing Pause would make the row disappear from the admin website's own
+list and Resume would be unreachable. Storage gets `promos/{file}`, public read, written
 only by a token carrying the admin claim, images under 10 MB, matching the
 shape of the four paths already there.
 
@@ -110,27 +112,31 @@ straight to Firestore, the way the feedback list already does.
 
 ### The admin website
 
-A third card in `admin-web/public/index.html`, under the announcement form:
-**Adverts and announcements.** Title, caption, a file picker (uploads to
-Storage through the Firebase web SDK, which the page does not import yet),
-the CTA button's wording, the link, the audience, and a live preview of the
-popup so Grace sees what people will see before she posts it. Below it, the
-list of what is live now, each with Pause and Delete.
+Two new cards in `admin-web/public/index.html`, under the announcement form.
+**Adverts and popups**: the kind, the audience, title, caption, a file picker
+(straight to Storage through the Firebase web SDK, newly imported on that
+page), the button's wording, the link, an optional start and end, and a live
+preview of the popup drawn as the phone draws it, so Grace sees what people
+will see before she posts it. **Live now**: everything posted, newest first,
+with seen and tapped counts and Pause, Resume and Delete on each.
 
 The existing announcement card stays where it is: it is the fastest path to
 "tell everyone something", and it now carries the optional photo and button.
 
 ### The popup (Grace's #6, "non abrasive so quickly fade in/out")
 
-`lib/widgets/promo_popup.dart`, hosted by `app_shell` so it floats over
-whichever tab is open:
+`lib/widgets/promo_popup.dart`, mounted in the `MaterialApp` builder inside
+`FeedbackLayer` (so it floats over every tab and every sheet, and a bug
+report's screenshot shows the popup the person was looking at):
 
 - Fades in over 400 ms, 3 seconds after the feed settles, so it never
   competes with the first paint.
 - A card, not a full-screen barrier, and it does not block the screen behind
   it: the photo, the title, the caption, the CTA pill, and an X.
-- Fades out on the X, on the CTA, on a tap outside, or on its own after
-  12 seconds.
+- Fades out on the X, on the CTA, on a flick downwards, or on its own after
+  12 seconds. Deliberately no tap-outside barrier: a transparent barrier that
+  swallows or competes for the tap is how a "non abrasive" popup becomes the
+  thing that ate your tap on a product.
 - **Once per app opening**, and never the same promo twice: the seen ids live
   in `SharedPreferences` beside `Tips`, and a session flag in a provider
   stops a second one after a tab change.

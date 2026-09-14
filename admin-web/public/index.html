@@ -39,6 +39,26 @@
   .tag.bug { background: #fbe9e4; color: var(--clay); }
   button.tiny { padding: 6px 12px; font-size: 12.5px; margin-top: 6px; }
   .who { font-size: 13px; opacity: .9; }
+  /* Stage 17: the advert form, its thumbnails, and a preview of the popup
+     as the phone draws it (the same order, the same words, near enough the
+     same proportions). */
+  input[type=file] { padding: 8px; background: var(--mist); border-style: dashed; }
+  ul.thumbs { list-style: none; display: flex; gap: 8px; padding: 0; margin: 10px 0 0; flex-wrap: wrap; }
+  ul.thumbs li { position: relative; }
+  ul.thumbs img { width: 72px; height: 54px; object-fit: cover; border-radius: 8px; border: 1px solid #e3e9f1; display: block; }
+  ul.thumbs .rm { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 999px; border: 0; background: var(--ink); color: #fff; font-size: 13px; line-height: 20px; padding: 0; cursor: pointer; }
+  ul.thumbs .pending { opacity: .45; }
+  .phone { background: #e8f0f9; border-radius: 16px; padding: 18px 14px; margin-top: 4px; }
+  .promo { background: #fff; border-radius: 16px; box-shadow: 0 2px 10px rgba(31,42,58,.12); overflow: hidden; max-width: 340px; margin: 0 auto; }
+  .promo img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
+  .promo-body { padding: 12px 14px 14px; }
+  .promo-row { display: flex; align-items: center; justify-content: space-between; }
+  .promo-from { font-size: 10.5px; font-weight: 800; letter-spacing: .6px; color: var(--ink2); }
+  .promo-x { color: var(--ink2); font-size: 17px; line-height: 1; }
+  .promo-title { font-size: 17px; font-weight: 700; margin-top: 4px; color: var(--ink); }
+  .promo-caption { font-size: 13.5px; line-height: 1.45; color: var(--ink2); margin-top: 5px; white-space: pre-wrap; }
+  .promo-cta { display: inline-block; margin-top: 12px; background: #2d5f9e; color: #fff; font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 999px; }
+  .promo-empty { color: var(--ink2); font-style: italic; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -66,7 +86,7 @@
 
   <section id="send" class="card" hidden>
     <h2>Send an announcement</h2>
-    <p class="hint">A push to every phone in the audience, and a line under their bell. Same as the Admin screen in the app.</p>
+    <p class="hint">A push to every phone in the audience, and a line under their bell. Same as the Admin screen in the app. Words only: for one with a photo and a button, use <strong>Adverts and popups</strong> below.</p>
     <label for="title">Title</label>
     <input id="title" maxlength="60" placeholder="Hello from Little Blue Market">
     <div class="count"><span id="titleLeft">60</span> left</div>
@@ -96,6 +116,91 @@
     <div id="sendNotice" class="notice" hidden></div>
   </section>
 
+
+  <section id="promoCard" class="card" hidden>
+    <h2>Adverts and popups</h2>
+    <p class="hint">A card that fades in gently over the app, once per person per app opening, and never the same one twice. <strong>Advert</strong> is a popup only. <strong>Announcement</strong> is the same popup plus a push to phones and a line under their bell.</p>
+
+    <div class="row">
+      <div>
+        <label for="pKind">What is it</label>
+        <select id="pKind">
+          <option value="ad">Advert</option>
+          <option value="announcement">Announcement</option>
+        </select>
+      </div>
+      <div>
+        <label for="pAudience">Who sees it</label>
+        <select id="pAudience">
+          <option value="all">Everyone</option>
+          <option value="sellers">Sellers</option>
+          <option value="buyers">Buyers</option>
+          <option value="directory">Directory businesses</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="pTitle">Title</label>
+    <input id="pTitle" maxlength="60" placeholder="Holiday market, December 14">
+    <div class="count"><span id="pTitleLeft">60</span> left</div>
+
+    <label for="pCaption">Caption</label>
+    <textarea id="pCaption" maxlength="180" placeholder="Forty makers, one room, all day. Free entry."></textarea>
+    <div class="count"><span id="pCaptionLeft">180</span> left</div>
+
+    <label for="pPhoto">Photo (optional, up to 4)</label>
+    <input id="pPhoto" type="file" accept="image/*" multiple>
+    <p class="hint" style="margin:6px 0 0">Anything wide works best; the popup shows the first one across the top of the card.</p>
+    <ul id="pThumbs" class="thumbs"></ul>
+
+    <div class="row">
+      <div>
+        <label for="pCtaLabel">Button wording (optional)</label>
+        <input id="pCtaLabel" maxlength="24" placeholder="See who is coming">
+      </div>
+      <div>
+        <label for="pCtaUrl">Button link</label>
+        <input id="pCtaUrl" placeholder="littlebluecart.com/market-day">
+      </div>
+    </div>
+    <p class="hint" style="margin:6px 0 0">Both or neither: a button with no link goes nowhere, and a link with no button is invisible. Links have to be https.</p>
+
+    <div class="row">
+      <div>
+        <label for="pStarts">Starts (optional)</label>
+        <input id="pStarts" type="datetime-local">
+      </div>
+      <div>
+        <label for="pEnds">Ends (optional)</label>
+        <input id="pEnds" type="datetime-local">
+      </div>
+    </div>
+
+    <label>What people will see</label>
+    <div class="phone">
+      <div id="pPreview" class="promo">
+        <img id="pPreviewImg" alt="" hidden>
+        <div class="promo-body">
+          <div class="promo-row">
+            <span id="pPreviewFrom" class="promo-from">SPONSORED</span>
+            <span class="promo-x">&times;</span>
+          </div>
+          <div id="pPreviewTitle" class="promo-title">Title</div>
+          <div id="pPreviewCaption" class="promo-caption">Caption</div>
+          <span id="pPreviewCta" class="promo-cta" hidden>Button</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px"><button id="pPostBtn" class="primary" disabled>Post it</button></div>
+    <div id="pNotice" class="notice" hidden></div>
+  </section>
+
+  <section id="promoListCard" class="card" hidden>
+    <h2>Live now</h2>
+    <p class="hint">Every advert and announcement popup, newest first. <strong>Seen</strong> is how many phones it faded in on; <strong>tapped</strong> is how many tapped the button. <strong>Pause</strong> takes it out of the app without deleting it.</p>
+    <ul id="promos" class="recent"></ul>
+  </section>
   <section id="reportsCard" class="card" hidden>
     <h2>Reports about members</h2>
     <p class="hint">What members reported about each other, open first. <strong>Resolve</strong> closes a report. <strong>Ban</strong> disables the person's sign-in, removes their posts and closes every report about them; Unban lets them back in (the posts do not return). <label style="display:inline;font-weight:400"><input type="checkbox" id="showClosedReports"> show closed</label></p>

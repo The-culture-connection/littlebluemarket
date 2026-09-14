@@ -47,6 +47,19 @@ service firebase.storage {
         && underSize(10);
     }
 
+    // Photos for an advert or a Little Blue announcement, uploaded from the
+    // admin website. Public read is required, not a choice: the popup shows
+    // the photo to anyone, a guest included. Written only by an account
+    // holding the admin claim, which is the same authority the callables
+    // that write the promo document check.
+    match /promos/{file} {
+      allow read: if true;
+      allow write: if signedIn()
+        && request.auth.token.admin == true
+        && isImage()
+        && underSize(10);
+    }
+
     // Screenshots sent with the floating bug button. Written once by the
     // sender, seen by the merchant. The document carries a download URL, so
     // the admin website needs no Storage read of its own.
