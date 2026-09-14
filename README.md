@@ -277,11 +277,27 @@ phone app; push notifications are the one thing it does not do.
 
 - `Dockerfile.web` builds it (Flutter, then a small Node server in `web-server/`).
 - Locally: `flutter build web --release`, then `cd web-server && npm install && LBM_WEB_DIR=../build/web npm start`, open http://localhost:3000.
-- Railway: New service from this GitHub repo, root directory `/`, variable
-  `RAILWAY_DOCKERFILE_PATH=Dockerfile.web`, then Generate Domain. Add that
-  domain under Firebase console → Authentication → Settings → Authorized
-  domains, or sign-in is refused in the browser.
+- Railway: the service's root directory is `/` (this folder **is** the repo root)
+  and the variable `RAILWAY_DOCKERFILE_PATH=Dockerfile.web` chooses the build.
+  Its domain must be under Firebase console → Authentication → Settings →
+  Authorized domains, or sign-in is refused in the browser.
+- **It only redeploys on a push if the service is connected to GitHub.** Until
+  2026-09-14 it was not: it had been deployed by uploading from a laptop
+  (`railway up`), so nine days of pushes never reached it and its dashboard
+  still read "3 days ago" while the admin console updated on every push.
+  Connected with:
+
+  ```
+  railway service source connect --repo The-culture-connection/littlebluemarket \
+      --branch main --service lbm-web
+  ```
+
+  To check which way a service is wired, `railway status --json` and look at
+  the deployment's `meta`: a GitHub deploy carries `commitHash` and `branch`,
+  an uploaded one carries neither.
 - The first build takes 10 to 15 minutes (it downloads Flutter); later ones are
+  faster. `railway up --service lbm-web --detach` still works for a build from
+  the working tree, which is the way to try something before committing it.
   faster. Every push to `main` redeploys.
 
 ### Before an iPhone archive
