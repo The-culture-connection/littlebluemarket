@@ -13,6 +13,18 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'no-referrer');
   next();
 });
+// Never cache the page or its script.
+//
+// Grace pressed a button that had just been fixed and still got the old
+// error, because her tab had been open since before the deploy and was
+// running the previous app.js from memory (2026-09-14). An admin console
+// used by two people does not need caching; it needs to be right.
+app.use((req, res, next) => {
+  if (/[.](?:html|js)$/.test(req.path) || req.path === '/') {
+    res.setHeader('Cache-Control', 'no-store, must-revalidate');
+  }
+  next();
+});
 app.use(express.static(join(here, 'public'), { extensions: ['html'] }));
 app.get('/healthz', (req, res) => res.send('ok'));
 

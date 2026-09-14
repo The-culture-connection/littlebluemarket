@@ -501,33 +501,114 @@ renderPromoPreview();
 // The pull is chunked: the function walks listings for a few minutes, then
 // hands back a cursor. The first production run tried to do the lot in one
 // call and was killed at the function's nine-minute ceiling, so this keeps
-// calling until it reports done, and shows the count climbing as it goes.
+// calling until it reports done.
 //
-// The 70-second default on a callable would also have given up long before
-// the work finished; the timeout below is the function's own ceiling.
+// Everything it does is written into a running log on the page. Grace pressed
+// this and saw nothing but the red word "deadline-exceeded", with no way to
+// tell whether anything had happened, which is no way to run a backfill.
+// Copy for Claude copies the whole log, the way the app's bug button does.
+
+/** Bumped by hand when this file changes, so a stale tab is obvious. */
+const ADMIN_BUILD = '2026-09-14d';
 
 const DIR_CALL_TIMEOUT_MS = 560_000;
 const DIR_MAX_CALLS = 60;
 
+const dirLogLines = [];
+
+function dirLog(text, bad) {
+  const stamp = new Date().toLocaleTimeString();
+  dirLogLines.push(`[${stamp}] ${text}`);
+  const el = $('dirLog');
+  const line = document.createElement('div');
+  if (bad) line.className = 'bad';
+  line.textContent = `[${stamp}] ${text}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+  $('dirCopy').hidden = false;
+}
+
+/** Everything about a failure, not just its code. */
+function dirLogError(error) {
+  const code = error?.code ? String(error.code) : '(no code)';
+  const message = error?.message ? String(error.message) : String(error);
+  dirLog(`FAILED  code=${code}`, true);
+  dirLog(`        ${message}`, true);
+  const details = error?.details;
+  if (details !== undefined && details !== null) {
+    try {
+      dirLog(`        details=${JSON.stringify(details)}`, true);
+    } catch {
+      dirLog(`        details=${String(details)}`, true);
+    }
+  }
+  if (code.includes('deadline-exceeded')) {
+    dirLog('        This call ran out of time. Press the button again:', true);
+    dirLog('        the pull carries on from where it stopped.', true);
+  }
+  if (code.includes('unauthenticated') || code.includes('permission-denied')) {
+    dirLog('        Sign out and in again; the account needs the admin claim.', true);
+  }
+}
+
+$('dirBuild').textContent = `page build ${ADMIN_BUILD}`;
+
+$('dirCopy').addEventListener('click', async () => {
+  const text = [
+    `Little Blue Market admin console · directory pull`,
+    `page build ${ADMIN_BUILD} · ${new Date().toISOString()}`,
+    '',
+    ...dirLogLines,
+  ].join('\n');
+  try {
+    await navigator.clipboard.writeText(text);
+    $('dirCopy').textContent = 'Copied';
+    setTimeout(() => { $('dirCopy').textContent = 'Copy for Claude'; }, 2000);
+  } catch {
+    // A browser that refuses the clipboard still lets her select the text.
+    window.prompt('Copy this and send it to Claude:', text);
+  }
+});
+
 $('dirSyncBtn').addEventListener('click', async () => {
-  if (!window.confirm('Pull every published listing from littlebluecart.com now?\n\nThis can take several minutes the first time. Leave this page open.')) return;
+  if (!window.confirm('Pull every published listing from littlebluecart.com now?\n\nThis can take several minutes the first time. Leave this page open; the log below shows what it is doing.')) return;
   $('dirSyncBtn').disabled = true;
-  notice('dirNotice', 'Asking the website…', true);
+  $('dirSyncBtn').textContent = 'Working…';
+  notice('dirNotice', '', true);
+  dirLog(`Starting. page build ${ADMIN_BUILD}`);
+  dirLog(`Signed in as ${auth.currentUser?.email ?? '(nobody)'}`);
+  dirLog('Calling adminSyncDirectory. The first call also crawls the list of');
+  dirLog('every published listing, so it is the slowest one.');
+
   const pull = httpsCallable(functions, 'adminSyncDirectory', { timeout: DIR_CALL_TIMEOUT_MS });
+  const startedAt = Date.now();
   try {
     let cursor = null;
     let result = null;
-    for (let call = 0; call < DIR_MAX_CALLS; call++) {
+    for (let call = 1; call <= DIR_MAX_CALLS; call++) {
+      const at = Date.now();
+      dirLog(`Call ${call}${cursor ? ` (resuming at listing ${cursor})` : ''}…`);
       const answer = await pull(cursor ? { cursor } : {});
       result = answer.data ?? {};
+      const secs = Math.round((Date.now() - at) / 1000);
+      dirLog(
+        `Call ${call} answered in ${secs}s: ${result.processedNow ?? 0} listings this call, ` +
+        `${result.processed ?? 0} of ${result.total ?? 0} in total, done=${result.done === true}`,
+      );
       if (result.done) break;
       cursor = result.nextCursor;
       notice('dirNotice', `Working: ${result.processed ?? 0} of ${result.total ?? 0} listings copied so far…`, true);
-      if (!cursor) break;
+      if (!cursor) {
+        dirLog('The function stopped without saying where to carry on from.', true);
+        break;
+      }
     }
+    const total = Math.round((Date.now() - startedAt) / 1000);
     if (!result) {
-      notice('dirNotice', 'The website did not answer.', false);
+      dirLog('No answer at all.', true);
+      notice('dirNotice', 'The website did not answer. The log below has the detail.', false);
     } else if (!result.done) {
+      dirLog(`Stopped after ${total}s with ${result.processed ?? 0} of ${result.total ?? 0} done.`, true);
       notice('dirNotice', `Stopped after ${result.processed ?? 0} of ${result.total ?? 0} listings. Press the button again to carry on.`, false);
     } else {
       const parts = [
@@ -536,11 +617,14 @@ $('dirSyncBtn').addEventListener('click', async () => {
         `${result.claimed ?? 0} already claimed by an app account`,
       ];
       if (result.removed) parts.push(`${result.removed} no longer on the site, removed`);
+      dirLog(`Finished in ${total}s. ${parts.join(', ')}.`);
       notice('dirNotice', `Done: ${parts.join(', ')}.`, true);
     }
   } catch (error) {
-    notice('dirNotice', describe(error), false);
+    dirLogError(error);
+    notice('dirNotice', describe(error) + ' The log below has the full detail; Copy for Claude sends it to me.', false);
   } finally {
     $('dirSyncBtn').disabled = false;
+    $('dirSyncBtn').textContent = 'Pull the directory now';
   }
 });

@@ -59,6 +59,14 @@
   .promo-caption { font-size: 13.5px; line-height: 1.45; color: var(--ink2); margin-top: 5px; white-space: pre-wrap; }
   .promo-cta { display: inline-block; margin-top: 12px; background: #2d5f9e; color: #fff; font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 999px; }
   .promo-empty { color: var(--ink2); font-style: italic; }
+  /* The directory pull's running log: what it is doing, line by line, and
+     the whole of any error. Grace saw a two-word red code and could not
+     tell whether anything had happened at all (2026-09-14). */
+  pre.log { background: #1f2a3a; color: #dbe6f3; border-radius: 10px; padding: 12px 14px; font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow-y: auto; margin: 12px 0 0; }
+  pre.log .bad { color: #ffb3a0; }
+  pre.log:empty { display: none; }
+  .logrow { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  .build { font-size: 11px; color: var(--ink2); opacity: .8; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -123,6 +131,11 @@
     <p class="hint">Copies every <strong>published</strong> listing on littlebluecart.com into the app, so shoppers can browse the directory by category and search it before any of those businesses have signed up. It runs on its own every six hours; this button does it now and tells you what it found. Safe to press twice.</p>
     <div><button id="dirSyncBtn" class="primary">Pull the directory now</button></div>
     <div id="dirNotice" class="notice" hidden></div>
+    <pre id="dirLog" class="log" aria-live="polite"></pre>
+    <div class="logrow">
+      <button id="dirCopy" class="quiet tiny" hidden>Copy for Claude</button>
+      <span id="dirBuild" class="build"></span>
+    </div>
   </section>
   <section id="promoCard" class="card" hidden>
     <h2>Adverts and popups</h2>
