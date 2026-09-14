@@ -348,6 +348,30 @@ the **dev** project (`little-blue-610e5`) → Authentication → Settings →
 Authorized domains → add `lbm-web-staging.up.railway.app` and
 `littlebluemarket-staging.up.railway.app`. Without it, browser sign-in on
 staging is refused.
+
+### Directory photos in a browser
+
+littlebluecart.com serves its uploads with **no `Access-Control-Allow-Origin`
+header** (checked 2026-09-14). A phone does a plain GET and does not care, but
+Flutter's web renderers (`canvaskit`, `skwasm`) decode through a canvas, which
+a browser refuses for a cross-origin image without that header. The result was
+227 directory businesses on the website with a blank 16:9 box each.
+
+So the web server hands the pictures out itself, from its own origin:
+`/img?u=<the address>` in `web-server/server.js`. Deliberately not an open
+proxy: https only, only littlebluecart.com, only a response that comes back
+as an image, 8 MB and 15 seconds at most. `RemoteImage` rewrites the address
+on the web and leaves it alone on a phone (`lib/widgets/remote_image.dart`),
+and keeps the two host lists in step.
+
+**If the site ever sends that one header, delete all of it.**
+`Access-Control-Allow-Origin: *` on `/wp-content/uploads` would let browsers
+load the pictures directly, and the proxy could go.
+
+`RemoteImage` also fixes the second half of that bug: a picture that cannot be
+shown now takes up no room. The card used to put `Image.network` inside an
+`AspectRatio` and return an empty box from `errorBuilder`, which cannot remove
+its own ancestor, so every failure left a hole above the business's name.
 ### Before an iPhone archive
 
 On the Mac, in the project folder:

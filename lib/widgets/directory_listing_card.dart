@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'primitives.dart';
+import 'remote_image.dart';
 import 'sheets.dart';
 
 /// One littlebluecart.com listing: the business, where it is, what it is,
@@ -65,17 +66,17 @@ class DirectoryListingCard extends StatelessWidget {
       (label: 'Directions', icon: Icons.near_me_rounded, uri: l.directionsUri),
     ].where((a) => a.uri != null).toList();
 
+    // RemoteImage rather than a bare Image.network: it routes the picture
+    // through this origin on the web (littlebluecart.com sends no CORS
+    // header, so a browser refuses to draw it) and, when it still cannot be
+    // shown, takes up no room instead of leaving a 16:9 hole above the name.
     final image = l.imageUrl.isEmpty
         ? null
-        : AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Image.network(
-              l.imageUrl,
-              fit: BoxFit.cover,
-              cacheWidth: 600,
-              // A dead image link is not worth a broken-picture glyph.
-              errorBuilder: (_, _, _) => const SizedBox.shrink(),
-            ),
+        : RemoteImage(
+            url: l.imageUrl,
+            borderRadius: bare
+                ? LbmRadius.imageR
+                : const BorderRadius.vertical(top: Radius.circular(16)),
           );
 
     final content = Column(
@@ -85,17 +86,9 @@ class DirectoryListingCard extends StatelessWidget {
             bare
                 ? Padding(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-                    child: ClipRRect(
-                      borderRadius: LbmRadius.imageR,
-                      child: image,
-                    ),
-                  )
-                : ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16),
-                    ),
                     child: image,
-                  ),
+                  )
+                : image,
           Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
