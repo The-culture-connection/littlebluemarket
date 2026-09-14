@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/models/models.dart';
+import 'package:little_blue_market/state/promos.dart';
+import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/theme/app_theme.dart';
 import 'package:little_blue_market/widgets/promo_popup.dart';
 
@@ -168,6 +171,59 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(dismissed, 1);
+    });
+  });
+
+  group('the Diagnostics controls (Grace, 2026-09-14)', () {
+    ProviderContainer container() {
+      final c = ProviderContainer(retry: lbmRetry);
+      addTearDown(c.dispose);
+      return c;
+    }
+
+    test('an override is what jumps the queue, and clears itself', () {
+      final c = container();
+      expect(c.read(promoOverrideProvider), isNull);
+
+      final promo = _promo();
+      c.read(promoOverrideProvider.notifier).show(promo);
+      expect(c.read(promoOverrideProvider)?.id, promo.id);
+
+      c.read(promoOverrideProvider.notifier).clear();
+      expect(c.read(promoOverrideProvider), isNull);
+    });
+
+    test('forgetting what was seen lets the normal flow offer it again', () async {
+      final c = container();
+      final seen = c.read(promosSeenProvider.notifier);
+      await seen.markSeen('promo_demo_ad');
+      expect(seen.seen('promo_demo_ad'), isTrue);
+
+      await seen.forget();
+      expect(c.read(promosSeenProvider), isEmpty);
+      expect(seen.seen('promo_demo_ad'), isFalse);
+    });
+
+    test("releasing the turn undoes one-per-opening without a restart", () {
+      final c = container();
+      expect(c.read(promoTurnTakenProvider), isFalse);
+
+      c.read(promoTurnTakenProvider.notifier).take();
+      expect(c.read(promoTurnTakenProvider), isTrue);
+      // With the turn taken, the normal flow offers nothing at all.
+      expect(c.read(promoForThisLaunchProvider).value, isNull);
+
+      c.read(promoTurnTakenProvider.notifier).release();
+      expect(c.read(promoTurnTakenProvider), isFalse);
+    });
+
+    test('every live promo is listed, whoever it is aimed at', () async {
+      final c = container();
+      final all = await c.read(allPromosProvider.future);
+      // The demo data has one advert and one announcement.
+      expect(all.length, greaterThanOrEqualTo(2));
+      expect(all.map((p) => p.kind), contains(PromoKind.ad));
+      expect(all.map((p) => p.kind), contains(PromoKind.announcement));
     });
   });
 }

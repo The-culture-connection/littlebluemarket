@@ -6,11 +6,14 @@ import '../../data/repositories/dev_error_sink.dart';
 import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
 import '../../state/providers.dart';
+import '../../state/promos.dart';
+import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
+import '../../widgets/skeleton.dart';
 
 /// The hidden dev screen: who the phone thinks it is, and whether the
 /// deployed backend can reach Shopify, the webhooks and Shipturtle.
@@ -86,6 +89,9 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> {
           const SizedBox(height: 18),
           const SectionHead('Admin · the catalog'),
           _AdminCard(onClaimed: _refreshFacts),
+          const SizedBox(height: 18),
+          const SectionHead('Adverts and announcements'),
+          const _PromosCard(),
           const SizedBox(height: 18),
           const SectionHead('The backend'),
           LbmCard(
@@ -615,6 +621,133 @@ class _ReportCard extends StatelessWidget {
               style: PillStyle.quiet,
               onPressed: () => Clipboard.setData(ClipboardData(text: _text)),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Every advert and announcement, and a way to see any of them on demand.
+///
+/// Grace asked for this (2026-09-14): a popup shows once per phone per app
+/// opening, so testing one meant force-closing the app, and testing it twice
+/// meant reinstalling. **Show it now** ignores every rule, including the
+/// audience filter, so an advert aimed at sellers can be checked by someone
+/// who is not one. Nothing is counted while testing.
+class _PromosCard extends ConsumerWidget {
+  const _PromosCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final promos = ref.watch(allPromosProvider);
+    final seen = ref.watch(promosSeenProvider);
+    final isSeller = ref.watch(isSellerProvider);
+    final linked = ref.watch(directoryLinkProvider).value?.linked ?? false;
+    final turnTaken = ref.watch(promoTurnTakenProvider);
+
+    return LbmCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Everything live, whoever it is aimed at. Show it now ignores the '
+            'three-second wait, the one-per-opening rule, the never-twice '
+            'rule and the audience, and is not counted as seen or tapped.',
+            style: LbmText.tiny.copyWith(color: c.ink2),
+          ),
+          const SizedBox(height: 12),
+          LbmAsync<List<Promo>>(
+            promos,
+            skeleton: const ListRowSkeleton(rows: 2),
+            onRetry: () => ref.invalidate(allPromosProvider),
+            isEmpty: (items) => items.isEmpty,
+            empty: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'Nothing live. Post one from the admin website, then Refresh.',
+                style: LbmText.tiny.copyWith(color: c.ink3),
+              ),
+            ),
+            data: (items) => RowStack(
+              children: [
+                for (final promo in items)
+                  ListRow(
+                    leading: Icon(
+                      promo.kind == PromoKind.announcement
+                          ? Icons.campaign_outlined
+                          : Icons.sell_outlined,
+                      color: c.ink2,
+                    ),
+                    title: Text(promo.title),
+                    subtitle: Text(
+                      [
+                        promo.kind.label,
+                        promo.audience.label,
+                        if (promo.imageUrls.length > 1)
+                          '${promo.imageUrls.length} photos'
+                        else if (promo.hasPhoto)
+                          '1 photo'
+                        else
+                          'no photo',
+                        if (!promo.showsTo(
+                          isSeller: isSeller,
+                          directoryLinked: linked,
+                        ))
+                          'not aimed at you',
+                        if (seen.contains(promo.id)) 'already seen here',
+                      ].join(' · '),
+                    ),
+                    trailing: PillButton(
+                      'Show it',
+                      small: true,
+                      expand: false,
+                      style: PillStyle.ghost,
+                      onPressed: () => ref
+                          .read(promoOverrideProvider.notifier)
+                          .show(promo),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              PillButton(
+                'Refresh',
+                small: true,
+                expand: false,
+                style: PillStyle.quiet,
+                onPressed: () => ref.invalidate(allPromosProvider),
+              ),
+              PillButton(
+                'Forget what I have seen',
+                small: true,
+                expand: false,
+                style: PillStyle.quiet,
+                onPressed: () async {
+                  await ref.read(promosSeenProvider.notifier).forget();
+                  ref.read(promoTurnTakenProvider.notifier).release();
+                  ref.invalidate(promoForThisLaunchProvider);
+                },
+              ),
+              if (turnTaken)
+                PillButton(
+                  'Let another one show',
+                  small: true,
+                  expand: false,
+                  style: PillStyle.quiet,
+                  onPressed: () {
+                    ref.read(promoTurnTakenProvider.notifier).release();
+                    ref.invalidate(promoForThisLaunchProvider);
+                  },
+                ),
+            ],
           ),
         ],
       ),

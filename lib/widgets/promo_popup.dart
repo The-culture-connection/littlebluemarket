@@ -100,9 +100,27 @@ class _PromoLayerState extends ConsumerState<PromoLayer> {
     });
   }
 
+  /// Diagnostics asked for this one, now. None of the normal rules apply and
+  /// nothing is counted: an impression logged while testing would be a lie
+  /// in the advert's own numbers.
+  void _showOverride(Promo promo) {
+    _arrive?.cancel();
+    _arrive = null;
+    _leave?.cancel();
+    setState(() {
+      _showing = promo;
+      _visible = true;
+    });
+    _leave = Timer(PromoLayer.dwell, _dismiss);
+  }
+
   void _dismiss() {
     _leave?.cancel();
     _leave = null;
+    // So the same one can be asked for again straight away.
+    if (ref.read(promoOverrideProvider) != null) {
+      ref.read(promoOverrideProvider.notifier).clear();
+    }
     if (!mounted || !_visible) return;
     setState(() => _visible = false);
   }
@@ -132,8 +150,20 @@ class _PromoLayerState extends ConsumerState<PromoLayer> {
     // failure, and every test would inherit them from the app's own builder.
     if (kUnderFlutterTest) return widget.child;
 
+    // Diagnostics can ask for one directly, which jumps the whole queue.
+    final forced = ref.watch(promoOverrideProvider);
+    if (forced != null && forced.id != _showing?.id) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && ref.read(promoOverrideProvider)?.id == forced.id) {
+          _showOverride(forced);
+        }
+      });
+    }
+
     final promo = ref.watch(promoForThisLaunchProvider).value;
-    if (promo != null && !_onAHiddenScreen) _scheduleFor(promo);
+    if (forced == null && promo != null && !_onAHiddenScreen) {
+      _scheduleFor(promo);
+    }
 
     final showing = _showing;
     if (showing == null) return widget.child;
