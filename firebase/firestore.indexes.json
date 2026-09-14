@@ -1,6 +1,15 @@
 {
   "indexes": [
     {
+      "_comment": "Stage 17: unclaimed listings the site no longer publishes, found by not having been refreshed during a run.",
+      "collectionGroup": "directoryListings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "unclaimed", "order": "ASCENDING" },
+        { "fieldPath": "refreshedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "_comment": "Stage 17: one directory category, published listings, newest first.",
       "collectionGroup": "directoryListings",
       "queryScope": "COLLECTION",

@@ -274,6 +274,15 @@ export interface Lookups {
   termNames: (taxonomy: ListingTaxonomy, ids: number[]) => Promise<Record<string, string>>;
   /** The public URL of a media item, or ''. */
   mediaUrl: (mediaId: number) => Promise<string>;
+  /**
+   * Public URLs for many media items at once, keyed by id; ids the site
+   * will not answer for are simply missing.
+   *
+   * WordPress answers a hundred media records in one request, so the
+   * whole-directory crawl asks that way. One request per image is what put
+   * the first production run over the function's nine-minute ceiling.
+   */
+  mediaUrls: (ids: number[]) => Promise<Record<string, string>>;
 }
 
 export function defaultLookups(): Lookups {
@@ -371,6 +380,48 @@ export function defaultLookups(): Lookups {
         });
         for (const term of Array.isArray(page.data) ? page.data : []) {
           if (term?.id !== undefined && term.name) out[String(term.id)] = decodeName(String(term.name));
+        }
+      }
+      return out;
+    },
+    mediaUrls: async (ids) => {
+      const out: Record<string, string> = {};
+      if (ids.length === 0) return out;
+      // One request per hundred images instead of one per image. This is the
+      // difference between the whole-directory crawl finishing and hitting
+      // the function's nine-minute ceiling (measured on prod, 2026-09-14).
+      for (let i = 0; i < ids.length; i += 100) {
+        try {
+          const page = await wpFetch<unknown[]>('wp/v2/media', {
+            auth: 'none',
+            query: {
+              include: ids.slice(i, i + 100).join(','),
+              per_page: 100,
+              _fields: 'id,source_url,media_details',
+            },
+          });
+          for (const row of Array.isArray(page.data) ? page.data : []) {
+            if (!row || typeof row !== 'object') continue;
+            const media = row as {
+              id?: unknown;
+              source_url?: unknown;
+              media_details?: { sizes?: Record<string, { source_url?: unknown }> };
+            };
+            const id = Number(media.id);
+            if (!Number.isFinite(id)) continue;
+            const sizes = media.media_details?.sizes;
+            const medium =
+              sizes?.medium_large?.source_url ?? sizes?.medium?.source_url;
+            const url = String(medium ?? media.source_url ?? '');
+            if (url) out[String(id)] = url;
+          }
+        } catch (error) {
+          // A batch we cannot read leaves those listings on their Yoast
+          // share image, which is what they had before.
+          logger.warn('Listing images not readable', {
+            count: ids.slice(i, i + 100).length,
+            message: (error as Error).message,
+          });
         }
       }
       return out;
@@ -544,14 +595,55 @@ const MIRROR_BATCH = 400;
 /** How many listings one call will fetch from WordPress at a time. */
 const FETCH_CHUNK = 100;
 
+/**
+ * How long one call spends walking listings before it hands back a cursor.
+ *
+ * The function's own ceiling is 540s. The first production run spent all of
+ * it and was killed (2026-09-14), so a call now stops well short and says
+ * where it got to. 300s leaves room for the batch commits and the rollup
+ * that follow the loop.
+ */
+const CHUNK_BUDGET_MS = 300_000;
+
+/** Where a part-finished crawl left off. */
+export const SYNC_DOC = '_internal/publicDirectorySync';
+
+interface SyncProgress {
+  /** The published ids to walk, snapshotted when the run started. */
+  ids: number[];
+  /** How many of [ids] are done. */
+  at: number;
+  /**
+   * The category slugs seen so far, slug -> the directory's own name.
+   *
+   * Names only, never counts: a chunk that is written and then retried
+   * (the call died before it could save) would inflate an accumulated
+   * count, and the counts are what the rail shows. They are measured
+   * exactly at the end instead, with one aggregation query per category.
+   */
+  categories: Record<string, string>;
+  claimed: number;
+  /** Everything mirrored before this is stale once the run finishes. */
+  startedAt: Timestamp;
+}
+
 export interface PublicDirectoryResult {
   listings: number;
   categories: number;
   claimed: number;
   removed: number;
+  /** False when there is more to do; call again with [nextCursor]. */
+  done: boolean;
+  /** Opaque: hand it straight back. Null when finished. */
+  nextCursor: string | null;
+  /** How many listings this call wrote, as opposed to the run's total. */
+  processedNow: number;
+  /** The run's total so far, finished or not. */
+  processed: number;
+  total: number;
 }
 
-/** "Bath, Beauty & Wellness" -> "bath-beauty-wellness". */
+/** "Bath, Beauty & Wellness" -> "bath-beauty-and-wellness". */
 export function categorySlug(name: string): string {
   return name
     .toLowerCase()
@@ -597,9 +689,64 @@ async function linkedOwners(): Promise<Map<number, string>> {
   return map;
 }
 
+/**
+ * Starts a run: refreshes the owner index and snapshots every published id.
+ *
+ * Paid once per run, not once per call, which is why a continuation reads
+ * the stored progress instead of crawling again.
+ */
+async function beginRun(lookups: Lookups, force: boolean): Promise<SyncProgress> {
+  const index = await ownerIndex(lookups, { force });
+  const ids = Object.entries(index)
+    .filter(([, row]) => row.s === 'publish')
+    .map(([id]) => Number(id))
+    .filter((id) => Number.isFinite(id) && id > 0)
+    .sort((a, b) => a - b);
+  const progress: SyncProgress = {
+    ids,
+    at: 0,
+    categories: {},
+    claimed: 0,
+    startedAt: Timestamp.now(),
+  };
+  await getFirestore().doc(SYNC_DOC).set(progress);
+  return progress;
+}
+
+/**
+ * Grace's #2 (2026-09-14): every published listing on littlebluecart.com in
+ * the app, before anyone has signed up for anything.
+ *
+ * What was there before this only mirrored the listings of accounts that had
+ * already linked by email (`syncAllDirectoryListings` walks `directory`
+ * where status is linked), so a shopper saw nothing until a business joined.
+ * This walks the other way round: every published listing the site will
+ * answer for, whether or not its owner has ever opened the app.
+ *
+ * **Resumable, because the whole directory does not fit in one call.** The
+ * first production attempt was killed at the 540s ceiling. A call now spends
+ * at most [CHUNK_BUDGET_MS] walking listings, stores where it got to in
+ * [SYNC_DOC], and returns a cursor; the caller keeps calling until `done`.
+ * The same shape `adminBackfillBuyerIndex` already uses.
+ *
+ * Three things it deliberately does not do:
+ *
+ *  * **No feed posts.** `syncListings` writes `posts/directory_{id}` for a
+ *    published listing so it announces itself in the Market feed. Doing that
+ *    here would bury the feed under every business in the directory on day
+ *    one. Grace's call: unclaimed listings live under Browse the directory
+ *    and in search, and a listing enters the feed when its owner claims it,
+ *    which is `syncListings`' job and is untouched.
+ *  * **It never blanks an `ownerUid`.** The field is written only when the
+ *    author is a linked member, so a claimed listing stays claimed even if
+ *    the linked-owner map is empty on this pass.
+ *  * **It never touches a pending or draft listing.** Only `publish` is
+ *    crawled, which is also all the site answers without the application
+ *    password. A stranger must not see a listing its owner has not published.
+ */
 export async function syncPublicDirectory(
   lookups: Lookups = defaultLookups(),
-  options: { force?: boolean } = {},
+  options: { force?: boolean; cursor?: string | null; budgetMs?: number } = {},
 ): Promise<PublicDirectoryResult> {
   if (!wpConfigured()) {
     throw new HttpsError(
@@ -609,20 +756,26 @@ export async function syncPublicDirectory(
   }
   const db = getFirestore();
   const mirror = db.collection('directoryListings');
+  const budgetMs = options.budgetMs ?? CHUNK_BUDGET_MS;
+  const until = Date.now() + budgetMs;
 
-  // The owner index is already a full crawl of every listing, rebuilt every
-  // six hours for the claim flow. Reusing it means this costs no extra
-  // requests to the website on a warm index.
-  const index = await ownerIndex(lookups, { force: options.force ?? false });
-  const publishedIds = Object.entries(index)
-    .filter(([, row]) => row.s === 'publish')
-    .map(([id]) => Number(id))
-    .filter((id) => Number.isFinite(id) && id > 0);
+  // A cursor continues the run in progress; no cursor starts a fresh one.
+  let progress: SyncProgress;
+  if (options.cursor) {
+    const stored = (await db.doc(SYNC_DOC).get()).data() as SyncProgress | undefined;
+    if (!stored || !Array.isArray(stored.ids)) {
+      throw new HttpsError('failed-precondition', 'That directory pull has expired. Start it again.');
+    }
+    progress = { ...stored, at: Number(options.cursor) || 0 };
+  } else {
+    progress = await beginRun(lookups, options.force ?? false);
+  }
 
   const owners = await linkedOwners();
-  const categoryCounts = new Map<string, { name: string; count: number }>();
-  const seen = new Set<string>();
-  let claimed = 0;
+  const categories = progress.categories ?? {};
+  let claimed = progress.claimed ?? 0;
+  let processedNow = 0;
+  let at = progress.at;
   let writes = 0;
   let batch = db.batch();
   const flush = async () => {
@@ -632,14 +785,22 @@ export async function syncPublicDirectory(
     writes = 0;
   };
 
-  for (let i = 0; i < publishedIds.length; i += FETCH_CHUNK) {
-    const records = await lookups.listingsByIds(publishedIds.slice(i, i + FETCH_CHUNK));
+  while (at < progress.ids.length && Date.now() < until) {
+    const slice = progress.ids.slice(at, at + FETCH_CHUNK);
+    const records = await lookups.listingsByIds(slice);
     const needed = termIdsNeeded(records);
     const names: TermNames = {
       vendors_dir_cat: await cachedTermNames('vendors_dir_cat', needed.vendors_dir_cat, lookups),
       vendors_dir_tag: await cachedTermNames('vendors_dir_tag', needed.vendors_dir_tag, lookups),
       vendors_loc_loc: await cachedTermNames('vendors_loc_loc', needed.vendors_loc_loc, lookups),
     };
+    // Every image for this chunk in one or two requests, rather than one
+    // request per listing awaited inside the loop below.
+    const mediaIds = records
+      .map((r) => r.featuredMediaId)
+      .filter((id): id is number => typeof id === 'number' && id > 0);
+    const media = await lookups.mediaUrls([...new Set(mediaIds)]);
+
     // What the mirror already holds for these ids, so a claimed listing's
     // ownerUid survives a pass where the linked-owner map cannot name it.
     const refs = records.map((r) => mirror.doc(String(r.wpPostId)));
@@ -647,36 +808,61 @@ export async function syncPublicDirectory(
 
     for (const [j, record] of records.entries()) {
       if (record.status !== 'publish') continue;
-      const id = String(record.wpPostId);
-      seen.add(id);
       const was = String((existing[j]?.data() as { ownerUid?: unknown } | undefined)?.ownerUid ?? '');
       const ownerUid = owners.get(record.wpAuthorId) ?? was;
       if (ownerUid) claimed++;
 
-      const featured = record.featuredMediaId ? await lookups.mediaUrl(record.featuredMediaId) : '';
+      const featured = record.featuredMediaId ? (media[String(record.featuredMediaId)] ?? '') : '';
       const doc = listingMirrorDoc(record, ownerUid, names, featured || record.ogImageUrl);
-      const categories = (doc.categories as string[]) ?? [];
-      for (const name of categories) {
+      const listingCategories = (doc.categories as string[]) ?? [];
+      for (const name of listingCategories) {
         const slug = categorySlug(name);
-        if (!slug) continue;
-        const entry = categoryCounts.get(slug);
-        if (entry) entry.count++;
-        else categoryCounts.set(slug, { name, count: 1 });
+        if (slug) categories[slug] = name;
       }
 
-      batch.set(refs[j]!, { ...doc, ...browseFields(record, categories, ownerUid) }, { merge: true });
+      batch.set(refs[j]!, { ...doc, ...browseFields(record, listingCategories, ownerUid) }, { merge: true });
       writes++;
+      processedNow++;
       if (writes >= MIRROR_BATCH) await flush();
     }
+    at += slice.length;
+    // Saved after every chunk, not only when the budget runs out: a call
+    // that dies mid-loop then re-walks at most one chunk of a hundred.
+    await flush();
+    await db.doc(SYNC_DOC).set({ at, categories, claimed }, { merge: true });
+  }
+  await flush();
+
+  const done = at >= progress.ids.length;
+  if (!done) {
+    await db.doc(SYNC_DOC).set({ ...progress, at, categories, claimed }, { merge: true });
+    logger.info('Public directory pull paused', { at, total: progress.ids.length });
+    return {
+      listings: progress.ids.length,
+      categories: Object.keys(categories).length,
+      claimed,
+      removed: 0,
+      done: false,
+      nextCursor: String(at),
+      processedNow,
+      processed: at,
+      total: progress.ids.length,
+    };
   }
 
-  // Listings the site no longer publishes. Only the unclaimed ones: a
+  // -------- the run is finished: the rollup and the tidying, once
+
+  // Listings the site no longer publishes. Only the unclaimed ones (a
   // claimed listing's lifecycle, pending and draft included, belongs to
-  // syncListings, which knows about its owner's other listings.
-  const stale = await mirror.where('unclaimed', '==', true).select().get();
+  // syncListings), and recognised by not having been refreshed during this
+  // run, which costs nothing to track.
+  const stale = await mirror
+    .where('unclaimed', '==', true)
+    .where('refreshedAt', '<', progress.startedAt)
+    .select()
+    .get();
   let removed = 0;
   for (const doc of stale.docs) {
-    if (seen.has(doc.id)) continue;
     batch.delete(doc.ref);
     writes++;
     removed++;
@@ -684,9 +870,29 @@ export async function syncPublicDirectory(
   }
 
   // The rail on the feed reads this instead of counting listings on a phone.
+  //
+  // Each count is measured with an aggregation query rather than carried
+  // through the run: exact whatever happened along the way, including a
+  // chunk that was written twice because a call died before saving. One
+  // small query per category, and there are tens of them, not thousands.
   const catalogue = db.collection('directoryCategories');
   const before = await catalogue.select().get();
-  for (const [slug, { name, count }] of categoryCounts) {
+  for (const [slug, name] of Object.entries(categories)) {
+    let count = 0;
+    try {
+      const measured = await mirror
+        .where('status', '==', 'publish')
+        .where('categorySlugs', 'array-contains', slug)
+        .count()
+        .get();
+      count = measured.data().count;
+    } catch (error) {
+      logger.warn('Category count failed; leaving the previous number', {
+        slug,
+        message: (error as Error).message,
+      });
+      continue;
+    }
     batch.set(
       catalogue.doc(slug),
       { name, slug, count, updatedAt: FieldValue.serverTimestamp() },
@@ -696,7 +902,7 @@ export async function syncPublicDirectory(
     if (writes >= MIRROR_BATCH) await flush();
   }
   for (const doc of before.docs) {
-    if (categoryCounts.has(doc.id)) continue;
+    if (categories[doc.id]) continue;
     batch.delete(doc.ref);
     writes++;
     if (writes >= MIRROR_BATCH) await flush();
@@ -704,16 +910,37 @@ export async function syncPublicDirectory(
   await flush();
 
   const result: PublicDirectoryResult = {
-    listings: seen.size,
-    categories: categoryCounts.size,
+    listings: progress.ids.length,
+    categories: Object.keys(categories).length,
     claimed,
     removed,
+    done: true,
+    nextCursor: null,
+    processedNow,
+    processed: at,
+    total: progress.ids.length,
   };
   logger.info('Public directory mirrored', result);
   await db.doc('_internal/publicDirectory').set(
     { ...result, refreshedAt: FieldValue.serverTimestamp() },
     { merge: true },
   );
+  await db.doc(SYNC_DOC).delete();
+  return result;
+}
+
+/** Runs a pull to completion, however many calls that takes. */
+export async function syncPublicDirectoryFully(
+  lookups: Lookups = defaultLookups(),
+  options: { force?: boolean; budgetMs?: number; maxCalls?: number } = {},
+): Promise<PublicDirectoryResult> {
+  let result = await syncPublicDirectory(lookups, { force: options.force, budgetMs: options.budgetMs });
+  for (let call = 0; !result.done && call < (options.maxCalls ?? 40); call++) {
+    result = await syncPublicDirectory(lookups, {
+      cursor: result.nextCursor,
+      budgetMs: options.budgetMs,
+    });
+  }
   return result;
 }
 

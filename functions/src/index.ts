@@ -24,6 +24,7 @@ import {
   syncAllDirectoryListings,
   syncDirectory,
   syncPublicDirectory,
+  syncPublicDirectoryFully,
 } from './directory.ts';
 import { deleteDirectoryProduct, reportDirectoryPurchase, saveDirectoryProduct } from './directory_products.ts';
 import { announceIfNew, rebuildBuyerIndexPage } from './buyer_index.ts';
@@ -655,8 +656,16 @@ export const directorySyncScheduled = onSchedule(
     // business on littlebluecart.com whether or not its owner has an
     // account. The owner index it walks was just rebuilt by the call above.
     try {
-      const mirrored = await syncPublicDirectory();
+      // Chunk after chunk until it is done: the scheduled job has the same
+      // 540s ceiling as the callable, so it drives the same cursor.
+      const mirrored = await syncPublicDirectoryFully(undefined, { budgetMs: 120_000, maxCalls: 3 });
       logger.info('Public directory re-synced', mirrored);
+      if (!mirrored.done) {
+        logger.warn('Public directory pull did not finish this run; it resumes on the next one', {
+          processed: mirrored.processed,
+          total: mirrored.total,
+        });
+      }
     } catch (error) {
       // One half failing must not stop the other from having run.
       logger.error('Public directory sync failed', { message: (error as Error).message });
@@ -675,7 +684,14 @@ export const adminSyncDirectory = onCall(
     requireUid(request.auth);
     requireAdmin(request.auth?.token);
     const data = (request.data ?? {}) as Record<string, unknown>;
-    return syncPublicDirectory(undefined, { force: data.force === true });
+    // One chunk per call, with a cursor back: the whole directory does not
+    // fit in one 540s invocation (the first production run was killed at
+    // the ceiling, 2026-09-14), so the admin website keeps calling until
+    // it reports done. Same shape as adminBackfillBuyerIndex.
+    return syncPublicDirectory(undefined, {
+      force: data.force === true,
+      cursor: typeof data.cursor === 'string' ? data.cursor : null,
+    });
   }),
 );
 

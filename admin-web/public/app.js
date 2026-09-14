@@ -146,6 +146,7 @@ function describe(error) {
   const code = error?.code || '';
   const message = error?.message || String(error);
   if (code.includes('permission-denied')) return 'Admins only: this account has no admin claim.';
+  if (code.includes('deadline-exceeded')) return 'That took longer than the call allows. Press the button again: the pull carries on from where it stopped.';
   if (code.includes('invalid-argument')) return message.replace(/^.*?: /, '');
   if (code.includes('wrong-password') || code.includes('invalid-credential')) return 'Wrong email or password.';
   if (code.includes('user-not-found')) return 'No account with that email.';
@@ -496,21 +497,47 @@ function watchPromos() {
 renderPromoPreview();
 
 // ------------------------------------------- Stage 17: pull the whole directory
+//
+// The pull is chunked: the function walks listings for a few minutes, then
+// hands back a cursor. The first production run tried to do the lot in one
+// call and was killed at the function's nine-minute ceiling, so this keeps
+// calling until it reports done, and shows the count climbing as it goes.
+//
+// The 70-second default on a callable would also have given up long before
+// the work finished; the timeout below is the function's own ceiling.
+
+const DIR_CALL_TIMEOUT_MS = 560_000;
+const DIR_MAX_CALLS = 60;
 
 $('dirSyncBtn').addEventListener('click', async () => {
-  if (!window.confirm('Pull every published listing from littlebluecart.com now?\n\nThis can take a few minutes the first time.')) return;
+  if (!window.confirm('Pull every published listing from littlebluecart.com now?\n\nThis can take several minutes the first time. Leave this page open.')) return;
   $('dirSyncBtn').disabled = true;
-  notice('dirNotice', 'Asking the website. This can take a few minutes…', true);
+  notice('dirNotice', 'Asking the website…', true);
+  const pull = httpsCallable(functions, 'adminSyncDirectory', { timeout: DIR_CALL_TIMEOUT_MS });
   try {
-    const result = await httpsCallable(functions, 'adminSyncDirectory')({});
-    const d = result.data ?? {};
-    const parts = [
-      `${d.listings ?? 0} published listings`,
-      `${d.categories ?? 0} categories`,
-      `${d.claimed ?? 0} already claimed by an app account`,
-    ];
-    if (d.removed) parts.push(`${d.removed} no longer on the site, removed`);
-    notice('dirNotice', `Done: ${parts.join(', ')}.`, true);
+    let cursor = null;
+    let result = null;
+    for (let call = 0; call < DIR_MAX_CALLS; call++) {
+      const answer = await pull(cursor ? { cursor } : {});
+      result = answer.data ?? {};
+      if (result.done) break;
+      cursor = result.nextCursor;
+      notice('dirNotice', `Working: ${result.processed ?? 0} of ${result.total ?? 0} listings copied so far…`, true);
+      if (!cursor) break;
+    }
+    if (!result) {
+      notice('dirNotice', 'The website did not answer.', false);
+    } else if (!result.done) {
+      notice('dirNotice', `Stopped after ${result.processed ?? 0} of ${result.total ?? 0} listings. Press the button again to carry on.`, false);
+    } else {
+      const parts = [
+        `${result.listings ?? 0} published listings`,
+        `${result.categories ?? 0} categories`,
+        `${result.claimed ?? 0} already claimed by an app account`,
+      ];
+      if (result.removed) parts.push(`${result.removed} no longer on the site, removed`);
+      notice('dirNotice', `Done: ${parts.join(', ')}.`, true);
+    }
   } catch (error) {
     notice('dirNotice', describe(error), false);
   } finally {
