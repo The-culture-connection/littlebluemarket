@@ -25,6 +25,7 @@ class LbmColors extends ThemeExtension<LbmColors> {
     required this.sage,
     required this.sageMist,
     required this.clay,
+    required this.scrim,
     required this.shadowSoft,
     required this.shadowLift,
   });
@@ -85,6 +86,16 @@ class LbmColors extends ThemeExtension<LbmColors> {
   final Color sageMist;
   final Color clay;
 
+  /// What the app is dimmed to behind a popup: dull, dark and grey on
+  /// purpose, so the blue underneath goes quiet.
+  ///
+  /// Its own colour rather than [ink] with an alpha, for two reasons found
+  /// the hard way on 2026-09-14: [ink] is a navy, so a scrim made from it
+  /// reads as dark blue rather than grey; and in dark mode [ink] is nearly
+  /// white, so the same expression washed the screen out instead of
+  /// dimming it. The alpha is baked in here.
+  final Color scrim;
+
   /// `0 3px 14px -5px` — the card shadow.
   final List<BoxShadow> shadowSoft;
 
@@ -94,6 +105,7 @@ class LbmColors extends ThemeExtension<LbmColors> {
   static const light = LbmColors(
     paper: Color(0xFF9CBFE3),
     surface: Color(0xFFFFFFFF),
+    scrim: Color(0xB3222831),
     ink: Color(0xFF152E52),
     ink2: Color(0xFF31507B),
     ink3: Color(0xFF6B87AD),
@@ -130,6 +142,7 @@ class LbmColors extends ThemeExtension<LbmColors> {
   static const dark = LbmColors(
     paper: Color(0xFF101E38),
     surface: Color(0xFF1A2C4E),
+    scrim: Color(0xCC05080E),
     ink: Color(0xFFE8F0FB),
     ink2: Color(0xFFA6BEDB),
     ink3: Color(0xFF7A93B5),
@@ -183,12 +196,14 @@ class LbmColors extends ThemeExtension<LbmColors> {
     Color? sage,
     Color? sageMist,
     Color? clay,
+    Color? scrim,
     List<BoxShadow>? shadowSoft,
     List<BoxShadow>? shadowLift,
   }) {
     return LbmColors(
       paper: paper ?? this.paper,
       surface: surface ?? this.surface,
+      scrim: scrim ?? this.scrim,
       ink: ink ?? this.ink,
       ink2: ink2 ?? this.ink2,
       ink3: ink3 ?? this.ink3,
@@ -215,6 +230,7 @@ class LbmColors extends ThemeExtension<LbmColors> {
     return LbmColors(
       paper: Color.lerp(paper, other.paper, t)!,
       surface: Color.lerp(surface, other.surface, t)!,
+      scrim: Color.lerp(scrim, other.scrim, t)!,
       ink: Color.lerp(ink, other.ink, t)!,
       ink2: Color.lerp(ink2, other.ink2, t)!,
       ink3: Color.lerp(ink3, other.ink3, t)!,

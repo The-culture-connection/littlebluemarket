@@ -54,12 +54,19 @@ class RemoteImage extends StatefulWidget {
     super.key,
     required this.url,
     this.aspectRatio = 16 / 9,
+    this.fill = false,
     this.cacheWidth = 600,
     this.borderRadius,
   });
 
   final String url;
   final double aspectRatio;
+
+  /// Fill whatever room the parent gives instead of imposing
+  /// [aspectRatio]. The promo popup has to fit on screen without
+  /// scrolling, so there the words take their height and the picture takes
+  /// what is left.
+  final bool fill;
   final int cacheWidth;
 
   /// Rounds the picture itself. Omit inside something already clipped.
@@ -100,6 +107,7 @@ class _RemoteImageState extends State<RemoteImage> {
     if (radius != null) {
       image = ClipRRect(borderRadius: radius, child: image);
     }
+    if (widget.fill) return SizedBox.expand(child: image);
     return AspectRatio(aspectRatio: widget.aspectRatio, child: image);
   }
 }

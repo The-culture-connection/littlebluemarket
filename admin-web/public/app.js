@@ -357,6 +357,54 @@ function promoWhen(id) {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : undefined;
 }
 
+// What shape a picture has to be, and what to say when it is not.
+//
+// The popup hands the picture the whole top of the card, so a portrait
+// fills it and a landscape leaves bands of white above and below. 4:5 is
+// the target (1080 x 1350, what Instagram calls portrait); 3:4 to 1:1 is
+// close enough to look deliberate. Refused rather than warned about,
+// because Grace asked for an error and because a wrong-shaped advert is
+// not obvious until it is live on everybody's phone.
+const PHOTO_BEST = { w: 1080, h: 1350 };
+const PHOTO_MIN_RATIO = 0.75; // 3:4, taller
+const PHOTO_MAX_RATIO = 1.0; //  1:1, square
+const PHOTO_MIN_SIDE = 600;
+
+/** The pixel size of a chosen file, without uploading it. */
+function readPhotoSize(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error(`${file.name} is not an image this browser can read.`));
+    };
+    img.src = url;
+  });
+}
+
+/** Null when the picture is fine, otherwise what is wrong with it. */
+function photoComplaint(file, size) {
+  const { width, height } = size;
+  if (!width || !height) return `${file.name} has no size this browser can read.`;
+  const shape = `${width} x ${height}`;
+  if (Math.min(width, height) < PHOTO_MIN_SIDE) {
+    return `${file.name} is ${shape}, which is too small: the shortest side needs ${PHOTO_MIN_SIDE} pixels or it looks soft on a phone. Best is ${PHOTO_BEST.w} x ${PHOTO_BEST.h}.`;
+  }
+  const ratio = width / height;
+  if (ratio < PHOTO_MIN_RATIO) {
+    return `${file.name} is ${shape}, which is taller and thinner than the popup can show without cutting the sides off. Best is ${PHOTO_BEST.w} x ${PHOTO_BEST.h} (4:5).`;
+  }
+  if (ratio > PHOTO_MAX_RATIO) {
+    return `${file.name} is ${shape}, which is a landscape picture. The popup stands the picture up, so this would sit in a band with white above and below it. Crop it to ${PHOTO_BEST.w} x ${PHOTO_BEST.h} (4:5, standing up) or at least to a square.`;
+  }
+  return null;
+}
+
 $('pPhoto').addEventListener('change', async (event) => {
   const files = [...(event.target.files ?? [])];
   $('pPhoto').value = '';
@@ -368,6 +416,18 @@ $('pPhoto').addEventListener('change', async (event) => {
   }
   notice('pNotice', '', true);
   for (const file of files.slice(0, room)) {
+    // The shape, before anything is uploaded: a refusal should cost
+    // nothing and should name the file and the size it actually is.
+    try {
+      const complaint = photoComplaint(file, await readPhotoSize(file));
+      if (complaint) {
+        notice('pNotice', complaint, false);
+        continue;
+      }
+    } catch (error) {
+      notice('pNotice', error.message, false);
+      continue;
+    }
     // Shown straight away from the local file, then swapped for the real URL
     // when the upload lands, so a slow connection still feels like something
     // happened on the click.
@@ -533,7 +593,7 @@ renderPromoPreview();
 // Copy for Claude copies the whole log, the way the app's bug button does.
 
 /** Bumped by hand when this file changes, so a stale tab is obvious. */
-const ADMIN_BUILD = '2026-09-14e';
+const ADMIN_BUILD = '2026-09-14f';
 
 const DIR_CALL_TIMEOUT_MS = 560_000;
 const DIR_MAX_CALLS = 60;

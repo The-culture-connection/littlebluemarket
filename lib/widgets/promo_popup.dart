@@ -174,8 +174,9 @@ class _PromoLayerState extends ConsumerState<PromoLayer> {
     return Stack(
       children: [
         widget.child,
-        // The app, greyed down. The brand's own ink rather than plain black,
-        // so the blue underneath goes quiet instead of muddy.
+        // The app, greyed down to a dull dark grey so the blue underneath
+        // goes quiet. c.ink was wrong twice over: a navy scrim rather than a
+        // grey one, and nearly white in dark mode (Grace, 2026-09-14).
         Positioned.fill(
           child: IgnorePointer(
             ignoring: !_visible,
@@ -186,7 +187,7 @@ class _PromoLayerState extends ConsumerState<PromoLayer> {
                 duration: fade,
                 curve: Curves.easeOut,
                 onEnd: _afterFade,
-                child: ColoredBox(color: c.ink.withValues(alpha: 0.66)),
+                child: ColoredBox(color: c.scrim),
               ),
             ),
           ),
@@ -256,6 +257,13 @@ class _PromoCardState extends State<PromoCard> {
     final promo = widget.promo;
     final isNews = promo.kind == PromoKind.announcement;
     final photos = promo.imageUrls;
+    // The picture's share of the screen. Two fifths leaves room for a
+    // 60-character title, a 180-character caption and the button on the
+    // shortest phone we support, with nothing to scroll.
+    final photoHeight = (MediaQuery.sizeOf(context).height * 0.4).clamp(
+      180.0,
+      420.0,
+    );
 
     return Center(
       // Room for the X above, and never edge to edge on a small phone.
@@ -268,24 +276,39 @@ class _PromoCardState extends State<PromoCard> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               _closeButton(c),
-              Flexible(
-                child: Dismissible(
+              Dismissible(
                   key: ValueKey('promo_${promo.id}'),
                   direction: DismissDirection.down,
                   onDismissed: (_) => widget.onDismiss(),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: c.paper,
+                      // surface, not paper: paper is the app's cornflower
+                      // background, so the card was blue on blue.
+                      color: c.surface,
                       borderRadius: BorderRadius.circular(22),
                       boxShadow: c.shadowLift,
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
-                      child: SingleChildScrollView(
+                    // A Material ancestor, the way LbmCard has one. Without
+                    // it every Text here is painted with Flutter's
+                    // missing-style marker, which is the gold underline
+                    // under the title, the caption and the button
+                    // (Grace, 2026-09-14).
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(22),
                         child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            if (photos.isNotEmpty) _photos(photos, c),
+                            // The picture takes whatever height is left once
+                            // the words have theirs, so the whole card fits
+                            // at a glance with nothing to scroll.
+                            if (photos.isNotEmpty)
+                              SizedBox(
+                                height: photoHeight,
+                                child: _photos(photos, c),
+                              ),
                             Padding(
                               padding: const EdgeInsets.fromLTRB(
                                 18,
@@ -341,7 +364,6 @@ class _PromoCardState extends State<PromoCard> {
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -356,19 +378,29 @@ class _PromoCardState extends State<PromoCard> {
     label: 'Dismiss',
     child: Tooltip(
       message: 'Dismiss',
-      child: InkResponse(
-        onTap: widget.onDismiss,
-        radius: 26,
-        child: Container(
-          width: 38,
-          height: 38,
-          margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: DecoratedBox(
           decoration: BoxDecoration(
-            color: c.paper,
             shape: BoxShape.circle,
             boxShadow: c.shadowSoft,
           ),
-          child: Icon(Icons.close_rounded, size: 21, color: c.ink),
+          // The circle is its own Material: it floats on the dimmed app
+          // with nothing above it, and an InkResponse with no Material
+          // ancestor throws.
+          child: Material(
+            color: c.surface,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: widget.onDismiss,
+              child: SizedBox(
+                width: 38,
+                height: 38,
+                child: Icon(Icons.close_rounded, size: 21, color: c.ink),
+              ),
+            ),
+          ),
         ),
       ),
     ),
@@ -376,58 +408,52 @@ class _PromoCardState extends State<PromoCard> {
 
   /// The picture, or a swipeable row of them with dots.
   ///
-  /// 4:5 rather than 16:9: an advert is usually a poster, and a tall frame is
-  /// what makes it the thing your eye lands on.
+  /// Fills the height it is handed rather than forcing an aspect ratio: the
+  /// card has to fit on screen without scrolling, so the words take what
+  /// they need and the picture takes the rest. A 4:5 portrait is what the
+  /// admin console asks for, which is the shape this flatters.
   Widget _photos(List<String> photos, LbmColors c) {
-    const ratio = 4 / 5;
     if (photos.length == 1) {
-      return RemoteImage(
-        url: photos.first,
-        aspectRatio: ratio,
-        cacheWidth: 900,
-      );
+      return RemoteImage(url: photos.first, fill: true, cacheWidth: 900);
     }
-    return AspectRatio(
-      aspectRatio: ratio,
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          PageView.builder(
+    return Stack(
+      alignment: Alignment.bottomCenter,
+      children: [
+        Positioned.fill(
+          child: PageView.builder(
             controller: _pages,
             itemCount: photos.length,
             onPageChanged: (i) => setState(() => _page = i),
-            itemBuilder: (context, i) => RemoteImage(
-              url: photos[i],
-              aspectRatio: ratio,
-              cacheWidth: 900,
-            ),
+            itemBuilder: (context, i) =>
+                RemoteImage(url: photos[i], fill: true, cacheWidth: 900),
           ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < photos.length; i++)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: i == _page ? 18 : 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      // Over a photograph of any colour, so: white, with a
-                      // shadow to hold it apart from a pale picture.
-                      color: i == _page
-                          ? c.paper
-                          : c.paper.withValues(alpha: 0.55),
-                      borderRadius: BorderRadius.circular(4),
-                      boxShadow: c.shadowSoft,
-                    ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < photos.length; i++)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: i == _page ? 18 : 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    // Over a photograph of any colour, so white, with a
+                    // shadow to hold it apart from a pale picture.
+                    // surface, not paper: paper is the app background.
+                    color: i == _page
+                        ? c.surface
+                        : c.surface.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow: c.shadowSoft,
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

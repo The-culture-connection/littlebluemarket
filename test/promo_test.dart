@@ -42,15 +42,12 @@ Future<void> _pumpCard(
   await tester.pumpWidget(
     MaterialApp(
       theme: buildLbmTheme(Brightness.light),
-      home: Scaffold(
-        body: Align(
-          alignment: Alignment.bottomCenter,
-          child: PromoCard(
-            promo: promo,
-            onDismiss: onDismiss ?? () {},
-            onCta: onCta ?? () {},
-          ),
-        ),
+      // Deliberately no Scaffold: the popup is mounted in the MaterialApp
+      // builder, so it has no Material above it and must bring its own.
+      home: PromoCard(
+        promo: promo,
+        onDismiss: onDismiss ?? () {},
+        onCta: onCta ?? () {},
       ),
     ),
   );
@@ -159,6 +156,28 @@ void main() {
       expect(find.text('Holiday market, December 14'), findsOneWidget);
       // The way out is still there, which is the point.
       expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+    });
+
+    testWidgets('the card brings its own Material', (tester) async {
+      // Flutter marks Text with no Material ancestor by underlining it in
+      // gold. Grace saw that under the title, the caption and the button
+      // (2026-09-14) because the redesign swapped LbmCard, which has a
+      // Material, for a bare DecoratedBox.
+      await _pumpCard(tester, _promo());
+      expect(
+        find.ancestor(
+          of: find.text('Holiday market, December 14'),
+          matching: find.byType(Material),
+        ),
+        findsAtLeastNWidgets(1),
+      );
+    });
+
+    testWidgets('it all fits: nothing to scroll', (tester) async {
+      // Grace: "everything should fit in the modal at first glance no
+      // scroll view". The picture takes the room the words leave.
+      await _pumpCard(tester, _promo(imageUrls: const ['https://x.test/a.png']));
+      expect(find.byType(SingleChildScrollView), findsNothing);
     });
 
     testWidgets('a flick downwards pushes it away', (tester) async {
