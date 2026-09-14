@@ -159,7 +159,7 @@ abstract final class Fx {
   static const products = <String, Product>{
     'p1': Product(
       id: 'p1',
-      collectionHandles: ['bath-beauty-wellness', 'bipoc-owned', 'woman-owned'],
+      collectionHandles: ['bath-beauty-wellness', 'bipoc-owned', 'jewelry', 'woman-owned'],
       title: 'Cocoa Mint Lip Balm',
       priceCents: 800,
       sellerId: 'kali',
@@ -179,7 +179,7 @@ abstract final class Fx {
     ),
     'p2': Product(
       id: 'p2',
-      collectionHandles: ['ally-owned', 'art-creative-goods', 'lgbtq-owned'],
+      collectionHandles: ['ally-owned', 'art-creative-goods', 'lgbtq-owned', 'stickers'],
       title: 'Wildflower Sticker Pack — 5 designs',
       priceCents: 1200,
       sellerId: 'rae',
@@ -200,7 +200,7 @@ abstract final class Fx {
     ),
     'p3': Product(
       id: 'p3',
-      collectionHandles: ['apparel-accessories', 'woman-owned'],
+      collectionHandles: ['apparel-accessories', 'bags', 'jewelry', 'woman-owned'],
       title: '“What Would Dolly Do?” Dad Hat',
       priceCents: 2800,
       sellerId: 'holler',
@@ -674,6 +674,11 @@ abstract final class Fx {
       title: 'Bath, Beauty & Wellness',
       productCount: 2,
     ),
+    // Subcategories under two of the headings, so the demo shows the real
+    // shape: seven headings on the rail, the narrower ones inside.
+    Collection(handle: 'jewelry', title: 'Jewelry', productCount: 2),
+    Collection(handle: 'bags', title: 'Bags', productCount: 1),
+    Collection(handle: 'stickers', title: 'Stickers', productCount: 1),
     Collection(handle: 'bipoc-owned', title: 'BIPOC Owned', productCount: 3),
     Collection(handle: 'lgbtq-owned', title: 'LGBTQ+ Owned', productCount: 2),
     Collection(handle: 'services', title: 'Services', productCount: 1),

@@ -33,6 +33,10 @@ class PostCard extends ConsumerWidget {
     final author = ref.watch(personProvider(post.authorId));
 
     return LbmCard(
+      // Tapping anywhere else on the card opens the post, where the
+      // comments are. Without this the only way in was the speech bubble,
+      // and a person who had just commented could not find their own words.
+      onTap: () => context.goToPost(post.id),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

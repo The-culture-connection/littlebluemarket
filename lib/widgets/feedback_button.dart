@@ -33,6 +33,20 @@ class FeedbackLayer extends ConsumerStatefulWidget {
   /// Screens where the button stays out of the way: the welcome artwork.
   static const hiddenOn = {'/', '/welcome'};
 
+  /// Screens with a composer pinned along the bottom, where the button
+  /// otherwise sits on top of Send (Grace, 2026-09-14). Raised by a
+  /// composer's height on these, rather than moved for everyone.
+  static const raisedOn = {'/community/chatroom', '/community/thread'};
+
+  /// True for any screen whose bottom belongs to a composer, including the
+  /// ones whose address carries an id.
+  static bool isRaised(String path) =>
+      raisedOn.contains(path) ||
+      path.startsWith('/community/thread/') ||
+      path.startsWith('/community/forums/') ||
+      path.startsWith('/market/post/') ||
+      path.startsWith('/you/dm/');
+
   @override
   ConsumerState<FeedbackLayer> createState() => _FeedbackLayerState();
 }
@@ -99,7 +113,9 @@ class _FeedbackLayerState extends ConsumerState<FeedbackLayer> {
               right: 14,
               // Above the floating pill tab bar, which is 18 from the bottom
               // and about 64 tall, plus the phone's own gesture inset.
-              bottom: MediaQuery.viewPaddingOf(context).bottom + 96,
+              bottom:
+                  MediaQuery.viewPaddingOf(context).bottom +
+                  (FeedbackLayer.isRaised(path) ? 164 : 96),
               child: _BugButton(busy: _busy, onPressed: _open),
             );
           },

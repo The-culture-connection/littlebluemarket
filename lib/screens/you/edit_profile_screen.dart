@@ -190,6 +190,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ),
             const SizedBox(height: 12),
           ],
+          const _SupportCard(),
+          const SizedBox(height: 12),
           Center(
             child: Column(
               children: [
@@ -542,6 +544,49 @@ class _PolicyRow extends StatelessWidget {
           );
         }
       },
+    );
+  }
+}
+
+/// Donate, and apply to advertise: the two ways someone can back Little
+/// Blue Cart rather than only sell on it (Grace, 2026-09-14).
+///
+/// Near the top of Edit profile on purpose. It is the one screen everybody
+/// opens, and further down these would sit among the policies and never be
+/// read.
+class _SupportCard extends StatelessWidget {
+  const _SupportCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+
+    Future<void> open(String url) async {
+      final messenger = ScaffoldMessenger.of(context);
+      if (!await openLegalLink(url)) {
+        messenger.showSnackBar(SnackBar(content: Text('Could not open $url')));
+      }
+    }
+
+    return LbmCard(
+      child: RowStack(
+        children: [
+          ListRow(
+            leading: Icon(Icons.volunteer_activism_outlined, color: c.clay),
+            title: const Text('Donate to Little Blue Cart'),
+            subtitle: const Text('Keeps the lights on for small makers'),
+            trailing: Icon(Icons.open_in_new_rounded, size: 20, color: c.ink3),
+            onTap: () => open(LbmLinks.donate),
+          ),
+          ListRow(
+            leading: Icon(Icons.campaign_outlined, color: c.skyDeep),
+            title: const Text('Apply to advertise'),
+            subtitle: const Text('Put your shop in front of the whole market'),
+            trailing: Icon(Icons.open_in_new_rounded, size: 20, color: c.ink3),
+            onTap: () => open(LbmLinks.advertise),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -13,14 +13,30 @@ import '../../widgets/skeleton.dart';
 
 /// The search entry point: scope, the initiative hashtags, and recent searches.
 class SearchScreen extends ConsumerStatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.initialQuery = ''});
+
+  /// What the search pill on the results screen was showing, so tapping it
+  /// opens the field with that word in it rather than empty.
+  final String initialQuery;
 
   @override
   ConsumerState<SearchScreen> createState() => _SearchScreenState();
 }
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
-  final _controller = TextEditingController();
+  late final _controller = TextEditingController(text: widget.initialQuery);
+
+  @override
+  void initState() {
+    super.initState();
+    // Selected, not just present: the likeliest next act is replacing it.
+    if (widget.initialQuery.isNotEmpty) {
+      _controller.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: widget.initialQuery.length,
+      );
+    }
+  }
 
   @override
   void dispose() {

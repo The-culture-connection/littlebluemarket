@@ -94,7 +94,11 @@ List<RouteBase> _sharedRoutes() => [
     builder: (context, state) =>
         ResultsScreen(query: state.uri.queryParameters['q'] ?? '#PlasticFree'),
   ),
-  GoRoute(path: 'search', builder: (context, state) => const SearchScreen()),
+  GoRoute(
+    path: 'search',
+    builder: (context, state) =>
+        SearchScreen(initialQuery: state.uri.queryParameters['q'] ?? ''),
+  ),
   GoRoute(path: 'cart', builder: (context, state) => const CartScreen()),
 ];
 

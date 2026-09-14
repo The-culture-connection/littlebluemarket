@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/market_taxonomy.dart';
 import '../../models/models.dart';
 import '../../router/nav.dart';
 import '../../state/providers.dart';
@@ -55,6 +56,10 @@ class CollectionScreen extends ConsumerWidget {
                   style: LbmText.tiny.copyWith(color: c.ink2),
                 ),
               ),
+            // Inside a heading: the narrower ones under it. A heading holds
+            // everything its subcategories hold, so these narrow the view
+            // rather than reveal anything the heading was hiding.
+            _Subcategories(parent: handle),
             LbmAsync<List<Product>>(
               products,
               skeleton: const GridSkeleton(count: 6),
@@ -93,8 +98,13 @@ class CollectionScreen extends ConsumerWidget {
   }
 }
 
-/// The horizontal "Browse the shop" rail on the feed: one chip per
-/// collection, in title order, hidden entirely when the store has none.
+/// The horizontal "Browse the Market" rail on the feed: one chip per
+/// heading, in Grace's order, hidden entirely when the store has none.
+///
+/// Not every collection. The store has a hundred, including seasonal ones
+/// and seller spotlights, and all of them on one rail made it useless as a
+/// front door (Grace, 2026-09-14). `kMarketCategories` is the seven she
+/// picked; the subcategories live inside each heading's own screen.
 class CollectionRail extends ConsumerWidget {
   const CollectionRail({super.key});
 
@@ -112,7 +122,14 @@ class CollectionRail extends ConsumerWidget {
       errorBuilder: (_, _) => const SizedBox.shrink(),
       isEmpty: (items) => items.isEmpty,
       empty: const SizedBox.shrink(),
-      data: (items) => Padding(
+      data: (all) {
+        final byHandle = {for (final c in all) c.handle: c};
+        final items = [
+          for (final handle in kMarketCategoryHandles)
+            ?byHandle[handle],
+        ];
+        if (items.isEmpty) return const SizedBox.shrink();
+        return Padding(
         padding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,7 +137,7 @@ class CollectionRail extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
               child: Text(
-                'Browse the shop',
+                'Browse the Market',
                 style: LbmText.tiny.copyWith(
                   fontWeight: FontWeight.w800,
                   color: c.ink2,
@@ -142,6 +159,43 @@ class CollectionRail extends ConsumerWidget {
             ),
           ],
         ),
+        );
+      },
+    );
+  }
+}
+
+/// The subcategories under one heading, as a wrapped row of chips.
+///
+/// Silent for anything that is not one of the seven, and silent for a
+/// subcategory the store no longer has, so a collection renamed in Shopify
+/// costs a missing chip rather than a dead one.
+class _Subcategories extends ConsumerWidget {
+  const _Subcategories({required this.parent});
+
+  final String parent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final children = marketChildrenOf(parent);
+    if (children.isEmpty) return const SizedBox.shrink();
+    final all = ref.watch(collectionsProvider).value ?? const <Collection>[];
+    final byHandle = {for (final c in all) c.handle: c};
+    final shown = [for (final handle in children) ?byHandle[handle]];
+    if (shown.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      child: Wrap(
+        spacing: 7,
+        runSpacing: 7,
+        children: [
+          for (final child in shown)
+            LbmChip(
+              child.title,
+              onTap: () => context.goToCollection(child.handle),
+            ),
+        ],
       ),
     );
   }

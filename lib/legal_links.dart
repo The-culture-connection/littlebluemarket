@@ -16,6 +16,18 @@ abstract final class LegalLinks {
       'https://lbm-web-production.up.railway.app/delete-account';
 }
 
+/// Where the app sends someone who wants to support Little Blue Cart or to
+/// advertise in it (Grace, 2026-09-14). Kept here with the policies so every
+/// address the app opens is declared in one file.
+abstract final class LbmLinks {
+  /// Venmo. Opens in the browser, which hands over to the Venmo app when it
+  /// is installed.
+  static const donate = 'https://www.venmo.com/u/littlebluecart';
+
+  /// The partner guide: what advertising here involves and what it costs.
+  static const advertise = 'https://canva.link/lbcpartnerguide';
+}
+
 /// Opens a policy in the phone's browser. False when nothing could open it,
 /// so the caller can say so; never throws.
 Future<bool> openLegalLink(String url) async {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../models/models.dart';
 import '../../router/nav.dart';
@@ -55,7 +56,16 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
 
     return LbmScreen(
       appBar: LbmAppBar(
-        titleWidget: SearchPill(label: widget.query, strong: true),
+        titleWidget: SearchPill(
+          label: widget.query,
+          strong: true,
+          // Without this the pill was decoration: a second search meant
+          // going back first (Grace, 2026-09-14). The query goes with it, so
+          // the field opens with what was typed rather than empty.
+          onTap: () => context.push(
+            '/market/search?q=${Uri.encodeComponent(widget.query)}',
+          ),
+        ),
       ),
       child: ListView(
         padding: EdgeInsets.zero,
