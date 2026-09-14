@@ -8,6 +8,9 @@ import 'package:little_blue_market/state/tips.dart';
 import 'package:little_blue_market/state/tour.dart';
 import 'package:little_blue_market/widgets/first_tour.dart';
 
+/// The disclaimer that follows the tour, by Done or by Skip (Stage 17).
+const _disclaimer = 'Keeping Little Blue Cart alive';
+
 Future<ProviderContainer> _pumpSignedIn(WidgetTester tester) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1.0;
@@ -29,6 +32,22 @@ Future<ProviderContainer> _pumpSignedIn(WidgetTester tester) async {
   container.read(sessionProvider.notifier).signIn();
   await tester.pumpAndSettle();
   return container;
+}
+
+/// Dismisses the disclaimer and checks it said what it is meant to say.
+Future<void> _acknowledge(WidgetTester tester) async {
+  expect(find.text(_disclaimer), findsOneWidget);
+  expect(
+    find.textContaining('keep transactions inside the platform'),
+    findsOneWidget,
+  );
+  expect(
+    find.textContaining('Little Blue Cart link to the bio'),
+    findsOneWidget,
+  );
+  await tester.tap(find.text('I understand'));
+  await tester.pumpAndSettle();
+  expect(find.text(_disclaimer), findsNothing);
 }
 
 void main() {
@@ -53,18 +72,45 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(kTourPages.last.title), findsNothing);
+    // Stage 17: the platform's ask follows the tour, and the phone only
+    // remembers the pair once the ask has been acknowledged.
+    await _acknowledge(tester);
     expect(container.read(tipsProvider).contains(Tips.firstTour), isTrue);
     expect(container.read(tourPendingProvider), isFalse);
   });
 
-  testWidgets('Skip closes it on the first page', (tester) async {
+  testWidgets('Skip closes it on the first page, and the ask still follows', (
+    tester,
+  ) async {
     final container = await _pumpSignedIn(tester);
     container.read(tourPendingProvider.notifier).request();
     await tester.pumpAndSettle();
     await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
     expect(find.text(kTourPages.first.title), findsNothing);
+    await _acknowledge(tester);
     expect(container.read(tipsProvider).contains(Tips.firstTour), isTrue);
+  });
+
+  testWidgets('the disclaimer cannot be dismissed by tapping outside', (
+    tester,
+  ) async {
+    final container = await _pumpSignedIn(tester);
+    container.read(tourPendingProvider.notifier).request();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
+    expect(find.text(_disclaimer), findsOneWidget);
+
+    // The barrier is the whole screen; a tap near the top edge lands on it.
+    await tester.tapAt(const Offset(195, 8));
+    await tester.pumpAndSettle();
+    expect(find.text(_disclaimer), findsOneWidget);
+    expect(container.read(tipsProvider).contains(Tips.firstTour), isFalse);
+
+    await tester.tap(find.text('I understand'));
+    await tester.pumpAndSettle();
+    expect(find.text(_disclaimer), findsNothing);
   });
 
   testWidgets('the bug button is on the feed and opens the sheet', (

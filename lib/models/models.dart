@@ -24,6 +24,7 @@ export 'onboarding.dart';
 export 'order.dart';
 export 'page.dart';
 export 'post.dart';
+export 'promo.dart';
 export 'report.dart';
 export 'search.dart';
 export 'seller_sync.dart';

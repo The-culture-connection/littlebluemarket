@@ -8,6 +8,7 @@ import '../state/tips.dart';
 import '../state/tour.dart';
 import '../theme/tokens.dart';
 import 'first_tour.dart';
+import 'keep_it_here_dialog.dart';
 import 'sheets.dart';
 
 /// Branch order inside the shell. Guests never reach 1 or 2.
@@ -40,6 +41,10 @@ class AppShell extends ConsumerWidget {
         if (!context.mounted) return;
         if (!ref.read(tourPendingProvider.notifier).consume()) return;
         await showFirstTour(context);
+        // The tour ends, by Done or by Skip, and the platform's one ask
+        // follows it. Both are remembered by the same write below.
+        if (!context.mounted) return;
+        await showKeepItHereDialog(context);
         await ref.read(tipsProvider.notifier).markSeen(Tips.firstTour);
       });
     }

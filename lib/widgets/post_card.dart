@@ -13,6 +13,7 @@ import 'async.dart';
 import 'directory_listing_card.dart';
 import 'primitives.dart';
 import 'product_art.dart';
+import 'report_sheet.dart';
 import 'sheets.dart';
 import 'skeleton.dart';
 import 'tips.dart';
@@ -577,14 +578,14 @@ class _Actions extends ConsumerWidget {
   }
 }
 
-class _PostHead extends StatelessWidget {
+class _PostHead extends ConsumerWidget {
   const _PostHead({required this.post, required this.author});
 
   final Post post;
   final Person author;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
     final isListing = post is ListingPost;
     final where = post is ListingPost
@@ -639,7 +640,17 @@ class _PostHead extends StatelessWidget {
             icon: Icons.more_horiz_rounded,
             bare: true,
             tooltip: 'More',
-            onPressed: () {},
+            // The same sheet the post screen and a seller's profile open:
+            // Report, with a guest sent to make a profile first and your own
+            // post greyed out.
+            onPressed: () => showMoreSheet(
+              context,
+              ref,
+              subjectUid: post.authorId,
+              subjectName: author.name,
+              subjectHandle: author.handle,
+              postId: post.id,
+            ),
           ),
         ],
       ),
