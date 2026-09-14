@@ -26,6 +26,18 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 const $ = (id) => document.getElementById(id);
+
+// Which project this console is talking to, in the header. Staging and
+// production look identical otherwise, and an announcement sent from the
+// wrong one reaches real phones.
+{
+  const tag = document.getElementById('envTag');
+  const live = config.projectId === 'little-blue-cart-prod';
+  tag.textContent = live ? 'LIVE · little-blue-cart-prod' : `STAGING · `;
+  tag.className = live ? 'envtag live' : 'envtag';
+  tag.hidden = false;
+  document.title = live ? 'Little Blue Market · Admin' : 'STAGING · LBM Admin';
+}
 const show = (id, on) => { $(id).hidden = !on; };
 const notice = (id, text, ok) => { const el = $(id); el.textContent = text; el.className = `notice ${ok ? 'ok' : 'bad'}`; el.hidden = !text; };
 

@@ -300,6 +300,54 @@ phone app; push notifications are the one thing it does not do.
   the working tree, which is the way to try something before committing it.
   faster. Every push to `main` redeploys.
 
+
+### Staging: the same two services against the dev backends
+
+A Railway **environment** called `staging` sits beside `production` in the
+same project, holding the same two services. The dashboard's environment
+switcher moves between them. Both environments build from `main`, so a push
+updates staging and production together: staging is a sandbox against test
+data, not a gate before release (Grace, 2026-09-14).
+
+|                | production                          | staging                              |
+|----------------|-------------------------------------|--------------------------------------|
+| web app        | `lbm-web-production.up.railway.app` | `lbm-web-staging.up.railway.app`     |
+| admin console  | `littlebluemarket-production.up.railway.app` | `littlebluemarket-staging.up.railway.app` |
+| Firebase       | `little-blue-cart-prod`             | `little-blue-610e5`                  |
+| Shopify        | the real shop                       | the dev testing shop                 |
+| Shipturtle     | live                                | dev                                  |
+| developer tools| off                                 | on (error strip, backend badge, Diagnostics) |
+
+One variable does it: **`LBM_ENV`**, `prod` or `dev`, set per service per
+environment. Nothing else differs, and there is no staging branch.
+
+- **The web app** compiles the Firebase project into the bundle, so
+  `Dockerfile.web` copies `firebase/config/$LBM_ENV/firebase_options.dart`
+  over `lib/firebase_options.dart` before building, and prints the project id
+  it used. `LBM_ENV` has **no default**: an unset or unexpected value fails
+  the build, because a staging site quietly reading real orders (or the
+  reverse) is worse than a red build. It also passes
+  `--dart-define=LBM_STAGING=true` on dev, which is the one flag `kLbmDev`
+  honours in a release build — see the comment there for why `LBM_DEV` cannot
+  be reused.
+- **The admin console** serves `public/firebase-config.dev.js` in place of
+  `firebase-config.js` when `LBM_ENV=dev`, so one image serves either
+  environment and the old "copy the file over and remember to copy it back"
+  is gone. Its header shows **LIVE** or **STAGING** with the project id, and
+  the browser tab is titled `STAGING · LBM Admin`, because an announcement
+  sent from the wrong console reaches real phones.
+
+**Shopify and Shipturtle need no configuration here.** The app never holds a
+Shopify credential and never calls Shopify directly; everything goes through
+Cloud Functions. Point a build at the dev Firebase project and it uses the
+dev functions, which carry the dev shop and dev Shipturtle keys in
+`functions/.env.little-blue-610e5`.
+
+**Once per staging domain, and only Grace can do it:** Firebase console →
+the **dev** project (`little-blue-610e5`) → Authentication → Settings →
+Authorized domains → add `lbm-web-staging.up.railway.app` and
+`littlebluemarket-staging.up.railway.app`. Without it, browser sign-in on
+staging is refused.
 ### Before an iPhone archive
 
 On the Mac, in the project folder:

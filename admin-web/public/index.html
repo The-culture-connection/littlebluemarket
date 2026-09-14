@@ -67,12 +67,16 @@
   pre.log:empty { display: none; }
   .logrow { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
   .build { font-size: 11px; color: var(--ink2); opacity: .8; }
+  /* Which project the console is pointed at. Staging must never be mistaken
+     for production: an announcement here goes to real phones. */
+  .envtag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .5px; padding: 3px 9px; border-radius: 999px; vertical-align: middle; margin-left: 8px; background: #fff; color: var(--clay); }
+  .envtag.live { background: rgba(255,255,255,.22); color: #fff; }
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <header>
-  <h1>Little Blue Market · Admin</h1>
+  <h1>Little Blue Market · Admin <span id="envTag" class="envtag" hidden></span></h1>
   <div class="who"><span id="who"></span> <button id="signout" class="quiet" hidden>Sign out</button></div>
 </header>
 <main>

@@ -23,10 +23,22 @@ final bool kUnderFlutterTest = _detectTest();
 /// `ios/Flutter/Generated.xcconfig`, and on 2026-09-09 that put the badge on
 /// a Release build. `dart.vm.product` is true only in release builds,
 /// `dart.vm.profile` only in profile builds; neither needs Flutter.
+///
+/// **`LBM_STAGING` is the one exemption, added 2026-09-14 for the staging
+/// website.** That guard exists to stop *stale* flags leaking into a release
+/// build, and it does its job: the staging site is `flutter build web
+/// --release`, so `LBM_DEV` alone can never reach it. Staging is where Grace
+/// is meant to be able to copy an error, so it needs a flag the release
+/// check does not veto. The safety is that nothing sets it by accident:
+/// `LBM_STAGING` appears in exactly two places, `Dockerfile.web` and the
+/// Railway staging service's variables, and never in any `scripts/run-*` or
+/// any Xcode configuration. If it ever shows up in a store build, that is
+/// the place to look.
 const bool kLbmDev =
-    bool.fromEnvironment('LBM_DEV') &&
-    !bool.fromEnvironment('dart.vm.product') &&
-    !bool.fromEnvironment('dart.vm.profile');
+    (bool.fromEnvironment('LBM_DEV') &&
+        !bool.fromEnvironment('dart.vm.product') &&
+        !bool.fromEnvironment('dart.vm.profile')) ||
+    bool.fromEnvironment('LBM_STAGING');
 
 bool _detectTest() => environmentHas('FLUTTER_TEST');
 

@@ -1,16 +1,52 @@
 # The mobile app as a website, for Railway.
 #
-# Stage 1 compiles the Flutter app for the web (release, production Firebase
-# project: the committed config). Stage 2 is a small Node server that hands
-# out those files. Railway builds this when the service's Dockerfile path is
-# set to Dockerfile.web (see README, "The web app on Railway").
+# Stage 1 compiles the Flutter app for the web (release). Stage 2 is a small
+# Node server that hands out those files. Railway builds this when the
+# service's variable RAILWAY_DOCKERFILE_PATH is set to Dockerfile.web (see
+# README, "The web app on Railway").
+#
+# LBM_ENV chooses the backend, and there is deliberately no default. The
+# Firebase project is compiled into the bundle, so a build that guessed would
+# be a staging site quietly reading real orders, or a production site reading
+# test ones. Both are worse than a failed build, so an unset or unexpected
+# value stops here. Railway passes the service's variables to the builder;
+# each service sets LBM_ENV (production: prod, staging: dev).
 
 FROM ghcr.io/cirruslabs/flutter:stable AS build
+ARG LBM_ENV
 WORKDIR /app
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 COPY . .
-RUN flutter build web --release --no-tree-shake-icons
+
+# The chosen project's Firebase configuration, over the committed one.
+#
+# `firebase/config/{dev,prod}/firebase_options.dart` are the two kept in the
+# repo; lib/firebase_options.dart is whichever one was last swapped in, so it
+# is never trusted here (scripts/run-live -Dev rewrites it, and that rewrite
+# has been committed by accident before).
+RUN set -eu; \
+    case "${LBM_ENV:-}" in \
+      dev|prod) ;; \
+      *) echo "LBM_ENV must be 'dev' or 'prod', got '${LBM_ENV:-}'." >&2; \
+         echo "Set it on the Railway service: production=prod, staging=dev." >&2; \
+         exit 1 ;; \
+    esac; \
+    cp "firebase/config/${LBM_ENV}/firebase_options.dart" lib/firebase_options.dart; \
+    echo "Building for ${LBM_ENV}:"; \
+    grep -m1 "projectId:" lib/firebase_options.dart
+
+# Staging gets the developer surfaces (the error strip with Copy for Claude,
+# the backend badge, Diagnostics), so a problem there can be reported rather
+# than guessed at. Production gets none of them. See kLbmDev in
+# lib/data/repositories/dev_error_sink.dart for why this needs its own flag
+# and cannot reuse LBM_DEV.
+RUN set -eu; \
+    if [ "$LBM_ENV" = "dev" ]; then \
+      flutter build web --release --no-tree-shake-icons --dart-define=LBM_STAGING=true; \
+    else \
+      flutter build web --release --no-tree-shake-icons; \
+    fi
 
 FROM node:22-alpine
 WORKDIR /srv
