@@ -2384,6 +2384,27 @@ class FixtureReportRepository implements ReportRepository {
     ];
   }
 
+  // Watchable.stream, not an async* that yields the value then the
+  // controller: the class documents why, and the gap between the two drops a
+  // write made inside it.
+  @override
+  Stream<Set<String>> watchBlocked() => _store.blocked.stream;
+
+  @override
+  Future<void> blockUser(String uid) async {
+    await _backend._settle();
+    if (uid == Fx.meId) {
+      throw const ValidationException('You cannot block yourself.');
+    }
+    _store.blocked.value = {..._store.blocked.value, uid};
+  }
+
+  @override
+  Future<void> unblockUser(String uid) async {
+    await _backend._settle();
+    _store.blocked.value = {..._store.blocked.value}..remove(uid);
+  }
+
   @override
   Future<void> unbanUser(String uid) async {
     await _backend._settle();

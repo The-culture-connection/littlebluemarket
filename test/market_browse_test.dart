@@ -147,8 +147,11 @@ void main() {
 
     test('the bug button lifts clear of a composer, and only there', () {
       // Screens whose bottom belongs to a composer: the button sat on the
-      // Send button (Grace, 2026-09-14).
-      expect(FeedbackLayer.isRaised('/community/chatroom'), isTrue);
+      // Send button (Grace, 2026-09-14). The Open chat IS the community
+      // root; the first attempt guessed '/community/chatroom', which is not
+      // a route, so nothing moved and Grace reported it again.
+      expect(FeedbackLayer.isRaised('/community'), isTrue);
+      expect(FeedbackLayer.isRaised('/community/chatroom'), isFalse);
       expect(FeedbackLayer.isRaised('/community/thread/t1'), isTrue);
       expect(FeedbackLayer.isRaised('/market/post/p1'), isTrue);
       expect(FeedbackLayer.isRaised('/you/dm/kali'), isTrue);

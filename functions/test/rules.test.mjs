@@ -396,6 +396,21 @@ describe('selling is a grant, not a client write', () => {
     await assertSucceeds(guest().doc('announcements/a1').get());
     await assertFails(adminUser('grace').doc('announcements/a2').set({ title: 'From the phone', audience: 'all' }));
     await assertSucceeds(member('maya').doc('users/maya/settings/notifications').set({ forums: false, mutedForums: ['f1'] }));
+
+    // Stage 17: blocking. Your list is yours alone, in both directions.
+    await assertSucceeds(member('maya').doc('users/maya/blocks/kali').set({ at: new Date() }));
+    await assertSucceeds(member('maya').doc('users/maya/blocks/kali').get());
+    await assertSucceeds(member('maya').doc('users/maya/blocks/kali').delete());
+    // Nobody may read who somebody else has blocked...
+    await assertFails(member('kali').doc('users/maya/blocks/dee').get());
+    // ...nor add to their list, which would be blocking on their behalf.
+    await assertFails(member('kali').doc('users/maya/blocks/dee').set({ at: new Date() }));
+    // Not even an admin: a block is a private decision, not moderation.
+    await assertFails(adminUser('grace').doc('users/maya/blocks/dee').get());
+    // Blocking yourself is refused at the rules, not just in the app.
+    await assertFails(member('maya').doc('users/maya/blocks/maya').set({ at: new Date() }));
+    // A guest has no account to hang a list on.
+    await assertFails(guest().doc('users/maya/blocks/kali').set({ at: new Date() }));
     await assertFails(member('kali').doc('users/maya/settings/notifications').get());
     await assertFails(member('maya').doc('users/maya/settings/other').set({ anything: true }));
 

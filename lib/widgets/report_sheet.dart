@@ -11,9 +11,13 @@ import 'async.dart';
 import 'primitives.dart';
 import 'sheets.dart';
 
-/// The "…" menu on someone's profile and on a post. One item today:
-/// Report. Guests are sent to make a profile first, since a report has to
-/// come from someone.
+/// The "…" menu on someone's profile and on a post: Report, and Block.
+///
+/// Guests are sent to make a profile first, since both have to come from
+/// someone. Two different things, deliberately offered together: a report
+/// asks Little Blue Market to look at somebody, a block just takes them off
+/// your own screen and tells them nothing. Both are required by the app
+/// stores for an app that carries what people write.
 Future<void> showMoreSheet(
   BuildContext context,
   WidgetRef ref, {
@@ -52,6 +56,7 @@ Future<void> showMoreSheet(
                   });
                 },
         ),
+        if (!isSelf) _BlockRow(subjectUid: subjectUid, handle: subjectHandle),
         const SizedBox(height: 4),
         TextButton(
           onPressed: () => Navigator.of(sheetContext).pop(),
@@ -214,6 +219,86 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
         ),
         const SizedBox(height: 8),
       ],
+    );
+  }
+}
+
+/// Block or unblock, from the "…" sheet.
+///
+/// Reads the live blocked set rather than a flag passed in, so the row says
+/// Unblock the moment it has been used and cannot go stale.
+class _BlockRow extends ConsumerWidget {
+  const _BlockRow({required this.subjectUid, required this.handle});
+
+  final String subjectUid;
+  final String handle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final blocked = ref.watch(blockedUidsProvider).value ?? const <String>{};
+    final isBlocked = blocked.contains(subjectUid);
+
+    return ListRow(
+      leading: Icon(
+        isBlocked ? Icons.person_add_alt_1_outlined : Icons.block_outlined,
+        color: isBlocked ? c.ink2 : c.clay,
+      ),
+      title: Text(isBlocked ? 'Unblock $handle' : 'Block $handle'),
+      subtitle: Text(
+        isBlocked
+            ? 'Their posts, comments and messages come back.'
+            : 'You stop seeing their posts, comments, chat and messages. '
+                  'They are not told.',
+      ),
+      onTap: () async {
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        final navigator = Navigator.of(context);
+        final repo = ref.read(reportRepositoryProvider);
+        if (!isBlocked) {
+          final sure = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Block $handle?'),
+              content: const Text(
+                'You will stop seeing their posts, comments, chat messages '
+                'and messages. They are not told, and you can undo this in '
+                'Edit profile.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Not now'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Block'),
+                ),
+              ],
+            ),
+          );
+          if (sure != true) return;
+        }
+        try {
+          if (isBlocked) {
+            await repo.unblockUser(subjectUid);
+          } else {
+            await repo.blockUser(subjectUid);
+          }
+          if (navigator.canPop()) navigator.pop();
+          messenger?.showSnackBar(
+            SnackBar(
+              content: Text(
+                isBlocked ? 'Unblocked $handle.' : 'Blocked $handle.',
+              ),
+            ),
+          );
+        } on RepositoryException catch (error) {
+          messenger?.showSnackBar(
+            SnackBar(content: Text(describeError(error).body)),
+          );
+        }
+      },
     );
   }
 }

@@ -285,6 +285,22 @@ service cloud.firestore {
         allow read, write: if isSelf(uid) && member() && doc == 'notifications';
       }
 
+      // People you have blocked. Yours alone, in both directions: nobody
+      // may read who you have blocked, and nobody may add to your list.
+      //
+      // The app hides a blocked person's posts, comments, chat messages and
+      // messages on the phone, from this list. Deliberately not a server
+      // fan-out: a block is one person's private decision about their own
+      // screen, and the blocked person is never told. Required by the app
+      // stores for any app carrying what people write (Grace, 2026-09-14).
+      match /blocks/{blockedUid} {
+        allow read: if isSelf(uid) && member();
+        allow create, delete: if isSelf(uid)
+          && member()
+          && blockedUid != request.auth.uid;
+        allow update: if false;
+      }
+
       // People you follow for post notifications ("Notify me" on a profile).
       // Yours alone; the functions mirror it into the person's subscribers.
       match /following/{personId} {

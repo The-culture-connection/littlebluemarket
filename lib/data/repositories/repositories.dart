@@ -330,6 +330,28 @@ abstract interface class ReportRepository {
 
   /// Lets a banned person back in. Their removed posts do not return.
   Future<void> unbanUser(String uid);
+
+  // --------------------------------------------------------------- blocking
+  //
+  // Blocking is not reporting, and it is nobody's decision but yours: a
+  // report asks Little Blue Market to look at someone, a block simply takes
+  // them off your screen. It lives here because this is the moderation
+  // seam, and because the two are offered in the same sheet.
+  //
+  // The list is private and the blocked person is never told. Their posts,
+  // comments, chat messages and messages are filtered out on the phone from
+  // this set, because "everything except these people" is not a query
+  // Firestore can serve. Required by both app stores for an app that
+  // carries what people write.
+
+  /// Who this account has blocked, live. Empty for a guest.
+  Stream<Set<String>> watchBlocked();
+
+  /// Takes someone off your screen. Blocking yourself is refused.
+  Future<void> blockUser(String uid);
+
+  /// Puts them back. Nothing they wrote while blocked is lost.
+  Future<void> unblockUser(String uid);
 }
 
 abstract interface class AdminRepository {

@@ -287,6 +287,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   ),
                   onTap: () => context.push(LegalLinks.deleteAccountRoute),
                 ),
+                ListRow(
+                  leading: Icon(Icons.block_outlined, color: c.ink2),
+                  title: const Text('Blocked people'),
+                  subtitle: const Text('Who you have taken off your screen'),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 22,
+                    color: c.ink3,
+                  ),
+                  onTap: () => context.push('/you/blocked'),
+                ),
               ],
             ),
           ),

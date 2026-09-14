@@ -257,8 +257,34 @@ final selectedVariantProvider = Provider.family<int, String>(
 
 // ------------------------------------------------------------------- social
 
+// ----------------------------------------------------------------- blocking
+//
+// "Everything except these people" is not a query Firestore can serve, so a
+// blocked person is filtered out on the phone, in each provider that carries
+// something they might have written. Doing it here rather than in the
+// screens means a new screen gets it for free, and no screen can forget.
+
+/// Who this account has blocked, live. Empty for a guest, and empty while
+/// the list is still loading, which is the right way round: a post shown for
+/// a moment and then removed is better than an empty feed that fills in.
+final blockedUidsProvider = StreamProvider<Set<String>>((ref) {
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null) return Stream.value(const <String>{});
+  return ref.watch(reportRepositoryProvider).watchBlocked();
+});
+
+/// The blocked set, ready to filter with.
+Set<String> _blocked(Ref ref) =>
+    ref.watch(blockedUidsProvider).value ?? const <String>{};
+
 final feedProvider = StreamProvider<List<Post>>((ref) {
-  return ref.watch(socialRepositoryProvider).watchFeed();
+  final blocked = _blocked(ref);
+  return ref.watch(socialRepositoryProvider).watchFeed().map(
+    (posts) => [
+      for (final post in posts)
+        if (!blocked.contains(post.authorId)) post,
+    ],
+  );
 });
 
 final postProvider = FutureProvider.family<Post, String>((ref, id) {
@@ -276,7 +302,13 @@ final commentsProvider = StreamProvider.family<List<Comment>, String>((
   ref,
   postId,
 ) {
-  return ref.watch(socialRepositoryProvider).watchComments(postId);
+  final blocked = _blocked(ref);
+  return ref.watch(socialRepositoryProvider).watchComments(postId).map(
+    (comments) => [
+      for (final comment in comments)
+        if (!blocked.contains(comment.authorId)) comment,
+    ],
+  );
 });
 
 final reviewsProvider = StreamProvider.family<List<Review>, String>((
@@ -449,11 +481,24 @@ final cartCountProvider = Provider<int>((ref) {
 // ---------------------------------------------------------------- messaging
 
 final chatroomProvider = StreamProvider<List<Message>>((ref) {
-  return ref.watch(messagingRepositoryProvider).watchChatroom();
+  final blocked = _blocked(ref);
+  return ref.watch(messagingRepositoryProvider).watchChatroom().map(
+    (messages) => [
+      for (final message in messages)
+        if (!blocked.contains(message.authorId)) message,
+    ],
+  );
 });
 
 final inboxProvider = StreamProvider<List<Conversation>>((ref) {
-  return ref.watch(messagingRepositoryProvider).watchInbox();
+  final blocked = _blocked(ref);
+  // A one-to-one thread with somebody blocked leaves the inbox whole.
+  return ref.watch(messagingRepositoryProvider).watchInbox().map(
+    (conversations) => [
+      for (final conversation in conversations)
+        if (!conversation.participantIds.any(blocked.contains)) conversation,
+    ],
+  );
 });
 
 final conversationProvider = StreamProvider.family<List<Message>, String>((
@@ -491,7 +536,13 @@ final threadsProvider = StreamProvider.family<List<ForumThread>, String>((
   ref,
   forumId,
 ) {
-  return ref.watch(socialRepositoryProvider).watchThreads(forumId);
+  final blocked = _blocked(ref);
+  return ref.watch(socialRepositoryProvider).watchThreads(forumId).map(
+    (threads) => [
+      for (final thread in threads)
+        if (!blocked.contains(thread.authorId)) thread,
+    ],
+  );
 });
 
 final threadProvider = StreamProvider.family<ForumThread, String>((ref, id) {
@@ -500,7 +551,16 @@ final threadProvider = StreamProvider.family<ForumThread, String>((ref, id) {
 
 final threadCommentsProvider =
     StreamProvider.family<List<ThreadComment>, String>((ref, threadId) {
-      return ref.watch(socialRepositoryProvider).watchThreadComments(threadId);
+      final blocked = _blocked(ref);
+      return ref
+          .watch(socialRepositoryProvider)
+          .watchThreadComments(threadId)
+          .map(
+            (comments) => [
+              for (final comment in comments)
+                if (!blocked.contains(comment.authorId)) comment,
+            ],
+          );
     });
 
 /// When a failed provider should try again.

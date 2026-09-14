@@ -26,6 +26,7 @@ import '../screens/you/admin_screen.dart';
 import '../screens/you/notification_settings_screen.dart';
 import '../screens/you/notifications_screen.dart';
 import '../screens/you/sell_screen.dart';
+import '../screens/you/blocked_screen.dart';
 import '../screens/you/claim_shop_screen.dart';
 import '../screens/you/diagnostics_screen.dart';
 import '../screens/you/directory_product_screen.dart';
@@ -294,6 +295,10 @@ GoRouter buildRouter(Ref ref) {
                       autoCheck: state.uri.queryParameters['auto'] == '1',
                       apply: state.uri.queryParameters['apply'] == '1',
                     ),
+                  ),
+                  GoRoute(
+                    path: 'blocked',
+                    builder: (context, state) => const BlockedScreen(),
                   ),
                   GoRoute(
                     path: 'directory',

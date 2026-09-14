@@ -102,6 +102,9 @@ class FixtureStore {
   /// Reports members made about each other. Empty until someone reports.
   final reports = Watchable<List<Report>>([]);
 
+  /// People the demo user has blocked. Empty until they block someone.
+  final blocked = Watchable<Set<String>>({});
+
   /// People asking for their account or data to go.
   final deletionRequests = Watchable<List<DeletionRequest>>([]);
 

@@ -36,11 +36,14 @@ class FeedbackLayer extends ConsumerStatefulWidget {
   /// Screens with a composer pinned along the bottom, where the button
   /// otherwise sits on top of Send (Grace, 2026-09-14). Raised by a
   /// composer's height on these, rather than moved for everyone.
-  static const raisedOn = {'/community/chatroom', '/community/thread'};
+  static const raisedOn = {'/community'};
 
   /// True for any screen whose bottom belongs to a composer, including the
   /// ones whose address carries an id.
   static bool isRaised(String path) =>
+      // The Open chat IS the community root, which the first attempt at this
+      // missed: it guessed '/community/chatroom', a route that does not
+      // exist, so the button stayed on the Send button (Grace, twice).
       raisedOn.contains(path) ||
       path.startsWith('/community/thread/') ||
       path.startsWith('/community/forums/') ||

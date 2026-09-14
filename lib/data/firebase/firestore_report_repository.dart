@@ -23,6 +23,14 @@ class FirestoreReportRepository implements ReportRepository {
   CollectionReference<Map<String, dynamic>> get _col =>
       _db.collection('reports');
 
+  /// Null while signed out; blocking needs an account, so the callers here
+  /// refuse rather than guess.
+  String get _me {
+    final id = uid;
+    if (id == null) throw const PermissionException('Sign in to do that.');
+    return id;
+  }
+
   @override
   Future<void> submit(NewReport draft) => guardFirestore(() async {
     final me = uid;
@@ -86,6 +94,35 @@ class FirestoreReportRepository implements ReportRepository {
               'reason': ?reason,
             });
       }, operation: 'callable adminBanUser');
+
+  CollectionReference<Map<String, dynamic>> get _myBlocks =>
+      _db.collection('users').doc(_me).collection('blocks');
+
+  @override
+  Stream<Set<String>> watchBlocked() {
+    final me = uid;
+    if (me == null) return Stream.value(const {});
+    return _db
+        .collection('users')
+        .doc(me)
+        .collection('blocks')
+        .snapshots()
+        .map((snapshot) => {for (final doc in snapshot.docs) doc.id})
+        .guarded(operation: 'firestore users/{uid}/blocks');
+  }
+
+  @override
+  Future<void> blockUser(String uid) => guardFirestore(() async {
+    if (uid == _me) {
+      throw const ValidationException('You cannot block yourself.');
+    }
+    await _myBlocks.doc(uid).set({'at': FieldValue.serverTimestamp()});
+  }, operation: 'firestore block');
+
+  @override
+  Future<void> unblockUser(String uid) => guardFirestore(() async {
+    await _myBlocks.doc(uid).delete();
+  }, operation: 'firestore unblock');
 
   @override
   Future<void> unbanUser(String uid) => guardFirestore(() async {
