@@ -112,6 +112,111 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
           )
           .guarded(operation: 'firestore directoryListings (published)');
 
+
+  CollectionReference<Map<String, dynamic>> get _listings =>
+      _db.collection('directoryListings');
+
+  /// How many listings one page of a category screen holds.
+  static const _pageSize = 24;
+
+  /// A search reads at most this many candidates before ranking on the
+  /// phone, the same bound the catalogue's own search uses.
+  static const _searchLimit = 60;
+
+  @override
+  Stream<List<DirectoryCategory>> watchDirectoryCategories() => _db
+      .collection('directoryCategories')
+      .orderBy('count', descending: true)
+      .orderBy('name')
+      .limit(60)
+      .snapshots()
+      .map(
+        (snapshot) => [
+          for (final doc in snapshot.docs)
+            DirectoryCategory(
+              slug: doc.id,
+              name: FirestoreMappers.str(doc.data()['name'], doc.id),
+              count: FirestoreMappers.integer(doc.data()['count']),
+            ),
+        ],
+      )
+      .guarded(operation: 'firestore directoryCategories');
+
+  @override
+  Future<Page<DirectoryListing>> listingsInCategory(
+    String slug, {
+    String? cursor,
+  }) => guardFirestore(() async {
+    var query = _listings
+        .where('status', isEqualTo: 'publish')
+        .where('categorySlugs', arrayContains: slug)
+        .orderBy('updatedAt', descending: true)
+        .limit(_pageSize);
+    if (cursor != null) {
+      final anchor = await _listings.doc(cursor).get();
+      if (anchor.exists) query = query.startAfterDocument(anchor);
+    }
+    final snapshot = await query.get();
+    return Page(
+      items: [
+        for (final doc in snapshot.docs)
+          FirestoreMappers.directoryListing(doc.id, doc.data()),
+      ],
+      cursor: snapshot.docs.length < _pageSize ? null : snapshot.docs.last.id,
+    );
+  }, operation: 'firestore directoryListings (category)');
+
+  @override
+  Future<List<DirectoryListing>> searchDirectory(String query) =>
+      guardFirestore(() async {
+        final text = query.trim().toLowerCase();
+        if (text.isEmpty) return const <DirectoryListing>[];
+
+        // One word from the indexed array, which is the business's name, its
+        // categories and its city. Not a substring match; that is the honest
+        // limit of what Firestore can index, and the same limit the
+        // catalogue's search already lives with.
+        final words = text
+            .split(RegExp('[^a-z0-9]+'))
+            .where((w) => w.isNotEmpty)
+            .toList();
+        final byWord = words.isEmpty
+            ? null
+            : await _listings
+                  .where('status', isEqualTo: 'publish')
+                  .where('titleWords', arrayContains: words.first)
+                  .limit(_searchLimit)
+                  .get();
+
+        // A multi-word query also takes names that start with the whole
+        // phrase, which one word cannot express ("found house" for
+        // "Found House Ceramics").
+        final byPrefix = text.contains(' ')
+            ? await _listings
+                  .where('status', isEqualTo: 'publish')
+                  .where('titleLower', isGreaterThanOrEqualTo: text)
+                  .where('titleLower', isLessThan: '$text\uf8ff')
+                  .limit(_pageSize)
+                  .get()
+            : null;
+
+        final seen = <String>{};
+        final hits = <DirectoryListing>[];
+        for (final snapshot in [byWord, byPrefix]) {
+          for (final doc in snapshot?.docs ?? const []) {
+            if (!seen.add(doc.id)) continue;
+            hits.add(FirestoreMappers.directoryListing(doc.id, doc.data()));
+          }
+        }
+        // A name that starts with what was typed is the better answer, so it
+        // sorts first; everything else keeps the order it came back in.
+        hits.sort((a, b) {
+          final aStarts = a.title.toLowerCase().startsWith(text) ? 0 : 1;
+          final bStarts = b.title.toLowerCase().startsWith(text) ? 0 : 1;
+          return aStarts.compareTo(bStarts);
+        });
+        return hits;
+      }, operation: 'firestore directoryListings (search)');
   CollectionReference<Map<String, dynamic>> get _products =>
       _db.collection('directoryProducts');
 

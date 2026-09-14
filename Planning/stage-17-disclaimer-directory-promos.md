@@ -225,6 +225,18 @@ shape:
   is the one Grace has already tapped through: match by email, claim every
   listing at once, apply the listing to the profile. No new claim mechanism.
 
+Two notes from building it:
+
+- **The search results screen needed restructuring, not just an extra
+  section.** `ResultsScreen` replaces its whole body with a "Nothing for
+  …" card when the catalogue finds nothing, so a directory section placed
+  inside `_Results` was invisible in exactly the case it mattered most: a
+  word that matches only a directory business. The section now sits as a
+  sibling below the catalogue's results, and the catalogue's empty card is
+  suppressed when the directory has hits. A test covers it.
+- `directoryCategories` needed its own public-read rules block;
+  `directoryListings` already allowed anyone to read a published listing,
+  so the crawl needed no rule change of its own.
 New repository methods on `DirectoryRepository` (the interface stays pure
 Dart, the Firestore class implements it, the fixture class gets demo rows so
 `run-fixtures` still works): `watchDirectoryCategories()`,

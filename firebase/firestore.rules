@@ -200,6 +200,15 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // The directory's own categories, with a count each, rolled up by the
+    // public sync. Read by everyone so the "Browse the directory" rail on
+    // the feed costs one small query instead of counting listings on a
+    // phone; a guest sees it too, because browsing needs no account.
+    match /directoryCategories/{slug} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /users/{uid} {
       // Profiles are public: the storefront, the seller strip on a listing and
       // the author of a review all need to read one.

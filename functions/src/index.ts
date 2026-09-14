@@ -19,7 +19,12 @@ import {
   SMTP_PASS,
 } from './config.ts';
 import { sendVerificationEmailFor } from './verify_email.ts';
-import { applyListingProfile, syncAllDirectoryListings, syncDirectory } from './directory.ts';
+import {
+  applyListingProfile,
+  syncAllDirectoryListings,
+  syncDirectory,
+  syncPublicDirectory,
+} from './directory.ts';
 import { deleteDirectoryProduct, reportDirectoryPurchase, saveDirectoryProduct } from './directory_products.ts';
 import { announceIfNew, rebuildBuyerIndexPage } from './buyer_index.ts';
 import {
@@ -642,11 +647,36 @@ export const directoryProductDelete = onCall(
  * on-demand path.
  */
 export const directorySyncScheduled = onSchedule(
-  { schedule: 'every 6 hours', secrets: WP_SECRETS, timeoutSeconds: 540 },
+  { schedule: 'every 6 hours', secrets: WP_SECRETS, timeoutSeconds: 540, memory: '512MiB' },
   async () => {
     const owners = await syncAllDirectoryListings();
     logger.info('Directory listings re-synced', { owners });
+    // Stage 17: and the whole public directory, so a shopper sees every
+    // business on littlebluecart.com whether or not its owner has an
+    // account. The owner index it walks was just rebuilt by the call above.
+    try {
+      const mirrored = await syncPublicDirectory();
+      logger.info('Public directory re-synced', mirrored);
+    } catch (error) {
+      // One half failing must not stop the other from having run.
+      logger.error('Public directory sync failed', { message: (error as Error).message });
+    }
   },
+);
+
+/**
+ * Stage 17: "Pull the directory now", from the admin website. Answers with
+ * the counts so Grace can see how many listings and categories the site
+ * actually has. Idempotent: running it twice reports the same numbers.
+ */
+export const adminSyncDirectory = onCall(
+  { secrets: WP_SECRETS, timeoutSeconds: 540, memory: '512MiB' },
+  withLoudErrors('adminSyncDirectory', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    return syncPublicDirectory(undefined, { force: data.force === true });
+  }),
 );
 
 /**

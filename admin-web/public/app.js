@@ -176,7 +176,7 @@ function watchRecent() {
 async function refreshGate(user) {
   if (!user) {
     show('signin', true); show('notadmin', false); show('send', false); show('recentCard', false); show('feedbackCard', false); show('reportsCard', false); show('signout', false);
-    show('promoCard', false); show('promoListCard', false);
+    show('promoCard', false); show('promoListCard', false); show('dirCard', false);
     $('who').textContent = '';
     unsubscribeRecent?.(); unsubscribeRecent = null;
     unsubscribeFeedback?.(); unsubscribeFeedback = null;
@@ -196,6 +196,7 @@ async function refreshGate(user) {
   show('reportsCard', isAdmin);
   show('promoCard', isAdmin);
   show('promoListCard', isAdmin);
+  show('dirCard', isAdmin);
   if (isAdmin) { watchRecent(); watchFeedback(); watchReports(); watchPromos(); }
 }
 $('showDone').addEventListener('change', renderFeedback);
@@ -493,3 +494,26 @@ function watchPromos() {
 
 // Draw the preview and the counters once, before anything is typed.
 renderPromoPreview();
+
+// ------------------------------------------- Stage 17: pull the whole directory
+
+$('dirSyncBtn').addEventListener('click', async () => {
+  if (!window.confirm('Pull every published listing from littlebluecart.com now?\n\nThis can take a few minutes the first time.')) return;
+  $('dirSyncBtn').disabled = true;
+  notice('dirNotice', 'Asking the website. This can take a few minutes…', true);
+  try {
+    const result = await httpsCallable(functions, 'adminSyncDirectory')({});
+    const d = result.data ?? {};
+    const parts = [
+      `${d.listings ?? 0} published listings`,
+      `${d.categories ?? 0} categories`,
+      `${d.claimed ?? 0} already claimed by an app account`,
+    ];
+    if (d.removed) parts.push(`${d.removed} no longer on the site, removed`);
+    notice('dirNotice', `Done: ${parts.join(', ')}.`, true);
+  } catch (error) {
+    notice('dirNotice', describe(error), false);
+  } finally {
+    $('dirSyncBtn').disabled = false;
+  }
+});

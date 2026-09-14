@@ -12,6 +12,7 @@ import '../screens/market/feed_screen.dart';
 import '../screens/market/post_screen.dart';
 import '../screens/market/product_screen.dart';
 import '../screens/market/collection_screen.dart';
+import '../screens/market/directory_browse_screen.dart';
 import '../screens/market/results_screen.dart';
 import '../screens/market/reviews_screen.dart';
 import '../screens/market/search_screen.dart';
@@ -82,6 +83,11 @@ List<RouteBase> _sharedRoutes() => [
     path: 'collection/:handle',
     builder: (context, state) =>
         CollectionScreen(handle: state.pathParameters['handle']!),
+  ),
+  GoRoute(
+    path: 'directory-category/:slug',
+    builder: (context, state) =>
+        DirectoryCategoryScreen(slug: state.pathParameters['slug']!),
   ),
   GoRoute(
     path: 'results',

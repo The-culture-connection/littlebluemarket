@@ -1728,10 +1728,175 @@ class FixtureDirectoryRepository implements DirectoryRepository {
       locations: ['Online/Virtual'],
       plan: 'DIRECTORY SHOWCASE PLAN',
     ),
+    // Stage 17: businesses on littlebluecart.com that nobody has claimed
+    // yet, which is what the whole directory looks like on day one. No
+    // ownerUid, so each card offers "Is this your business?".
+    DirectoryListing(
+      id: '51001',
+      ownerUid: '',
+      title: 'Found House Ceramics',
+      status: 'publish',
+      link: 'https://example.com/directory-vendors/listing/found-house/',
+      website: 'foundhouseceramics.example.com',
+      email: 'hello@foundhouse.example.com',
+      phone: '555-0142',
+      locationLabel: 'Detroit, MI',
+      city: 'Detroit',
+      state: 'MI',
+      address: '4120 Cass Ave, Detroit, MI 48201',
+      categories: ['Home & Garden', 'Art & Collectibles'],
+      tags: ['Woman-Owned', 'BIPOC-Owned'],
+      locations: ['Michigan'],
+      plan: 'DIRECTORY SHOWCASE PLAN',
+      description:
+          'Hand-thrown stoneware for everyday use, made a few blocks from '
+          'the old train station.',
+    ),
+    DirectoryListing(
+      id: '51002',
+      ownerUid: '',
+      title: 'Brightside Bookkeeping',
+      status: 'publish',
+      link: 'https://example.com/directory-vendors/listing/brightside/',
+      website: 'brightsidebooks.example.com',
+      email: 'ask@brightside.example.com',
+      phone: '555-0177',
+      locationLabel: '*Online/Virtual Business',
+      city: 'Nashville',
+      state: 'TN',
+      address: 'Nashville, TN',
+      categories: ['Professional Services'],
+      tags: ['Veteran-Owned'],
+      locations: ['Online/Virtual'],
+      plan: 'DIRECTORY BASIC PLAN',
+      description: 'Monthly books and quarterly taxes for small shops.',
+    ),
+    DirectoryListing(
+      id: '51003',
+      ownerUid: '',
+      title: 'Cedar & Salt Bath Co.',
+      status: 'publish',
+      link: 'https://example.com/directory-vendors/listing/cedar-salt/',
+      website: 'cedarandsalt.example.com',
+      email: 'hi@cedarandsalt.example.com',
+      phone: '555-0165',
+      locationLabel: 'Portland, OR',
+      city: 'Portland',
+      state: 'OR',
+      address: '900 SE Belmont St, Portland, OR 97214',
+      categories: ['Bath, Beauty & Wellness'],
+      tags: ['Ally'],
+      locations: ['Oregon'],
+      plan: 'DIRECTORY SHOWCASE PLAN',
+      description: 'Small-batch soaps and bath salts, no plastic anywhere.',
+    ),
+    DirectoryListing(
+      id: '51004',
+      ownerUid: '',
+      title: 'The Mend Shop',
+      status: 'publish',
+      link: 'https://example.com/directory-vendors/listing/the-mend-shop/',
+      website: 'mendshop.example.com',
+      email: 'repairs@mendshop.example.com',
+      phone: '555-0198',
+      locationLabel: 'Detroit, MI',
+      city: 'Detroit',
+      state: 'MI',
+      address: '77 Grand River Ave, Detroit, MI 48226',
+      categories: ['Home & Garden'],
+      tags: ['Disabled-Owned'],
+      locations: ['Michigan'],
+      plan: 'DIRECTORY BASIC PLAN',
+      description: 'Clothing repairs and alterations, plus a free mending night.',
+    ),
   ];
   final _links = StreamController<DirectoryLink?>.broadcast();
   final _orderChanges = StreamController<List<DirectoryOrder>>.broadcast();
   final _listingChanges = StreamController<List<DirectoryListing>>.broadcast();
+
+
+  /// The demo directory's categories, counted from the listings in memory:
+  /// live, this is a rollup the backend maintains.
+  @override
+  Stream<List<DirectoryCategory>> watchDirectoryCategories() async* {
+    List<DirectoryCategory> roll(List<DirectoryListing> listings) {
+      final counts = <String, ({String name, int count})>{};
+      for (final listing in listings) {
+        if (!listing.isPublished) continue;
+        for (final name in listing.categories) {
+          final slug = _slugFor(name);
+          if (slug.isEmpty) continue;
+          final entry = counts[slug];
+          counts[slug] = (
+            name: name,
+            count: (entry?.count ?? 0) + 1,
+          );
+        }
+      }
+      final out = [
+        for (final entry in counts.entries)
+          DirectoryCategory(
+            slug: entry.key,
+            name: entry.value.name,
+            count: entry.value.count,
+          ),
+      ]..sort((a, b) {
+        final byCount = b.count.compareTo(a.count);
+        return byCount != 0 ? byCount : a.name.compareTo(b.name);
+      });
+      return out;
+    }
+
+    yield roll(_listings);
+    yield* _listingChanges.stream.map(roll);
+  }
+
+  /// The same slug the backend writes, so a chip's address matches.
+  static String _slugFor(String name) => name
+      .toLowerCase()
+      .replaceAll('&', ' and ')
+      .replaceAll(RegExp('[^a-z0-9]+'), '-')
+      .replaceAll(RegExp('^-+|-+\$'), '');
+
+  @override
+  Future<Page<DirectoryListing>> listingsInCategory(
+    String slug, {
+    String? cursor,
+  }) async {
+    await _backend._settle();
+    return Page(
+      items: [
+        for (final listing in _listings)
+          if (listing.isPublished &&
+              listing.categories.any((c) => _slugFor(c) == slug))
+            listing,
+      ],
+    );
+  }
+
+  @override
+  Future<List<DirectoryListing>> searchDirectory(String query) async {
+    await _backend._settle();
+    final text = query.trim().toLowerCase();
+    if (text.isEmpty) return const [];
+    final words = text
+        .split(RegExp('[^a-z0-9]+'))
+        .where((w) => w.isNotEmpty)
+        .toSet();
+    return [
+      for (final listing in _listings)
+        if (listing.isPublished &&
+            words.any(
+              (word) =>
+                  listing.title.toLowerCase().contains(word) ||
+                  listing.city.toLowerCase().contains(word) ||
+                  listing.categories.any(
+                    (c) => c.toLowerCase().contains(word),
+                  ),
+            ))
+          listing,
+    ];
+  }
 
   @override
   Stream<DirectoryLink?> watchLink() async* {

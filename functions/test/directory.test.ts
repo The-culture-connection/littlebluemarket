@@ -9,6 +9,8 @@ import {
   INDEX_FULL_TTL_MS,
   MANUAL_MIN_AGE_MS,
   NOT_FOUND_RECHECK_MS,
+  browseFields,
+  categorySlug,
   directoryPostFor,
   handleBaseFor,
   handleCandidates,
@@ -204,4 +206,44 @@ test('WooCommerce GMT dates without a zone marker are read as UTC', () => {
   assert.equal(wcTimestamp('2026-09-01T12:00:00Z')?.toDate().toISOString(), '2026-09-01T12:00:00.000Z');
   assert.equal(wcTimestamp(''), null);
   assert.equal(wcTimestamp('not a date'), null);
+});
+
+// ------------------------------------- Stage 17: the whole public directory
+
+test('categorySlug is stable, url-safe, and spells out the ampersand', () => {
+  assert.equal(categorySlug('Bath, Beauty & Wellness'), 'bath-beauty-and-wellness');
+  assert.equal(categorySlug('Home & Garden'), 'home-and-garden');
+  assert.equal(categorySlug('  Travel  '), 'travel');
+  assert.equal(categorySlug('Food/Drink'), 'food-drink');
+  assert.equal(categorySlug('Art & Collectibles!'), 'art-and-collectibles');
+  assert.equal(categorySlug(''), '');
+  assert.equal(categorySlug('---'), '');
+  // The app builds the same slug from the same name, so the two must agree.
+  assert.equal(categorySlug('Professional Services'), 'professional-services');
+});
+
+test('browseFields carries the name, the categories and the city into one searchable array', () => {
+  const fields = browseFields(RECORD, ['Travel', 'Bath, Beauty & Wellness'], '');
+  assert.deepEqual(fields.categorySlugs, ['travel', 'bath-beauty-and-wellness']);
+  assert.equal(fields.titleLower, 'field trips travel & vacations');
+  const words = fields.titleWords as string[];
+  // The business's own name…
+  assert.ok(words.includes('field') && words.includes('trips'));
+  // …its categories…
+  assert.ok(words.includes('wellness') && words.includes('beauty'));
+  // …and its city, which is how "ceramics near Detroit" style searches land.
+  assert.ok(words.includes('petersburg'));
+  // The ampersand is punctuation, not a word.
+  assert.ok(!words.includes('&'));
+});
+
+test('unclaimed is exactly "no owner"', () => {
+  assert.equal(browseFields(RECORD, [], '').unclaimed, true);
+  assert.equal(browseFields(RECORD, [], 'uid-1').unclaimed, false);
+});
+
+test('a listing with no categories still gets searchable words and no empty slug', () => {
+  const fields = browseFields(RECORD, [], 'uid-1');
+  assert.deepEqual(fields.categorySlugs, []);
+  assert.ok((fields.titleWords as string[]).includes('vacations'));
 });

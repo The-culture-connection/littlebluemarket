@@ -8,6 +8,7 @@ import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/directory_listing_card.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
@@ -46,6 +47,11 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
         ? filters
         : filters.copyWith(query: widget.query);
     final results = ref.watch(searchResultsProvider(active));
+    // Watched here, not only inside _DirectoryHits, because it decides
+    // whether the catalogue's "nothing found" card is honest.
+    final directory =
+        ref.watch(directorySearchProvider(widget.query)).value ??
+        const <DirectoryListing>[];
 
     return LbmScreen(
       appBar: LbmAppBar(
@@ -91,7 +97,9 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             results,
             skeleton: const _ResultsSkeleton(),
             onRetry: () => ref.invalidate(searchResultsProvider(active)),
-            isEmpty: (results) => results.isEmpty,
+            // A word that matches only a directory business is not "nothing
+            // for this search": the empty card would replace the hits below.
+            isEmpty: (results) => results.isEmpty && directory.isEmpty,
             empty: LbmEmpty(
               title: 'Nothing for “${widget.query}”',
               body: active.isGeoConstrained
@@ -101,6 +109,12 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             ),
             data: (results) => _Results(results: results, query: widget.query),
           ),
+          // littlebluecart.com's businesses, claimed or not, below the
+          // catalogue's own results and outside its empty state. Its own
+          // provider rather than a field on SearchResults: the directory is a
+          // separate repository on purpose, and a slow website mirror must
+          // not hold up the products.
+          _DirectoryHits(query: widget.query),
           const Puff(),
           const SizedBox(height: 20),
         ],
@@ -154,7 +168,10 @@ class _Results extends StatelessWidget {
               ],
             ),
           ),
-        ] else
+        ] else if (results.products.isNotEmpty || results.sellers.isNotEmpty)
+          // Only worth saying when the search found something else. With no
+          // products and no people the whole screen would be a note about
+          // reviews, sitting above whatever the directory did find.
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
             child: Text(
@@ -402,6 +419,40 @@ class _Suggestions extends ConsumerWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Directory businesses matching the query, under their own heading.
+///
+/// Silent when there are none and silent on an error: a search that found
+/// products must not be spoiled by a red card because the directory mirror
+/// is empty on this project.
+class _DirectoryHits extends ConsumerWidget {
+  const _DirectoryHits({required this.query});
+
+  final String query;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hits = ref.watch(directorySearchProvider(query));
+    final listings = hits.value ?? const <DirectoryListing>[];
+    if (listings.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHead(
+          listings.length == 1
+              ? '1 business in the directory'
+              : '${listings.length} businesses in the directory',
+        ),
+        for (final listing in listings)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+            child: DirectoryListingCard(listing: listing, showClaim: true),
+          ),
+      ],
     );
   }
 }

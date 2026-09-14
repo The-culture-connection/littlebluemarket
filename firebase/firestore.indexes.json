@@ -1,6 +1,44 @@
 {
   "indexes": [
     {
+      "_comment": "Stage 17: one directory category, published listings, newest first.",
+      "collectionGroup": "directoryListings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "categorySlugs", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "_comment": "Stage 17: searching the directory by a word in the name, a category or the city.",
+      "collectionGroup": "directoryListings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "titleWords", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "_comment": "Stage 17: searching the directory by the start of a business name.",
+      "collectionGroup": "directoryListings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "titleLower", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "_comment": "Stage 17: the categories rail, biggest first.",
+      "collectionGroup": "directoryCategories",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "count", "order": "DESCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
+      ]
+    },
+    {
       "_comment": "Stage 17: the live adverts and announcements a popup picks from, newest first.",
       "collectionGroup": "promos",
       "queryScope": "COLLECTION",

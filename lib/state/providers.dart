@@ -319,6 +319,42 @@ final directoryLinkProvider = StreamProvider<DirectoryLink?>((ref) {
   return ref.watch(directoryRepositoryProvider).watchLink();
 });
 
+
+/// littlebluecart.com's own categories, biggest first. Empty until the
+/// public sync has run against this project, which is what hides the
+/// "Browse the directory" rail rather than showing an empty one.
+final directoryCategoriesProvider = StreamProvider<List<DirectoryCategory>>((
+  ref,
+) {
+  return ref.watch(directoryRepositoryProvider).watchDirectoryCategories();
+});
+
+/// One category by slug, for a screen's title. Read off the rail's own list
+/// rather than fetched again.
+final directoryCategoryProvider = Provider.family<DirectoryCategory?, String>((
+  ref,
+  slug,
+) {
+  final all = ref.watch(directoryCategoriesProvider).value ?? const [];
+  for (final category in all) {
+    if (category.slug == slug) return category;
+  }
+  return null;
+});
+
+/// The first page of published listings in one category. Later pages are
+/// asked for by the screen, which keeps what it has already shown.
+final directoryCategoryPageProvider =
+    FutureProvider.family<Page<DirectoryListing>, String>((ref, slug) {
+      ref.keepCached();
+      return ref.watch(directoryRepositoryProvider).listingsInCategory(slug);
+    });
+
+/// Directory businesses matching what was typed in the search screen.
+final directorySearchProvider =
+    FutureProvider.family<List<DirectoryListing>, String>((ref, query) {
+      return ref.watch(directoryRepositoryProvider).searchDirectory(query);
+    });
 /// Orders from littlebluecart.com, newest first.
 final directoryOrdersProvider = StreamProvider<List<DirectoryOrder>>((ref) {
   final uid = ref.watch(currentUidProvider);

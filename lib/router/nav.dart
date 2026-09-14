@@ -37,6 +37,10 @@ extension LbmNavigation on BuildContext {
   /// Everything filed under one store collection, by handle.
   void goToCollection(String handle) => _pushInBranch('/collection/$handle');
 
+  /// Every published business in one littlebluecart.com category, by slug.
+  void goToDirectoryCategory(String slug) =>
+      _pushInBranch('/directory-category/$slug');
+
   /// Search results for a query, usually a hashtag.
   void goToResults(String query) =>
       _pushInBranch('/results?q=${Uri.encodeComponent(query)}');

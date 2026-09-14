@@ -17,6 +17,7 @@ import '../../widgets/skeleton.dart';
 import '../../widgets/tips.dart';
 import '../../widgets/unverified_banner.dart';
 import 'collection_screen.dart';
+import 'directory_browse_screen.dart';
 
 /// The marketplace feed.
 ///
@@ -101,6 +102,9 @@ class FeedScreen extends ConsumerWidget {
             const UnverifiedBanner(),
             // The store's real taxonomy. Hidden until collections are mirrored.
             const CollectionRail(),
+            // And littlebluecart.com's, the same shape, one chip per
+            // directory category. Hidden until the public sync has run.
+            const DirectoryRail(),
             // Once: why there is no heart. Then: anything delivered and
             // waiting for a review.
             const CartTipCard(),

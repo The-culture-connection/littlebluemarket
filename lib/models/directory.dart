@@ -176,6 +176,31 @@ class DirectoryOrder {
   String get summary => items.map((i) => i.label).join(' · ');
 }
 
+
+/// One of littlebluecart.com's own business categories, with how many
+/// published listings are filed under it.
+///
+/// Rolled up by the public sync into `directoryCategories/{slug}`, so the
+/// "Browse the directory" rail is one small read rather than a count over
+/// every listing on the phone.
+@immutable
+class DirectoryCategory {
+  const DirectoryCategory({
+    required this.slug,
+    required this.name,
+    required this.count,
+  });
+
+  /// "bath-beauty-wellness". The screen's address and the listing query's
+  /// `categorySlugs` entry.
+  final String slug;
+
+  /// The directory's own words: "Bath, Beauty & Wellness".
+  final String name;
+  final int count;
+
+  String get countLabel => count == 1 ? '1 business' : '$count businesses';
+}
 /// One business listing on littlebluecart.com, as the public mirror carries
 /// it: what the website already shows to anyone, with term ids already
 /// turned into names.

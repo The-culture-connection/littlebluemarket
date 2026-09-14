@@ -382,6 +382,27 @@ abstract interface class DirectoryRepository {
   /// Someone's published listings, for their public profile.
   Stream<List<DirectoryListing>> watchPublishedListingsOf(String ownerUid);
 
+
+  /// Every directory category with at least one published listing, biggest
+  /// first. Drives the "Browse the directory" rail on the feed; empty until
+  /// the public sync has run against this project, and the rail then hides
+  /// itself the way the shop's own rail does.
+  Stream<List<DirectoryCategory>> watchDirectoryCategories();
+
+  /// Published listings filed under one category, newest first. Paged from
+  /// the start: nobody knows yet how many listings littlebluecart.com has,
+  /// and a category screen must not read the whole directory to draw ten
+  /// cards.
+  Future<Page<DirectoryListing>> listingsInCategory(
+    String slug, {
+    String? cursor,
+  });
+
+  /// Published listings matching a word in the business's name, its
+  /// categories or its city. Deliberately the same shape as the catalogue's
+  /// own search (a word in an indexed array, plus a prefix scan for a
+  /// phrase), so there is one search scheme in this app and not two.
+  Future<List<DirectoryListing>> searchDirectory(String query);
   /// "Link my directory account", or, with [auto], the silent launch-time
   /// call that reuses a fresher answer and never nags. Idempotent.
   Future<DirectoryLinkResult> link({bool auto = false});

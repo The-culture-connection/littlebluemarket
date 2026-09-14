@@ -18,6 +18,7 @@ import {
   type WcOrderRecord,
   type WpUser,
 } from './wordpress.ts';
+import { titleWords } from './catalog.ts';
 
 /**
  * littlebluecart.com, joined to an app account.
@@ -506,6 +507,214 @@ export async function syncListings(
   }
   await batch.commit();
   return records.length;
+}
+
+
+// ------------------------------------------------- the whole public directory
+
+/**
+ * Grace's #2 (2026-09-14): every published listing on littlebluecart.com in
+ * the app, before anyone has signed up for anything.
+ *
+ * What was there before this only mirrored the listings of accounts that had
+ * already linked by email (`syncAllDirectoryListings` walks `directory`
+ * where status is linked), so a shopper saw nothing until a business joined.
+ * This walks the other way round: every published listing the site will
+ * answer for, whether or not its owner has ever opened the app.
+ *
+ * Three things it deliberately does not do:
+ *
+ *  * **No feed posts.** `syncListings` writes `posts/directory_{id}` for a
+ *    published listing so it announces itself in the Market feed. Doing that
+ *    here would bury the feed under every business in the directory on day
+ *    one. Grace's call: unclaimed listings live under Browse the directory
+ *    and in search, and a listing enters the feed when its owner claims it,
+ *    which is `syncListings`' job and is untouched.
+ *  * **It never blanks an `ownerUid`.** The field is written only when the
+ *    author is a linked member, so a claimed listing stays claimed even if
+ *    the linked-owner map is empty on this pass.
+ *  * **It never touches a pending or draft listing.** Only `publish` is
+ *    crawled, which is also all the site answers without the application
+ *    password. A stranger must not see a listing its owner has not published.
+ */
+
+/** Firestore's cap is 500 writes; leave room for the category rollup. */
+const MIRROR_BATCH = 400;
+
+/** How many listings one call will fetch from WordPress at a time. */
+const FETCH_CHUNK = 100;
+
+export interface PublicDirectoryResult {
+  listings: number;
+  categories: number;
+  claimed: number;
+  removed: number;
+}
+
+/** "Bath, Beauty & Wellness" -> "bath-beauty-wellness". */
+export function categorySlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
+/**
+ * The extra fields a listing needs to be browsable and searchable, on top of
+ * what `listingMirrorDoc` already writes.
+ *
+ * `titleWords` and `titleLower` are the same two fields the `catalog` mirror
+ * carries, built by the same helper, so `FirestoreSearchRepository`'s pattern
+ * ("a word anywhere in the title, plus a prefix scan for a phrase") works
+ * over directory listings without inventing a second search scheme.
+ */
+export function browseFields(
+  record: DirectoryListingRecord,
+  categories: string[],
+  ownerUid: string,
+): Record<string, unknown> {
+  const city = record.businessAddress?.city ?? '';
+  return {
+    categorySlugs: categories.map(categorySlug).filter(Boolean),
+    titleLower: record.title.toLowerCase(),
+    // The business's name, its categories and its city, so searching any of
+    // the three finds it. Capped the way the catalog caps `searchWords`.
+    titleWords: titleWords(`${record.title} ${categories.join(' ')} ${city}`).slice(0, 120),
+    unclaimed: ownerUid === '',
+  };
+}
+
+/** wpUserId -> uid, for the accounts that have linked. */
+async function linkedOwners(): Promise<Map<number, string>> {
+  const snapshot = await getFirestore().collection('directory').where('status', '==', 'linked').get();
+  const map = new Map<number, string>();
+  for (const doc of snapshot.docs) {
+    const wpUserId = Number((doc.data() as DirectoryDoc).wpUserId);
+    if (Number.isFinite(wpUserId) && wpUserId > 0) map.set(wpUserId, doc.id);
+  }
+  return map;
+}
+
+export async function syncPublicDirectory(
+  lookups: Lookups = defaultLookups(),
+  options: { force?: boolean } = {},
+): Promise<PublicDirectoryResult> {
+  if (!wpConfigured()) {
+    throw new HttpsError(
+      'failed-precondition',
+      'The Little Blue Cart directory is not connected to this project yet (WP_BASE_URL).',
+    );
+  }
+  const db = getFirestore();
+  const mirror = db.collection('directoryListings');
+
+  // The owner index is already a full crawl of every listing, rebuilt every
+  // six hours for the claim flow. Reusing it means this costs no extra
+  // requests to the website on a warm index.
+  const index = await ownerIndex(lookups, { force: options.force ?? false });
+  const publishedIds = Object.entries(index)
+    .filter(([, row]) => row.s === 'publish')
+    .map(([id]) => Number(id))
+    .filter((id) => Number.isFinite(id) && id > 0);
+
+  const owners = await linkedOwners();
+  const categoryCounts = new Map<string, { name: string; count: number }>();
+  const seen = new Set<string>();
+  let claimed = 0;
+  let writes = 0;
+  let batch = db.batch();
+  const flush = async () => {
+    if (writes === 0) return;
+    await batch.commit();
+    batch = db.batch();
+    writes = 0;
+  };
+
+  for (let i = 0; i < publishedIds.length; i += FETCH_CHUNK) {
+    const records = await lookups.listingsByIds(publishedIds.slice(i, i + FETCH_CHUNK));
+    const needed = termIdsNeeded(records);
+    const names: TermNames = {
+      vendors_dir_cat: await cachedTermNames('vendors_dir_cat', needed.vendors_dir_cat, lookups),
+      vendors_dir_tag: await cachedTermNames('vendors_dir_tag', needed.vendors_dir_tag, lookups),
+      vendors_loc_loc: await cachedTermNames('vendors_loc_loc', needed.vendors_loc_loc, lookups),
+    };
+    // What the mirror already holds for these ids, so a claimed listing's
+    // ownerUid survives a pass where the linked-owner map cannot name it.
+    const refs = records.map((r) => mirror.doc(String(r.wpPostId)));
+    const existing = refs.length ? await db.getAll(...refs) : [];
+
+    for (const [j, record] of records.entries()) {
+      if (record.status !== 'publish') continue;
+      const id = String(record.wpPostId);
+      seen.add(id);
+      const was = String((existing[j]?.data() as { ownerUid?: unknown } | undefined)?.ownerUid ?? '');
+      const ownerUid = owners.get(record.wpAuthorId) ?? was;
+      if (ownerUid) claimed++;
+
+      const featured = record.featuredMediaId ? await lookups.mediaUrl(record.featuredMediaId) : '';
+      const doc = listingMirrorDoc(record, ownerUid, names, featured || record.ogImageUrl);
+      const categories = (doc.categories as string[]) ?? [];
+      for (const name of categories) {
+        const slug = categorySlug(name);
+        if (!slug) continue;
+        const entry = categoryCounts.get(slug);
+        if (entry) entry.count++;
+        else categoryCounts.set(slug, { name, count: 1 });
+      }
+
+      batch.set(refs[j]!, { ...doc, ...browseFields(record, categories, ownerUid) }, { merge: true });
+      writes++;
+      if (writes >= MIRROR_BATCH) await flush();
+    }
+  }
+
+  // Listings the site no longer publishes. Only the unclaimed ones: a
+  // claimed listing's lifecycle, pending and draft included, belongs to
+  // syncListings, which knows about its owner's other listings.
+  const stale = await mirror.where('unclaimed', '==', true).select().get();
+  let removed = 0;
+  for (const doc of stale.docs) {
+    if (seen.has(doc.id)) continue;
+    batch.delete(doc.ref);
+    writes++;
+    removed++;
+    if (writes >= MIRROR_BATCH) await flush();
+  }
+
+  // The rail on the feed reads this instead of counting listings on a phone.
+  const catalogue = db.collection('directoryCategories');
+  const before = await catalogue.select().get();
+  for (const [slug, { name, count }] of categoryCounts) {
+    batch.set(
+      catalogue.doc(slug),
+      { name, slug, count, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+    writes++;
+    if (writes >= MIRROR_BATCH) await flush();
+  }
+  for (const doc of before.docs) {
+    if (categoryCounts.has(doc.id)) continue;
+    batch.delete(doc.ref);
+    writes++;
+    if (writes >= MIRROR_BATCH) await flush();
+  }
+  await flush();
+
+  const result: PublicDirectoryResult = {
+    listings: seen.size,
+    categories: categoryCounts.size,
+    claimed,
+    removed,
+  };
+  logger.info('Public directory mirrored', result);
+  await db.doc('_internal/publicDirectory').set(
+    { ...result, refreshedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+  return result;
 }
 
 /** The six-hourly pass over every linked owner. */

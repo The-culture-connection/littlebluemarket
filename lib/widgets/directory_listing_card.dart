@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'primitives.dart';
+import 'sheets.dart';
 
 /// One littlebluecart.com listing: the business, where it is, what it is,
 /// who owns it, and the four ways to reach it. Used on the owner's Directory
@@ -16,6 +19,7 @@ class DirectoryListingCard extends StatelessWidget {
     required this.listing,
     this.showStatus = false,
     this.bare = false,
+    this.showClaim = false,
   });
 
   final DirectoryListing listing;
@@ -26,6 +30,11 @@ class DirectoryListingCard extends StatelessWidget {
 
   /// No card chrome of its own: inside a feed post, which is already a card.
   final bool bare;
+
+  /// "Is this your business?" under a listing with no owner. On the browse
+  /// and search screens, where a stranger might be its owner; never on the
+  /// owner's own Directory screen, where every listing is already theirs.
+  final bool showClaim;
 
   Future<void> _open(BuildContext context, Uri? uri) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -154,6 +163,10 @@ class DirectoryListingCard extends StatelessWidget {
                     ],
                   ),
                 ],
+                if (showClaim && l.ownerUid.isEmpty) ...[
+                  const SizedBox(height: 10),
+                  const _ClaimRow(),
+                ],
                 if (l.linkUri != null) ...[
                   const SizedBox(height: 10),
                   InkWell(
@@ -177,5 +190,58 @@ class DirectoryListingCard extends StatelessWidget {
       );
 
     return bare ? content : LbmCard(child: content);
+  }
+}
+
+/// "Is this your business?" on a listing nobody has claimed yet.
+///
+/// The claim itself is the flow Grace has already tapped through: the
+/// directory screen matches the account's verified email against
+/// littlebluecart.com and hands over every listing that member owns at once.
+/// So this is a signpost, not a second mechanism. A guest is asked to make a
+/// profile first, because the match needs an email to match.
+class _ClaimRow extends ConsumerWidget {
+  const _ClaimRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+        color: c.skyWash,
+        borderRadius: LbmRadius.imageR,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Is this your business?',
+            style: LbmText.tiny.copyWith(
+              fontWeight: FontWeight.w800,
+              color: c.ink,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            'Claim it and every other listing of yours at once, then sell '
+            'here too.',
+            style: LbmText.xtiny.copyWith(color: c.ink2, height: 1.45),
+          ),
+          const SizedBox(height: 10),
+          PillButton(
+            'Claim this listing',
+            small: true,
+            expand: false,
+            style: PillStyle.ghost,
+            onPressed: () => requireProfile(
+              context,
+              ref,
+              () => context.push('/you/directory'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
