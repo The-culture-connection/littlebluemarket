@@ -327,6 +327,18 @@ function renderPromoPreview() {
   cta.hidden = !ctaLabel;
   const img = $('pPreviewImg');
   if (photo) { img.src = photo.url; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
+  // The dots the phone draws when there is more than one photo: people
+  // swipe there, so the preview should say so rather than imply the first
+  // picture is all anyone sees.
+  const ready = promoPhotos.filter((entry) => !entry.pending);
+  const dots = $('pPreviewDots');
+  dots.innerHTML = '';
+  dots.hidden = ready.length < 2;
+  for (let i = 0; i < ready.length; i++) {
+    const dot = document.createElement('i');
+    if (i === 0) dot.className = 'on';
+    dots.appendChild(dot);
+  }
 
   $('pTitleLeft').textContent = String(PROMO_TITLE_MAX - title.length);
   $('pCaptionLeft').textContent = String(PROMO_CAPTION_MAX - caption.length);
@@ -521,7 +533,7 @@ renderPromoPreview();
 // Copy for Claude copies the whole log, the way the app's bug button does.
 
 /** Bumped by hand when this file changes, so a stale tab is obvious. */
-const ADMIN_BUILD = '2026-09-14d';
+const ADMIN_BUILD = '2026-09-14e';
 
 const DIR_CALL_TIMEOUT_MS = 560_000;
 const DIR_MAX_CALLS = 60;

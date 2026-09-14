@@ -47,7 +47,9 @@ app.*.map.json
 # Firebase / Cloud Functions
 functions/.env*
 functions/lib/
-functions/node_modules/
+# Anywhere, not just functions/: web-server/node_modules was committed by
+# accident on 2026-09-14 after an npm install there to test the image proxy.
+node_modules/
 *-service-account*.json
 firebase-debug.log
 firestore-debug.log

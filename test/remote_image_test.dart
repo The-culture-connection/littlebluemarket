@@ -29,11 +29,20 @@ void main() {
       expect(resolveImageUrl(url, onWeb: false), url);
     });
 
-    test('everything else is left alone, even on the web', () {
-      // Firebase Storage does send the header, so proxying it would be waste.
+    test('our own Storage needs it too', () {
+      // I assumed Firebase Storage sent the header. It does not, unless the
+      // bucket is given a CORS configuration, and neither of ours has one:
+      // an advert's photo was as blank as a directory listing's
+      // (Grace, 2026-09-14). The server narrows this to our two buckets.
       const storage =
-          'https://firebasestorage.googleapis.com/v0/b/x/o/promos%2Fa.jpg?alt=media';
-      expect(resolveImageUrl(storage, onWeb: true), storage);
+          'https://firebasestorage.googleapis.com/v0/b/little-blue-610e5.firebasestorage.app/o/promos%2Fa.png?alt=media&token=x';
+      final web = resolveImageUrl(storage, onWeb: true);
+      expect(web, startsWith('/img?u='));
+      expect(Uri.parse(web).queryParameters['u'], storage);
+      expect(resolveImageUrl(storage, onWeb: false), storage);
+    });
+
+    test('everything else is left alone, even on the web', () {
       expect(resolveImageUrl('', onWeb: true), '');
       expect(resolveImageUrl('asset://assets/images/a.jpg', onWeb: true),
           'asset://assets/images/a.jpg');

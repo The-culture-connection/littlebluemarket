@@ -131,12 +131,17 @@ report's screenshot shows the popup the person was looking at):
 
 - Fades in over 400 ms, 3 seconds after the feed settles, so it never
   competes with the first paint.
-- A card, not a full-screen barrier, and it does not block the screen behind
-  it: the photo, the title, the caption, the CTA pill, and an X.
-- Fades out on the X, on the CTA, on a flick downwards, or on its own after
-  12 seconds. Deliberately no tap-outside barrier: a transparent barrier that
-  swallows or competes for the tap is how a "non abrasive" popup becomes the
-  thing that ate your tap on a product.
+- **Changed 2026-09-14, after Grace saw it:** a proper modal. The app behind
+  is greyed down with the brand's own ink at 66 per cent, the card is
+  centred, and the picture is a 4:5 poster at the top because "the image as
+  a focal" was the ask. More than one picture is a swipeable carousel with
+  dots. The X sits on the dimmed app above the card so the picture keeps the
+  full width. The cost is real and was hers to accept: while it is up, the
+  feed behind it does not scroll.
+- Fades out on the X, on the CTA, on a tap anywhere outside, on a flick
+  downwards, or on its own after 12 seconds. Five ways out is what keeps a
+  modal from being abrasive: the earlier version had no barrier at all and so
+  could not be dismissed by tapping away from it.
 - **Once per app opening**, and never the same promo twice: the seen ids live
   in `SharedPreferences` beside `Tips`, and a session flag in a provider
   stops a second one after a tab change.

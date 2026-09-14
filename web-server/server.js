@@ -45,6 +45,15 @@ app.get('/healthz', (req, res) => res.send('ok'));
 // `Access-Control-Allow-Origin: *` on /wp-content/uploads would let the
 // browser load the pictures directly.
 const IMAGE_HOSTS = new Set(['littlebluecart.com', 'www.littlebluecart.com']);
+// Firebase Storage sends no CORS header either unless the bucket is given a
+// configuration, and neither of ours has one. Allowed by bucket rather than
+// by host, so this cannot be used to fetch somebody else's Storage file.
+const IMAGE_BUCKET_HOST = 'firebasestorage.googleapis.com';
+const IMAGE_BUCKETS = ['little-blue-610e5.firebasestorage.app', 'little-blue-cart-prod.firebasestorage.app'];
+function bucketAllowed(url) {
+  if (url.hostname !== IMAGE_BUCKET_HOST) return false;
+  return IMAGE_BUCKETS.some((b) => url.pathname.startsWith('/v0/b/' + b + '/o/'));
+}
 const IMAGE_TIMEOUT_MS = 15_000;
 const IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 
@@ -57,7 +66,7 @@ app.get('/img', async (req, res) => {
     res.status(400).type('text/plain').send('Not a web address.');
     return;
   }
-  if (url.protocol !== 'https:' || !IMAGE_HOSTS.has(url.hostname)) {
+  if (url.protocol !== 'https:' || !(IMAGE_HOSTS.has(url.hostname) || bucketAllowed(url))) {
     res.status(403).type('text/plain').send('That host is not served here.');
     return;
   }

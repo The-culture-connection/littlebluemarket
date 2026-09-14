@@ -15,7 +15,17 @@ import '../theme/tokens.dart';
 /// out `/img?u=…`, fetching the picture itself. Keep this set in step with
 /// the allowlist in `web-server/server.js`; a host missing there is a broken
 /// image, a host missing here is a blank one.
-const _hostsWithoutCors = {'littlebluecart.com', 'www.littlebluecart.com'};
+const _hostsWithoutCors = {
+  'littlebluecart.com',
+  'www.littlebluecart.com',
+  // Our own Storage, too. A Firebase download URL carries no
+  // Access-Control-Allow-Origin either unless the bucket is given a CORS
+  // configuration, and neither of ours has one, so an advert's photo was as
+  // blank as a directory listing's (Grace, 2026-09-14). Unlike
+  // littlebluecart.com this one we could fix properly at the bucket; until
+  // someone with gcloud does, it goes the same way.
+  'firebasestorage.googleapis.com',
+};
 
 /// The address to actually load [url] from.
 ///

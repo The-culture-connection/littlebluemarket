@@ -48,16 +48,21 @@
   ul.thumbs img { width: 72px; height: 54px; object-fit: cover; border-radius: 8px; border: 1px solid #e3e9f1; display: block; }
   ul.thumbs .rm { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 999px; border: 0; background: var(--ink); color: #fff; font-size: 13px; line-height: 20px; padding: 0; cursor: pointer; }
   ul.thumbs .pending { opacity: .45; }
-  .phone { background: #e8f0f9; border-radius: 16px; padding: 18px 14px; margin-top: 4px; }
-  .promo { background: #fff; border-radius: 16px; box-shadow: 0 2px 10px rgba(31,42,58,.12); overflow: hidden; max-width: 340px; margin: 0 auto; }
-  .promo img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
-  .promo-body { padding: 12px 14px 14px; }
-  .promo-row { display: flex; align-items: center; justify-content: space-between; }
-  .promo-from { font-size: 10.5px; font-weight: 800; letter-spacing: .6px; color: var(--ink2); }
-  .promo-x { color: var(--ink2); font-size: 17px; line-height: 1; }
-  .promo-title { font-size: 17px; font-weight: 700; margin-top: 4px; color: var(--ink); }
-  .promo-caption { font-size: 13.5px; line-height: 1.45; color: var(--ink2); margin-top: 5px; white-space: pre-wrap; }
-  .promo-cta { display: inline-block; margin-top: 12px; background: #2d5f9e; color: #fff; font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 999px; }
+  /* The app, greyed down, with the popup over it: the same arrangement the
+     phone draws, so what Grace approves here is what people get. */
+  .phone { background: #4b5566; border-radius: 16px; padding: 20px 16px; margin-top: 4px; }
+  .promo { background: #fff; border-radius: 20px; box-shadow: 0 10px 30px rgba(15,22,33,.35); overflow: hidden; max-width: 320px; margin: 0 auto; }
+  .promo img { width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block; background: var(--mist); }
+  .promo-body { padding: 15px 17px 18px; }
+  .promo-row { display: flex; align-items: center; justify-content: flex-end; max-width: 320px; margin: 0 auto 9px; }
+  .promo-from { font-size: 10.5px; font-weight: 800; letter-spacing: .7px; color: var(--ink2); }
+  .promo-x { width: 32px; height: 32px; border-radius: 999px; background: #fff; color: var(--ink); font-size: 18px; line-height: 32px; text-align: center; box-shadow: 0 2px 8px rgba(15,22,33,.25); }
+  .promo-title { font-size: 21px; font-weight: 700; line-height: 1.15; margin-top: 6px; color: var(--ink); }
+  .promo-caption { font-size: 14px; line-height: 1.5; color: var(--ink2); margin-top: 7px; white-space: pre-wrap; }
+  .promo-cta { display: block; text-align: center; margin-top: 16px; background: #2d5f9e; color: #fff; font-size: 14px; font-weight: 700; padding: 11px 16px; border-radius: 999px; }
+  .promo-dots { display: flex; gap: 5px; justify-content: center; margin-top: -22px; position: relative; }
+  .promo-dots i { width: 7px; height: 7px; border-radius: 4px; background: rgba(255,255,255,.6); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .promo-dots i.on { width: 18px; background: #fff; }
   .promo-empty { color: var(--ink2); font-style: italic; }
   /* The directory pull's running log: what it is doing, line by line, and
      the whole of any error. Grace saw a two-word red code and could not
@@ -202,13 +207,12 @@
 
     <label>What people will see</label>
     <div class="phone">
+      <div class="promo-row"><span class="promo-x">&times;</span></div>
       <div id="pPreview" class="promo">
         <img id="pPreviewImg" alt="" hidden>
+        <div id="pPreviewDots" class="promo-dots" hidden></div>
         <div class="promo-body">
-          <div class="promo-row">
-            <span id="pPreviewFrom" class="promo-from">SPONSORED</span>
-            <span class="promo-x">&times;</span>
-          </div>
+          <span id="pPreviewFrom" class="promo-from">SPONSORED</span>
           <div id="pPreviewTitle" class="promo-title">Title</div>
           <div id="pPreviewCaption" class="promo-caption">Caption</div>
           <span id="pPreviewCta" class="promo-cta" hidden>Button</span>
