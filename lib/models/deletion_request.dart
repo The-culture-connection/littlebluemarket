@@ -2,6 +2,13 @@ import 'package:flutter/foundation.dart';
 
 import 'formatting.dart';
 
+/// What somebody types to confirm deleting their own account.
+///
+/// The backend compares against its own copy of this exactly, so changing
+/// it here alone would refuse every deletion. It is a word rather than a
+/// second tap because two taps are easy to do by accident.
+const kDeleteConfirmation = 'DELETE';
+
 /// How much someone wants removed.
 ///
 /// Two answers, because the app stores are asked about two different things:

@@ -27,17 +27,86 @@ class DeleteAccountScreen extends ConsumerStatefulWidget {
 class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
   final _email = TextEditingController();
   final _note = TextEditingController();
+  final _confirm = TextEditingController();
   var _scope = DeletionScope.account;
   var _sending = false;
   var _sent = false;
+  var _deleting = false;
+  int? _deletedPosts;
   String? _error;
   var _prefilled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _confirm.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
     _email.dispose();
     _note.dispose();
+    _confirm.dispose();
     super.dispose();
+  }
+
+  /// Deletes it now. Every guard is the backend's: this only asks twice and
+  /// then gets out of the way.
+  Future<void> _deleteNow() async {
+    if (_deleting) return;
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          _scope == DeletionScope.account
+              ? 'Delete your account?'
+              : 'Erase your information?',
+        ),
+        content: Text(
+          _scope == DeletionScope.account
+              ? 'Your profile, your posts and your sign-in go now, and cannot '
+                    'be brought back. Orders stay as financial records, which '
+                    'the privacy policy explains.'
+              : 'Your bio, photo, hashtags and location are cleared now. Your '
+                    'account stays, so you can keep buying.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep it'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              _scope == DeletionScope.account ? 'Delete for ever' : 'Erase it',
+            ),
+          ),
+        ],
+      ),
+    );
+    if (sure != true || !mounted) return;
+
+    setState(() {
+      _deleting = true;
+      _error = null;
+    });
+    try {
+      final posts = await ref
+          .read(accountRepositoryProvider)
+          .deleteMyAccount(scope: _scope, confirmation: _confirm.text);
+      if (!mounted) return;
+      setState(() => _deletedPosts = posts);
+      // The account is gone, so the session has to go with it; staying
+      // signed in to nothing is how a screen ends up showing errors.
+      if (_scope == DeletionScope.account) {
+        await ref.read(authServiceProvider).signOut();
+      }
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() => _error = describeError(error).body);
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
   }
 
   Future<void> _send() async {
@@ -110,6 +179,35 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+            ] else if (_deletedPosts case final posts?) ...[
+              LbmCard(
+                color: c.sageMist,
+                child: RowStack(
+                  children: [
+                    Text(
+                      _scope == DeletionScope.account
+                          ? 'Your account is gone'
+                          : 'Your information is erased',
+                      style: LbmText.display.copyWith(
+                        fontSize: 19,
+                        color: c.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _scope == DeletionScope.account
+                          ? 'Your profile and sign-in have been removed, along '
+                                'with ${posts == 1 ? '1 post' : '$posts posts'}. '
+                                'You have been signed out. Orders stay as '
+                                'financial records.'
+                          : 'Your bio, photo, hashtags and location have been '
+                                'cleared. Your account is still yours.',
+                      style: LbmText.body.copyWith(color: c.ink2),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
             ] else ...[
               Text(
                 'What would you like removed?',
@@ -117,9 +215,13 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                'Tell us which, and we will do it by hand and write back. '
-                'Nothing is removed the moment you tap send, because an account '
-                'can have a shop and live orders behind it.',
+                locked
+                    ? 'You are signed in, so this happens straight away and '
+                          'cannot be undone.'
+                    : 'Tell us which, and we will do it by hand and write '
+                          'back. Nothing is removed the moment you tap send: '
+                          'anyone can type an address here, so a person '
+                          'checks it first.',
                 style: LbmText.body.copyWith(color: c.ink2),
               ),
               const SizedBox(height: 18),
@@ -153,10 +255,37 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                 Text(_error!, style: LbmText.tiny.copyWith(color: c.clay)),
               ],
               const SizedBox(height: 16),
-              PillButton(
-                _sending ? 'Sending…' : 'Send my request',
-                onPressed: _sending ? null : _send,
-              ),
+              if (locked) ...[
+                LbmField(
+                  label: 'Type $kDeleteConfirmation to confirm',
+                  controller: _confirm,
+                  helper:
+                      'A word rather than a second tap, because this cannot '
+                      'be undone.',
+                ),
+                const SizedBox(height: 14),
+                PillButton(
+                  _deleting
+                      ? 'Deleting…'
+                      : _scope == DeletionScope.account
+                      ? 'Delete my account now'
+                      : 'Erase my information now',
+                  onPressed: _deleting || _confirm.text.trim() != kDeleteConfirmation
+                      ? null
+                      : _deleteNow,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'If it refuses because you signed in a while ago, sign out '
+                  'and back in, then come here again. That is deliberate: it '
+                  'stops an unlocked phone being enough to erase somebody.',
+                  style: LbmText.tiny.copyWith(color: c.ink3, height: 1.5),
+                ),
+              ] else
+                PillButton(
+                  _sending ? 'Sending…' : 'Send my request',
+                  onPressed: _sending ? null : _send,
+                ),
               const SizedBox(height: 22),
             ],
             const _WhatHappens(),

@@ -135,6 +135,20 @@ abstract interface class CommerceRepository {
 abstract interface class AccountRepository {
   Future<void> requestDeletion(NewDeletionRequest draft);
 
+  /// Deletes **your own** account, or just your data, at once.
+  ///
+  /// The backend decides, not the app: the account is the caller's by
+  /// construction, they must have signed in in the last ten minutes, they
+  /// must have typed [kDeleteConfirmation], and an admin account is
+  /// refused. So the screen's job is to be clear, not to be the guard.
+  ///
+  /// Returns how many posts went with it. Throws a [RepositoryException]
+  /// whose message says what to do when a guard refuses.
+  Future<int> deleteMyAccount({
+    required DeletionScope scope,
+    required String confirmation,
+  });
+
   /// Admins only; empty for anyone else rather than an error.
   Stream<List<DeletionRequest>> watchDeletionRequests({int limit = 100});
 

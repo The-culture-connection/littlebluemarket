@@ -2289,6 +2289,27 @@ class FixtureAccountRepository implements AccountRepository {
   }
 
   @override
+  Future<int> deleteMyAccount({
+    required DeletionScope scope,
+    required String confirmation,
+  }) async {
+    await _backend._settle();
+    // The same refusals the backend makes, so the demo behaves like the
+    // real thing rather than always succeeding.
+    if (confirmation != kDeleteConfirmation) {
+      throw const ValidationException('Type DELETE to confirm.');
+    }
+    final posts = _store.posts.value
+        .where((p) => p.authorId == Fx.meId)
+        .length;
+    _store.posts.value = [
+      for (final post in _store.posts.value)
+        if (post.authorId != Fx.meId) post,
+    ];
+    return posts;
+  }
+
+  @override
   Future<int> deleteAccountNow({
     required String uid,
     required String requestId,

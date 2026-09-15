@@ -69,6 +69,23 @@ class FirestoreAccountRepository implements AccountRepository {
       }, operation: 'firestore deletionRequests setStatus');
 
   @override
+  Future<int> deleteMyAccount({
+    required DeletionScope scope,
+    required String confirmation,
+  }) => guardFirestore(() async {
+    final result = await _functions
+        .httpsCallable(
+          'deleteMyAccountNow',
+          options: HttpsCallableOptions(timeout: const Duration(seconds: 310)),
+        )
+        .call<Map<String, dynamic>>({
+          'scope': scope.value,
+          'confirm': confirmation,
+        });
+    return FirestoreMappers.integer(result.data['postsRemoved']);
+  }, operation: 'callable deleteMyAccountNow');
+
+  @override
   Future<int> deleteAccountNow({
     required String uid,
     required String requestId,

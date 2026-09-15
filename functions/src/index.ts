@@ -61,7 +61,11 @@ import { withLoudErrors } from './errors.ts';
 import { bumpCounter, counterDelta, starKey } from './counters.ts';
 import { claimAdmin, requireAdmin } from './admin.ts';
 import { banUser, unbanUser } from './moderation.ts';
-import { deleteAccountData, requestAccountDeletion as fileDeletionRequest } from './account_deletion.ts';
+import {
+  deleteAccountData,
+  deleteMyAccount,
+  requestAccountDeletion as fileDeletionRequest,
+} from './account_deletion.ts';
 import { listVendorUsers } from './shipturtle_api.ts';
 import { resolvePendingVendors } from './vendor_directory.ts';
 import { syncCollections } from './collections.ts';
@@ -419,6 +423,22 @@ export const requestAccountDeletion = onCall(
   ),
 );
 
+
+/**
+ * "Delete my account", from inside the app, at once (Grace, 2026-09-14).
+ *
+ * Every guard lives in `deleteMyAccount`: the account is the caller's by
+ * construction, they must have signed in within ten minutes, they must have
+ * typed the word, and an admin account is refused. 300 seconds because a
+ * profile with a lot of posts is a lot of recursive deletes.
+ */
+export const deleteMyAccountNow = onCall(
+  { timeoutSeconds: 300 },
+  withLoudErrors('deleteMyAccountNow', async (request) => {
+    const uid = requireUid(request.auth);
+    return deleteMyAccount(uid, request.auth?.token, request.data ?? {});
+  }),
+);
 /** Carries a deletion out. Admin only. */
 export const adminDeleteAccount = onCall(
   { timeoutSeconds: 300 },
