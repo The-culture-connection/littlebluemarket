@@ -5,8 +5,15 @@ import 'package:url_launcher/url_launcher.dart';
 abstract final class LegalLinks {
   static const privacyPolicy =
       'https://littlebluemarket.com/policies/privacy-policy';
-  static const termsOfService =
+  /// The **store's** policy: buying, delivery, returns. Not the app's
+  /// terms of use, which is why [termsRoute] exists as well.
+  static const storeTerms =
       'https://littlebluemarket.com/policies/terms-of-service';
+
+  /// The app's own terms of use, held in the app rather than on the web, so
+  /// somebody agreeing to them during sign-up is never shown a spinner or a
+  /// 404. See `screens/onboarding/eula_screen.dart`.
+  static const termsRoute = '/terms';
 
   /// Where someone asks for their account or their data to be removed. A
   /// route inside the app, so it works on a phone and in a browser; the
@@ -26,6 +33,15 @@ abstract final class LbmLinks {
 
   /// The partner guide: what advertising here involves and what it costs.
   static const advertise = 'https://canva.link/lbcpartnerguide';
+
+  /// Published contact for support, which the app stores require the terms
+  /// to carry.
+  ///
+  /// **This mailbox has to exist before launch.** It is the same one CP-M1
+  /// asks for, on littlebluecart.com (Google Workspace, so mail from it is
+  /// signed). Published contact information that bounces is worse than
+  /// none.
+  static const supportEmail = 'hello@littlebluecart.com';
 }
 
 /// Opens a policy in the phone's browser. False when nothing could open it,

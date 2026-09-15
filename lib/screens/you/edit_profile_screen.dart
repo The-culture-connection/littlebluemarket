@@ -271,10 +271,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   title: 'Privacy policy',
                   url: LegalLinks.privacyPolicy,
                 ),
+                ListRow(
+                  leading: Icon(Icons.gavel_rounded, color: c.ink3),
+                  title: const Text('Terms of use'),
+                  subtitle: const Text('What you agreed to when you joined'),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 22,
+                    color: c.ink3,
+                  ),
+                  onTap: () => context.push(LegalLinks.termsRoute),
+                ),
                 _PolicyRow(
-                  icon: Icons.gavel_rounded,
-                  title: 'Terms of service',
-                  url: LegalLinks.termsOfService,
+                  icon: Icons.local_shipping_outlined,
+                  title: 'Store policy',
+                  url: LegalLinks.storeTerms,
                 ),
                 ListRow(
                   leading: Icon(Icons.delete_outline_rounded, color: c.ink3),

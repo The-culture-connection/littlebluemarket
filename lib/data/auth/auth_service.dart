@@ -89,6 +89,19 @@ abstract interface class AuthService {
   /// known: saying so turns this screen into a way to enumerate accounts.
   Future<void> sendPasswordReset(String email);
 
+  /// Proves the person at the phone is the account holder, by their
+  /// password, without signing out.
+  ///
+  /// Needed before anything irreversible. The backend will only delete an
+  /// account whose token says it signed in minutes ago, and a phone stays
+  /// signed in for weeks, so without this the only way to satisfy it was to
+  /// sign out and back in, which is a miserable thing to ask of somebody
+  /// trying to leave (Grace hit exactly that, 2026-09-14).
+  ///
+  /// Refreshes the token afterwards, so the next callable sees the new
+  /// sign-in time rather than the old one.
+  Future<void> reauthenticate(String password);
+
   /// Anonymous sign-in, so a guest still has a uid.
   Future<void> continueAsGuest();
 
@@ -259,6 +272,15 @@ class FixtureAuthService implements AuthService {
 
   @override
   Future<void> sendPasswordReset(String email) async => _checkEmail(email);
+
+  @override
+  Future<void> reauthenticate(String password) async {
+    // The demo accepts any password of a plausible length, and refuses an
+    // empty one, so the screen's own handling of a refusal is exercised.
+    if (password.trim().length < 6) {
+      throw const PermissionException('That password is not right.');
+    }
+  }
 
   @override
   Future<void> continueAsGuest() async {

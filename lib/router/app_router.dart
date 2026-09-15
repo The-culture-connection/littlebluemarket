@@ -26,6 +26,7 @@ import '../screens/you/admin_screen.dart';
 import '../screens/you/notification_settings_screen.dart';
 import '../screens/you/notifications_screen.dart';
 import '../screens/you/sell_screen.dart';
+import '../screens/onboarding/eula_screen.dart';
 import '../screens/you/blocked_screen.dart';
 import '../screens/you/claim_shop_screen.dart';
 import '../screens/you/diagnostics_screen.dart';
@@ -143,6 +144,8 @@ GoRouter buildRouter(Ref ref) {
       // both app stores require that, and the website address of it is what
       // goes in their forms.
       if (path.startsWith('/delete-account')) return null;
+      // Terms before there is an account: that is when they are agreed to.
+      if (path.startsWith('/terms')) return null;
 
       // The onboarding routes decide their own next step.
       if (path == '/' ||
@@ -181,6 +184,10 @@ GoRouter buildRouter(Ref ref) {
       // "Are you…": the seven doors behind Create a Profile. The door rides
       // along as ?intent= through the three routes below.
       // Public on purpose; see the redirect above.
+      GoRoute(
+        path: '/terms',
+        builder: (context, state) => const TermsScreen(),
+      ),
       GoRoute(
         path: '/delete-account',
         builder: (context, state) => const DeleteAccountScreen(),

@@ -52,6 +52,21 @@ Future<ProviderContainer> _open(
   return container;
 }
 
+/// Fills in the password and the word. The password is asked for in the
+/// screen itself so the backend's recent-sign-in rule can be met without
+/// signing out (Grace, 2026-09-14).
+Future<void> _fillIn(
+  WidgetTester tester, {
+  String password = 'a-good-password',
+  String confirm = kDeleteConfirmation,
+}) async {
+  final fields = find.byType(TextField);
+  // Password first, then the word: the order they appear on screen.
+  await tester.enterText(fields.at(fields.evaluate().length - 2), password);
+  await tester.enterText(fields.last, confirm);
+  await tester.pumpAndSettle();
+}
+
 PillButton _button(WidgetTester tester, String label) =>
     tester.widget<PillButton>(find.widgetWithText(PillButton, label).first);
 
@@ -70,8 +85,7 @@ void main() {
 
     // The wrong word, including the right word in the wrong case.
     for (final typed in ['delete', 'Delete', 'DELET', 'yes']) {
-      await tester.enterText(find.byType(TextField).last, typed);
-      await tester.pumpAndSettle();
+      await _fillIn(tester, confirm: typed);
       expect(
         _button(tester, 'Delete my account now').onPressed,
         isNull,
@@ -79,15 +93,17 @@ void main() {
       );
     }
 
-    await tester.enterText(find.byType(TextField).last, kDeleteConfirmation);
-    await tester.pumpAndSettle();
+    await _fillIn(tester);
     expect(_button(tester, 'Delete my account now').onPressed, isNotNull);
+
+    // The word alone is not enough: the password is asked for too.
+    await _fillIn(tester, password: '');
+    expect(_button(tester, 'Delete my account now').onPressed, isNull);
   });
 
   testWidgets('it asks once more before doing it', (tester) async {
     await _open(tester, signedIn: true);
-    await tester.enterText(find.byType(TextField).last, kDeleteConfirmation);
-    await tester.pumpAndSettle();
+    await _fillIn(tester);
 
     await tester.tap(find.text('Delete my account now'));
     await tester.pumpAndSettle();
@@ -104,8 +120,7 @@ void main() {
 
   testWidgets('and then it says what went', (tester) async {
     await _open(tester, signedIn: true);
-    await tester.enterText(find.byType(TextField).last, kDeleteConfirmation);
-    await tester.pumpAndSettle();
+    await _fillIn(tester);
     await tester.ensureVisible(find.text('Delete my account now'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete my account now'));
@@ -129,8 +144,7 @@ void main() {
     tester,
   ) async {
     final container = await _open(tester, signedIn: true);
-    await tester.enterText(find.byType(TextField).last, kDeleteConfirmation);
-    await tester.pumpAndSettle();
+    await _fillIn(tester);
     await tester.ensureVisible(find.text('Delete my account now'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete my account now'));

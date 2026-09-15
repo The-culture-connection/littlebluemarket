@@ -30,6 +30,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
   final _email = TextEditingController();
   final _note = TextEditingController();
   final _confirm = TextEditingController();
+  final _password = TextEditingController();
   var _scope = DeletionScope.account;
   var _sending = false;
   var _sent = false;
@@ -42,6 +43,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
   void initState() {
     super.initState();
     _confirm.addListener(() => setState(() {}));
+    _password.addListener(() => setState(() {}));
   }
 
   @override
@@ -49,6 +51,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     _email.dispose();
     _note.dispose();
     _confirm.dispose();
+    _password.dispose();
     super.dispose();
   }
 
@@ -98,6 +101,12 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
       _error = null;
     });
     try {
+      // The password, here, now. The backend only deletes an account whose
+      // token says it signed in minutes ago; a phone stays signed in for
+      // weeks, so this is what makes that rule satisfiable without a
+      // sign-out dance (Grace hit exactly that, 2026-09-14). It is also the
+      // stronger check: knowing the password beats holding the phone.
+      await ref.read(authServiceProvider).reauthenticate(_password.text);
       final posts = await ref
           .read(accountRepositoryProvider)
           .deleteMyAccount(scope: _scope, confirmation: _confirm.text);
@@ -281,6 +290,15 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
               const SizedBox(height: 16),
               if (locked) ...[
                 LbmField(
+                  label: 'Your password',
+                  controller: _password,
+                  obscureText: true,
+                  helper:
+                      'Asked again here, so that holding an unlocked phone '
+                      'is not enough to erase somebody.',
+                ),
+                const SizedBox(height: 12),
+                LbmField(
                   label: 'Type $kDeleteConfirmation to confirm',
                   controller: _confirm,
                   helper:
@@ -294,15 +312,17 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                       : _scope == DeletionScope.account
                       ? 'Delete my account now'
                       : 'Erase my information now',
-                  onPressed: _deleting || _confirm.text.trim() != kDeleteConfirmation
+                  onPressed:
+                      _deleting ||
+                          _confirm.text.trim() != kDeleteConfirmation ||
+                          _password.text.isEmpty
                       ? null
                       : _deleteNow,
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'If it refuses because you signed in a while ago, sign out '
-                  'and back in, then come here again. That is deliberate: it '
-                  'stops an unlocked phone being enough to erase somebody.',
+                  'Orders stay as financial records, which the privacy policy '
+                  'explains. Everything else about you goes.',
                   style: LbmText.tiny.copyWith(color: c.ink3, height: 1.5),
                 ),
               ] else

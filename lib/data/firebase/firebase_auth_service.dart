@@ -173,6 +173,26 @@ class FirebaseAuthService implements AuthService {
   }
 
   @override
+  Future<void> reauthenticate(String password) async {
+    final user = _auth.currentUser;
+    final email = user?.email;
+    if (user == null || email == null || email.isEmpty) {
+      throw const PermissionException('Sign in first.');
+    }
+    try {
+      await user.reauthenticateWithCredential(
+        fb.EmailAuthProvider.credential(email: email, password: password),
+      );
+      // The claim the backend checks is `auth_time`, and it only changes in
+      // a freshly minted token, so force one rather than waiting up to an
+      // hour for the next refresh.
+      await user.getIdToken(true);
+    } on fb.FirebaseAuthException catch (error) {
+      throw _translate(error);
+    }
+  }
+
+  @override
   Future<AuthUser> signInWithPassword({
     required String email,
     required String password,

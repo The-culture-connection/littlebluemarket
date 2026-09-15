@@ -975,7 +975,7 @@ class _LegalNote extends StatefulWidget {
 
 class _LegalNoteState extends State<_LegalNote> {
   late final _terms = TapGestureRecognizer()
-    ..onTap = () => _open(LegalLinks.termsOfService);
+    ..onTap = () => _open(LegalLinks.storeTerms);
   late final _privacy = TapGestureRecognizer()
     ..onTap = () => _open(LegalLinks.privacyPolicy);
 
@@ -1049,10 +1049,17 @@ class _AgreeToTerms extends StatefulWidget {
 }
 
 class _AgreeToTermsState extends State<_AgreeToTerms> {
+  // The app's own terms, opened in the app. The store's policy page is
+  // about buying and shipping and says nothing about what may be posted.
   late final _terms = TapGestureRecognizer()
-    ..onTap = () => openLegalLink(LegalLinks.termsOfService);
+    ..onTap = () => _openTerms();
   late final _privacy = TapGestureRecognizer()
     ..onTap = () => openLegalLink(LegalLinks.privacyPolicy);
+
+  void _openTerms() {
+    if (!mounted) return;
+    context.push(LegalLinks.termsRoute);
+  }
 
   @override
   void dispose() {
@@ -1082,7 +1089,7 @@ class _AgreeToTermsState extends State<_AgreeToTerms> {
       // agreement rather than an unlabelled tick.
       child: Semantics(
         checked: widget.agreed,
-        label: 'I agree to the Terms of Service and the Privacy Policy',
+        label: 'I agree to the Terms of Use and the Privacy Policy',
         child: InkWell(
           onTap: () => widget.onChanged(!widget.agreed),
           borderRadius: BorderRadius.circular(12),
@@ -1121,7 +1128,7 @@ class _AgreeToTermsState extends State<_AgreeToTerms> {
                         children: [
                           const TextSpan(text: 'I agree to the '),
                           TextSpan(
-                            text: 'Terms of Service',
+                            text: 'Terms of Use',
                             style: link,
                             recognizer: _terms,
                           ),
