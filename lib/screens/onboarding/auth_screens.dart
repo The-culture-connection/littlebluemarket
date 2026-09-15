@@ -331,6 +331,9 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
   final _password = TextEditingController();
   bool _valid = false;
   bool _busy = false;
+  /// Ticked to agree to the terms. Only asked when creating an account, and
+  /// the Create button stays dead until it is.
+  bool _agreed = false;
   String? _error;
   String? _notice;
 
@@ -362,6 +365,9 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
 
   Future<void> _submit() async {
     if (!_valid || _busy) return;
+    // Belt and braces: the button is disabled without the tick, and this
+    // refuses anyway, so no future edit to the button can slip past it.
+    if (widget.creating && !_agreed) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -469,11 +475,18 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
         ],
       ],
       actions: [
+        if (widget.creating)
+          _AgreeToTerms(
+            agreed: _agreed,
+            onChanged: (next) => setState(() => _agreed = next),
+          ),
         _SlateButton(
           label: _busy
               ? 'One moment…'
               : (widget.creating ? 'Create my profile' : 'Sign in'),
-          onPressed: _valid && !_busy ? _submit : null,
+          onPressed: _valid && !_busy && (!widget.creating || _agreed)
+              ? _submit
+              : null,
         ),
         if (!widget.creating)
           _QuietAction('I forgot my password', onPressed: _resetPassword),
@@ -484,7 +497,6 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
             '${widget.intent.querySuffix}',
           ),
         ),
-        if (widget.creating) const _LegalNote(),
       ],
     );
   }
@@ -1009,6 +1021,126 @@ class _LegalNoteState extends State<_LegalNote> {
           ],
         ),
         textAlign: TextAlign.center,
+      ),
+    );
+  }
+}
+
+/// "I agree to the Terms of Service and Privacy Policy", as a tick that has
+/// to be given before an account can be created.
+///
+/// Grace created an account and never saw the terms (2026-09-14). They were
+/// there, as `_LegalNote`: 11.5px, three quarters opacity, the last thing on
+/// the screen, below the button and below "I already have a profile". Being
+/// present is not the same as being presented, and both app stores ask that
+/// somebody actually agrees. So it is legible, it is above the button, and
+/// the button does not work until it is ticked.
+///
+/// Both policies remain tappable, and both are also rows in Edit profile for
+/// anybody who wants to read them later.
+class _AgreeToTerms extends StatefulWidget {
+  const _AgreeToTerms({required this.agreed, required this.onChanged});
+
+  final bool agreed;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  State<_AgreeToTerms> createState() => _AgreeToTermsState();
+}
+
+class _AgreeToTermsState extends State<_AgreeToTerms> {
+  late final _terms = TapGestureRecognizer()
+    ..onTap = () => openLegalLink(LegalLinks.termsOfService);
+  late final _privacy = TapGestureRecognizer()
+    ..onTap = () => openLegalLink(LegalLinks.privacyPolicy);
+
+  @override
+  void dispose() {
+    _terms.dispose();
+    _privacy.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final base = TextStyle(
+      fontFamily: kBodyFont,
+      fontSize: 13,
+      height: 1.45,
+      fontWeight: FontWeight.w600,
+      color: LbmConst.onWelcome,
+    );
+    final link = base.copyWith(
+      decoration: TextDecoration.underline,
+      decorationColor: LbmConst.onWelcome,
+      fontWeight: FontWeight.w800,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 2, 4, 10),
+      // The whole row is the control, so a screen reader announces the
+      // agreement rather than an unlabelled tick.
+      child: Semantics(
+        checked: widget.agreed,
+        label: 'I agree to the Terms of Service and the Privacy Policy',
+        child: InkWell(
+          onTap: () => widget.onChanged(!widget.agreed),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Drawn rather than a Checkbox: this sits on the artwork,
+                // where Material's own colours do not belong.
+                Container(
+                  width: 24,
+                  height: 24,
+                  margin: const EdgeInsets.only(top: 1),
+                  decoration: BoxDecoration(
+                    color: widget.agreed
+                        ? LbmConst.onWelcome
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(color: LbmConst.onWelcome, width: 2),
+                  ),
+                  child: widget.agreed
+                      ? Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color: LbmConst.welcomeBlue,
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: ExcludeSemantics(
+                    child: Text.rich(
+                      TextSpan(
+                        style: base,
+                        children: [
+                          const TextSpan(text: 'I agree to the '),
+                          TextSpan(
+                            text: 'Terms of Service',
+                            style: link,
+                            recognizer: _terms,
+                          ),
+                          const TextSpan(text: ' and the '),
+                          TextSpan(
+                            text: 'Privacy Policy',
+                            style: link,
+                            recognizer: _privacy,
+                          ),
+                          const TextSpan(text: '.'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

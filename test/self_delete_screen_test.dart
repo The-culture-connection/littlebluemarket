@@ -119,6 +119,34 @@ void main() {
     expect(find.textContaining('signed out'), findsOneWidget);
     // The honest bit: orders are kept, and the screen says so.
     expect(find.textContaining('financial records'), findsWidgets);
+    // And a way off a page about deleting an account that no longer exists.
+    // The automatic reroute is off under test (it waits three seconds); the
+    // button is the same door and is always there.
+    expect(find.text('Sign in or create a profile'), findsOneWidget);
+  });
+
+  testWidgets('the button goes to creating an account, not back to nothing', (
+    tester,
+  ) async {
+    final container = await _open(tester, signedIn: true);
+    await tester.enterText(find.byType(TextField).last, kDeleteConfirmation);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Delete my account now'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete my account now'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete for ever'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Sign in or create a profile'));
+    await tester.pumpAndSettle();
+    final where = container
+        .read(routerProvider)
+        .routerDelegate
+        .currentConfiguration
+        .uri;
+    expect(where.path, '/signin');
+    expect(where.queryParameters['create'], '1');
   });
 
   testWidgets('signed out it is still a request, never a wipe', (tester) async {
