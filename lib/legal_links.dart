@@ -35,13 +35,18 @@ abstract final class LbmLinks {
   static const advertise = 'https://canva.link/lbcpartnerguide';
 
   /// Published contact for support, which the app stores require the terms
-  /// to carry.
+  /// to carry, and which section 11 of the terms prints.
   ///
-  /// **This mailbox has to exist before launch.** It is the same one CP-M1
-  /// asks for, on littlebluecart.com (Google Workspace, so mail from it is
-  /// signed). Published contact information that bounces is worse than
-  /// none.
-  static const supportEmail = 'hello@littlebluecart.com';
+  /// Grace's choice, 2026-09-14. **The mailbox has to be watched**, because
+  /// this is the address a reviewer writes to and the one a person uses
+  /// when the bug button is not enough. Published contact information that
+  /// bounces, or that nobody reads, is worse than none.
+  ///
+  /// Separate from the address the app *sends* confirmation email from
+  /// (SMTP_USER / MAIL_FROM, CP-M1). They may be the same mailbox, but one
+  /// is where people write to and the other is what signs outgoing mail, so
+  /// changing this one changes nothing about that.
+  static const supportEmail = 'erin@littlebluecart.com';
 }
 
 /// Opens a policy in the phone's browser. False when nothing could open it,
