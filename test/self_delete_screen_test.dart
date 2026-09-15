@@ -118,29 +118,7 @@ void main() {
     expect(find.text('Delete my account now'), findsOneWidget);
   });
 
-  testWidgets('and then it says what went', (tester) async {
-    await _open(tester, signedIn: true);
-    await _fillIn(tester);
-    await tester.ensureVisible(find.text('Delete my account now'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete my account now'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Delete my account now'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete for ever'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Your account is gone'), findsOneWidget);
-    expect(find.textContaining('signed out'), findsOneWidget);
-    // The honest bit: orders are kept, and the screen says so.
-    expect(find.textContaining('financial records'), findsWidgets);
-    // And a way off a page about deleting an account that no longer exists.
-    // The automatic reroute is off under test (it waits three seconds); the
-    // button is the same door and is always there.
-    expect(find.text('Sign in or create a profile'), findsOneWidget);
-  });
-
-  testWidgets('the button goes to creating an account, not back to nothing', (
+  testWidgets('it leaves the page, and says so where you land', (
     tester,
   ) async {
     final container = await _open(tester, signedIn: true);
@@ -152,8 +130,9 @@ void main() {
     await tester.tap(find.text('Delete for ever'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Sign in or create a profile'));
-    await tester.pumpAndSettle();
+    // Off the deletion page, with no tap and no waiting. Grace got no
+    // reroute at all when this depended on that page surviving the sign-out
+    // and a three-second timer (2026-09-14).
     final where = container
         .read(routerProvider)
         .routerDelegate
@@ -161,6 +140,47 @@ void main() {
         .uri;
     expect(where.path, '/signin');
     expect(where.queryParameters['create'], '1');
+    expect(where.queryParameters['deleted'], '1');
+
+    // And the confirmation is here, where it can be read, rather than on
+    // the page that has just been replaced.
+    expect(
+      find.textContaining('Your account has been deleted'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('financial records'), findsOneWidget);
+    // Somewhere to go next.
+    expect(find.text('Create my profile'), findsOneWidget);
+  });
+
+  testWidgets('erasing data only keeps you where you are', (tester) async {
+    // Unscrolled: the two scope rows are near the top, and the helper
+    // scrolls past them to reach the buttons.
+    final container = await _open(tester, signedIn: true, scroll: false);
+    // The other scope: the account stays, so there is nothing to sign out
+    // of and nowhere to be sent.
+    await tester.tap(find.text('My data, but keep my account'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -700));
+    await tester.pumpAndSettle();
+    await _fillIn(tester);
+    await tester.ensureVisible(find.text('Erase my information now'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Erase my information now'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Erase it'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Your information is erased'), findsOneWidget);
+    expect(
+      container
+          .read(routerProvider)
+          .routerDelegate
+          .currentConfiguration
+          .uri
+          .path,
+      isNot('/signin'),
+    );
   });
 
   testWidgets('signed out it is still a request, never a wipe', (tester) async {

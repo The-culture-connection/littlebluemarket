@@ -200,6 +200,11 @@ GoRouter buildRouter(Ref ref) {
         path: '/signin',
         builder: (context, state) => EmailScreen(
           creating: state.uri.queryParameters['create'] == '1',
+          // Arrived here because their account was just deleted, so the
+          // screen says so. The confirmation has to live where they land:
+          // one shown on the page that is being replaced is one nobody
+          // reads (Grace, 2026-09-14).
+          justDeleted: state.uri.queryParameters['deleted'] == '1',
           intent: OnboardingIntent.fromQuery(
             state.uri.queryParameters['intent'],
           ),

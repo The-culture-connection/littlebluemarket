@@ -313,11 +313,16 @@ class EmailScreen extends ConsumerStatefulWidget {
   const EmailScreen({
     super.key,
     this.creating = false,
+    this.justDeleted = false,
     this.intent = OnboardingIntent.newHere,
   });
 
   /// Whether the person arrived via "Create a Profile" rather than "Sign in".
   final bool creating;
+
+  /// They have just deleted their account and been sent here. Says so, once,
+  /// because the screen they confirmed it on no longer exists.
+  final bool justDeleted;
 
   /// The door they chose on "Are you…", carried through to setup.
   final OnboardingIntent intent;
@@ -475,6 +480,7 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
         ],
       ],
       actions: [
+        if (widget.justDeleted) const _DeletedNote(),
         if (widget.creating)
           _AgreeToTerms(
             agreed: _agreed,
@@ -1147,6 +1153,36 @@ class _AgreeToTermsState extends State<_AgreeToTerms> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Your account has been deleted", on the screen somebody lands on after
+/// deleting it.
+///
+/// The confirmation used to be on the deletion page itself, which is the one
+/// page that cannot survive the sign-out that follows. Saying it here means
+/// it is read.
+class _DeletedNote extends StatelessWidget {
+  const _DeletedNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 14),
+      child: Text(
+        'Your account has been deleted, and you have been signed out. '
+        'Orders stay as financial records; everything else about you is '
+        'gone. You are welcome back any time.',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontFamily: kBodyFont,
+          fontSize: 13,
+          height: 1.5,
+          fontWeight: FontWeight.w700,
+          color: LbmConst.onWelcome,
         ),
       ),
     );

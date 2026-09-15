@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../legal_links.dart';
-import '../../data/repositories/dev_error_sink.dart';
+import '../../router/app_router.dart';
 import '../../models/models.dart';
 import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
@@ -55,10 +54,20 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     super.dispose();
   }
 
-  /// Sign in or create a profile: where somebody goes once their account
-  /// is gone. pushReplacement rather than push, so Back cannot return to a
+  /// Sign in or create a profile: where somebody goes once their account is
+  /// gone.
+  ///
+  /// The router from the provider, not `context.go`: signing out rebuilds
+  /// the router, and the first version of this asked this very screen to
+  /// still be mounted three seconds later. It was not, so nothing happened
+  /// (Grace, 2026-09-14). `go` rather than push, so Back cannot return to a
   /// page about deleting an account that no longer exists.
-  void _startAgain() => context.go('/signin?create=1');
+  ///
+  /// `deleted=1` carries the confirmation to the destination, which is the
+  /// other half of the same problem: a message shown on a screen that is
+  /// about to be replaced is a message nobody reads.
+  void _startAgain() =>
+      ref.read(routerProvider).go('/signin?create=1&deleted=1');
 
   /// Deletes it now. Every guard is the backend's: this only asks twice and
   /// then gets out of the way.
@@ -115,16 +124,13 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
       // The account is gone, so the session has to go with it; staying
       // signed in to nothing is how a screen ends up showing errors.
       if (_scope == DeletionScope.account) {
+        // Sign out first: a signed-in person landing on /signin is sent
+        // straight back to the feed by the router's own redirect.
         await ref.read(authServiceProvider).signOut();
-        // And off this screen. Grace asked for the reroute (2026-09-14):
-        // the account is gone, so every other screen behind this one is
-        // about somebody who no longer exists, and leaving them on a page
-        // titled 'Delete my account' is a strange goodbye. A moment on the
-        // confirmation first, so they see that it worked.
-        if (!kUnderFlutterTest) {
-          await Future<void>.delayed(const Duration(seconds: 3));
-          if (mounted) _startAgain();
-        }
+        // Then off this screen at once. No timer: the account is gone, so
+        // everything behind this page is about somebody who no longer
+        // exists, and the confirmation travels with us.
+        _startAgain();
       }
     } on Object catch (error) {
       if (!mounted) return;
