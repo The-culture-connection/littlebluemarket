@@ -17,4 +17,11 @@ abstract final class LbmAssets {
   /// the identical icon in the identical place. Regenerate every copy with
   /// `dart run tool/make_brand_images.dart`.
   static const splash = 'assets/images/splash-icon.png';
+
+  /// Grace's launch animation ("Body (1).mp4", 2026-09-18): the cart drawing
+  /// itself in and the wordmark writing on, 1080x1920, 2.53 s, H.264, no
+  /// audio track, 532 KB. SplashOverlay fades it in over [splash] once the
+  /// player is ready. MP4 rather than a GIF: a fifteenth of the size and not
+  /// held to 256 colours, which banded the blue.
+  static const splashVideo = 'assets/video/splash.mp4';
 }

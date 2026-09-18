@@ -169,8 +169,16 @@ GoRouter buildRouter(Ref ref) {
       return null;
     },
     routes: [
-      // The welcome handoff. Entering here plays the intro once.
-      GoRoute(path: '/', builder: (context, state) => const WelcomeScreen()),
+      // The resting frame. The launch animation used to play here, but since
+      // 2026-09-18 SplashOverlay plays it over the top of the app instead
+      // (`assets/video/splash.mp4`, the trimmed cut), and playing it again the
+      // moment the splash lifted read as a stutter. The GIF and every line
+      // that drives it are still here: pass `playIntro: true` to bring it
+      // back.
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const WelcomeScreen(playIntro: false),
+      ),
 
       // The resting frame on its own, for coming back without a replay.
       GoRoute(

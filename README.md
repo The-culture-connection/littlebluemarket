@@ -234,12 +234,14 @@ API.
   `Planning/i-have-a-prototype-vivid-dongarra.md`.
 - **`flutterfire configure`.** Needs the Firebase account that owns the
   project, so the live backend cannot start until it has been run once.
-- **App icon and splash.** Still Flutter's defaults.
+- **The splash animation on iOS.** The launch video is wired up and confirmed
+  on Android only; `video_player_avfoundation` is a pod, so it needs a real
+  build on a Mac before anyone can say it plays.
 - **iOS build.** Unverified — this was built and tested on Windows, so Android is
-  confirmed and the iOS project is configured but never compiled. No dependency
-  here has native iOS code (`go_router`, `riverpod` and `flutter_svg` are pure
-  Dart), so there are no pods to resolve, but it needs a real `flutter build ipa`
-  on a Mac.
+  confirmed and the iOS project is configured but never compiled. Several
+  dependencies now carry native iOS code (the Firebase plugins,
+  `image_picker`, `geolocator` and `video_player`), so there are pods to
+  resolve, and it needs a real `flutter build ipa` on a Mac.
 - **Two known issues in the animation asset**, both needing a re-export rather
   than a code fix: the final frame reads "Continue as a **geust**", and the
   welcome buttons are sharp rectangles while the rest of the app is pill-shaped.

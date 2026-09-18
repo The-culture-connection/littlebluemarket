@@ -36,6 +36,12 @@ class WelcomeScreen extends ConsumerStatefulWidget {
 
   /// False when returning to this screen from sign-in, so the animation does
   /// not replay.
+  ///
+  /// False on every route since 2026-09-18: the launch animation moved to
+  /// SplashOverlay, which plays it over the app at start-up, so playing it
+  /// here as well was the same animation twice in a row. Nothing below has
+  /// changed and the GIF still ships; `app_router.dart` is the one place that
+  /// decides.
   final bool playIntro;
 
   @override
