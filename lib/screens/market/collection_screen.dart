@@ -230,40 +230,39 @@ class CollectionRail extends ConsumerWidget {
       data: (all) {
         final byHandle = {for (final c in all) c.handle: c};
         final items = [
-          for (final handle in kMarketCategoryHandles)
-            ?byHandle[handle],
+          for (final handle in kMarketCategoryHandles) ?byHandle[handle],
         ];
         if (items.isEmpty) return const SizedBox.shrink();
         return Padding(
-        padding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-              child: Text(
-                'Browse the Market',
-                style: LbmText.tiny.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: c.ink2,
+          padding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                child: Text(
+                  'Browse the Market',
+                  style: LbmText.tiny.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: c.ink2,
+                  ),
                 ),
               ),
-            ),
-            SizedBox(
-              height: 32,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 7),
-                itemBuilder: (context, i) => LbmChip(
-                  items[i].title,
-                  onTap: () => context.goToCollection(items[i].handle),
+              SizedBox(
+                height: 32,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 7),
+                  itemBuilder: (context, i) => LbmChip(
+                    items[i].title,
+                    onTap: () => context.goToCollection(items[i].handle),
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
         );
       },
     );

@@ -53,6 +53,19 @@ abstract interface class CatalogRepository {
 
   Future<List<TagCount>> popularTags({int limit = 8});
 
+  /// Listings whose seller is within [radiusMiles] of a point, nearest
+  /// first.
+  ///
+  /// The Market feed's own read for "Near me". The toggle used to flip a
+  /// flag that only the search screen read, so tapping it on the feed
+  /// changed nothing at all (Grace's testers, 2026-09-23).
+  Future<List<Product>> nearby({
+    required double lat,
+    required double lng,
+    required double radiusMiles,
+    int limit = 60,
+  });
+
   /// The product as it changes: the "N added" count moves the moment the
   /// backend moves it, without a pull to refresh.
   Stream<Product> watchProduct(String id);

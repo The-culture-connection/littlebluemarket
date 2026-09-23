@@ -89,11 +89,7 @@ Future<SortOrder?> showSortSheet(BuildContext context, SortOrder current) {
                 ListRow(
                   title: Text(option.label),
                   trailing: option == current
-                      ? Icon(
-                          Icons.check_rounded,
-                          size: 20,
-                          color: c.accentText,
-                        )
+                      ? Icon(Icons.check_rounded, size: 20, color: c.accentText)
                       : null,
                   onTap: () => Navigator.of(sheetContext).pop(option),
                 ),

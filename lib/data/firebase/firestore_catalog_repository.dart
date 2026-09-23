@@ -4,6 +4,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import '../../models/models.dart';
 import '../repositories/repositories.dart';
 import 'firestore_errors.dart';
+import 'geohash.dart';
 import 'mappers.dart';
 
 /// Listings, read from the Firestore mirror of the storefront.
@@ -62,52 +63,51 @@ class FirestoreCatalogRepository implements CatalogRepository {
   }, operation: 'firestore catalog spec');
 
   @override
-  Future<List<Product>> productsByIds(List<String> ids) =>
-      guardFirestore(() async {
-        if (ids.isEmpty) return const [];
+  Future<List<Product>> productsByIds(List<String> ids) => guardFirestore(
+    () async {
+      if (ids.isEmpty) return const [];
 
-        final found = <String, Product>{};
-        const chunkSize = 30;
-        final catalogIds = ids.where((id) => !Product.isExternalId(id)).toList();
-        final externalIds = ids.where(Product.isExternalId).toList();
-        for (var i = 0; i < catalogIds.length; i += chunkSize) {
-          final chunk = catalogIds.sublist(
-            i,
-            i + chunkSize > catalogIds.length ? catalogIds.length : i + chunkSize,
-          );
-          final snapshot = await _catalog
-              .where(FieldPath.documentId, whereIn: chunk)
-              .get();
-          for (final doc in snapshot.docs) {
-            found[doc.id] = FirestoreMappers.product(doc.id, doc.data());
-          }
+      final found = <String, Product>{};
+      const chunkSize = 30;
+      final catalogIds = ids.where((id) => !Product.isExternalId(id)).toList();
+      final externalIds = ids.where(Product.isExternalId).toList();
+      for (var i = 0; i < catalogIds.length; i += chunkSize) {
+        final chunk = catalogIds.sublist(
+          i,
+          i + chunkSize > catalogIds.length ? catalogIds.length : i + chunkSize,
+        );
+        final snapshot = await _catalog
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get();
+        for (final doc in snapshot.docs) {
+          found[doc.id] = FirestoreMappers.product(doc.id, doc.data());
         }
-        for (var i = 0; i < externalIds.length; i += chunkSize) {
-          final chunk = externalIds
-              .sublist(
-                i,
-                i + chunkSize > externalIds.length
-                    ? externalIds.length
-                    : i + chunkSize,
-              )
-              .map(_externalDocId)
-              .toList();
-          final snapshot = await _external
-              .where(FieldPath.documentId, whereIn: chunk)
-              .get();
-          for (final doc in snapshot.docs) {
-            final product = FirestoreMappers.directoryProduct(
-              doc.id,
-              doc.data(),
-            );
-            found[product.id] = product;
-          }
+      }
+      for (var i = 0; i < externalIds.length; i += chunkSize) {
+        final chunk = externalIds
+            .sublist(
+              i,
+              i + chunkSize > externalIds.length
+                  ? externalIds.length
+                  : i + chunkSize,
+            )
+            .map(_externalDocId)
+            .toList();
+        final snapshot = await _external
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get();
+        for (final doc in snapshot.docs) {
+          final product = FirestoreMappers.directoryProduct(doc.id, doc.data());
+          found[product.id] = product;
         }
+      }
 
-        // Ordered to match the request, and ids that no longer exist are
-        // skipped: a stale reference costs one card, not the screen.
-        return [for (final id in ids) ?found[id]];
-      }, operation: 'firestore catalog productsByIds');
+      // Ordered to match the request, and ids that no longer exist are
+      // skipped: a stale reference costs one card, not the screen.
+      return [for (final id in ids) ?found[id]];
+    },
+    operation: 'firestore catalog productsByIds',
+  );
 
   @override
   Future<Page<Product>> productsBySeller(String sellerId, {String? cursor}) =>
@@ -180,6 +180,45 @@ class FirestoreCatalogRepository implements CatalogRepository {
         .map((doc) => FirestoreMappers.product(doc.id, doc.data()!))
         .guarded(operation: 'firestore catalog watchProduct');
   }
+
+  @override
+  Future<List<Product>> nearby({
+    required double lat,
+    required double lng,
+    required double radiusMiles,
+    int limit = 60,
+  }) => guardFirestore(() async {
+    // The geohash prefix scan, the one filter Firestore does well, then the
+    // exact distance over what comes back: a box overlapping the circle is
+    // not the same as a point inside it, so without the second pass a
+    // listing 25 miles away turns up in a 20-mile search.
+    final ranges = Geohash.coverRanges(lat, lng, radiusMiles);
+    final snapshots = await Future.wait([
+      for (final (start, end) in ranges)
+        _catalog
+            .where('geohash', isGreaterThanOrEqualTo: start)
+            .where('geohash', isLessThan: end)
+            .limit(limit ~/ ranges.length + 1)
+            .get(),
+    ]);
+
+    final seen = <String>{};
+    final found = <(double, Product)>[];
+    for (final snapshot in snapshots) {
+      for (final doc in snapshot.docs) {
+        if (!seen.add(doc.id)) continue;
+        final data = doc.data();
+        if (data['active'] == false) continue;
+        final product = FirestoreMappers.product(doc.id, data);
+        if (product.lat == null || product.lng == null) continue;
+        final miles = Geo.milesBetween(lat, lng, product.lat!, product.lng!);
+        if (miles > radiusMiles) continue;
+        found.add((miles, product));
+      }
+    }
+    found.sort((a, b) => a.$1.compareTo(b.$1));
+    return [for (final (_, product) in found.take(limit)) product];
+  }, operation: 'firestore catalog nearby');
 
   @override
   Future<List<TagCount>> popularTags({int limit = 8}) =>

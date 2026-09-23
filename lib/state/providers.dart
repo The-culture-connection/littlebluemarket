@@ -489,6 +489,26 @@ final searchResultsProvider =
       return ref.watch(searchRepositoryProvider).search(filters);
     });
 
+/// Listings near the person, nearest first, for the feed's Near me view.
+///
+/// A family over the whole [SearchFilters] rather than over a point, so the
+/// radius chips re-run it and the value equality on SearchFilters stops every
+/// rebuild looking like a new search.
+final nearbyProductsProvider =
+    FutureProvider.family<List<Product>, SearchFilters>((ref, filters) {
+      final origin = filters.origin;
+      if (!filters.isGeoConstrained || origin == null) {
+        return Future.value(const <Product>[]);
+      }
+      return ref
+          .watch(catalogRepositoryProvider)
+          .nearby(
+            lat: origin.lat,
+            lng: origin.lng,
+            radiusMiles: filters.radiusMiles,
+          );
+    });
+
 final recentSearchesProvider = FutureProvider<List<String>>((ref) {
   return ref.watch(searchRepositoryProvider).recentSearches();
 });

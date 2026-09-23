@@ -509,9 +509,7 @@ class _DirectoryHitsState extends ConsumerState<_DirectoryHits> {
               ),
               subtitle: const Text('These sell on their own websites'),
               trailing: Icon(
-                _open
-                    ? Icons.expand_less_rounded
-                    : Icons.expand_more_rounded,
+                _open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
                 size: 22,
                 color: c.ink3,
               ),

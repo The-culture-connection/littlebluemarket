@@ -107,6 +107,26 @@ class FixtureCatalogRepository implements CatalogRepository {
       _backend._delayed(Fx.tags.take(limit).toList());
 
   @override
+  Future<List<Product>> nearby({
+    required double lat,
+    required double lng,
+    required double radiusMiles,
+    int limit = 60,
+  }) {
+    final found = <(double, Product)>[];
+    for (final product in Fx.products.values) {
+      if (product.lat == null || product.lng == null) continue;
+      final miles = Geo.milesBetween(lat, lng, product.lat!, product.lng!);
+      if (miles > radiusMiles) continue;
+      found.add((miles, product));
+    }
+    found.sort((a, b) => a.$1.compareTo(b.$1));
+    return _backend._delayed([
+      for (final (_, product) in found.take(limit)) product,
+    ]);
+  }
+
+  @override
   Stream<Product> watchProduct(String id) {
     if (Product.isExternalId(id)) {
       return _backend.store.directoryProducts.stream
