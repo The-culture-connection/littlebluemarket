@@ -307,9 +307,30 @@ phone app; push notifications are the one thing it does not do.
 
 A Railway **environment** called `staging` sits beside `production` in the
 same project, holding the same two services. The dashboard's environment
-switcher moves between them. Both environments build from `main`, so a push
-updates staging and production together: staging is a sandbox against test
-data, not a gate before release (Grace, 2026-09-14).
+switcher moves between them.
+
+**Branches (Grace, 2026-09-23).** Staging is meant to build from the
+`staging` branch and production from `main`, so work lands on staging, Grace
+taps through the staging site, and only then is it merged to `main` for
+release. Until 2026-09-23 both built from `main` and staging was a sandbox
+against test data rather than a gate before release.
+
+> **Setting the staging branch is a dashboard job, and only Grace can do it.**
+> Railway → the environment switcher → **staging** → the service → Settings →
+> Source → Branch → `staging`. Once per service, so twice.
+>
+> **Do not use `railway service source connect --branch …` for this.** Its
+> `--environment` flag only resolves *which service* to act on; the change
+> itself lands on that service's source in **every** environment, so setting
+> staging's branch silently sets production's too (tried, 2026-09-23, and
+> put back). The per-environment branch lives on `deploymentTriggers` in the
+> GraphQL API, and `deploymentTriggerUpdate` answers "Not Authorized" to a
+> CLI login token. Config-as-code (`railway config pull`) cannot express it
+> either: its `source` is one per service with no environment dimension.
+>
+> Reconnecting a source **redeploys the service in both environments**. That
+> is harmless when the branch is unchanged (it rebuilds the commit already
+> live), and it is how the four rebuilds on 2026-09-23 happened.
 
 |                | production                          | staging                              |
 |----------------|-------------------------------------|--------------------------------------|
@@ -321,7 +342,8 @@ data, not a gate before release (Grace, 2026-09-14).
 | developer tools| off                                 | on (error strip, backend badge, Diagnostics) |
 
 One variable does it: **`LBM_ENV`**, `prod` or `dev`, set per service per
-environment. Nothing else differs, and there is no staging branch.
+environment. Nothing else differs; the branch is the only other thing that
+does, and it is set in the dashboard as above.
 
 - **The web app** compiles the Firebase project into the bundle, so
   `Dockerfile.web` copies `firebase/config/$LBM_ENV/firebase_options.dart`
