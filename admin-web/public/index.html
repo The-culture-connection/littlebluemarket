@@ -64,6 +64,13 @@
   .promo-dots i { width: 7px; height: 7px; border-radius: 4px; background: rgba(255,255,255,.6); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
   .promo-dots i.on { width: 18px; background: #fff; }
   .promo-empty { color: var(--ink2); font-style: italic; }
+  /* The vendor facts table: a label and a value per row, nothing clever. */
+  table.facts { width: 100%; border-collapse: collapse; margin: 12px 0 4px; }
+  table.facts th { text-align: left; font-weight: 700; color: var(--ink2);
+    font-size: 13px; padding: 6px 12px 6px 0; vertical-align: top; width: 38%; }
+  table.facts td { font-size: 13px; padding: 6px 0; vertical-align: top; }
+  .yes { color: #1d7a4c; font-weight: 700; }
+  .no { color: #b3261e; font-weight: 700; }
   /* What the phone will pick out and make tappable. */
   .named { font-weight: 800; color: #2f6fb5; }
   .named-preview { margin: 8px 0 0; font-size: 13px; color: var(--ink2); }
@@ -140,6 +147,23 @@
   </section>
 
 
+
+  <section id="vendorCard" class="card" hidden>
+    <h2>Approve a vendor</h2>
+    <p class="hint">Most vendors never need this. Someone who sells with us through Shipturtle confirms the email on their vendor account in the app, taps <strong>Connect my shop</strong>, and the shop connects itself; a sweep every two hours does the same for anyone who signed up before being approved. Use this for the ones that cannot decide themselves: a vendor with two shop names, an email on two Shipturtle companies, or a name somebody else is holding.</p>
+    <label for="venEmail">Their email</label>
+    <input id="venEmail" type="email" placeholder="them@theirshop.com" autocomplete="off">
+    <div style="margin-top:8px"><button id="venLookBtn" class="primary">Look them up</button></div>
+    <div id="venNotice" class="notice" hidden></div>
+    <div id="venFacts" hidden>
+      <table class="facts"><tbody id="venFactsBody"></tbody></table>
+      <div id="venApprove" hidden>
+        <label for="venName">Connect them to this shop</label>
+        <select id="venName"></select>
+        <div style="margin-top:8px"><button id="venApproveBtn" class="primary">Approve</button></div>
+      </div>
+    </div>
+  </section>
 
   <section id="dirCard" class="card" hidden>
     <h2>The littlebluecart.com directory</h2>

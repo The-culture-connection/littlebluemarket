@@ -189,7 +189,7 @@ function watchRecent() {
 async function refreshGate(user) {
   if (!user) {
     show('signin', true); show('notadmin', false); show('send', false); show('recentCard', false); show('feedbackCard', false); show('reportsCard', false); show('signout', false);
-    show('promoCard', false); show('promoListCard', false); show('dirCard', false);
+    show('promoCard', false); show('promoListCard', false); show('dirCard', false); show('vendorCard', false);
     $('who').textContent = '';
     unsubscribeRecent?.(); unsubscribeRecent = null;
     unsubscribeFeedback?.(); unsubscribeFeedback = null;
@@ -210,6 +210,7 @@ async function refreshGate(user) {
   show('promoCard', isAdmin);
   show('promoListCard', isAdmin);
   show('dirCard', isAdmin);
+  show('vendorCard', isAdmin);
   if (isAdmin) { watchRecent(); watchFeedback(); watchReports(); watchPromos(); }
 }
 $('showDone').addEventListener('change', renderFeedback);
@@ -723,6 +724,118 @@ $('dirCopy').addEventListener('click', async () => {
   } catch {
     // A browser that refuses the clipboard still lets her select the text.
     window.prompt('Copy this and send it to Claude:', text);
+  }
+});
+
+// ------------------------------------------------------ approving a vendor
+//
+// Almost no vendor reaches this card: someone who sells through Shipturtle
+// confirms the email on their vendor account in the app and the shop
+// connects itself. This is for the ones the automatic check refuses on
+// purpose, because they need a judgement rather than a rule: two shop names,
+// an email on two Shipturtle companies, a name somebody else holds.
+//
+// It replaced mailing out claim codes, which meant a developer running a
+// script for every exception (Grace, 2026-09-24).
+
+let vendorFacts = null;
+
+function factRow(label, value, kind) {
+  const tr = document.createElement('tr');
+  const th = document.createElement('th');
+  th.textContent = label;
+  const td = document.createElement('td');
+  if (kind) { td.className = kind; }
+  td.textContent = value;
+  tr.append(th, td);
+  return tr;
+}
+
+function renderVendorFacts(s) {
+  const body = $('venFactsBody');
+  body.innerHTML = '';
+  body.appendChild(factRow('App account', s.uid ? 'yes' : 'no, they have not signed up', s.uid ? 'yes' : 'no'));
+  if (s.uid) {
+    body.appendChild(factRow('Email confirmed', s.emailVerified ? 'yes' : 'not yet', s.emailVerified ? 'yes' : 'no'));
+    body.appendChild(factRow('Already selling', s.isSeller ? `yes, as "${s.currentVendorName ?? 'unknown'}"` : 'no'));
+  }
+  body.appendChild(factRow(
+    'On the Shipturtle list',
+    s.companyIds.length === 0 ? 'no' : `yes (${s.companyIds.length} compan${s.companyIds.length === 1 ? 'y' : 'ies'})`,
+    s.companyIds.length ? 'yes' : 'no',
+  ));
+  body.appendChild(factRow(
+    'Shop names Shipturtle has',
+    s.vendorNames.length ? s.vendorNames.join(', ') : 'none yet',
+  ));
+  const held = Object.entries(s.heldBy);
+  if (held.length) {
+    body.appendChild(factRow('Already claimed by somebody', held.map(([n, u]) => `${n} → ${u}`).join(', '), 'no'));
+  }
+  body.appendChild(factRow(
+    'The automatic check',
+    s.autoDecision === 'grant' ? 'would connect this shop on its own' : `will not, because ${s.autoReason}`,
+  ));
+
+  show('venFacts', true);
+  const picker = $('venName');
+  picker.innerHTML = '';
+  for (const name of s.vendorNames) {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name;
+    picker.appendChild(option);
+  }
+  // The approve half appears only when there is something to approve and
+  // nothing in the way. `blocker` says which, in words.
+  show('venApprove', s.canApprove && s.vendorNames.length > 0);
+  if (s.blocker) notice('venNotice', s.blocker, false);
+  else if (s.autoDecision === 'grant') {
+    notice('venNotice', 'Nothing to do here: tell them to tap Connect my shop in the app, or wait for the two-hourly sweep.', true);
+  } else {
+    notice('venNotice', 'Pick the shop that is really theirs, then Approve.', true);
+  }
+}
+
+$('venLookBtn').addEventListener('click', async () => {
+  const email = $('venEmail').value.trim();
+  if (!email) { notice('venNotice', 'Type their email first.', false); return; }
+  $('venLookBtn').disabled = true;
+  show('venFacts', false);
+  notice('venNotice', 'Looking…', true);
+  try {
+    const call = httpsCallable(functions, 'adminVendorStatus', { timeout: 120_000 });
+    const { data } = await call({ email });
+    vendorFacts = data;
+    renderVendorFacts(data);
+  } catch (error) {
+    vendorFacts = null;
+    notice('venNotice', describe(error), false);
+  } finally {
+    $('venLookBtn').disabled = false;
+  }
+});
+
+$('venApproveBtn').addEventListener('click', async () => {
+  if (!vendorFacts) return;
+  const vendorName = $('venName').value;
+  const email = vendorFacts.email;
+  if (!window.confirm(
+    `Connect "${vendorName}" to ${email}?\n\n` +
+    'Every product carrying that shop name moves to their profile, and the ' +
+    'sales it has taken are credited to them.',
+  )) return;
+  $('venApproveBtn').disabled = true;
+  notice('venNotice', 'Approving…', true);
+  try {
+    const call = httpsCallable(functions, 'adminApproveVendor', { timeout: 120_000 });
+    const { data } = await call({ email, vendorName });
+    notice('venNotice', `Done. ${email} now sells as "${data.vendorName}".`, true);
+    show('venApprove', false);
+  } catch (error) {
+    notice('venNotice', describe(error), false);
+  } finally {
+    $('venApproveBtn').disabled = false;
   }
 });
 

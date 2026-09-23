@@ -61,6 +61,7 @@ import {
 } from './cart.ts';
 import { normalizeOrder, recordFulfillment, recordPaidOrder } from './orders.ts';
 import { backfillShopShells, claimShopShell } from './shops.ts';
+import { approveVendor, vendorStatus } from './vendor_approval.ts';
 import { addTracking } from './fulfillment.ts';
 import { linkStoreAccounts } from './linking.ts';
 import { withLoudErrors } from './errors.ts';
@@ -339,6 +340,34 @@ export const sellerPublishListing = onCall(
  * Re-points a seller at the vendor string Shipturtle actually uses for their
  * company. Admin only. Fixes a claim code issued against the wrong string.
  */
+/**
+ * "Who is this email, and can I approve them?" in one call, for the admin
+ * website's vendor card. Reads only; it never grants.
+ */
+export const adminVendorStatus = onCall(
+  { secrets: [SHIPTURTLE_API_KEY], timeoutSeconds: 120 },
+  withLoudErrors('adminVendorStatus', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const { email } = (request.data ?? {}) as { email?: unknown };
+    return vendorStatus(String(email ?? ''));
+  }),
+);
+
+/** Connects a shop to an account, as an admin. Re-checks everything. */
+export const adminApproveVendor = onCall(
+  { secrets: [SHIPTURTLE_API_KEY], timeoutSeconds: 120 },
+  withLoudErrors('adminApproveVendor', async (request) => {
+    const adminUid = requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const { email, vendorName } = (request.data ?? {}) as {
+      email?: unknown;
+      vendorName?: unknown;
+    };
+    return approveVendor(String(email ?? ''), String(vendorName ?? ''), adminUid);
+  }),
+);
+
 export const adminSetSellerVendor = onCall(
   withLoudErrors('adminSetSellerVendor', async (request) => {
     const adminUid = requireUid(request.auth);

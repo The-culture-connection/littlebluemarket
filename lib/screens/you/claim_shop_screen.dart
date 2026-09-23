@@ -13,26 +13,28 @@ import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/unverified_banner.dart';
 
-/// Claiming a shop.
+/// Claiming a shop, by the email on the Shipturtle vendor account.
 ///
-/// **The email is the way in; the code is the exception.** A Shipturtle
-/// vendor already has an email on their vendor account, and confirming that
-/// address in the app is proof enough: `syncSellerStatus` asks the backend
-/// to match it against the Shipturtle roster and grant the vendor string
-/// their products carry. Nobody has to issue anything, and a vendor approved
-/// at midnight can be selling at one minute past.
+/// **The email is the only way in.** A Shipturtle vendor already has an
+/// email on their vendor account, and confirming that address in the app is
+/// the proof: `syncSellerStatus` matches it against the Shipturtle roster
+/// and grants the vendor string their products carry. Nobody has to issue
+/// anything, and a vendor approved at midnight can be selling at one past.
 ///
-/// This screen used to offer only a claim code, with a TODO about how codes
-/// would be handed out, which had it backwards: it sent every vendor to ask
-/// Grace for something they did not need (Grace, 2026-09-24). The code
-/// stays, underneath, because the roster match deliberately refuses three
-/// cases it cannot decide safely — one email on two vendor companies, a
+/// This screen used to offer a claim code and nothing else, with a TODO
+/// about how codes would be handed out. That had it backwards twice over: it
+/// sent every vendor to ask Grace for something they did not need, and it
+/// invited anybody at all to sit here trying to claim somebody else's shop
+/// (Grace, 2026-09-24). The field is gone. A refusal now says what to check
+/// and who to ask, and offers nothing else to try.
+///
+/// The roster match still refuses three cases on purpose, because they need
+/// a judgement rather than a rule: one email on two vendor companies, a
 /// vendor with no products yet, and a vendor string another account already
-/// holds — and somebody has to be able to sort those out by hand.
+/// holds. Those are settled by an admin on the admin website
+/// (`vendor_approval.ts`), which is where the judgement belongs.
 ///
-/// Nothing here decides anything either way. Both paths go to a callable
-/// that checks the verified email, reserves the vendor name and records the
-/// grant in one transaction. This screen's whole job is to explain the
+/// Nothing here decides anything. This screen's whole job is to explain the
 /// result.
 class ClaimShopScreen extends ConsumerStatefulWidget {
   const ClaimShopScreen({super.key});
@@ -42,23 +44,9 @@ class ClaimShopScreen extends ConsumerStatefulWidget {
 }
 
 class _ClaimShopScreenState extends ConsumerState<ClaimShopScreen> {
-  final _code = TextEditingController();
-  bool _working = false;
   bool _checking = false;
   String? _error;
   SellerSyncResult? _result;
-
-  @override
-  void initState() {
-    super.initState();
-    _code.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _code.dispose();
-    super.dispose();
-  }
 
   /// The autonomous path: the address on the Shipturtle vendor account,
   /// confirmed in the app, is the claim.
@@ -99,33 +87,6 @@ class _ClaimShopScreenState extends ConsumerState<ClaimShopScreen> {
     }
   }
 
-  Future<void> _claim() async {
-    if (_code.text.trim().isEmpty || _working) return;
-    setState(() {
-      _working = true;
-      _error = null;
-    });
-
-    try {
-      final grant = await ref
-          .read(profileRepositoryProvider)
-          .requestSellerStatus(_code.text);
-      if (!mounted) return;
-
-      // Name the shop. A code issued against the wrong vendor record is the
-      // one mistake the person can catch and we cannot.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('You are now selling as ${grant.vendorName}.')),
-      );
-      // Land on the profile, where the Products tab has just appeared.
-      context.go('/you');
-    } on RepositoryException catch (error) {
-      if (!mounted) return;
-      setState(() => _error = describeError(error).body);
-    } finally {
-      if (mounted) setState(() => _working = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -184,46 +145,6 @@ class _ClaimShopScreenState extends ConsumerState<ClaimShopScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 14),
-          LbmCard(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Given a claim code?',
-                    style: LbmText.tiny.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: c.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Only needed when the check above cannot decide on its '
-                    'own, and Little Blue Market has sent you one.',
-                    style: LbmText.xtiny.copyWith(color: c.ink2, height: 1.5),
-                  ),
-                  const SizedBox(height: 12),
-                  LbmField(
-                    label: 'Claim code',
-                    controller: _code,
-                    hintText: 'The code we sent you',
-                    textInputAction: TextInputAction.go,
-                    onSubmitted: (_) => _claim(),
-                  ),
-                  const SizedBox(height: 12),
-                  PillButton(
-                    _working ? 'Checking…' : 'Use my code',
-                    style: PillStyle.quiet,
-                    onPressed: _code.text.trim().isEmpty || _working
-                        ? null
-                        : _claim,
-                  ),
-                ],
-              ),
-            ),
-          ),
           if (_error != null) ...[
             const SizedBox(height: 12),
             Padding(
@@ -244,7 +165,9 @@ class _ClaimShopScreenState extends ConsumerState<ClaimShopScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
               'Not a vendor yet? Apply on our website first. Once Little Blue '
-              'Market approves you, come back and tap Connect my shop.',
+              'Market approves you, come back and tap Connect my shop.\n\n'
+              'Shops are connected by the email on the vendor account and '
+              'nothing else, so nobody can claim a shop that is not theirs.',
               style: TextStyle(fontSize: 12.5, height: 1.5, color: c.ink3),
             ),
           ),
@@ -268,16 +191,22 @@ class _SyncNote extends StatelessWidget {
     final text = switch (result.status) {
       SellerSyncStatus.granted ||
       SellerSyncStatus.alreadySeller => 'Your shop is connected.',
+      // A refusal is a refusal. It says what to check and who to ask, and
+      // offers nothing else to try: inviting a stranger to have another go
+      // at somebody else's shop is the opposite of a guard (Grace,
+      // 2026-09-24).
       SellerSyncStatus.notFound =>
-        'We could not find a vendor account with this email. Check it is the '
-            'same address as on your Shipturtle vendor account, or use a '
-            'claim code below.',
+        'We could not find a vendor account with this email. It has to be '
+            'the same address as on your Shipturtle vendor account. If it is, '
+            'get in touch with Little Blue Market and we will connect it.',
       SellerSyncStatus.undecided =>
         result.note == null
-            ? 'We found you, but could not connect the shop automatically. '
-                  'Use a claim code below, or get in touch.'
-            : 'We found you, but could not connect the shop automatically: '
-                  '${result.note}. Use a claim code below, or get in touch.',
+            ? 'We found your vendor account, but could not connect the shop '
+                  'on its own. Get in touch with Little Blue Market and we '
+                  'will do it for you.'
+            : 'We found your vendor account, but could not connect the shop '
+                  'on its own, because ${result.note}. Get in touch with '
+                  'Little Blue Market and we will do it for you.',
     };
     return Text(
       text,
