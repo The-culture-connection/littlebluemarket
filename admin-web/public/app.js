@@ -867,7 +867,10 @@ async function releaseDirectory(dryRun) {
       'relNotice',
       dryRun
         ? `${data.listings} listings and ${data.posts} directory posts are attributed to that account. Nothing was changed.`
-        : `Released ${data.listings} listings and deleted ${data.posts} directory posts.`,
+        : `Released ${data.listings} listings and deleted ${data.posts} directory posts. ` +
+          (data.restored
+            ? 'Their profile is back to what it was before.'
+            : 'Their name, bio and hashtags came from one of those listings and there was no record of their own, so those are now blank for them to fill in.'),
       true,
     );
   } catch (error) {

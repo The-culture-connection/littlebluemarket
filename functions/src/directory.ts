@@ -744,12 +744,19 @@ export function browseFields(
 export async function releaseDirectoryFrom(
   uid: string,
   options: { dryRun?: boolean } = {},
-): Promise<{ listings: number; posts: number; dryRun: boolean }> {
+): Promise<{
+  listings: number;
+  posts: number;
+  dryRun: boolean;
+  /** Whether the profile went back to what it was, or had to be cleared. */
+  restored: boolean;
+}> {
   const db = getFirestore();
   const dryRun = options.dryRun ?? false;
   const mine = await db.collection('directoryListings').where('ownerUid', '==', uid).get();
 
   let posts = 0;
+  let restored = false;
   if (!dryRun) {
     for (let i = 0; i < mine.docs.length; i += 200) {
       const batch = db.batch();
@@ -768,20 +775,54 @@ export async function releaseDirectoryFrom(
         ownsListings: false,
         ownershipRefusedReason: 'released by an admin',
         listingCount: 0,
+        profileAppliedAt: null,
         refreshedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
     );
-    // The profile was renamed after one of those listings. Nobody but the
-    // person can say what their name should be, so the flag that let it be
-    // applied is cleared and the name is left for them to set.
-    await db.collection('directory').doc(uid).set({ profileAppliedAt: null }, { merge: true });
+
+    // The profile was filled in from one of those listings, so it is
+    // wearing another business's name, words and hashtags. Put back what
+    // was there if we kept it, and otherwise clear it: somebody else's copy
+    // on your profile is worse than a blank one you can fill in.
+    const link = (await db.collection('directory').doc(uid).get()).data() ?? {};
+    const before = (link as { profileBefore?: Record<string, unknown> }).profileBefore;
+    restored = Boolean(before);
+    await db.collection('users').doc(uid).set(
+      {
+        name: String(before?.name ?? ''),
+        handle: String(before?.handle ?? ''),
+        handleLower: String(before?.handleLower ?? ''),
+        bio: String(before?.bio ?? ''),
+        tags: Array.isArray(before?.tags) ? before.tags : [],
+        tagsLower: [],
+        cityState: String(before?.cityState ?? ''),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    // Those posts were written before `postCount` existed, so deleting them
+    // drove the count below zero (it read -263 on a real profile). Counted
+    // from the posts themselves rather than adjusted, which is the only way
+    // to be right whatever the count was before.
+    const remaining = await db.collection('posts').where('authorId', '==', uid).count().get();
+    await db
+      .collection('users')
+      .doc(uid)
+      .set({ postCount: remaining.data().count }, { merge: true });
   } else {
     posts = mine.size;
   }
 
-  logger.warn('Directory released from an account', { uid, listings: mine.size, posts, dryRun });
-  return { listings: mine.size, posts, dryRun };
+  logger.warn('Directory released from an account', {
+    uid,
+    listings: mine.size,
+    posts,
+    dryRun,
+    restored,
+  });
+  return { listings: mine.size, posts, dryRun, restored };
 }
 
 /** wpUserId -> uid, for the accounts that have linked. */
@@ -1180,6 +1221,30 @@ export async function applyListingProfile(uid: string): Promise<{ name: string; 
     }
   }
 
+  // What was there before, kept so this is reversible. A listing filling in
+  // somebody's profile is a good convenience and an awful thing to be
+  // unable to undo: on 2026-09-24 it renamed a member after a business she
+  // had nothing to do with, and there was no record of her own name to put
+  // back. Written only the first time, so a second apply cannot overwrite
+  // the original with the borrowed one.
+  const linkRef = db.collection('directory').doc(uid);
+  const hasSnapshot = Boolean((link as { profileBefore?: unknown }).profileBefore);
+  if (!hasSnapshot) {
+    await linkRef.set(
+      {
+        profileBefore: {
+          name: String(current.name ?? ''),
+          handle: String(current.handle ?? ''),
+          handleLower: String(current.handleLower ?? ''),
+          bio: String(current.bio ?? ''),
+          tags: Array.isArray(current.tags) ? current.tags : [],
+          cityState: String(current.cityState ?? ''),
+        },
+      },
+      { merge: true },
+    );
+  }
+
   await db.collection('users').doc(uid).set(
     {
       name: profile.name,
@@ -1192,7 +1257,7 @@ export async function applyListingProfile(uid: string): Promise<{ name: string; 
     },
     { merge: true },
   );
-  await db.collection('directory').doc(uid).set({ profileAppliedAt: FieldValue.serverTimestamp() }, { merge: true });
+  await linkRef.set({ profileAppliedAt: FieldValue.serverTimestamp() }, { merge: true });
   logger.info('Profile filled from the directory listing', { uid, handle });
   return { name: profile.name, handle: `@${handle}` };
 }

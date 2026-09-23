@@ -65,7 +65,7 @@ import { approveVendor, vendorStatus } from './vendor_approval.ts';
 import { addTracking } from './fulfillment.ts';
 import { linkStoreAccounts } from './linking.ts';
 import { withLoudErrors } from './errors.ts';
-import { bumpCounter, counterDelta, starKey } from './counters.ts';
+import { bumpCounter, bumpCounterFloored, counterDelta, starKey } from './counters.ts';
 import { claimAdmin, requireAdmin } from './admin.ts';
 import { banUser, unbanUser } from './moderation.ts';
 import {
@@ -1172,7 +1172,9 @@ export const onPostWritten = onDocumentWritten(
     if (!wasPost && isPost && authorAfter) {
       await bumpCounter(db.collection('users').doc(authorAfter), 'postCount', 1);
     } else if (wasPost && !isPost && authorBefore) {
-      await bumpCounter(db.collection('users').doc(authorBefore), 'postCount', -1);
+      // Floored: posts written before this counter existed would otherwise
+      // take it negative when they are deleted. See bumpCounterFloored.
+      await bumpCounterFloored(db.collection('users').doc(authorBefore), 'postCount', -1);
     }
 
     // Stage 9: the people this post names hear about it.

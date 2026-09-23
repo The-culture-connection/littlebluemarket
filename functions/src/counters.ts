@@ -33,6 +33,43 @@ export async function bumpCounter(
   }
 }
 
+/**
+ * The same, but never below zero.
+ *
+ * A count of things that exist cannot be negative, and one that is stays
+ * that way: nothing pushes it back up but the things themselves. On
+ * 2026-09-24 a repair deleted 263 posts that had been written before this
+ * counter existed, so the count went from 0 to **-263** and a profile read
+ * "-263 Posts".
+ *
+ * This is the one counter that reads before it writes, against the rule in
+ * the file header, and the trade is deliberate: a lost decrement under
+ * contention is invisible and the reindex corrects it, while a negative is
+ * visible to the person whose profile it is and corrects itself never.
+ * Deletes are rare next to creates, so the contention this risks is rare
+ * too. Increments still go the fast way.
+ */
+export async function bumpCounterFloored(
+  ref: DocumentReference,
+  field: string,
+  delta: number,
+): Promise<void> {
+  if (delta === 0) return;
+  if (delta > 0) return bumpCounter(ref, field, delta);
+  try {
+    await ref.firestore.runTransaction(async (tx) => {
+      const snapshot = await tx.get(ref);
+      if (!snapshot.exists) return; // a missing parent is nothing to count
+      const current = Number(snapshot.get(field) ?? 0) || 0;
+      tx.update(ref, { [field]: Math.max(0, current + delta) });
+    });
+  } catch (error) {
+    const code = (error as { code?: number | string })?.code;
+    if (code === 5 || code === 'not-found' || /NOT_FOUND/.test(String(error))) return;
+    throw error;
+  }
+}
+
 /** +1 when a document appears, -1 when it disappears, 0 for an edit. Pure. */
 export function counterDelta(beforeExists: boolean, afterExists: boolean): number {
   if (!beforeExists && afterExists) return 1;
