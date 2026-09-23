@@ -266,12 +266,91 @@ class FirestoreSocialRepository implements SocialRepository {
       .orderBy('createdAt')
       .limit(200)
       .snapshots()
-      .map(
-        (snapshot) => snapshot.docs
-            .map((doc) => FirestoreMappers.comment(doc.id, doc.data()))
-            .toList(),
-      )
+      .asyncMap((snapshot) => _withMyCommentLikes(postId, snapshot))
       .guarded();
+
+  /// Fills in the one thing a comment document does not carry: whether *this*
+  /// viewer has liked it.
+  ///
+  /// A like lives at `comments/{id}/likes/{uid}`, so there is no way to read
+  /// it off the comment. The answers are cached per comment for the life of
+  /// the repository, because a snapshot fires again on every count change and
+  /// re-reading every like document each time would turn one new comment into
+  /// two hundred reads. [_commentLikes] is cleared for a comment the moment
+  /// this account likes or unlikes it.
+  Future<List<Comment>> _withMyCommentLikes(
+    String postId,
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) async {
+    final me = uid;
+    if (me == null || snapshot.docs.isEmpty) {
+      return [
+        for (final doc in snapshot.docs)
+          FirestoreMappers.comment(doc.id, doc.data()),
+      ];
+    }
+
+    final unknown = [
+      for (final doc in snapshot.docs)
+        if (!_commentLikes.containsKey(doc.id)) doc.id,
+    ];
+    if (unknown.isNotEmpty) {
+      final found = await Future.wait([
+        for (final id in unknown)
+          _posts
+              .doc(postId)
+              .collection('comments')
+              .doc(id)
+              .collection('likes')
+              .doc(me)
+              .get(),
+      ]);
+      for (var i = 0; i < unknown.length; i++) {
+        _commentLikes[unknown[i]] = found[i].exists;
+      }
+    }
+
+    return [
+      for (final doc in snapshot.docs)
+        FirestoreMappers.comment(
+          doc.id,
+          doc.data(),
+          likedByMe: _commentLikes[doc.id] ?? false,
+        ),
+    ];
+  }
+
+  /// Comment id → whether this account has liked it. See
+  /// [_withMyCommentLikes].
+  final _commentLikes = <String, bool>{};
+
+  @override
+  Future<void> editComment({
+    required String postId,
+    required String commentId,
+    required String text,
+  }) => guardFirestore(() async {
+    _requireUid;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      throw const ValidationException('A comment cannot be empty');
+    }
+    // `likeCount`, `authorId`, `createdAt` and `postId` are left alone; the
+    // rules refuse an update that touches any of them.
+    await _posts.doc(postId).collection('comments').doc(commentId).update({
+      'text': trimmed,
+      'editedAt': FieldValue.serverTimestamp(),
+    });
+  });
+
+  @override
+  Future<void> deleteComment({
+    required String postId,
+    required String commentId,
+  }) => guardFirestore(() async {
+    _requireUid;
+    await _posts.doc(postId).collection('comments').doc(commentId).delete();
+  });
 
   @override
   Future<void> addComment({
@@ -311,6 +390,8 @@ class FirestoreSocialRepository implements SocialRepository {
           liked ? tx.set(like, {'uid': me}) : tx.delete(like);
           // `onCommentLikeWritten` moves the count.
         });
+        // The cached answer is now wrong; the next snapshot re-reads it.
+        _commentLikes[commentId] = liked;
       });
 
   // --------------------------------------------------------------- reviews

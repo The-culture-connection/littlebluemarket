@@ -180,6 +180,15 @@ GoRouter buildRouter(Ref ref) {
         builder: (context, state) => const WelcomeScreen(playIntro: false),
       ),
 
+      // The welcome animation on demand, since no ordinary route plays it any
+      // more. Reached from the button at the bottom of Diagnostics, and by
+      // typing the path when the app is run in a browser. Kept out of the
+      // onboarding flow deliberately: nothing navigates here by itself.
+      GoRoute(
+        path: '/welcome-intro',
+        builder: (context, state) => const WelcomeScreen(playIntro: true),
+      ),
+
       // The resting frame on its own, for coming back without a replay.
       GoRoute(
         path: '/welcome',

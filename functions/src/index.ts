@@ -1045,6 +1045,23 @@ export const onPostWritten = onDocumentWritten(
     }
     await batch.commit();
 
+    // The number under the avatar on a profile. Nothing moved it before, so
+    // every profile read "0 posts" however much its owner had posted
+    // (Grace's testers, 2026-09-23). It moves here, from the trigger, for the
+    // same reason every other counter does: the rules lock `postCount`
+    // against the phone, and two posts in the same second must be two.
+    const authorOf = (data: Record<string, unknown> | undefined) =>
+      typeof data?.authorId === 'string' ? data.authorId : '';
+    const authorBefore = authorOf(event.data?.before?.data() as Record<string, unknown> | undefined);
+    const authorAfter = authorOf(event.data?.after?.data() as Record<string, unknown> | undefined);
+    const wasPost = Boolean(event.data?.before?.exists);
+    const isPost = Boolean(event.data?.after?.exists);
+    if (!wasPost && isPost && authorAfter) {
+      await bumpCounter(db.collection('users').doc(authorAfter), 'postCount', 1);
+    } else if (wasPost && !isPost && authorBefore) {
+      await bumpCounter(db.collection('users').doc(authorBefore), 'postCount', -1);
+    }
+
     // Stage 9: the people this post names hear about it.
     const afterAll = event.data?.after?.data() as Record<string, unknown> | undefined;
     const beforeAll = event.data?.before?.data() as Record<string, unknown> | undefined;

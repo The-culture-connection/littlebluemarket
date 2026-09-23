@@ -186,6 +186,24 @@ abstract interface class SocialRepository {
     String? parentId,
   });
 
+  /// Rewrites your own comment. The backend refuses anyone else's, so the
+  /// screen's job is only to offer it to the author.
+  ///
+  /// Stamps `editedAt`, which the row shows: a comment that changed after
+  /// people replied to it should say so rather than quietly become something
+  /// else.
+  Future<void> editComment({
+    required String postId,
+    required String commentId,
+    required String text,
+  });
+
+  /// Removes your own comment.
+  Future<void> deleteComment({
+    required String postId,
+    required String commentId,
+  });
+
   /// The post id comes along because a comment lives under its post; a
   /// collection-group lookup by document id is not something Firestore does.
   Future<void> setCommentLike(String postId, String commentId, bool liked);

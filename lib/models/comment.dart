@@ -18,6 +18,7 @@ class Comment {
     this.parentId,
     this.likeCount = 0,
     this.likedByMe = false,
+    this.editedAt,
   });
 
   final String id;
@@ -32,18 +33,30 @@ class Comment {
   final int likeCount;
   final bool likedByMe;
 
+  /// When the author last rewrote it, or null when they never have. Shown,
+  /// because a comment that changed after people replied to it should say so.
+  final DateTime? editedAt;
+
+  bool get isEdited => editedAt != null;
+
   int get depth => parentId == null ? 0 : 1;
 
   String get age => Fmt.relative(createdAt);
 
-  Comment copyWith({int? likeCount, bool? likedByMe}) => Comment(
+  Comment copyWith({
+    int? likeCount,
+    bool? likedByMe,
+    String? text,
+    DateTime? editedAt,
+  }) => Comment(
     id: id,
     postId: postId,
     authorId: authorId,
     createdAt: createdAt,
-    text: text,
+    text: text ?? this.text,
     parentId: parentId,
     likeCount: likeCount ?? this.likeCount,
     likedByMe: likedByMe ?? this.likedByMe,
+    editedAt: editedAt ?? this.editedAt,
   );
 }

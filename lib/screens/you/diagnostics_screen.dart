@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/repositories/dev_error_sink.dart';
 import '../../data/repositories/repositories.dart';
@@ -138,6 +139,30 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> {
                 }
                 return _ReportCard(report: report);
               },
+            ),
+          ],
+          if (kLbmDev) ...[
+            const SizedBox(height: 18),
+            const SectionHead('Artwork'),
+            LbmCard(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'The launch animation now plays over the app at start-up, '
+                    'so the welcome screen no longer replays it. This button '
+                    'is the only way left to watch the welcome GIF itself, '
+                    'from its first frame.',
+                    style: LbmText.tiny.copyWith(color: c.ink2),
+                  ),
+                  const SizedBox(height: 12),
+                  PillButton(
+                    'Play the welcome animation',
+                    onPressed: () => context.push('/welcome-intro'),
+                  ),
+                ],
+              ),
             ),
           ],
         ],
@@ -290,7 +315,8 @@ class _AdminCardState extends ConsumerState<_AdminCard> {
 
   Future<String> _reindexTags() async {
     final result = await _repo.backfillProfileTags();
-    return 'Checked ${result.checked} profiles, reindexed ${result.updated}.';
+    return 'Checked ${result.checked} profiles, repaired ${result.updated} '
+        '(hashtags and post counts).';
   }
 
   Future<String> _sync() async {
@@ -358,7 +384,7 @@ class _AdminCardState extends ConsumerState<_AdminCard> {
                 onPressed: _busy ? null : () => _run('Syncing…', _sync),
               ),
               PillButton(
-                'Reindex hashtags',
+                'Reindex profiles',
                 small: true,
                 expand: false,
                 style: PillStyle.quiet,

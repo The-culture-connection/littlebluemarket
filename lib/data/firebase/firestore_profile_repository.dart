@@ -152,10 +152,26 @@ class FirestoreProfileRepository implements ProfileRepository {
           Uint8List.fromList(bytes),
           SettableMetadata(contentType: contentType),
         );
-        final url = await ref.getDownloadURL();
+        final url = cacheBusted(await ref.getDownloadURL());
         await _users.doc(id).set({'avatarUrl': url}, SetOptions(merge: true));
         return url;
       });
+
+  /// The same address, spelled so it is not the one already in the picture
+  /// cache.
+  ///
+  /// Every avatar overwrites the one file, `avatars/{uid}/profile.jpg`, and a
+  /// Storage download URL keeps its token across overwrites — so the new
+  /// photograph came back under the byte-for-byte same URL, and Flutter's
+  /// image cache kept serving the old face until the app was restarted
+  /// (Grace's testers, 2026-09-23). An ignored query parameter is enough to
+  /// make it a different key. Not a timestamp on the file: the stored URL has
+  /// to change, because that is what every other phone reads.
+  static String cacheBusted(String url) {
+    if (url.isEmpty) return url;
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    return url.contains('?') ? '$url&v=$stamp' : '$url?v=$stamp';
+  }
 
   @override
   Future<bool> handleAvailable(String handle) => guardFirestore(() async {

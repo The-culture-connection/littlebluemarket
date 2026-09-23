@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
 import '../../router/nav.dart';
 import '../../state/providers.dart';
@@ -238,15 +239,131 @@ class _Comments extends ConsumerWidget {
   }
 }
 
-class _CommentRow extends ConsumerWidget {
+/// One comment, with the way to change your own.
+///
+/// The edit is inline rather than a sheet: the words being rewritten stay
+/// where they are, under the name and the time, so it is never in doubt which
+/// comment is being changed.
+class _CommentRow extends ConsumerStatefulWidget {
   const _CommentRow({required this.comment});
 
   final Comment comment;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CommentRow> createState() => _CommentRowState();
+}
+
+class _CommentRowState extends ConsumerState<_CommentRow> {
+  /// Non-null only while this row is being rewritten.
+  TextEditingController? _draft;
+  bool _busy = false;
+
+  bool get _editing => _draft != null;
+
+  @override
+  void dispose() {
+    _draft?.dispose();
+    super.dispose();
+  }
+
+  void _startEditing() {
+    setState(() => _draft = TextEditingController(text: widget.comment.text));
+  }
+
+  void _cancel() {
+    setState(() {
+      _draft?.dispose();
+      _draft = null;
+    });
+  }
+
+  Future<void> _save() async {
+    final draft = _draft;
+    if (draft == null || _busy) return;
+    final text = draft.text.trim();
+    if (text.isEmpty || text == widget.comment.text) {
+      _cancel();
+      return;
+    }
+
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(socialRepositoryProvider)
+          .editComment(
+            postId: widget.comment.postId,
+            commentId: widget.comment.id,
+            text: text,
+          );
+      if (!mounted) return;
+      _cancel();
+    } on RepositoryException catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(describeError(error).body)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _delete() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final yes = await showLbmSheet<bool>(
+      context,
+      (sheetContext) => LbmSheet(
+        children: [
+          Text(
+            'Delete this comment?',
+            style: LbmText.display.copyWith(
+              fontSize: 20,
+              color: sheetContext.c.ink,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'It goes for everyone, and it cannot be brought back.',
+            style: LbmText.tiny.copyWith(
+              color: sheetContext.c.ink2,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          PillButton(
+            'Delete it',
+            onPressed: () => Navigator.of(sheetContext).pop(true),
+          ),
+          const SizedBox(height: 8),
+          PillButton(
+            'Keep it',
+            style: PillStyle.ghost,
+            onPressed: () => Navigator.of(sheetContext).pop(false),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    try {
+      await ref
+          .read(socialRepositoryProvider)
+          .deleteComment(
+            postId: widget.comment.postId,
+            commentId: widget.comment.id,
+          );
+    } on RepositoryException catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(describeError(error).body)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.c;
+    final comment = widget.comment;
     final author = ref.watch(personProvider(comment.authorId));
+    final isMine = ref.watch(currentUidProvider) == comment.authorId;
 
     return Padding(
       // One level of nesting only; a reply to a reply flattens onto this level.
@@ -288,18 +405,72 @@ class _CommentRow extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: 7),
-                      Text(
-                        comment.age,
-                        style: LbmText.xtiny.copyWith(color: c.ink2),
+                      Flexible(
+                        child: Text(
+                          comment.isEdited
+                              ? '${comment.age} · edited'
+                              : comment.age,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: LbmText.xtiny.copyWith(color: c.ink2),
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  comment.text,
-                  style: TextStyle(fontSize: 13.5, height: 1.5, color: c.ink2),
-                ),
+                if (_editing) ...[
+                  LbmField(
+                    controller: _draft,
+                    maxLines: 4,
+                    autofocus: true,
+                    hintText: 'Your comment',
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      PillButton(
+                        _busy ? 'Saving' : 'Save',
+                        expand: false,
+                        onPressed: _busy ? null : _save,
+                      ),
+                      const SizedBox(width: 8),
+                      PillButton(
+                        'Cancel',
+                        style: PillStyle.ghost,
+                        expand: false,
+                        onPressed: _busy ? null : _cancel,
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  Text(
+                    comment.text,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      height: 1.5,
+                      color: c.ink2,
+                    ),
+                  ),
+                  // Your own words are yours to change. On the row itself
+                  // rather than behind a long press, which nobody finds
+                  // (Grace's testers, 2026-09-23).
+                  if (isMine)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Row(
+                        children: [
+                          InlineLink(
+                            'Edit',
+                            fontSize: 11.5,
+                            onTap: _startEditing,
+                          ),
+                          const SizedBox(width: 14),
+                          InlineLink('Delete', fontSize: 11.5, onTap: _delete),
+                        ],
+                      ),
+                    ),
+                ],
               ],
             ),
           ),

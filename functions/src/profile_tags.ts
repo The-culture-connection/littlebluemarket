@@ -52,21 +52,54 @@ export async function syncProfileTagsLower(
   return true;
 }
 
-/** Every profile, once: what the admin "Reindex hashtags" button runs. */
+/** How many posts each author has right now, from the posts themselves. */
+export async function postCountsByAuthor(): Promise<Map<string, number>> {
+  const snapshot = await getFirestore().collection('posts').select('authorId').get();
+  const counts = new Map<string, number>();
+  for (const doc of snapshot.docs) {
+    const author = doc.get('authorId');
+    if (typeof author !== 'string' || !author) continue;
+    counts.set(author, (counts.get(author) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/**
+ * Every profile, once: what the admin "Reindex profiles" button runs.
+ *
+ * Two things, because they are the same walk over `users`: the lowercase
+ * hashtag mirror, and `postCount`. The count is written as a total rather
+ * than incremented — this is the one place allowed to, because it is derived
+ * from the posts and not from a delta, and it is what repairs every profile
+ * that posted before the trigger existed.
+ */
 export async function backfillProfileTagsLower(): Promise<{
   checked: number;
   updated: number;
 }> {
   const db = getFirestore();
-  const snapshot = await db.collection('users').get();
+  const [snapshot, posts] = await Promise.all([
+    db.collection('users').get(),
+    postCountsByAuthor(),
+  ]);
   let batch = db.batch();
   let pending = 0;
   let updated = 0;
   for (const doc of snapshot.docs) {
     const data = doc.data();
     const wanted = lowerTags(data.tags);
-    if (sameTags(wanted, lowerTags(data.tagsLower))) continue;
-    batch.set(doc.ref, { tagsLower: wanted }, { merge: true });
+    const tagsDrifted = !sameTags(wanted, lowerTags(data.tagsLower));
+    const wantedPosts = posts.get(doc.id) ?? 0;
+    const postsDrifted = Number(data.postCount ?? 0) !== wantedPosts;
+    if (!tagsDrifted && !postsDrifted) continue;
+    batch.set(
+      doc.ref,
+      {
+        ...(tagsDrifted ? { tagsLower: wanted } : {}),
+        ...(postsDrifted ? { postCount: wantedPosts } : {}),
+      },
+      { merge: true },
+    );
     updated += 1;
     pending += 1;
     if (pending === 400) {
@@ -76,6 +109,6 @@ export async function backfillProfileTagsLower(): Promise<{
     }
   }
   if (pending > 0) await batch.commit();
-  logger.info('Reindexed profile hashtags', { checked: snapshot.size, updated });
+  logger.info('Reindexed profiles', { checked: snapshot.size, updated });
   return { checked: snapshot.size, updated };
 }

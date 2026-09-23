@@ -327,9 +327,20 @@ final ratingProvider = StreamProvider.family<RatingSummary, String>((
 
 // ------------------------------------------------------------------ profile
 
-final personProvider = FutureProvider.family<Person, String>((ref, id) {
+/// Someone, live.
+///
+/// Live rather than fetched once, because this is the provider every avatar,
+/// every post header and every comment resolves its author through. Cached
+/// one-shot, a name or a photograph changed in Edit profile stayed wrong on
+/// your own comments until the app was restarted (Grace's testers,
+/// 2026-09-23). A profile document is small and the same listener is shared
+/// by every widget showing that person.
+final personProvider = StreamProvider.family<Person, String>((ref, id) {
   ref.keepCached();
-  return ref.watch(profileRepositoryProvider).person(id);
+  return ref
+      .watch(profileRepositoryProvider)
+      .watchPerson(id)
+      .map((person) => person ?? (throw NotFoundException('person', id)));
 });
 
 final watchPersonProvider = StreamProvider.family<Person?, String>((ref, id) {

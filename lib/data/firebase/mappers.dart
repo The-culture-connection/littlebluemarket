@@ -446,7 +446,11 @@ abstract final class FirestoreMappers {
     }
   }
 
-  static Comment comment(String id, Map<String, dynamic> data) => Comment(
+  static Comment comment(
+    String id,
+    Map<String, dynamic> data, {
+    bool likedByMe = false,
+  }) => Comment(
     id: id,
     postId: str(data['postId']),
     authorId: str(data['authorId']),
@@ -454,7 +458,10 @@ abstract final class FirestoreMappers {
     text: str(data['text']),
     parentId: data['parentId'] as String?,
     likeCount: integer(data['likeCount']),
-    likedByMe: boolean(data['likedByMe']),
+    // The viewer's own like lives in a subcollection, not on the comment
+    // itself, so the repository resolves it and passes it in.
+    likedByMe: likedByMe || boolean(data['likedByMe']),
+    editedAt: timeOrNull(data['editedAt']),
   );
 
   static Forum forum(String id, Map<String, dynamic> data) => Forum(

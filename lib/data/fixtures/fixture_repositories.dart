@@ -682,6 +682,40 @@ class FixtureSocialRepository implements SocialRepository {
   }
 
   @override
+  Future<void> editComment({
+    required String postId,
+    required String commentId,
+    required String text,
+  }) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      throw const ValidationException('A comment cannot be empty');
+    }
+    final all = {..._store.comments.value};
+    all[postId] = [
+      for (final c in all[postId] ?? const <Comment>[])
+        if (c.id == commentId && c.authorId == _backend.uid)
+          c.copyWith(text: trimmed, editedAt: DateTime.now())
+        else
+          c,
+    ];
+    _store.comments.value = all;
+  }
+
+  @override
+  Future<void> deleteComment({
+    required String postId,
+    required String commentId,
+  }) async {
+    final all = {..._store.comments.value};
+    all[postId] = [
+      for (final c in all[postId] ?? const <Comment>[])
+        if (!(c.id == commentId && c.authorId == _backend.uid)) c,
+    ];
+    _store.comments.value = all;
+  }
+
+  @override
   Future<void> setCommentLike(
     String postId,
     String commentId,
