@@ -773,6 +773,36 @@ lowercase name mirror on every profile that existed before today.
   **Grace does:** Market feed → find a listing several people have added.
   **Pass:** the number is beside the cart icon and goes up when you add it.
 
+### Stage 19, @profiles and #hashtags in announcements and adverts (Grace's ask, 2026-09-24)
+
+- [ ] **CP-19A Name a shop in an advert.** *Claude built:* the backend
+  resolves every `@handle` and `#hashtag` in a title or caption when it is
+  saved, refuses a handle that matches nobody (naming the spelling), and
+  stores the uid beside the handle so a later rename does not break the link.
+  The phone draws them picked out and tappable, in the popup and under the
+  bell. The admin website says what the syntax is and previews what will be
+  tappable.
+  **Grace does:** admin website → **Adverts and popups** → caption with
+  `@handle` of a real shop and a `#Hashtag` in it → watch the preview → post
+  it. Then in the app, force-close and open, wait for the popup, tap the
+  handle, then tap the hashtag.
+  **Pass:** the preview shows both in blue and lists them under "Tappable on
+  the phone"; the popup draws them the same way; tapping the handle closes
+  the popup and opens that shop; tapping the hashtag closes it and runs the
+  search.
+  **If it fails:** "Nobody on Little Blue Market has the handle …" means the
+  spelling does not match a profile; the handle is the one on their profile.
+  Nothing highlighted in the popup but highlighted in the preview means the
+  phone is on an older build.
+
+- [ ] **CP-19B The same in an announcement, and under the bell.**
+  **Grace does:** admin website → **Send an announcement** → a message naming
+  a shop and a hashtag → read the "Tappable on the phone" line → send. Then in
+  the app: the bell → the new row.
+  **Pass:** the announcement form lists the tokens before sending; the bell
+  row shows them picked out and both tap through. A misspelled handle stops
+  the send before any push goes out.
+
 ### Sequencing
 
 Stage 0 → Stage 1 → CP-A1 → (CP-A2 and CP-A3 independent) → CP-A4 needs CP-A3 → CP-A5 independent of A2–A4 → Stage 3 needs Stage 0 and CP-A1 (CP-A4 for seller sales) → Stages 4–9 in order (CP-S2 to CP-S5 can run any time after Stage 4; CP-S1 and CP-S6 wait on Stage 8) → Stage 10 in order, CP-D0 first and nothing else in it until the doctor confirms the dev project points at staging → Stage 11 needs CP-D2 → Stage 12 is independent of 10 and 11 (its Android path is testable on the emulator; CP-N4 last) → Stage 13 needs CP-D2/D3 (E1 first, then E2, E3, E4). One commit and push per checkpoint.
