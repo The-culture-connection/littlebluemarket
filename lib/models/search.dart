@@ -7,6 +7,12 @@ import 'models.dart';
 /// One enum for the whole app. The prototype had two different chip lists —
 /// four scopes on the search screen, three on the results screen — and neither
 /// filtered anything.
+/// The scope a query arriving from a link should be searched in: a hashtag
+/// as a hashtag, anything else across everything.
+SearchScope scopeFor(String query) => query.trimLeft().startsWith('#')
+    ? SearchScope.hashtags
+    : SearchScope.all;
+
 enum SearchScope {
   all('All'),
   hashtags('Hashtags'),
@@ -18,15 +24,29 @@ enum SearchScope {
   final String label;
 }
 
+/// How a list of listings is ordered.
+///
+/// Three of these read three different counts, and the difference matters:
+/// [bestSellers] reads what has actually been bought, [mostPopular] reads how
+/// many people have ever added it to a cart (the affinity signal on Little
+/// Blue Market, where there is no like), and [topRated] reads the reviews.
 enum SortOrder {
   relevance('Relevance'),
-  nearest('Nearest'),
+  bestSellers('Best sellers'),
+  mostPopular('Most popular'),
+  priceLowToHigh('Price: low to high'),
+  priceHighToLow('Price: high to low'),
+  topRated('Top rated'),
   newest('Newest'),
-  priceLowToHigh('Price'),
-  topRated('Top rated');
+  nearest('Nearest');
 
   const SortOrder(this.label);
   final String label;
+
+  /// Everything except [nearest], which needs somewhere to measure from and
+  /// is offered by the Near me button rather than by the sort sheet.
+  static List<SortOrder> get offered =>
+      values.where((s) => s != SortOrder.nearest).toList();
 }
 
 /// Where the person searching is, and how far they are willing to go.
@@ -133,6 +153,69 @@ class SearchFilters {
   @override
   String toString() =>
       'SearchFilters($query, $scope, near=$nearMe, r=$radiusMiles, $sort)';
+}
+
+/// Puts listings in the order [sort] asks for.
+///
+/// Here rather than in a repository because both of them needed it and the
+/// two copies had already drifted: the fixture one and the Firestore one
+/// disagreed about what Newest meant, which is exactly the kind of thing
+/// nobody notices until a tester does.
+///
+/// Stable and total: every comparison falls back to the title, so a shelf of
+/// listings with the same count does not reshuffle itself between two reads
+/// of the same search.
+List<Product> sortProducts(
+  List<Product> products,
+  SortOrder sort, {
+  SearchOrigin? origin,
+}) {
+  final sorted = [...products];
+  int byTitle(Product a, Product b) =>
+      a.title.toLowerCase().compareTo(b.title.toLowerCase());
+  int then(int first, Product a, Product b) =>
+      first != 0 ? first : byTitle(a, b);
+
+  switch (sort) {
+    case SortOrder.bestSellers:
+      sorted.sort((a, b) => then(b.soldCount.compareTo(a.soldCount), a, b));
+    case SortOrder.mostPopular:
+      sorted.sort((a, b) => then(b.saveCount.compareTo(a.saveCount), a, b));
+    case SortOrder.priceLowToHigh:
+      sorted.sort((a, b) => then(a.priceCents.compareTo(b.priceCents), a, b));
+    case SortOrder.priceHighToLow:
+      sorted.sort((a, b) => then(b.priceCents.compareTo(a.priceCents), a, b));
+    case SortOrder.topRated:
+      // A five-star listing with one review is not better than a 4.8 with
+      // ninety, so the count breaks the tie before the title does.
+      sorted.sort((a, b) {
+        final byStars = b.rating.compareTo(a.rating);
+        if (byStars != 0) return byStars;
+        return then(b.ratingCount.compareTo(a.ratingCount), a, b);
+      });
+    case SortOrder.newest:
+      // A mirror row written before `createdAt` existed sorts last rather
+      // than first: unknown is not new.
+      sorted.sort((a, b) {
+        final at = a.createdAt;
+        final bt = b.createdAt;
+        if (at == null && bt == null) return byTitle(a, b);
+        if (at == null) return 1;
+        if (bt == null) return -1;
+        return then(bt.compareTo(at), a, b);
+      });
+    case SortOrder.nearest:
+      if (origin == null) break;
+      double distance(Product p) => p.lat == null || p.lng == null
+          ? double.infinity
+          : Geo.milesBetween(origin.lat, origin.lng, p.lat!, p.lng!);
+      sorted.sort((a, b) => then(distance(a).compareTo(distance(b)), a, b));
+    case SortOrder.relevance:
+      // Whatever order the search produced: that is what relevance means
+      // here, and pretending otherwise would be a lie about the ranking.
+      break;
+  }
+  return sorted;
 }
 
 /// A review that matched, with the product it hangs off.

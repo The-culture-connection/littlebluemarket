@@ -157,6 +157,8 @@ class Product {
     required this.saveCount,
     required this.commentCount,
     this.inCartsCount = 0,
+    this.soldCount = 0,
+    this.createdAt,
     this.imageUrls = const [],
     this.collectionHandles = const [],
     this.lat,
@@ -218,7 +220,17 @@ class Product {
 
   /// How many carts hold it right now. Rises and falls; function-written.
   final int inCartsCount;
+
+  /// How many have actually been bought, from the paid orders. The only one
+  /// of the three counts that is a sale, which is why Best sellers reads it
+  /// and Most popular reads [saveCount]. Function-written.
+  final int soldCount;
+
   final int commentCount;
+
+  /// When the store first listed it. Null for a mirror row written before
+  /// the field existed, which sorts last under Newest rather than first.
+  final DateTime? createdAt;
 
   /// Photographs, in the order they appear in the detail slideshow. An
   /// `asset://` scheme means a bundled demo image; anything else is a URL.

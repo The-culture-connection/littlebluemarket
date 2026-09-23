@@ -183,22 +183,39 @@ class FixtureSearchRepository implements SearchRepository {
     final q = query.toLowerCase();
     final isTag = query.startsWith('#');
 
+    final sellers = filters.scope == SearchScope.productType
+        ? <Person>[]
+        : Fx.people.values
+              .where(
+                (person) =>
+                    // A hashtag finds anyone who carries it; a name or handle
+                    // finds a shop, whether or not they sell here — a
+                    // directory business is who a name search often wants.
+                    person.tags.any((t) => t.toLowerCase() == q) ||
+                    person.name.toLowerCase().startsWith(q) ||
+                    person.handle.toLowerCase().replaceFirst('@', '').startsWith(
+                      q.replaceFirst('@', ''),
+                    ),
+              )
+              .toList();
+    final sellerIds = {for (final person in sellers) person.id};
+
     bool matches(Product p) => switch (filters.scope) {
       SearchScope.hashtags => p.tags.any((t) => t.toLowerCase() == q),
+      // Any word of the query, in any spelling: the live search matches a
+      // mirror of every word of the title, description and type, and the two
+      // must agree or a fixture test proves nothing.
       SearchScope.keywords =>
-        p.title.toLowerCase().contains(q) ||
-            p.description.toLowerCase().contains(q),
+        wordsMatched('${p.title} ${p.description}', q) > 0,
       SearchScope.productType => p.type.toLowerCase().contains(q),
       SearchScope.sellers =>
         _handleOf(p).toLowerCase().contains(q) ||
-            _nameOf(p).toLowerCase().contains(q),
+            _nameOf(p).toLowerCase().contains(q) ||
+            sellerIds.contains(p.sellerId),
       SearchScope.all =>
         p.tags.any((t) => t.toLowerCase() == q) ||
-            p.title.toLowerCase().contains(q) ||
-            p.type.toLowerCase().contains(q) ||
-            p.description.toLowerCase().contains(q) ||
-            _nameOf(p).toLowerCase().contains(q) ||
-            _handleOf(p).toLowerCase().contains(q),
+            wordsMatched('${p.title} ${p.type} ${p.description}', q) > 0 ||
+            sellerIds.contains(p.sellerId),
     };
 
     var products = Fx.products.values.where(matches).toList();
@@ -216,20 +233,16 @@ class FixtureSearchRepository implements SearchRepository {
     }
 
     products = _sorted(products, filters);
-
-    final sellers = filters.scope == SearchScope.productType
-        ? <Person>[]
-        : Fx.people.values
-              .where(
-                (person) =>
-                    // A hashtag finds anyone who carries it; a name or handle
-                    // finds a shop.
-                    person.tags.any((t) => t.toLowerCase() == q) ||
-                    (person.isSeller &&
-                        (person.name.toLowerCase().contains(q) ||
-                            person.handle.toLowerCase().contains(q))),
-              )
-              .toList();
+    // Under the default sort, what a named shop sells comes first: the app
+    // would rather sell it here than send someone to a website.
+    if (filters.sort == SortOrder.relevance && sellerIds.isNotEmpty) {
+      products = [
+        for (final p in products)
+          if (sellerIds.contains(p.sellerId)) p,
+        for (final p in products)
+          if (!sellerIds.contains(p.sellerId)) p,
+      ];
+    }
 
     final reviews = <TaggedReview>[
       if (isTag)
@@ -244,31 +257,9 @@ class FixtureSearchRepository implements SearchRepository {
     );
   }
 
-  List<Product> _sorted(List<Product> products, SearchFilters filters) {
-    final sorted = [...products];
-    switch (filters.sort) {
-      case SortOrder.priceLowToHigh:
-        sorted.sort((a, b) => a.priceCents.compareTo(b.priceCents));
-      case SortOrder.topRated:
-        sorted.sort((a, b) => b.rating.compareTo(a.rating));
-      case SortOrder.nearest:
-        final origin = filters.origin;
-        if (origin != null) {
-          sorted.sort(
-            (a, b) => _distance(a, origin).compareTo(_distance(b, origin)),
-          );
-        }
-      case SortOrder.newest:
-      case SortOrder.relevance:
-        break;
-    }
-    return sorted;
-  }
+  List<Product> _sorted(List<Product> products, SearchFilters filters) =>
+      sortProducts(products, filters.sort, origin: filters.origin);
 
-  double _distance(Product p, SearchOrigin origin) {
-    if (p.lat == null || p.lng == null) return double.infinity;
-    return Geo.milesBetween(origin.lat, origin.lng, p.lat!, p.lng!);
-  }
 
   String _nameOf(Product p) => Fx.people[p.sellerId]?.name ?? '';
   String _handleOf(Product p) => Fx.people[p.sellerId]?.handle ?? '';

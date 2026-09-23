@@ -46,15 +46,15 @@ class FirestoreSearchRepository implements SearchRepository {
         final query = filters.query.trim();
         if (query.isEmpty) return const SearchResults.empty();
 
-        final products = filters.isGeoConstrained
-            ? await _geoSearch(filters)
-            : await _plainSearch(filters);
-
         final tag = await _canonicalTag(query, filters.scope);
 
         final people = filters.scope == SearchScope.productType
             ? const <Person>[]
             : await _people(query, tag);
+
+        final products = filters.isGeoConstrained
+            ? await _geoSearch(filters)
+            : await _plainSearch(filters, people);
 
         final reviews = tag != null
             ? await _taggedReviews(tag)
@@ -114,8 +114,17 @@ class FirestoreSearchRepository implements SearchRepository {
     ];
   }
 
-  /// No radius: let Firestore do what it can, then filter the rest.
-  Future<List<Product>> _plainSearch(SearchFilters filters) async {
+  /// No radius: let Firestore do what it can, then rank the rest.
+  ///
+  /// [sellers] are the shops the same query matched by name or handle. Their
+  /// listings are pulled in and put first, because someone who types a shop's
+  /// name wants the things they can buy from that shop — and because the app
+  /// would rather sell them something here than send them to a website
+  /// (Grace, 2026-09-23).
+  Future<List<Product>> _plainSearch(
+    SearchFilters filters,
+    List<Person> sellers,
+  ) async {
     final query = filters.query.trim();
     final lower = query.toLowerCase();
 
@@ -136,54 +145,100 @@ class FirestoreSearchRepository implements SearchRepository {
         if (tag != null) {
           base = base.where('tags', arrayContains: tag);
         } else {
-          // A word anywhere in the title. The mirror stores each title's
-          // words, because a prefix scan on the whole title misses
-          // "The Complete Snowboard" for "snowboard" — which is how people
-          // actually search. Not a substring match; that is the honest
-          // limit of what Firestore can index.
-          base = base.where('titleWords', arrayContains: _firstWord(lower));
+          // Every word of the title, the description and the type, against
+          // every spelling of the query worth trying. This used to read
+          // `titleWords` and only the query's first word exactly as typed,
+          // so "caramels" missed "Sea Salt Caramel" — the thing a tester
+          // actually searched for and could not find.
+          final variants = queryVariants(lower);
+          if (variants.isEmpty) return const [];
+          base = base.where('searchWords', arrayContainsAny: variants);
         }
     }
 
     final snapshot = await base.limit(_candidateLimit).get();
-    final products = snapshot.docs
-        .map((doc) => FirestoreMappers.product(doc.id, doc.data()))
-        .toList();
+    final products = <String, Product>{
+      for (final doc in snapshot.docs)
+        doc.id: FirestoreMappers.product(doc.id, doc.data()),
+    };
+
+    final isText =
+        filters.scope == SearchScope.keywords ||
+        filters.scope == SearchScope.all;
 
     // A multi-word query also takes titles that start with the whole phrase,
-    // which one word above cannot express.
-    if ((filters.scope == SearchScope.keywords ||
-            filters.scope == SearchScope.all) &&
-        !query.startsWith('#') &&
-        lower.contains(' ')) {
+    // which one array query above cannot express.
+    if (isText && !query.startsWith('#') && lower.contains(' ')) {
       final byPrefix = await _catalog
           .where('titleLower', isGreaterThanOrEqualTo: lower)
-          .where('titleLower', isLessThan: '$lower\uf8ff')
+          .where('titleLower', isLessThan: '$lower')
           .limit(50)
           .get();
-      final seenByPrefix = products.map((p) => p.id).toSet();
       for (final doc in byPrefix.docs) {
-        if (seenByPrefix.add(doc.id)) {
-          products.add(FirestoreMappers.product(doc.id, doc.data()));
-        }
+        products.putIfAbsent(
+          doc.id,
+          () => FirestoreMappers.product(doc.id, doc.data()),
+        );
       }
     }
 
-    // `all` also wants type and description hits, which the single query above
-    // could not include.
-    if (filters.scope != SearchScope.all) return products;
+    // `all` also wants type hits, which the query above could not include.
+    if (filters.scope == SearchScope.all) {
+      final byType = await _catalog
+          .where('typeSlug', isEqualTo: _slug(query))
+          .limit(50)
+          .get();
+      for (final doc in byType.docs) {
+        products.putIfAbsent(
+          doc.id,
+          () => FirestoreMappers.product(doc.id, doc.data()),
+        );
+      }
+    }
 
-    final byType = await _catalog
-        .where('typeSlug', isEqualTo: _slug(query))
-        .limit(50)
+    final fromSellers = isText || filters.scope == SearchScope.sellers
+        ? await _productsOfSellers(sellers)
+        : const <Product>[];
+    for (final product in fromSellers) {
+      products.putIfAbsent(product.id, () => product);
+    }
+
+    final found = products.values.toList();
+    if (!isText) return found;
+
+    // Relevance, spelled out: a shop the query named first, then how much of
+    // the query the listing actually says. Only applied under the default
+    // sort — any other sort is the person telling us what they want.
+    if (filters.sort != SortOrder.relevance) return found;
+    final sellerIds = {for (final person in sellers) person.id};
+    found.sort((a, b) {
+      final byShop =
+          (sellerIds.contains(b.sellerId) ? 1 : 0) -
+          (sellerIds.contains(a.sellerId) ? 1 : 0);
+      if (byShop != 0) return byShop;
+      final byWords =
+          wordsMatched('${b.title} ${b.type} ${b.description}', lower) -
+          wordsMatched('${a.title} ${a.type} ${a.description}', lower);
+      if (byWords != 0) return byWords;
+      return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+    });
+    return found;
+  }
+
+  /// Everything the shops a query named have for sale here.
+  Future<List<Product>> _productsOfSellers(List<Person> sellers) async {
+    if (sellers.isEmpty) return const [];
+    // whereIn caps at 30, and nobody searches thirty shops at once.
+    final ids = [for (final person in sellers) person.id].take(10).toList();
+    final snapshot = await _catalog
+        .where('sellerId', whereIn: ids)
+        .limit(_candidateLimit)
         .get();
-    final seen = products.map((p) => p.id).toSet();
-    for (final doc in byType.docs) {
-      if (seen.add(doc.id)) {
-        products.add(FirestoreMappers.product(doc.id, doc.data()));
-      }
-    }
-    return products;
+    return [
+      for (final doc in snapshot.docs)
+        if (doc.data()['active'] != false)
+          FirestoreMappers.product(doc.id, doc.data()),
+    ];
   }
 
   bool _matches(Product product, SearchFilters filters) {
@@ -194,22 +249,20 @@ class FirestoreSearchRepository implements SearchRepository {
       SearchScope.hashtags => product.tags.contains(query),
       SearchScope.productType => product.type.toLowerCase().contains(lower),
       SearchScope.sellers => product.sellerId.toLowerCase().contains(lower),
-      // Every word, in any order, anywhere in the title, type or
-      // description: "balm mint" finds the mint lip balm.
-      SearchScope.keywords => matchesAllWords(
-        '${product.title} ${product.description}',
-        lower,
-      ),
+      // Any word of the query, in any spelling, anywhere in the listing.
+      SearchScope.keywords =>
+        wordsMatched('${product.title} ${product.description}', lower) > 0,
       SearchScope.all =>
         product.tags.contains(query) ||
-            matchesAllWords(
-              '${product.title} ${product.type} ${product.description}',
-              lower,
-            ),
+            wordsMatched(
+                  '${product.title} ${product.type} ${product.description}',
+                  lower,
+                ) >
+                0,
     };
   }
 
-  /// The people a search should show: sellers whose handle starts with the
+  /// The people a search should show: shops whose handle or name matches the
   /// query, plus anyone carrying the hashtag on their profile.
   ///
   /// The second half is what makes a profile's initiative hashtags mean
@@ -253,26 +306,54 @@ class FirestoreSearchRepository implements SearchRepository {
     }
     return found.values.toList();
   }
-
+  /// Shops whose handle or display name starts with the query.
+  ///
+  /// Two prefix scans rather than one, because people type what a shop calls
+  /// itself and not its @handle — which is why a tester searching a shop
+  /// that is on the Market saw only the stray listing whose title happened
+  /// to carry the word (Grace, 2026-09-23). `nameLower` is the mirror the
+  /// second scan reads; `handleLower` has always been there.
+  ///
+  /// No `isSeller` clause any more either. It made this a two-field query
+  /// needing a composite index, and it hid a directory business that sells
+  /// on its own website — which is exactly who someone typing a shop name is
+  /// often looking for.
+  /// the word (Grace, 2026-09-23).
   Future<List<Person>> _sellers(String query) async {
-    final lower = query.toLowerCase().replaceFirst('@', '');
-    final snapshot = await _db
-        .collection('users')
-        .where('isSeller', isEqualTo: true)
-        .where('handleLower', isGreaterThanOrEqualTo: lower)
-        .where('handleLower', isLessThan: '$lower')
-        .limit(10)
-        .get();
-    return snapshot.docs
-        .map((doc) => FirestoreMappers.person(doc.id, doc.data()))
-        .toList();
-  }
-
-  /// The first word of a query, the way the mirror indexes titles: lowercase,
-  /// letters and digits only.
-  static String _firstWord(String lower) {
-    final words = lower.split(RegExp(r'[^a-z0-9]+')).where((w) => w.isNotEmpty);
-    return words.isEmpty ? lower : words.first;
+    final lower = query.toLowerCase().trim().replaceFirst('@', '');
+    if (lower.isEmpty) return const [];
+    final users = _db.collection('users');
+    final snapshots = await Future.wait([
+      users
+          .where('handleLower', isGreaterThanOrEqualTo: lower)
+          .where('handleLower', isLessThan: '$lower')
+          .limit(10)
+          .get(),
+      users
+          .where('nameLower', isGreaterThanOrEqualTo: lower)
+          .where('nameLower', isLessThan: '$lower')
+          .limit(10)
+          .get(),
+    ]);
+    final found = <String, Person>{};
+    for (final snapshot in snapshots) {
+      for (final doc in snapshot.docs) {
+        found.putIfAbsent(
+          doc.id,
+          () => FirestoreMappers.person(doc.id, doc.data()),
+        );
+      }
+    }
+    // A shop before a shopper: someone searching a name is looking for
+    // somewhere to buy from.
+    final people = found.values.toList()
+      ..sort((a, b) {
+        if (a.isSeller == b.isSeller) {
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        }
+        return a.isSeller ? -1 : 1;
+      });
+    return people;
   }
 
   /// The spelling a tag is stored under. Tags are written as the store or
@@ -306,27 +387,8 @@ class FirestoreSearchRepository implements SearchRepository {
     ];
   }
 
-  List<Product> _sorted(List<Product> products, SearchFilters filters) {
-    final sorted = [...products];
-    switch (filters.sort) {
-      case SortOrder.priceLowToHigh:
-        sorted.sort((a, b) => a.priceCents.compareTo(b.priceCents));
-      case SortOrder.topRated:
-        sorted.sort((a, b) => b.rating.compareTo(a.rating));
-      case SortOrder.nearest:
-        final origin = filters.origin;
-        if (origin != null) {
-          double distance(Product p) => p.lat == null || p.lng == null
-              ? double.infinity
-              : Geo.milesBetween(origin.lat, origin.lng, p.lat!, p.lng!);
-          sorted.sort((a, b) => distance(a).compareTo(distance(b)));
-        }
-      case SortOrder.newest:
-      case SortOrder.relevance:
-        break;
-    }
-    return sorted;
-  }
+  List<Product> _sorted(List<Product> products, SearchFilters filters) =>
+      sortProducts(products, filters.sort, origin: filters.origin);
 
   String _slug(String value) =>
       value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');

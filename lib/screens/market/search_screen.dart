@@ -52,7 +52,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     ref.invalidate(recentSearchesProvider);
     if (!mounted) return;
     ref.read(searchFiltersProvider.notifier).setQuery(trimmed);
-    context.goToResults(trimmed);
+    // Replaces this screen: see LbmNavigation.replaceWithResults.
+    context.replaceWithResults(trimmed);
   }
 
   @override

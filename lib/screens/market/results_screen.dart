@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../models/models.dart';
 import '../../router/nav.dart';
@@ -14,6 +13,7 @@ import '../../widgets/primitives.dart';
 import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/sort_bar.dart';
 
 /// Search results: products, then sellers, then reviews carrying the tag.
 ///
@@ -36,7 +36,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     // scope chips and the radius apply to it.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(searchFiltersProvider.notifier).setQuery(widget.query);
+      ref.read(searchFiltersProvider.notifier).openQuery(widget.query);
     });
   }
 
@@ -46,7 +46,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     // Until the post-frame callback lands, search what the route asked for.
     final active = filters.query == widget.query
         ? filters
-        : filters.copyWith(query: widget.query);
+        : filters.copyWith(query: widget.query, scope: scopeFor(widget.query));
     final results = ref.watch(searchResultsProvider(active));
     // Watched here, not only inside _DirectoryHits, because it decides
     // whether the catalogue's "nothing found" card is honest.
@@ -61,10 +61,9 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
           strong: true,
           // Without this the pill was decoration: a second search meant
           // going back first (Grace, 2026-09-14). The query goes with it, so
-          // the field opens with what was typed rather than empty.
-          onTap: () => context.push(
-            '/market/search?q=${Uri.encodeComponent(widget.query)}',
-          ),
+          // the field opens with what was typed rather than empty, and it
+          // replaces these results rather than stacking on top of them.
+          onTap: () => context.replaceWithSearch(widget.query),
         ),
       ),
       child: ListView(
@@ -117,7 +116,13 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                   : 'Try a different word, or one of the hashtags.',
               action: _Suggestions(query: widget.query),
             ),
-            data: (results) => _Results(results: results, query: widget.query),
+            data: (results) => _Results(
+              results: results,
+              query: widget.query,
+              sort: active.sort,
+              onSort: (sort) =>
+                  ref.read(searchFiltersProvider.notifier).setSort(sort),
+            ),
           ),
           // littlebluecart.com's businesses, claimed or not, below the
           // catalogue's own results and outside its empty state. Its own
@@ -134,10 +139,17 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
 }
 
 class _Results extends StatelessWidget {
-  const _Results({required this.results, required this.query});
+  const _Results({
+    required this.results,
+    required this.query,
+    required this.sort,
+    required this.onSort,
+  });
 
   final SearchResults results;
   final String query;
+  final SortOrder sort;
+  final ValueChanged<SortOrder> onSort;
 
   @override
   Widget build(BuildContext context) {
@@ -146,14 +158,16 @@ class _Results extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // The counts live inside the loaded data on purpose: while a search is
-        // running there is no honest number to print.
-        if (results.products.isNotEmpty) ...[
-          SectionHead('${results.products.length} products'),
-          _ProductGrid(products: results.products),
-        ],
+        // Shops first when the query named one. Someone typing a shop's name
+        // is looking for the shop, and what it sells here is directly below
+        // — ahead of its directory entry, which sends them to a website
+        // (Grace, 2026-09-23).
         if (results.sellers.isNotEmpty) ...[
-          SectionHead('${results.sellers.length} people'),
+          SectionHead(
+            results.sellers.length == 1
+                ? '1 shop on the Market'
+                : '${results.sellers.length} shops on the Market',
+          ),
           LbmCard(
             margin: const EdgeInsets.symmetric(horizontal: 14),
             child: RowStack(
@@ -163,6 +177,20 @@ class _Results extends StatelessWidget {
               ],
             ),
           ),
+        ],
+        // The counts live inside the loaded data on purpose: while a search is
+        // running there is no honest number to print.
+        if (results.products.isNotEmpty) ...[
+          const SectionHead('Buy it here'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+            child: SortBar(
+              sort: sort,
+              count: results.products.length,
+              onChanged: onSort,
+            ),
+          ),
+          _ProductGrid(products: results.products),
         ],
         if (results.reviews.isNotEmpty) ...[
           SectionHead('${results.reviews.length} reviews tagged $query'),
@@ -435,33 +463,68 @@ class _Suggestions extends ConsumerWidget {
 
 /// Directory businesses matching the query, under their own heading.
 ///
+/// Last on the screen and folded away until asked for, behind everything
+/// that can be bought here. A directory entry sends someone off to a
+/// business's own website, so it is the answer of last resort rather than
+/// the first thing under a search (Grace, 2026-09-23) — and the heading says
+/// what tapping one will do.
+///
 /// Silent when there are none and silent on an error: a search that found
 /// products must not be spoiled by a red card because the directory mirror
 /// is empty on this project.
-class _DirectoryHits extends ConsumerWidget {
+class _DirectoryHits extends ConsumerStatefulWidget {
   const _DirectoryHits({required this.query});
 
   final String query;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final hits = ref.watch(directorySearchProvider(query));
+  ConsumerState<_DirectoryHits> createState() => _DirectoryHitsState();
+}
+
+class _DirectoryHitsState extends ConsumerState<_DirectoryHits> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final hits = ref.watch(directorySearchProvider(widget.query));
     final listings = hits.value ?? const <DirectoryListing>[];
     if (listings.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHead(
-          listings.length == 1
-              ? '1 business in the directory'
-              : '${listings.length} businesses in the directory',
-        ),
-        for (final listing in listings)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-            child: DirectoryListingCard(listing: listing, showClaim: true),
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: LbmCard(
+            padding: EdgeInsets.zero,
+            child: ListRow(
+              leading: Icon(Icons.public_rounded, size: 20, color: c.ink3),
+              title: Text(
+                listings.length == 1
+                    ? 'Also 1 business on littlebluecart.com'
+                    : 'Also ${listings.length} businesses on '
+                          'littlebluecart.com',
+              ),
+              subtitle: const Text('These sell on their own websites'),
+              trailing: Icon(
+                _open
+                    ? Icons.expand_less_rounded
+                    : Icons.expand_more_rounded,
+                size: 22,
+                color: c.ink3,
+              ),
+              onTap: () => setState(() => _open = !_open),
+            ),
           ),
+        ),
+        if (_open)
+          for (final listing in listings)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+              child: DirectoryListingCard(listing: listing, showClaim: true),
+            ),
       ],
     );
   }

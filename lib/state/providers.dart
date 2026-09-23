@@ -76,15 +76,18 @@ final collectionProvider = FutureProvider.family<Collection, String>((
 });
 
 /// The first page of a collection, newest first.
-final collectionProductsProvider = FutureProvider.family<List<Product>, String>(
-  (ref, handle) async {
-    ref.keepCached();
-    final page = await ref
-        .watch(collectionRepositoryProvider)
-        .productsInCollection(handle);
-    return page.items;
-  },
-);
+///
+/// The whole page, cursor included: a category was showing its first thirty
+/// listings and nothing else, with no sign there were more (Grace's testers,
+/// 2026-09-23). The screen keeps the pages after this one and asks the
+/// repository for them itself.
+final collectionProductsProvider =
+    FutureProvider.family<Page<Product>, String>((ref, handle) {
+      ref.keepCached();
+      return ref
+          .watch(collectionRepositoryProvider)
+          .productsInCollection(handle);
+    });
 
 /// The signed-in seller's drafts and submissions, live.
 final listingsProvider = StreamProvider<List<Listing>>((ref) {
@@ -454,6 +457,18 @@ class SearchFiltersNotifier extends Notifier<SearchFilters> {
   SearchFilters build() => const SearchFilters();
 
   void setQuery(String query) => state = state.copyWith(query: query);
+
+  /// A query arriving from somewhere else: a tapped hashtag chip, a recent
+  /// search, a suggestion.
+  ///
+  /// The scope comes with it. These filters are shared and sticky by design,
+  /// so someone who had last set the chips to "Sellers" or "Type" then
+  /// tapped a hashtag on a profile searched *that* scope and found nothing —
+  /// which is exactly what a tester reported about profile hashtags
+  /// (Grace, 2026-09-23). A query the person did not type carries its own
+  /// scope; the chips are still theirs to change afterwards.
+  void openQuery(String query) =>
+      state = state.copyWith(query: query, scope: scopeFor(query));
   void setScope(SearchScope scope) => state = state.copyWith(scope: scope);
   void setSort(SortOrder sort) => state = state.copyWith(sort: sort);
   void setRadius(double miles) => state = state.copyWith(radiusMiles: miles);

@@ -245,6 +245,8 @@ abstract final class FirestoreMappers {
     // The old field name is read until every product has been re-mirrored.
     saveCount: integer(data['saveCount'] ?? data['likeCount']),
     inCartsCount: integer(data['inCartsCount']),
+    soldCount: integer(data['soldCount']),
+    createdAt: timeOrNull(data['createdAt']),
     commentCount: integer(data['commentCount']),
     imageUrls: strings(data['imageUrls']),
     collectionHandles: strings(data['collectionHandles']),

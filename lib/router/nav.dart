@@ -51,4 +51,22 @@ extension LbmNavigation on BuildContext {
   /// Search results for a query, usually a hashtag.
   void goToResults(String query) =>
       _pushInBranch('/results?q=${Uri.encodeComponent(query)}');
+
+  /// The same results, in place of whatever is on top.
+  ///
+  /// Searching is a round trip — the field, then the results — and pushing
+  /// both of them meant Back from a result went to the empty search field,
+  /// then to the one before it, and only then to the Market. A tester
+  /// counted four taps (Grace, 2026-09-23). The field replaces itself with
+  /// its results, and a second search replaces the first, so Back from any
+  /// result is one tap to where the search started.
+  void replaceWithResults(String query) => pushReplacement(
+    '${branchPrefix(this)}/results?q=${Uri.encodeComponent(query)}',
+  );
+
+  /// The search field, in place of whatever is on top. Used by the pill on
+  /// the results screen, so searching again does not deepen the stack.
+  void replaceWithSearch(String query) => pushReplacement(
+    '${branchPrefix(this)}/search?q=${Uri.encodeComponent(query)}',
+  );
 }

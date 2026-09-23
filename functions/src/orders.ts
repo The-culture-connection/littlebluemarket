@@ -229,6 +229,26 @@ export async function recordPaidOrder(
       );
     }
 
+    // What has actually sold, per listing. The catalogue already carried
+    // "how many added it" and "how many hold it now"; neither is a sale, so
+    // "Best sellers" had nothing honest to sort on (Grace, 2026-09-23).
+    // Counted from the paid order, like every other money-shaped number.
+    const soldByProduct = new Map<string, number>();
+    for (const line of order.lines) {
+      if (!line.productId) continue;
+      soldByProduct.set(
+        line.productId,
+        (soldByProduct.get(line.productId) ?? 0) + line.quantity,
+      );
+    }
+    for (const [productId, quantity] of soldByProduct) {
+      tx.set(
+        db.collection('catalog').doc(productId),
+        { soldCount: FieldValue.increment(quantity) },
+        { merge: true },
+      );
+    }
+
     // An order the app started from the cart is the app's cart, paid for.
     // Empty the cart now, or the person comes back from checkout to the
     // things they just bought. Website orders carry no app_uid and touch no

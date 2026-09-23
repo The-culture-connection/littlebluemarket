@@ -123,7 +123,13 @@ class FirestoreProfileRepository implements ProfileRepository {
         'postCount': 0,
         'createdAt': FieldValue.serverTimestamp(),
       },
-      if (edit.name != null) 'name': edit.name!.trim(),
+      if (edit.name != null) ...{
+        'name': edit.name!.trim(),
+        // What a shop calls itself, lowercase, so a search can prefix-scan
+        // it. People type the name, not the @handle. The trigger keeps this
+        // in step for profiles the directory sync writes.
+        'nameLower': edit.name!.trim().toLowerCase(),
+      },
       if (handle != null) ...{
         'handle': handle,
         // Stored lowercase alongside the display form, because Firestore

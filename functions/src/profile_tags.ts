@@ -43,13 +43,38 @@ export async function syncProfileTagsLower(
   after: Record<string, unknown> | undefined,
 ): Promise<boolean> {
   if (!uid || !after) return false;
-  const wanted = lowerTags(after.tags);
-  if (sameTags(wanted, lowerTags(after.tagsLower))) return false;
-  await getFirestore()
-    .collection('users')
-    .doc(uid)
-    .set({ tagsLower: wanted }, { merge: true });
+  const patch = profileMirrorPatch(after);
+  if (!patch) return false;
+  await getFirestore().collection('users').doc(uid).set(patch, { merge: true });
   return true;
+}
+
+/** '  Kali Makes ' -> 'kali makes'. Pure. */
+export function nameLower(name: unknown): string {
+  return typeof name === 'string' ? name.trim().toLowerCase() : '';
+}
+
+/**
+ * What a profile's search mirrors should be, or null when they are already
+ * right.
+ *
+ * Two of them now: `tagsLower` for the hashtag search, and `nameLower` for
+ * the shop-name prefix scan — people search what a shop calls itself, not
+ * its @handle (Grace, 2026-09-23). Pure, so the trigger and the backfill
+ * cannot disagree about what "in step" means.
+ */
+export function profileMirrorPatch(
+  after: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const wantedTags = lowerTags(after.tags);
+  const wantedName = nameLower(after.name);
+  const tagsDrifted = !sameTags(wantedTags, lowerTags(after.tagsLower));
+  const nameDrifted = wantedName !== nameLower(after.nameLower);
+  if (!tagsDrifted && !nameDrifted) return null;
+  return {
+    ...(tagsDrifted ? { tagsLower: wantedTags } : {}),
+    ...(nameDrifted ? { nameLower: wantedName } : {}),
+  };
 }
 
 /** How many posts each author has right now, from the posts themselves. */
@@ -87,15 +112,14 @@ export async function backfillProfileTagsLower(): Promise<{
   let updated = 0;
   for (const doc of snapshot.docs) {
     const data = doc.data();
-    const wanted = lowerTags(data.tags);
-    const tagsDrifted = !sameTags(wanted, lowerTags(data.tagsLower));
+    const mirrors = profileMirrorPatch(data);
     const wantedPosts = posts.get(doc.id) ?? 0;
     const postsDrifted = Number(data.postCount ?? 0) !== wantedPosts;
-    if (!tagsDrifted && !postsDrifted) continue;
+    if (!mirrors && !postsDrifted) continue;
     batch.set(
       doc.ref,
       {
-        ...(tagsDrifted ? { tagsLower: wanted } : {}),
+        ...(mirrors ?? {}),
         ...(postsDrifted ? { postCount: wantedPosts } : {}),
       },
       { merge: true },

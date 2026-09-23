@@ -147,7 +147,7 @@ void main() {
     expect(await repo.searchDirectory('nothingmatchesthis'), isEmpty);
   });
 
-  testWidgets('the search screen shows directory hits under their own head', (
+  testWidgets('the search screen folds directory hits away at the bottom', (
     tester,
   ) async {
     await _pumpFeed(tester);
@@ -157,7 +157,13 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
 
-    expect(find.text('1 business in the directory'), findsOneWidget);
+    // A business that sells on its own website is the answer of last
+    // resort, so it is named and folded rather than laid out in full.
+    expect(find.text('Also 1 business on littlebluecart.com'), findsOneWidget);
+    expect(find.text('Found House Ceramics'), findsNothing);
+
+    await tester.tap(find.text('Also 1 business on littlebluecart.com'));
+    await tester.pumpAndSettle();
     expect(find.text('Found House Ceramics'), findsOneWidget);
   });
 

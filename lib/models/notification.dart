@@ -180,6 +180,69 @@ bool matchesAllWords(String haystack, String query) {
   return true;
 }
 
+/// The words of a query, folded the way the catalogue indexes them:
+/// lowercase, letters and digits only, one-letter noise dropped.
+List<String> queryWords(String query) => [
+  for (final word in query.toLowerCase().split(RegExp(r'[^a-z0-9]+')))
+    if (word.length > 1) word,
+];
+
+/// The spellings of one word worth looking for.
+///
+/// A tester searched "caramels" and found nothing, because the shop calls it
+/// "Sea Salt Caramel" and `array-contains` is exact (Grace, 2026-09-23).
+/// This is not stemming and does not pretend to be: it is the plural rules
+/// English keeps to often enough to be worth four lines, and it is applied to
+/// the query rather than to the index, so nothing has to be re-mirrored.
+List<String> wordVariants(String word) {
+  final w = word.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  if (w.isEmpty) return const [];
+  final out = <String>{w};
+  if (w.length > 4 && w.endsWith('ies')) {
+    out.add('${w.substring(0, w.length - 3)}y');
+  }
+  if (w.length > 3 && w.endsWith('es')) out.add(w.substring(0, w.length - 2));
+  if (w.length > 3 && w.endsWith('s')) out.add(w.substring(0, w.length - 1));
+  if (!w.endsWith('s')) {
+    out
+      ..add('${w}s')
+      ..add('${w}es');
+  }
+  if (w.length > 2 && w.endsWith('y')) {
+    out.add('${w.substring(0, w.length - 1)}ies');
+  }
+  return out.toList();
+}
+
+/// Every spelling worth looking for across a whole query, most distinctive
+/// word first, capped at [limit] because `array-contains-any` takes 30.
+List<String> queryVariants(String query, {int limit = 30}) {
+  final words = queryWords(query)
+    ..sort((a, b) => b.length.compareTo(a.length));
+  final out = <String>{};
+  for (final word in words) {
+    for (final variant in wordVariants(word)) {
+      if (out.length >= limit) return out.toList();
+      out.add(variant);
+    }
+  }
+  return out.toList();
+}
+
+/// How many of [query]'s words [haystack] contains, for ranking.
+///
+/// Zero means nothing matched. Deliberately not "all or nothing": someone
+/// searching "caramel candy" should be shown the caramels rather than an
+/// empty screen because the shop never wrote the word "candy".
+int wordsMatched(String haystack, String query) {
+  final text = haystack.toLowerCase();
+  var found = 0;
+  for (final word in queryWords(query)) {
+    if (wordVariants(word).any(text.contains)) found += 1;
+  }
+  return found;
+}
+
 /// Something to try when a search found nothing.
 @immutable
 class SearchSuggestion {

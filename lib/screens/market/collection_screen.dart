@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+// Flutter's own Page (a Navigator route) is not wanted here; Page is the
+// app's page-of-results model.
+import 'package:flutter/material.dart' hide Page;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/market_taxonomy.dart';
@@ -7,35 +9,97 @@ import '../../router/nav.dart';
 import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../../data/repositories/repositories.dart';
 import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/sort_bar.dart';
 import 'results_screen.dart';
 
 /// Everything filed under one collection, three across, newest first.
 ///
 /// An initiative ("Ally Owned") and a category ("Bath, Beauty & Wellness")
 /// are the same thing to the store, so they are the same screen here.
-class CollectionScreen extends ConsumerWidget {
+///
+/// Paged: the repository hands back thirty at a time and the pages after the
+/// first are kept here. A tester counted twenty-seven listings in a category
+/// and reasonably concluded that was all of them (Grace, 2026-09-23).
+class CollectionScreen extends ConsumerStatefulWidget {
   const CollectionScreen({super.key, required this.handle});
 
   final String handle;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CollectionScreen> createState() => _CollectionScreenState();
+}
+
+class _CollectionScreenState extends ConsumerState<CollectionScreen> {
+  /// Everything after the first page, which the provider owns.
+  final _more = <Product>[];
+  String? _cursor;
+  bool _loadingMore = false;
+  String? _moreError;
+
+  /// Set once the first page has been seen, so [_cursor] is not re-seeded
+  /// from it on every rebuild and the end of the list is not forgotten.
+  String? _seededFrom;
+
+  SortOrder _sort = SortOrder.relevance;
+
+  void _reset() {
+    _more.clear();
+    _cursor = null;
+    _seededFrom = null;
+    _moreError = null;
+  }
+
+  Future<void> _loadMore() async {
+    final cursor = _cursor;
+    if (cursor == null || _loadingMore) return;
+    setState(() {
+      _loadingMore = true;
+      _moreError = null;
+    });
+    try {
+      final page = await ref
+          .read(collectionRepositoryProvider)
+          .productsInCollection(widget.handle, cursor: cursor);
+      if (!mounted) return;
+      setState(() {
+        _more.addAll(page.items);
+        _cursor = page.cursor;
+        _loadingMore = false;
+      });
+    } on RepositoryException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loadingMore = false;
+        _moreError = describeError(error).body;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.c;
-    final collection = ref.watch(collectionProvider(handle));
-    final products = ref.watch(collectionProductsProvider(handle));
+    final collection = ref.watch(collectionProvider(widget.handle));
+    final first = ref.watch(collectionProductsProvider(widget.handle));
+
+    // Seed the cursor from the first page once it arrives, and again if the
+    // provider is invalidated by a pull to refresh.
+    if (first.value case final page? when _seededFrom != widget.handle) {
+      _seededFrom = widget.handle;
+      _cursor = page.cursor;
+    }
 
     return LbmScreen(
-      appBar: LbmAppBar(
-        title: collection.value?.title ?? 'Collection',
-      ),
+      appBar: LbmAppBar(title: collection.value?.title ?? 'Collection'),
       child: RefreshIndicator(
         onRefresh: () async {
-          ref.invalidate(collectionProvider(handle));
-          ref.invalidate(collectionProductsProvider(handle));
+          setState(_reset);
+          ref.invalidate(collectionProvider(widget.handle));
+          ref.invalidate(collectionProductsProvider(widget.handle));
         },
         child: ListView(
           padding: const EdgeInsets.only(top: 4, bottom: 26),
@@ -51,37 +115,86 @@ class CollectionScreen extends ConsumerWidget {
             // Inside a heading: the narrower ones under it. A heading holds
             // everything its subcategories hold, so these narrow the view
             // rather than reveal anything the heading was hiding.
-            _Subcategories(parent: handle),
-            LbmAsync<List<Product>>(
-              products,
+            _Subcategories(parent: widget.handle),
+            LbmAsync<Page<Product>>(
+              first,
               skeleton: const GridSkeleton(count: 6),
-              onRetry: () => ref.invalidate(collectionProductsProvider(handle)),
-              isEmpty: (items) => items.isEmpty,
+              onRetry: () =>
+                  ref.invalidate(collectionProductsProvider(widget.handle)),
+              isEmpty: (page) => page.items.isEmpty,
               empty: const LbmEmpty(
                 title: 'Nothing here yet',
                 body:
                     'This collection is empty on the store, or the catalog '
                     'has not been imported yet.',
               ),
-              data: (items) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: EdgeInsets.zero,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 7,
-                    crossAxisSpacing: 7,
-                  ),
-                  itemCount: items.length,
-                  itemBuilder: (context, i) => GridCell(
-                    product: items[i],
-                    badge: items[i].price,
-                    onTap: () => context.goToProduct(items[i].id),
-                  ),
-                ),
-              ),
+              data: (page) {
+                final items = sortProducts([...page.items, ..._more], _sort);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                      child: SortBar(
+                        sort: _sort,
+                        // How many are actually on the screen, so "27" is a
+                        // fact about this list rather than about the store.
+                        count: items.length,
+                        onChanged: (sort) => setState(() => _sort = sort),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.zero,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              mainAxisSpacing: 7,
+                              crossAxisSpacing: 7,
+                            ),
+                        itemCount: items.length,
+                        itemBuilder: (context, i) => GridCell(
+                          product: items[i],
+                          badge: items[i].price,
+                          onTap: () => context.goToProduct(items[i].id),
+                        ),
+                      ),
+                    ),
+                    if (_moreError != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                        child: Text(
+                          _moreError!,
+                          style: LbmText.tiny.copyWith(
+                            color: c.clay,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    if (_cursor != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 16, 14, 0),
+                        child: PillButton(
+                          _loadingMore ? 'Loading' : 'Load more',
+                          style: PillStyle.quiet,
+                          onPressed: _loadingMore ? null : _loadMore,
+                        ),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+                        child: Text(
+                          "That's everything in here.",
+                          textAlign: TextAlign.center,
+                          style: LbmText.tiny.copyWith(color: c.ink3),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ],
         ),
