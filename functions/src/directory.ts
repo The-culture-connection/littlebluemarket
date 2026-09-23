@@ -241,6 +241,54 @@ export function mergeIndex(existing: StoredIndex, rows: ListingIndexEntry[]): St
   return out;
 }
 
+/**
+ * WordPress roles that mean "this person runs the site", not "this person
+ * has a listing". A listing's author is whoever typed it in, and on
+ * littlebluecart.com that is usually staff rather than the business.
+ */
+export const SITE_ROLES = ['administrator', 'editor', 'shop_manager'];
+
+/**
+ * More listings than any one business plausibly has. A directory member
+ * owns a handful; the site's own account authors hundreds.
+ */
+export const MAX_OWNED_LISTINGS = 25;
+
+/**
+ * Why this WordPress user must not be handed listing ownership, or null.
+ *
+ * **This is the guard that was missing on 2026-09-24.** A member linked by
+ * a verified email, correctly, to WordPress user 6 — `lbcerin`,
+ * role `administrator`, and the author of all 263 listings on the site,
+ * because staff enter them on the businesses' behalf. The app concluded she
+ * owned the entire directory: it mirrored 263 listings under her uid, posted
+ * 263 feed posts as her, and renamed her profile after the first listing it
+ * found. Every step did exactly what it was told.
+ *
+ * The email match is not wrong and is not the thing to fix: it is her
+ * address, on that account. What was missing is the idea that authorship is
+ * not ownership. Two independent checks, because either alone would have
+ * stopped it and neither catches everything: a role that runs the site, and
+ * a volume no real business reaches.
+ *
+ * Pure, so both are provable without WordPress or Firestore.
+ */
+export function listingOwnershipRefusal(input: {
+  roles: string[];
+  listingCount: number;
+}): string | null {
+  const role = input.roles
+    .map((r) => r.trim().toLowerCase())
+    .find((r) => SITE_ROLES.includes(r));
+  if (role) {
+    return `the website account is a ${role}, and a listing's author is whoever typed it in`;
+  }
+  if (input.listingCount > MAX_OWNED_LISTINGS) {
+    return `the website account authored ${input.listingCount} listings, more than the ${MAX_OWNED_LISTINGS} one business plausibly has`;
+  }
+  return null;
+}
+
 /** The listing ids one member owns, per the index. Pure. */
 export function listingIdsOf(index: StoredIndex, wpUserId: number): number[] {
   return Object.entries(index)
@@ -678,12 +726,74 @@ export function browseFields(
   };
 }
 
+/**
+ * Takes a directory back off an account that should never have been given
+ * it, and undoes what that produced.
+ *
+ * The repair for 2026-09-24: 263 listings mirrored under one member and 263
+ * feed posts written as her. `listingOwnershipRefusal` stops it happening
+ * again; this puts back what already happened.
+ *
+ * Deliberately narrow. It releases only listings whose `ownerUid` is this
+ * account and only the `directory_*` posts that go with them, so anything
+ * the person actually wrote — their own shoutouts, their cart posts, a
+ * listing that genuinely is theirs and was linked some other way — is left
+ * alone. `dryRun` counts without writing, which is how to look before
+ * leaping on production.
+ */
+export async function releaseDirectoryFrom(
+  uid: string,
+  options: { dryRun?: boolean } = {},
+): Promise<{ listings: number; posts: number; dryRun: boolean }> {
+  const db = getFirestore();
+  const dryRun = options.dryRun ?? false;
+  const mine = await db.collection('directoryListings').where('ownerUid', '==', uid).get();
+
+  let posts = 0;
+  if (!dryRun) {
+    for (let i = 0; i < mine.docs.length; i += 200) {
+      const batch = db.batch();
+      for (const doc of mine.docs.slice(i, i + 200)) {
+        // The mirror row stays: the listing is real and the directory should
+        // still show it. It simply is not this person's.
+        batch.set(doc.ref, { ownerUid: '', unclaimed: true }, { merge: true });
+        batch.delete(db.collection('posts').doc(`directory_${doc.id}`));
+        posts += 1;
+      }
+      await batch.commit();
+    }
+
+    await db.collection('directory').doc(uid).set(
+      {
+        ownsListings: false,
+        ownershipRefusedReason: 'released by an admin',
+        listingCount: 0,
+        refreshedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+    // The profile was renamed after one of those listings. Nobody but the
+    // person can say what their name should be, so the flag that let it be
+    // applied is cleared and the name is left for them to set.
+    await db.collection('directory').doc(uid).set({ profileAppliedAt: null }, { merge: true });
+  } else {
+    posts = mine.size;
+  }
+
+  logger.warn('Directory released from an account', { uid, listings: mine.size, posts, dryRun });
+  return { listings: mine.size, posts, dryRun };
+}
+
 /** wpUserId -> uid, for the accounts that have linked. */
 async function linkedOwners(): Promise<Map<number, string>> {
   const snapshot = await getFirestore().collection('directory').where('status', '==', 'linked').get();
   const map = new Map<number, string>();
   for (const doc of snapshot.docs) {
-    const wpUserId = Number((doc.data() as DirectoryDoc).wpUserId);
+    const data = doc.data() as DirectoryDoc & { ownsListings?: unknown };
+    // The account that manages the directory authored everybody's listings.
+    // Linking it is right; handing it the directory is not.
+    if (data.ownsListings === false) continue;
+    const wpUserId = Number(data.wpUserId);
     if (Number.isFinite(wpUserId) && wpUserId > 0) map.set(wpUserId, doc.id);
   }
   return map;
@@ -1144,9 +1254,37 @@ export async function syncDirectory(
     notes.push('Website orders are not set up yet (WC_CONSUMER_KEY / WC_CONSUMER_SECRET).');
   }
 
+  // Authorship is not ownership. Before mirroring anything under this
+  // account, ask whether this WordPress user is a business with listings or
+  // the staff account that typed everybody's in. See
+  // `listingOwnershipRefusal` for the day that distinction was learned.
+  let refusal: string | null = null;
+  if (user) {
+    const index = await ownerIndex(lookups, { force: !auto });
+    refusal = listingOwnershipRefusal({
+      roles: user.roles,
+      listingCount: listingIdsOf(index, user.id).length,
+    });
+    if (refusal) {
+      logger.error('Refused to give an account the directory', {
+        uid,
+        wpUserId: user.id,
+        wpLogin: user.slug,
+        roles: user.roles,
+        reason: refusal,
+      });
+      notes.push(
+        'Your website account is the one that manages the directory, so the ' +
+          'listings on it are not being treated as yours. Get in touch if a ' +
+          'listing really is yours.',
+      );
+    }
+  }
+
   // A tap on the button refreshes the owner index too: the person has
   // usually just added a listing on the website.
-  const listings = user ? await syncListings(uid, user.id, lookups, { force: !auto }) : 0;
+  const listings =
+    user && !refusal ? await syncListings(uid, user.id, lookups, { force: !auto }) : 0;
   const note = notes.length ? notes.join(' ') : undefined;
   const found = user !== null || customerId !== null || orders.length > 0;
 
@@ -1170,6 +1308,11 @@ export async function syncDirectory(
       status: 'linked',
       wpEmailLower: emailLower,
       wpUserId: user?.id ?? null,
+      // Whether this website account's listings are theirs. False for the
+      // account that manages the directory; read by `linkedOwners` so the
+      // whole-directory sync cannot re-attach what the link refused.
+      ownsListings: user !== null && !refusal,
+      ...(refusal ? { ownershipRefusedReason: refusal } : {}),
       wpLogin: user?.slug ?? '',
       wpName: user?.name ?? '',
       wcCustomerId: customerId,

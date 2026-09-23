@@ -22,6 +22,7 @@ import {
 import { sendVerificationEmailFor } from './verify_email.ts';
 import {
   applyListingProfile,
+  releaseDirectoryFrom,
   syncAllDirectoryListings,
   syncDirectory,
   syncPublicDirectory,
@@ -541,6 +542,25 @@ export const adminBackfillProfileTags = onCall(
  * the products that have no shop. Admin only, idempotent. What makes the
  * shops mirrored before 2026-09-24 visible as shops.
  */
+/**
+ * Takes the directory back off an account that was wrongly given it, and
+ * deletes the feed posts that came with it. Admin only.
+ *
+ * Call with `{ uid, dryRun: true }` first: it counts and writes nothing.
+ */
+export const adminReleaseDirectory = onCall(
+  { timeoutSeconds: 540, memory: '512MiB' },
+  withLoudErrors('adminReleaseDirectory', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const { uid, dryRun } = (request.data ?? {}) as { uid?: unknown; dryRun?: unknown };
+    if (typeof uid !== 'string' || !uid) {
+      throw new HttpsError('invalid-argument', 'Which account?');
+    }
+    return releaseDirectoryFrom(uid, { dryRun: dryRun === true });
+  }),
+);
+
 export const adminBackfillShopShells = onCall(
   { timeoutSeconds: 540, memory: '512MiB' },
   withLoudErrors('adminBackfillShopShells', async (request) => {
