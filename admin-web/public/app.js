@@ -319,7 +319,22 @@ function renderPromoThumbs() {
 // lib/models/notification.dart. Three copies is two too many, but the
 // alternative is a build step on a static page, and a preview that
 // disagreed with the phone would be worse than no preview.
-const NAMED_PATTERN = /#\w+|(?<![\w.])@[A-Za-z0-9_.]+/g;
+//
+// A hoisted function, not a `const`. This page has no build step and no
+// module graph: it is one long script, and things at the top level run in
+// the order they are written. `revalidate()` is called while the form is
+// being set up, long before this line, and a `const` is not initialised
+// until its own line runs. So reading it from up there threw
+// "Cannot access 'NAMED_PATTERN' before initialization", which aborted the
+// whole script and silently unhooked every listener declared after it:
+// the advert tools, the directory tools, reports, feedback. A function
+// declaration is hoisted whole, so the order stops mattering (Grace found
+// it, 2026-09-24).
+//
+// A fresh regex each call, too, so nothing shares `lastIndex`.
+function namedPattern() {
+  return /#\w+|(?<![\w.])@[A-Za-z0-9_.]+/g;
+}
 
 function escapeHtml(text) {
   return text.replace(/[&<>"']/g, (ch) => (
@@ -331,7 +346,7 @@ function escapeHtml(text) {
 function namedHtml(text) {
   let out = '';
   let cursor = 0;
-  for (const match of text.matchAll(NAMED_PATTERN)) {
+  for (const match of text.matchAll(namedPattern())) {
     out += escapeHtml(text.slice(cursor, match.index));
     out += `<span class="named">${escapeHtml(match[0])}</span>`;
     cursor = match.index + match[0].length;
@@ -343,7 +358,7 @@ function namedHtml(text) {
 function namedTokens(...texts) {
   const seen = new Set();
   const out = [];
-  for (const match of texts.join('\n').matchAll(NAMED_PATTERN)) {
+  for (const match of texts.join('\n').matchAll(namedPattern())) {
     const key = match[0].toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
