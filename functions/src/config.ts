@@ -1,4 +1,4 @@
-import { defineSecret, defineString } from 'firebase-functions/params';
+import { defineInt, defineSecret, defineString } from 'firebase-functions/params';
 
 /**
  * Configuration, split by whether it is a credential.
@@ -71,6 +71,26 @@ export const WC_CONSUMER_SECRET = defineSecret('WC_CONSUMER_SECRET');
 // ------------------------------------------------------------------- config
 
 export const SHOPIFY_STORE_DOMAIN = defineString('SHOPIFY_STORE_DOMAIN');
+
+/**
+ * How many commerce instances to keep warm, per project.
+ *
+ * A real parameter rather than `process.env.WARM_COMMERCE`: the CLI loads
+ * `.env.<project>` for the **deployed function's runtime**, not for the
+ * process that evaluates this module while working out what to deploy, so
+ * an option read from `process.env` is always the default at deploy time.
+ * That is not a theory — it was deployed three times reading zero while the
+ * file said one, and the only reason it was caught is that raising it to
+ * two did not trip Firebase's "this increases the minimum bill" guard
+ * (2026-09-23). Parameters are resolved at deploy time, which is what this
+ * needs.
+ *
+ * Zero everywhere except production, where Grace asked for all eleven cart
+ * callables kept warm so a tap never waits on a cold start. It is a flat
+ * monthly charge for the project — about a pound per function, idling —
+ * and not a per-shopper one.
+ */
+export const WARM_COMMERCE = defineInt('WARM_COMMERCE', { default: 0 });
 
 /**
  * Pinned deliberately. Shopify deprecates a version every quarter, and an

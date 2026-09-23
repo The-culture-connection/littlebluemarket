@@ -17,6 +17,7 @@ import {
   DIRECTORY_ADD_LISTING_URL,
   WP_SECRETS,
   SMTP_PASS,
+  WARM_COMMERCE,
 } from './config.ts';
 import { sendVerificationEmailFor } from './verify_email.ts';
 import {
@@ -125,23 +126,15 @@ function requireUid(auth: { uid?: string } | undefined): string {
  * call after a few idle minutes. Which is to say: on every call a real
  * shopper makes.
  *
- * It is the one place in this codebase worth paying idle for — but it is
- * paid for per function, not once, and `commerceOptions` covers eleven of
- * them, so it is a standing charge of roughly a dollar a month each rather
- * than "a few dollars" in total. Firebase refuses to deploy a raised
- * minimum bill without `--force`, which is the right guard. Set
- * `WARM_COMMERCE=1` in `functions/.env.<project>` to turn it on for a
- * project; the reads below were cut down anyway, so zero is still much
- * faster than it was.
+ * It is paid for per function, not once, and `commerceOptions` covers
+ * eleven of them, so it is a standing charge of roughly a dollar a month
+ * each. Firebase refuses to deploy a raised minimum bill without `--force`,
+ * which is the right guard; `npm run deploy:prod:warm` is the deploy that
+ * passes it. Set by `WARM_COMMERCE` in `functions/.env.<project>`: one on
+ * production, zero everywhere else, because staging can afford to be slow.
  */
-const WARM_COMMERCE = Number(process.env.WARM_COMMERCE ?? 0) || 0;
-
 const commerceOptions = {
   secrets: [SHOPIFY_CLIENT_SECRET, SHOPIFY_STOREFRONT_PRIVATE_TOKEN],
-  // How many instances to keep warm. Zero today: see the note above. Raising
-  // it to 1 is the single biggest thing that can be done about how a cart
-  // tap feels, and it is a standing monthly charge per function, so it is
-  // Grace's call and not a default.
   minInstances: WARM_COMMERCE,
 };
 
