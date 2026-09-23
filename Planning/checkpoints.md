@@ -649,6 +649,130 @@ Decisions (Grace, 2026-09-08): the listing **overwrites** the profile on the fir
   **Pass:** the rail shows the real categories from littlebluecart.com; a category shows its businesses with the photo, the location, the ways to reach them and Show more when there are more than 24; search finds a directory business by its name, its category or its city, and shows it even when the shop has nothing for that word; **Is this your business?** lands on the directory link screen (a guest is asked to make a profile first); the `+dir1` account's listings all turn from unclaimed to hers in one go, and her profile can take the listing's name and photo as before. The Market feed still shows no unclaimed listings.
   **If it fails:** the rail is missing → `directoryCategories` is empty, so CP-17E has not run against this project. A category screen is empty but the rail counted listings → the composite index is not deployed: `scripts\deploy-dev.ps1` and read the index line. Search finds nothing but browsing works → the `titleWords` index; same fix.
 
+### Stage 18, The first round of outside testing (Grace's list, 2026-09-23)
+
+Twenty-two things from testers who had never seen the app. Built in seven
+commits; every one is waiting on a tap-through. **Two things have to happen
+before any of this is testable:** `scripts\deploy-dev.ps1` (the functions and
+rules are all new), and then, once, **Edit profile → Diagnostics → Reindex
+profiles**, which repairs the post counts, the purchase counts and the new
+lowercase name mirror on every profile that existed before today.
+
+- [ ] **CP-18A Your own comments.** *Claude built:* `editComment` and
+  `deleteComment` on `SocialRepository`, an inline editor under the name on
+  the post screen, an "edited" stamp, and `likedByMe` resolved in
+  `watchComments` (it never was, so the heart never filled for the person who
+  tapped it). The like answers are cached per comment, because a snapshot
+  fires again on every count change.
+  **Grace does:** Market → a post → comment on it → **Edit** under your own
+  words → change them → **Save**. Then tap the heart on your own comment,
+  leave the screen, come back. Then **Delete** one.
+  **Pass:** the words change and the row says "edited"; the heart is filled
+  and stays filled after coming back; Edit and Delete appear only under your
+  own comments.
+
+- [ ] **CP-18B A name and a face that keep up.** *Claude built:*
+  `personProvider` is a stream rather than a cached one-shot, and an uploaded
+  avatar comes back under a cache-busted URL (every avatar overwrites the one
+  file and a Storage download URL keeps its token, so the new face arrived
+  under the byte-for-byte same address).
+  **Grace does:** Edit profile → change the photo → back. Then Edit profile →
+  change your name → Save → open a post you have commented on.
+  **Pass:** the new photo is on your profile, on the feed and on your
+  comments straight away, with no restart; the comment carries the new name.
+
+- [ ] **CP-18C The numbers under your avatar.** *Claude built:*
+  `onPostWritten` moves `users/{uid}.postCount`, which nothing ever did, and
+  the admin reindex repairs every profile that posted before today, the
+  purchase count included.
+  **Grace does:** run Reindex profiles (above), then post something.
+  **Pass:** Posts reads the real number and goes up by one when you post;
+  Purchases matches the Bought grid underneath it.
+
+- [ ] **CP-18D The floating cart, and no more bug button.** *Claude built:*
+  `CartLayer` in place of `FeedbackLayer`, with a badge; the feed's and the
+  collection screen's own cart icons are gone. The layer listens to the
+  router's `routeInformationProvider` rather than its delegate, which is why
+  the old rule that lifts it clear of a Send button never actually fired.
+  **Grace does:** tap through the Market, a product, a shop, Community, a
+  forum thread, You. Add something to the cart. Open a chat.
+  **Pass:** the cart floats bottom right everywhere with the right number on
+  it; it is off the welcome and sign-up screens and off the cart screen
+  itself; on a screen with a message box it sits **above** the Send button,
+  not on it; there is no bug button anywhere.
+
+- [ ] **CP-18E The product page.** *Claude built:* the gallery takes the
+  photograph's own shape (clamped 3:4 to 16:9) instead of cropping everything
+  to 4:3; a tap opens it full screen, pinchable, double tap to zoom; and the
+  price with Add to cart and Buy moved from the very bottom of the page to
+  directly under the rating.
+  **Grace does:** open a listing with a tall photo and one with a wide one.
+  Tap the photo, pinch, double tap, close. Then open a listing with several
+  photos and swipe.
+  **Pass:** neither photo is cropped; the way to buy is on screen without
+  scrolling; zoom works and the X closes it.
+
+- [ ] **CP-18F Search.** *Claude built:* the catalogue's `searchWords` mirror
+  is queried at last (it read `titleWords` and only the first word, exactly
+  as typed); plural and singular are both tried; shops match on their **name**
+  as well as their handle and what they sell here is pulled up under "Buy it
+  here"; directory businesses are folded away at the bottom; a sort sheet with
+  best sellers, most popular, price both ways, top rated and newest; and the
+  field replaces itself with its results so Back is one tap.
+  **Grace does:** search "caramels", then a shop's name as it is written on
+  their profile, then a two-word phrase. Sort by Best sellers and by Price:
+  high to low. Then tap Back once. Then tap a hashtag on somebody's profile.
+  **Pass:** "caramels" finds the caramel; the shop appears under "shops on
+  the Market" with its listings under it and the directory folded below;
+  sorting reorders the grid; one Back returns to the Market; the hashtag
+  finds the profiles carrying it whatever the chips were last set to.
+  **Note:** Best sellers counts what has been *bought*, and that count starts
+  from zero today — it only moves on new paid orders. Most popular counts
+  what has been added to a cart and has been counted all along.
+
+- [ ] **CP-18G Load more in a category.** *Claude built:* the collection
+  screen keeps the pages after the first, with a **Load more** button and a
+  line that says when there are none left.
+  **Grace does:** Market → Browse the Market → a big category → scroll to the
+  bottom → **Load more** until it stops.
+  **Pass:** the count above the grid grows past thirty and ends with "That's
+  everything in here."
+
+- [ ] **CP-18H Near me.** *Claude built:* the button used to flip a flag only
+  the search screen read, so it did nothing on the Market. It now shows the
+  listings closest to you, nearest first, with a radius row (5/10/25/50 miles)
+  and a Turn off.
+  **Grace does:** Market → **Near me** → allow location → change the radius.
+  **Pass:** the grid is listings near you and changes with the radius. Empty
+  with a wide radius means the shops have not filled in a city, which the
+  empty card says.
+
+- [ ] **CP-18I Save for later.** *Claude built:* a second shelf on the cart.
+  Saved lines are in no total, not handed to checkout, and they release the
+  public "in this many carts now" count. Moving one back re-prices it from
+  the store.
+  **Grace does:** cart → **Save for later** on a line → check the total →
+  **Move to cart** → **Remove** a saved one.
+  **Pass:** the total drops when it is saved and comes back when it is moved
+  in; a cart with only saved things still shows them rather than "Your cart
+  is empty".
+
+- [ ] **CP-18J Setting up a profile.** *Claude built:* two ways out of the
+  setup screen ("Look around as a guest", "Back to the start"), a subtitle
+  that says why buyers have profiles at all, and nothing anywhere that calls
+  a handle a storefront.
+  **Grace does:** make a brand new account, get to Set up your profile, and
+  try to leave without finishing. Then sign in again with the same address.
+  **Pass:** both ways out work and land where they say; signing in again
+  returns to the same step with the account intact; the word "storefront"
+  appears nowhere in sign-up or Edit profile.
+
+- [ ] **CP-18K The added count on the feed.** *Claude built:* "N added" moved
+  from a line of prose under the picture to a number beside the cart icon,
+  with the comment count beside the speech bubble.
+  **Grace does:** Market feed → find a listing several people have added.
+  **Pass:** the number is beside the cart icon and goes up when you add it.
+
 ### Sequencing
 
 Stage 0 → Stage 1 → CP-A1 → (CP-A2 and CP-A3 independent) → CP-A4 needs CP-A3 → CP-A5 independent of A2–A4 → Stage 3 needs Stage 0 and CP-A1 (CP-A4 for seller sales) → Stages 4–9 in order (CP-S2 to CP-S5 can run any time after Stage 4; CP-S1 and CP-S6 wait on Stage 8) → Stage 10 in order, CP-D0 first and nothing else in it until the doctor confirms the dev project points at staging → Stage 11 needs CP-D2 → Stage 12 is independent of 10 and 11 (its Android path is testable on the emulator; CP-N4 last) → Stage 13 needs CP-D2/D3 (E1 first, then E2, E3, E4). One commit and push per checkpoint.
@@ -668,6 +792,8 @@ Stage 0 → Stage 1 → CP-A1 → (CP-A2 and CP-A3 independent) → CP-A4 needs 
 ---
 
 ## 6. Critical files (for Claude)
+
+**Stage 18:** `lib/widgets/{floating_cart_button,sort_bar,product_art,post_card}.dart` · `lib/models/{search,cart,comment}.dart` · `lib/data/firebase/firestore_search_repository.dart` · `lib/screens/market/{results,collection,cart,product,feed}_screen.dart` · `functions/src/{profile_tags,cart,carted,orders}.ts`. Note `feedback_button.dart` is **gone**: the beta bug button went out with the beta, and the feedback repository, the model and the admin list stay so past reports are still readable.
 
 **Flutter:** `lib/main.dart` · `lib/widgets/async.dart` · `lib/data/firebase/firestore_errors.dart` (the one error hook) · `lib/data/shopify/{commerce,fulfillment}_proxy_repository.dart` · `lib/data/firebase/firestore_profile_repository.dart` · `lib/data/firebase/firebase_auth_service.dart` · `lib/data/auth/auth_service.dart` · `lib/state/session.dart` · `lib/router/app_router.dart` · `lib/screens/onboarding/auth_screens.dart` · `lib/screens/you/{profile,edit_profile,claim_shop}_screen.dart` · `lib/screens/market/seller_feed_screen.dart` (grid to extract) · `lib/widgets/sheets.dart` (checkout at :232, `requireSeller` copy at :166) · `lib/data/repositories/{repositories,exceptions}.dart` · `lib/data/providers.dart` · `lib/data/fixtures/fixture_repositories.dart` · **Stages 10–12:** `lib/models/{directory,onboarding}.dart` · `lib/data/firebase/{firestore_directory_repository,firebase_push_service}.dart` · `lib/data/push/push_service.dart` · `lib/state/push_coordinator.dart` · `lib/widgets/directory_listing_card.dart` · `lib/screens/onboarding/orient_screen.dart` · `lib/screens/you/{directory,notification_settings,admin}_screen.dart` · **Stage 14:** `lib/widgets/{feedback_button,first_tour,splash_overlay,linked_text}.dart` · `lib/state/tour.dart` · `lib/data/firebase/firestore_feedback_repository.dart` · `lib/models/feedback.dart`. Note `kUnderFlutterTest` (`dev_error_sink.dart`) reads the FLUTTER_TEST *environment variable*: `bool.fromEnvironment('FLUTTER_TEST')` is false under `flutter test`, and any timer started in a widget or provider fails every widget test.
 
