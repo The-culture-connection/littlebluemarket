@@ -316,7 +316,7 @@ class _AdminCardState extends ConsumerState<_AdminCard> {
   Future<String> _reindexTags() async {
     final result = await _repo.backfillProfileTags();
     return 'Checked ${result.checked} profiles, repaired ${result.updated} '
-        '(hashtags and post counts).';
+        '(hashtags, names, post and purchase counts).';
   }
 
   Future<String> _sync() async {

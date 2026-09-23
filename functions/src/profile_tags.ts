@@ -90,6 +90,25 @@ export async function postCountsByAuthor(): Promise<Map<string, number>> {
 }
 
 /**
+ * How many purchases each account has, from the purchase documents.
+ *
+ * `purchaseCount` is incremented by the order pipeline, which is right, but
+ * the one-time store backfill also *sets* it, and a count that can be both
+ * incremented and assigned is a count that can drift. This is what the
+ * profile grid underneath it actually shows, so it is the answer.
+ */
+export async function purchaseCountsByBuyer(): Promise<Map<string, number>> {
+  const snapshot = await getFirestore().collectionGroup('purchases').select().get();
+  const counts = new Map<string, number>();
+  for (const doc of snapshot.docs) {
+    const uid = doc.ref.parent.parent?.id;
+    if (!uid) continue;
+    counts.set(uid, (counts.get(uid) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/**
  * Every profile, once: what the admin "Reindex profiles" button runs.
  *
  * Two things, because they are the same walk over `users`: the lowercase
@@ -103,9 +122,10 @@ export async function backfillProfileTagsLower(): Promise<{
   updated: number;
 }> {
   const db = getFirestore();
-  const [snapshot, posts] = await Promise.all([
+  const [snapshot, posts, purchases] = await Promise.all([
     db.collection('users').get(),
     postCountsByAuthor(),
+    purchaseCountsByBuyer(),
   ]);
   let batch = db.batch();
   let pending = 0;
@@ -115,12 +135,15 @@ export async function backfillProfileTagsLower(): Promise<{
     const mirrors = profileMirrorPatch(data);
     const wantedPosts = posts.get(doc.id) ?? 0;
     const postsDrifted = Number(data.postCount ?? 0) !== wantedPosts;
-    if (!mirrors && !postsDrifted) continue;
+    const wantedBuys = purchases.get(doc.id) ?? 0;
+    const buysDrifted = Number(data.purchaseCount ?? 0) !== wantedBuys;
+    if (!mirrors && !postsDrifted && !buysDrifted) continue;
     batch.set(
       doc.ref,
       {
         ...(mirrors ?? {}),
         ...(postsDrifted ? { postCount: wantedPosts } : {}),
+        ...(buysDrifted ? { purchaseCount: wantedBuys } : {}),
       },
       { merge: true },
     );
