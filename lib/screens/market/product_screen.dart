@@ -14,6 +14,7 @@ import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/unclaimed_shop.dart';
 
 /// The full record behind a post: options and stock, the spec table, the
 /// rating breakdown, shipping and pickup, returns, and the seller strip.
@@ -235,15 +236,16 @@ class _Body extends ConsumerWidget {
         ),
 
         const SectionHead('Sold by'),
-        // A mirrored product whose shop has not joined the app yet has no
-        // profile to show. Say so rather than crash or invent one.
+        // Every vendor in the catalogue has a shop profile now, so this is
+        // the rare case of a product whose vendor string went missing
+        // altogether rather than the ordinary "not signed up yet".
         if (seller == null)
           LbmCard(
             margin: const EdgeInsets.symmetric(horizontal: 14),
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: Text(
-              'This shop has not joined the app yet. You can still buy; '
-              'the seller will appear here once they claim their shop.',
+              'We do not have a shop on record for this listing. You can '
+              'still buy it.',
               style: TextStyle(fontSize: 13, height: 1.5, color: c.ink2),
             ),
           )
@@ -295,6 +297,12 @@ class _Body extends ConsumerWidget {
                 ),
               ),
             ),
+          ),
+          // A shop on the market that nobody has signed up for yet: you can
+          // still buy, and a message waits for them.
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: UnclaimedShopCard(person: seller, compact: true),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),

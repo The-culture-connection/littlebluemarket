@@ -5,6 +5,7 @@ import { ensureOnAppChannel, productCollectionHandles, publishToAllChannels } fr
 import { geohash } from './geohash.ts';
 import { toCents } from './orders.ts';
 import { normalizeVendorName } from './sellers.ts';
+import { ensureShopShell } from './shops.ts';
 import { forgetVendorCache, resolveSellerUid } from './vendors.ts';
 
 /**
@@ -270,7 +271,12 @@ export async function mirrorProduct(payload: RestProduct): Promise<void> {
   const db = getFirestore();
   const id = String(payload.id);
 
-  const sellerUid = await resolveSellerUid({ vendor: payload.vendor, productId: id });
+  // The account that has claimed this vendor, if anybody has. Otherwise the
+  // shop's shell profile, so the listing still has a shop behind it: one
+  // that can be searched, opened and messaged. See `shops.ts`.
+  const claimed = await resolveSellerUid({ vendor: payload.vendor, productId: id });
+  const sellerUid =
+    claimed || (await ensureShopShell({ vendorName: String(payload.vendor ?? '') }, db));
   const sellerData = sellerUid
     ? (await db.collection('users').doc(sellerUid).get()).data()
     : undefined;
@@ -388,7 +394,10 @@ export async function backfillSellerForVendor(
   if (!key) return 0;
 
   const snapshot = await db.collection('catalog').where('vendorKey', '==', key).get();
-  const sellerId = active ? uid : '';
+  // A revoked grant does not leave the products orphaned any more: they go
+  // back to the shop's own shell profile, which is where they sat before
+  // anybody claimed it.
+  const sellerId = active ? uid : await ensureShopShell({ vendorName }, db);
   let updated = 0;
   // Firestore batches cap at 500 writes; 400 leaves room.
   for (let i = 0; i < snapshot.docs.length; i += 400) {

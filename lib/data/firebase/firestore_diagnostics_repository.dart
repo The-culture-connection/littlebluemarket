@@ -119,6 +119,24 @@ class FirestoreDiagnosticsRepository implements DiagnosticsRepository {
       }, operation: 'callable adminBackfillProfileTags');
 
   @override
+  Future<({int vendors, int shells, int products})> backfillShopShells() =>
+      guardFirestore(() async {
+        final result = await _functions
+            .httpsCallable(
+              'adminBackfillShopShells',
+              options: HttpsCallableOptions(
+                timeout: const Duration(seconds: 540),
+              ),
+            )
+            .call<Map<String, dynamic>>(const {});
+        return (
+          vendors: FirestoreMappers.integer(result.data['vendors']),
+          shells: FirestoreMappers.integer(result.data['shells']),
+          products: FirestoreMappers.integer(result.data['products']),
+        );
+      }, operation: 'callable adminBackfillShopShells');
+
+  @override
   Future<String> setSellerVendor({
     required String uid,
     required String vendorName,

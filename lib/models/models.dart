@@ -52,7 +52,17 @@ class Person {
     this.cityState = '',
     this.lat,
     this.lng,
+    this.unclaimed = false,
   });
+
+  /// A shop on the market that nobody has signed up for yet.
+  ///
+  /// Every vendor the catalogue carries has a profile, so its listings have
+  /// a shop behind them and it can be found, opened and messaged. Nobody can
+  /// sign in as one: it has no account, and it is never granted selling. It
+  /// hands everything over the moment somebody claims it by verifying the
+  /// shop's email (Grace, 2026-09-24).
+  final bool unclaimed;
 
   final String id;
   final String name;

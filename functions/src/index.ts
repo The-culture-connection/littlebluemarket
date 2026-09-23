@@ -59,6 +59,7 @@ import {
   updateLine,
 } from './cart.ts';
 import { normalizeOrder, recordFulfillment, recordPaidOrder } from './orders.ts';
+import { backfillShopShells, claimShopShell } from './shops.ts';
 import { addTracking } from './fulfillment.ts';
 import { linkStoreAccounts } from './linking.ts';
 import { withLoudErrors } from './errors.ts';
@@ -535,6 +536,20 @@ export const adminBackfillProfileTags = onCall(
   }),
 );
 
+/**
+ * Gives every vendor already in the catalogue a shell profile, and attaches
+ * the products that have no shop. Admin only, idempotent. What makes the
+ * shops mirrored before 2026-09-24 visible as shops.
+ */
+export const adminBackfillShopShells = onCall(
+  { timeoutSeconds: 540, memory: '512MiB' },
+  withLoudErrors('adminBackfillShopShells', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    return backfillShopShells();
+  }),
+);
+
 export const adminBackfillBuyerIndex = onCall(
   { timeoutSeconds: 300, memory: '512MiB' },
   withLoudErrors('adminBackfillBuyerIndex', async (request) => {
@@ -848,6 +863,11 @@ export const resolveSellerForVendorName = onDocumentWritten(
       await backfillSellerForVendor(uid, before.shopifyVendorName, false);
     }
     await backfillSellerForVendor(uid, name, !revokedNow);
+
+    // Somebody has signed up for a shop that already had a face on the
+    // market. Hand over what it accrued while it was unclaimed: the sales,
+    // and the conversations people started with it.
+    if (!revokedNow) await claimShopShell(name, uid);
   },
 );
 

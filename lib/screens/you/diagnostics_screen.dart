@@ -319,6 +319,12 @@ class _AdminCardState extends ConsumerState<_AdminCard> {
         '(hashtags, names, post and purchase counts).';
   }
 
+  Future<String> _backfillShops() async {
+    final r = await _repo.backfillShopShells();
+    return 'Gave ${r.shells} of ${r.vendors} shops a profile, and attached '
+        '${r.products} listings that had none.';
+  }
+
   Future<String> _sync() async {
     final count = await _repo.syncCollections();
     return 'Synced $count collections. Pull the Market feed to refresh.';
@@ -391,6 +397,15 @@ class _AdminCardState extends ConsumerState<_AdminCard> {
                 onPressed: _busy
                     ? null
                     : () => _run('Reindexing…', _reindexTags),
+              ),
+              PillButton(
+                'Shop profiles',
+                small: true,
+                expand: false,
+                style: PillStyle.quiet,
+                onPressed: _busy
+                    ? null
+                    : () => _run('Building…', _backfillShops),
               ),
               PillButton(
                 'Backfill catalog',

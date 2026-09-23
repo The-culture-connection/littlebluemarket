@@ -237,7 +237,12 @@ service cloud.firestore {
           'shopifyLocationId',
           'lat',
           'lng',
-          'geohash'
+          'geohash',
+          // A shop nobody has claimed is a function-written face. Whether it
+          // is claimed, and by whom, is not a thing a phone may assert.
+          'unclaimed',
+          'claimedBy',
+          'shopVendorName'
         ]);
 
       allow delete: if false;

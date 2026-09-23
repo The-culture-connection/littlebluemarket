@@ -83,6 +83,7 @@ abstract final class FirestoreMappers {
     grossSalesCents: integer(data['grossSalesCents'] ?? data['revenueCents']),
     purchases: integer(data['purchaseCount']),
     posts: integer(data['postCount']),
+    unclaimed: boolean(data['unclaimed']),
     isSeller: boolean(data['isSeller']),
     avatarUrl: data['avatarUrl'] as String?,
     isLinked: data['linkedAt'] != null,

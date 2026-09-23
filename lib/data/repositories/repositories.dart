@@ -585,6 +585,10 @@ abstract interface class DiagnosticsRepository {
   /// finds a profile's hashtags whatever case they were typed in. Idempotent.
   Future<({int checked, int updated})> backfillProfileTags();
 
+  /// Gives every vendor already in the catalogue a shop profile, and
+  /// attaches the listings that have no shop to it. Idempotent.
+  Future<({int vendors, int shells, int products})> backfillShopShells();
+
   /// One page of the catalog import. Call until [BackfillProgress.done].
   Future<BackfillProgress> backfillCatalog({bool reset = false});
 

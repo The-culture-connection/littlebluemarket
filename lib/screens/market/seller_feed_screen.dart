@@ -15,6 +15,7 @@ import '../../widgets/screen.dart';
 import '../../widgets/seller_products_grid.dart';
 import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/unclaimed_shop.dart';
 
 /// The public view of a profile.
 ///
@@ -81,10 +82,13 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
                     () => context.goToDm(person.id),
                   ),
                 ),
-                if (ref.watch(currentUidProvider) != person.id)
+                if (!person.unclaimed &&
+                    ref.watch(currentUidProvider) != person.id)
                   _NotifyMeButton(personId: person.id),
               ],
             ),
+            // A shop that is on the market but has nobody behind it yet.
+            UnclaimedShopCard(person: person),
             // A business listed on littlebluecart.com shows its listing the
             // way a seller shows a storefront. Nothing when there is none.
             _DirectorySection(personId: person.id),

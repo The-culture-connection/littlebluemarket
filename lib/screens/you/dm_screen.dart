@@ -11,6 +11,7 @@ import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/unclaimed_shop.dart';
 
 /// One conversation.
 ///
@@ -122,22 +123,47 @@ class _ConversationState extends ConsumerState<_Conversation> {
             .read(messagingRepositoryProvider)
             .send(conversationId: conversationId, text: text),
       ),
-      child: LbmAsync<List<Message>>(
-        messages,
-        skeleton: const ListRowSkeleton(rows: 4),
-        isEmpty: (messages) => messages.isEmpty,
-        empty: const LbmEmpty(
-          title: 'No messages yet',
-          body: 'Ask about stock, sizing, or a pickup.',
-        ),
-        data: (messages) => ListView.separated(
-          padding: const EdgeInsets.all(14),
-          itemCount: messages.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 12),
-          itemBuilder: (context, i) => _Bubble(message: messages[i]),
-        ),
+      child: Column(
+        children: [
+          // A shop that is on the market but has nobody reading yet. Said
+          // before the first message rather than after it, because that is
+          // when it changes what somebody writes (Grace, 2026-09-24).
+          if (otherId != null) _UnclaimedNotice(personId: otherId),
+          Expanded(
+            child: LbmAsync<List<Message>>(
+              messages,
+              skeleton: const ListRowSkeleton(rows: 4),
+              isEmpty: (messages) => messages.isEmpty,
+              empty: const LbmEmpty(
+                title: 'No messages yet',
+                body: 'Ask about stock, sizing, or a pickup.',
+              ),
+              data: (messages) => ListView.separated(
+                padding: const EdgeInsets.all(14),
+                itemCount: messages.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                itemBuilder: (context, i) => _Bubble(message: messages[i]),
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+}
+
+/// The strip above the thread, when the other side is a shop nobody has
+/// claimed. Silent for a person, and silent while the profile is loading.
+class _UnclaimedNotice extends ConsumerWidget {
+  const _UnclaimedNotice({required this.personId});
+
+  final String personId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final person = ref.watch(personProvider(personId)).value;
+    if (person == null) return const SizedBox.shrink();
+    return UnclaimedShopStrip(person: person);
   }
 }
 
