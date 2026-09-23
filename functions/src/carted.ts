@@ -47,12 +47,25 @@ export async function applyMarkerChanges(
   if (changes.added.length === 0 && changes.removed.length === 0) return;
   const db = getFirestore();
   const batch = db.batch();
+  const markerOf = (productId: string) =>
+    db.collection('catalog').doc(productId).collection('carted').doc(uid);
+
+  // Every marker at once. These were read one after another inside the
+  // loops, so "add all" from a cart post waited on twenty-four sequential
+  // round trips before it wrote anything (Grace: the cart is slow,
+  // 2026-09-23).
+  const touched = [...changes.added, ...changes.removed];
+  const snaps = new Map(
+    (await db.getAll(...touched.map(markerOf))).map((snap, i) => [
+      touched[i],
+      snap,
+    ]),
+  );
 
   for (const productId of changes.added) {
     const product = db.collection('catalog').doc(productId);
-    const marker = product.collection('carted').doc(uid);
-    const existed = (await marker.get()).exists;
-    batch.set(marker, { uid, productId, addedAt: FieldValue.serverTimestamp(), active: true }, { merge: true });
+    const existed = snaps.get(productId)?.exists === true;
+    batch.set(markerOf(productId), { uid, productId, addedAt: FieldValue.serverTimestamp(), active: true }, { merge: true });
     batch.set(
       product,
       {
@@ -64,12 +77,11 @@ export async function applyMarkerChanges(
   }
   for (const productId of changes.removed) {
     const product = db.collection('catalog').doc(productId);
-    const marker = product.collection('carted').doc(uid);
-    const snap = await marker.get();
+    const snap = snaps.get(productId);
     // Only a live marker decrements; a stale double-remove cannot drive the
     // count negative.
-    if (!snap.exists || snap.data()?.active === false) continue;
-    batch.set(marker, { active: false, removedAt: FieldValue.serverTimestamp() }, { merge: true });
+    if (!snap?.exists || snap.data()?.active === false) continue;
+    batch.set(markerOf(productId), { active: false, removedAt: FieldValue.serverTimestamp() }, { merge: true });
     batch.set(product, { inCartsCount: FieldValue.increment(-1) }, { merge: true });
   }
   await batch.commit();

@@ -114,8 +114,24 @@ function requireUid(auth: { uid?: string } | undefined): string {
 // one knows who is calling from the Firebase ID token rather than from
 // anything the client sends.
 
+/**
+ * Every cart call, and one instance kept warm for them.
+ *
+ * `minInstances: 1` is the whole reason a tap on Add to cart, Remove, Save
+ * for later or Checkout now answers in a moment rather than after a wait
+ * long enough to make someone tap again (Grace, 2026-09-23). None of those
+ * do much work; almost all of the wait was a cold start — a fresh container,
+ * a Node runtime and firebase-admin, several seconds of it, on the first
+ * call after a few idle minutes. Which is to say: on every call a real
+ * shopper makes.
+ *
+ * It is the one place in this codebase worth paying idle for. A warm
+ * 256MiB instance is a few dollars a month; a cart that feels broken is the
+ * sale.
+ */
 const commerceOptions = {
   secrets: [SHOPIFY_CLIENT_SECRET, SHOPIFY_STOREFRONT_PRIVATE_TOKEN],
+  minInstances: 1,
 };
 
 export const commerceAddLine = onCall(commerceOptions, withLoudErrors('commerceAddLine', async (request) => {

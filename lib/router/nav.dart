@@ -48,18 +48,22 @@ extension LbmNavigation on BuildContext {
   void goToDirectoryCategory(String slug) =>
       _pushInBranch('/directory-category/$slug');
 
-  /// Search results for a query, usually a hashtag.
-  void goToResults(String query) =>
-      _pushInBranch('/results?q=${Uri.encodeComponent(query)}');
-
-  /// The same results, in place of whatever is on top.
+  /// Search results for a query — typed, or a tapped hashtag.
   ///
-  /// Searching is a round trip — the field, then the results — and pushing
-  /// both of them meant Back from a result went to the empty search field,
-  /// then to the one before it, and only then to the Market. A tester
-  /// counted four taps (Grace, 2026-09-23). The field replaces itself with
-  /// its results, and a second search replaces the first, so Back from any
-  /// result is one tap to where the search started.
+  /// **There is only ever one search in the back stack.** Searching is a
+  /// round trip (the field, then the results), and every hashtag chip is
+  /// another search: the popular-tag tiles on the search screen, the chips
+  /// on a product card, the "did you mean" suggestions. Pushing each one
+  /// buried the Market under a pile of old searches, which a tester hit
+  /// twice — once before the first fix and again after it, because the fix
+  /// only covered the typed path (Grace, 2026-09-23). A search opened from
+  /// a screen that is itself a search **replaces** it; from anywhere else it
+  /// is pushed, once.
+  void goToResults(String query) =>
+      _searchNav('/results?q=${Uri.encodeComponent(query)}');
+
+  /// The same results, always in place of whatever is on top: the search
+  /// field replacing itself with what it found.
   void replaceWithResults(String query) => pushReplacement(
     '${branchPrefix(this)}/results?q=${Uri.encodeComponent(query)}',
   );
@@ -69,4 +73,26 @@ extension LbmNavigation on BuildContext {
   void replaceWithSearch(String query) => pushReplacement(
     '${branchPrefix(this)}/search?q=${Uri.encodeComponent(query)}',
   );
+
+  /// Push, unless we are already standing on a search.
+  void _searchNav(String suffix) {
+    final target = '${branchPrefix(this)}$suffix';
+    isOnSearch(this) ? pushReplacement(target) : push(target);
+  }
+
+  /// Back out of a search to the tab's own root — the Market feed, or the
+  /// Community root when the search was run from there.
+  ///
+  /// Grace, 2026-09-23: "the back button should go back to the market feed".
+  /// Popping usually does it now that searches replace each other, but not
+  /// when the search was opened from a listing three screens deep, and
+  /// "Back from a search goes to the Market" is a rule worth being able to
+  /// state without a footnote.
+  void leaveSearch() => go(branchPrefix(this));
+}
+
+/// Whether [context] is standing on the search field or on search results.
+bool isOnSearch(BuildContext context) {
+  final path = GoRouterState.of(context).uri.path;
+  return path.endsWith('/search') || path.endsWith('/results');
 }

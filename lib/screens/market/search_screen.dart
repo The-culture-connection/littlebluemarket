@@ -65,6 +65,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     return LbmScreen(
       appBar: LbmAppBar(
+        // The field is half of a search, so Back out of it goes where Back
+        // out of the results goes.
+        onBack: () => context.leaveSearch(),
         titleWidget: LbmField(
           controller: _controller,
           hintText: 'Search goods, services, sellers, #tags',

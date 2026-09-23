@@ -9,6 +9,7 @@ import 'package:little_blue_market/screens/market/collection_screen.dart';
 import 'package:little_blue_market/widgets/floating_cart_button.dart';
 import 'package:little_blue_market/widgets/post_card.dart';
 import 'package:little_blue_market/widgets/primitives.dart';
+import 'package:little_blue_market/widgets/screen.dart';
 
 /// Grace's list of 2026-09-14: the rail is the Market's seven headings, a
 /// post opens when tapped, the bug button keeps off the Send button, and the
@@ -40,6 +41,16 @@ Future<ProviderContainer> _pumpFeed(
     await tester.pumpAndSettle();
   }
   return container;
+}
+
+/// Scrolls the feed until a post card is reachable and opens it. The feed
+/// leads with rails, banners and tip cards, so the first card starts below
+/// the fold.
+Future<void> _openFirstPost(WidgetTester tester) async {
+  await tester.dragFrom(const Offset(195, 400), const Offset(0, -420));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byType(PostCard).first);
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -145,21 +156,65 @@ void main() {
       expect(find.text('Post'), findsOneWidget);
     });
 
-    test('the floating cart lifts clear of a composer, and only there', () {
-      // Screens whose bottom belongs to a composer: the button sat on the
-      // Send button (Grace, 2026-09-14). The Open chat IS the community
-      // root; the first attempt guessed '/community/chatroom', which is not
-      // a route, so nothing moved and Grace reported it again. The rule
-      // outlived the bug button it was written for.
-      expect(CartLayer.isRaised('/community'), isTrue);
-      expect(CartLayer.isRaised('/community/chatroom'), isFalse);
-      expect(CartLayer.isRaised('/community/thread/t1'), isTrue);
-      expect(CartLayer.isRaised('/market/post/p1'), isTrue);
-      expect(CartLayer.isRaised('/you/dm/kali'), isTrue);
-      // Everywhere else it stays where it was.
-      expect(CartLayer.isRaised('/market'), isFalse);
-      expect(CartLayer.isRaised('/you'), isFalse);
-      expect(CartLayer.isRaised('/market/search'), isFalse);
+    testWidgets('the floating cart never lands on a Send button', (
+      tester,
+    ) async {
+      // Reported twice against the bug button, "fixed" once against a route
+      // that does not exist, and still wrong on the post screen, where the
+      // cart sat squarely on Send (Grace, 2026-09-23, with a photograph).
+      // The old test asserted a list of route prefixes, which is precisely
+      // the thing that was wrong; this one asserts the pixels.
+      await _pumpFeed(tester, guest: false);
+      await _openFirstPost(tester);
+
+      final composer = find.byType(Composer);
+      expect(composer, findsOneWidget, reason: 'the post screen has one');
+      final cart = find.byIcon(Icons.shopping_bag_rounded);
+      expect(cart, findsOneWidget);
+
+      final send = tester.getRect(
+        find.descendant(of: composer, matching: find.byType(CircleIconButton)),
+      );
+      final button = tester.getRect(cart);
+      expect(
+        button.overlaps(send),
+        isFalse,
+        reason: 'the cart is on the Send button: $button over $send',
+      );
+      expect(
+        button.bottom,
+        lessThanOrEqualTo(tester.getRect(composer).top),
+        reason: 'the cart should sit above the composer, not beside it',
+      );
+    });
+
+    testWidgets('and sits low again on a screen with no composer', (
+      tester,
+    ) async {
+      await _pumpFeed(tester, guest: false);
+      final low = tester.getRect(find.byIcon(Icons.shopping_bag_rounded));
+      await _openFirstPost(tester);
+      final high = tester.getRect(find.byIcon(Icons.shopping_bag_rounded));
+      expect(high.top, lessThan(low.top), reason: 'lifted for the composer');
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(find.byIcon(Icons.shopping_bag_rounded)).top,
+        low.top,
+        reason: 'and back down once the composer has gone',
+      );
+    });
+
+    test('the offset leaves room only when a composer asks for it', () {
+      expect(
+        CartLayer.bottomOffset(viewPaddingBottom: 0, composerInset: 0),
+        96,
+      );
+      expect(
+        CartLayer.bottomOffset(viewPaddingBottom: 24, composerInset: 66),
+        24 + 96 + 66 + 8,
+      );
     });
 
     testWidgets('the search pill on the results screen reopens search', (
@@ -183,6 +238,23 @@ void main() {
       // The field is open again, carrying what was searched for.
       final field = tester.widget<TextField>(find.byType(TextField).first);
       expect(field.controller?.text, 'candle');
+    });
+
+
+    testWidgets('a hashtag tapped on the search screen replaces it', (
+      tester,
+    ) async {
+      await _pumpFeed(tester);
+      await tester.tap(find.text('Search goods, services, #tags'));
+      await tester.pumpAndSettle();
+      // The popular-tag tiles: tapping one used to push results on top of
+      // the search field, so Back went to the field and not to the Market.
+      await tester.tap(find.byType(LbmCard).first);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('Browse the Market'), findsOneWidget);
     });
   });
 }

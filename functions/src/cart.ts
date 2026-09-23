@@ -59,23 +59,52 @@ async function readCart(uid: string): Promise<CartDoc> {
   };
 }
 
-async function writeCart(uid: string, lines: CartLine[]): Promise<CartDoc> {
+/**
+ * Writes the cart's lines and returns what the cart now is.
+ *
+ * [before] is the cart as it was, when the caller has already read it. Every
+ * caller had, and this used to read it again and then read the whole thing a
+ * third time on the way out — three round trips for a document we were
+ * holding. Adding one thing to a cart was nine sequential reads and writes
+ * before the first byte of the answer, which is a large part of why the cart
+ * felt slow (Grace, 2026-09-23).
+ *
+ * The returned document is composed rather than re-read: we know exactly
+ * what was written. `saved` is carried across untouched, which is the one
+ * field this function does not own.
+ */
+async function writeCart(
+  uid: string,
+  lines: CartLine[],
+  before?: CartDoc,
+): Promise<CartDoc> {
+  const was = before ?? (await readCart(uid));
   // The public signal moves with the cart: a product's first line in adds a
-  // marker and a count; its last line out removes them.
-  const before = await readCart(uid);
-  await applyMarkerChanges(uid, markerChanges(before.lines, lines));
-  await cartRef(uid).set(
-    {
-      lines,
-      // Any change invalidates the quote. A stale total is worse than none.
-      shippingCents: null,
-      taxCents: null,
-      currencyCode: 'USD',
-      updatedAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
-  return readCart(uid);
+  // marker and a count; its last line out removes them. Independent of the
+  // cart write itself, so the two go together rather than one after the
+  // other.
+  await Promise.all([
+    applyMarkerChanges(uid, markerChanges(was.lines, lines)),
+    cartRef(uid).set(
+      {
+        lines,
+        // Any change invalidates the quote. A stale total is worse than none.
+        shippingCents: null,
+        taxCents: null,
+        currencyCode: 'USD',
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  ]);
+  return {
+    id: uid,
+    lines,
+    saved: was.saved,
+    shippingCents: null,
+    taxCents: null,
+    currencyCode: 'USD',
+  };
 }
 
 /** The authoritative variant, from the mirror's spec subdocument. */
@@ -89,14 +118,17 @@ async function resolveVariant(
   unitPriceCents: number;
   available: boolean;
   imageUrl?: string;
+  /// The listing itself, already read here so callers do not read it again.
+  exists: boolean;
+  sellerUid: string;
 }> {
   const db = getFirestore();
-  const spec = await db
-    .collection('catalog')
-    .doc(productId)
-    .collection('spec')
-    .doc('detail')
-    .get();
+  // Together, not one after the other: neither read depends on the other,
+  // and every round trip here is felt as a slow cart.
+  const [spec, product] = await Promise.all([
+    db.collection('catalog').doc(productId).collection('spec').doc('detail').get(),
+    db.collection('catalog').doc(productId).get(),
+  ]);
 
   const variants = (spec.data()?.variants ?? []) as Array<Record<string, any>>;
   if (variants.length === 0) {
@@ -113,10 +145,11 @@ async function resolveVariant(
     throw new HttpsError('not-found', 'That option is no longer listed.');
   }
 
-  const product = await db.collection('catalog').doc(productId).get();
   const images = (product.data()?.imageUrls ?? []) as string[];
 
   return {
+    exists: product.exists,
+    sellerUid: String(product.data()?.sellerId ?? ''),
     variantId: String(chosen.variantId ?? chosen.name),
     title: String(product.data()?.title ?? ''),
     variantTitle: String(chosen.name ?? 'Default'),
@@ -130,7 +163,15 @@ export async function addLine(
   uid: string,
   input: { productId: string; variantId?: string; quantity: number },
 ): Promise<CartDoc> {
-  const variant = await resolveVariant(input.productId, input.variantId);
+  // The listing and the cart together: the listing read is not a reason to
+  // wait before reading the cart.
+  const [variant, cart] = await Promise.all([
+    resolveVariant(input.productId, input.variantId),
+    readCart(uid),
+  ]);
+  if (!variant.exists) {
+    throw new HttpsError('not-found', 'That listing is gone.');
+  }
   if (!variant.available) {
     throw new HttpsError(
       'failed-precondition',
@@ -138,15 +179,6 @@ export async function addLine(
     );
   }
 
-  const product = await getFirestore()
-    .collection('catalog')
-    .doc(input.productId)
-    .get();
-  if (!product.exists) {
-    throw new HttpsError('not-found', 'That listing is gone.');
-  }
-
-  const cart = await readCart(uid);
   const existing = cart.lines.find(
     (line) => line.variantId === variant.variantId,
   );
@@ -169,12 +201,12 @@ export async function addLine(
           // The variant's price, never the product's.
           unitPriceCents: variant.unitPriceCents,
           quantity,
-          sellerUid: String(product.data()?.sellerId ?? ''),
+          sellerUid: variant.sellerUid,
           imageUrl: variant.imageUrl ?? null,
         },
       ];
 
-  return writeCart(uid, lines);
+  return writeCart(uid, lines, cart);
 }
 
 export async function updateLine(
@@ -189,6 +221,7 @@ export async function updateLine(
     cart.lines.map((line) =>
       line.id === lineId ? { ...line, quantity: Math.floor(quantity) } : line,
     ),
+    cart,
   );
 }
 
@@ -200,6 +233,7 @@ export async function removeLine(
   return writeCart(
     uid,
     cart.lines.filter((line) => line.id !== lineId),
+    cart,
   );
 }
 
@@ -246,6 +280,7 @@ export async function saveForLater(uid: string, lineId: string): Promise<CartDoc
   return writeCart(
     uid,
     cart.lines.filter((l) => l.id !== lineId),
+    { ...cart, saved: [...saved.filter((l) => l.id !== lineId), line] },
   );
 }
 

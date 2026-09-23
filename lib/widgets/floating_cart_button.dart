@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../router/nav.dart';
+import '../state/composer_inset.dart';
 import '../state/providers.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
@@ -23,6 +24,10 @@ class CartLayer extends ConsumerWidget {
   final GoRouter router;
   final Widget child;
 
+  /// Clear of the floating pill tab bar, which is 18 off the bottom and
+  /// about 70 tall, plus the phone's own gesture inset.
+  static const _aboveTabBar = 96.0;
+
   /// Screens with nothing to put in a cart, or nowhere to put the button:
   /// the welcome artwork, the onboarding steps, and the cart itself.
   static const hiddenOn = {
@@ -40,27 +45,29 @@ class CartLayer extends ConsumerWidget {
   static bool isHidden(String path) =>
       hiddenOn.contains(path) || path.endsWith('/cart');
 
-  /// Screens with a composer pinned along the bottom, where the button
-  /// otherwise sits on top of Send (Grace, 2026-09-14). Raised by a
-  /// composer's height on these, rather than moved for everyone.
-  static const raisedOn = {'/community'};
-
-  /// True for any screen whose bottom belongs to a composer, including the
-  /// ones whose address carries an id.
-  static bool isRaised(String path) =>
-      // The Open chat IS the community root, which the first attempt at this
-      // missed: it guessed '/community/chatroom', a route that does not
-      // exist, so the button stayed on the Send button (Grace, twice).
-      raisedOn.contains(path) ||
-      path.startsWith('/community/thread/') ||
-      path.startsWith('/community/forums/') ||
-      path.startsWith('/market/post/') ||
-      path.startsWith('/you/dm/');
+  /// How far off the bottom the button sits, given the room a composer is
+  /// taking right now.
+  ///
+  /// This used to be a list of route prefixes with a magic 164 for the ones
+  /// on it. A list of routes goes stale: it was reported wrong twice, "fixed"
+  /// once against a route that does not exist, and was still wrong on the
+  /// post screen, where the cart sat squarely on Send (Grace, 2026-09-23,
+  /// with a photograph). The composer now says how tall it is — see
+  /// [ComposerInsetReporter] — so there is nothing to keep in step, and the
+  /// 8 is a gap rather than a guess.
+  static double bottomOffset({
+    required double viewPaddingBottom,
+    required double composerInset,
+  }) =>
+      viewPaddingBottom +
+      _aboveTabBar +
+      (composerInset > 0 ? composerInset + 8 : 0);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
     final count = ref.watch(cartCountProvider);
+    final composerInset = ref.watch(composerInsetProvider);
 
     return Stack(
       children: [
@@ -76,11 +83,10 @@ class CartLayer extends ConsumerWidget {
             if (keyboardOpen || isHidden(path)) return const SizedBox.shrink();
             return Positioned(
               right: 14,
-              // Above the floating pill tab bar, which is 18 from the bottom
-              // and about 64 tall, plus the phone's own gesture inset.
-              bottom:
-                  MediaQuery.viewPaddingOf(context).bottom +
-                  (isRaised(path) ? 164 : 96),
+              bottom: bottomOffset(
+                viewPaddingBottom: MediaQuery.viewPaddingOf(context).bottom,
+                composerInset: composerInset,
+              ),
               child: _CartButton(
                 count: count,
                 // Pushed onto the branch the person is already in, so Back
@@ -137,23 +143,31 @@ class _CartButton extends StatelessWidget {
             Positioned(
               right: -2,
               top: -2,
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 20),
-                height: 20,
-                alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(horizontal: 5),
-                decoration: BoxDecoration(
-                  color: c.paper,
-                  borderRadius: LbmRadius.pillR,
-                  boxShadow: c.shadowSoft,
-                ),
-                child: Text(
-                  count > 99 ? '99+' : '$count',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: c.ink,
-                    fontFeatures: kTabularFigures,
+              // A Material of its own, not a bare Container. Text with no
+              // Material above it is drawn with Flutter's "you forgot a
+              // Material" style — a double yellow underline — and this layer
+              // is mounted above the Navigator, where there is none in
+              // scope, so the number came out underlined in gold (Grace,
+              // 2026-09-23). The explicit `decoration: none` is a second
+              // belt for the same trousers.
+              child: Material(
+                color: c.paper,
+                shape: const StadiumBorder(),
+                elevation: 1,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 20),
+                  height: 20,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: c.ink,
+                      fontFeatures: kTabularFigures,
+                      decoration: TextDecoration.none,
+                    ),
                   ),
                 ),
               ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/data/repositories/repositories.dart';
 import 'package:little_blue_market/theme/app_theme.dart';
@@ -10,11 +11,15 @@ import 'package:little_blue_market/widgets/screen.dart';
 /// comments. What it promises: a failed send keeps the text and says why; a
 /// send in flight cannot be sent twice; a successful send clears the field.
 void main() {
-  Widget host(Future<void> Function(String) onSend) => MaterialApp(
-    theme: buildLbmTheme(Brightness.light),
-    home: Scaffold(
-      body: const SizedBox.expand(),
-      bottomNavigationBar: Composer(hintText: 'Message…', onSend: onSend),
+  // A scope, because the composer now reports its height into one so the
+  // floating cart can sit above it rather than on the Send button.
+  Widget host(Future<void> Function(String) onSend) => ProviderScope(
+    child: MaterialApp(
+      theme: buildLbmTheme(Brightness.light),
+      home: Scaffold(
+        body: const SizedBox.expand(),
+        bottomNavigationBar: Composer(hintText: 'Message…', onSend: onSend),
+      ),
     ),
   );
 

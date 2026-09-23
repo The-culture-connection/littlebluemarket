@@ -56,6 +56,9 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
 
     return LbmScreen(
       appBar: LbmAppBar(
+        // Back leaves the search rather than unwinding it: see
+        // LbmNavigation.leaveSearch.
+        onBack: () => context.leaveSearch(),
         titleWidget: SearchPill(
           label: widget.query,
           strong: true,

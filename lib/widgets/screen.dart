@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../state/composer_inset.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
@@ -122,7 +123,12 @@ class Composer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    return _ComposerBody(hintText: hintText, onSend: onSend, colors: c);
+    // Tells the floating cart how much room to leave, so it never lands on
+    // the Send button. See ComposerInsetReporter for why this is measured
+    // rather than listed.
+    return ComposerInsetReporter(
+      child: _ComposerBody(hintText: hintText, onSend: onSend, colors: c),
+    );
   }
 }
 

@@ -230,14 +230,44 @@ class _SavedLineRowState extends ConsumerState<_SavedLineRow> {
   }
 }
 
-class _CartLineRow extends ConsumerWidget {
+class _CartLineRow extends ConsumerStatefulWidget {
   const _CartLineRow({required this.line});
 
   final CartLine line;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CartLineRow> createState() => _CartLineRowState();
+}
+
+class _CartLineRowState extends ConsumerState<_CartLineRow> {
+  /// True from the tap until the cart stream catches up. Every control on
+  /// the row goes quiet while it is set.
+  ///
+  /// Without it the row was silent for as long as the round trip took, so a
+  /// tester tapped Remove twice and then said the cart was broken (Grace,
+  /// 2026-09-23). The work is the same; a tap that visibly registers is the
+  /// difference between slow and dead.
+  bool _busy = false;
+
+  Future<void> _run(Future<Cart> Function() action) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await action();
+    } on RepositoryException catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(describeError(error).body)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.c;
+    final line = widget.line;
     final commerce = ref.read(commerceRepositoryProvider);
 
     return ListRow(
@@ -275,9 +305,12 @@ class _CartLineRow extends ConsumerWidget {
               children: [
                 _StepButton(
                   icon: Icons.remove_rounded,
-                  onTap: () => commerce.updateLine(
-                    lineId: line.id,
-                    quantity: line.quantity - 1,
+                  enabled: !_busy,
+                  onTap: () => _run(
+                    () => commerce.updateLine(
+                      lineId: line.id,
+                      quantity: line.quantity - 1,
+                    ),
                   ),
                 ),
                 Padding(
@@ -294,9 +327,12 @@ class _CartLineRow extends ConsumerWidget {
                 ),
                 _StepButton(
                   icon: Icons.add_rounded,
-                  onTap: () => commerce.updateLine(
-                    lineId: line.id,
-                    quantity: line.quantity + 1,
+                  enabled: !_busy,
+                  onTap: () => _run(
+                    () => commerce.updateLine(
+                      lineId: line.id,
+                      quantity: line.quantity + 1,
+                    ),
                   ),
                 ),
               ],
@@ -310,14 +346,18 @@ class _CartLineRow extends ConsumerWidget {
                 // Not quite ready to buy it, not ready to lose it either
                 // (Grace's testers, 2026-09-23).
                 _RowAction(
-                  'Save for later',
+                  _busy ? 'Working' : 'Save for later',
                   tint: c.skyDeep,
-                  onPressed: () => commerce.saveForLater(line.id),
+                  onPressed: _busy
+                      ? null
+                      : () => _run(() => commerce.saveForLater(line.id)),
                 ),
                 _RowAction(
                   'Remove',
                   tint: c.ink3,
-                  onPressed: () => commerce.removeLine(line.id),
+                  onPressed: _busy
+                      ? null
+                      : () => _run(() => commerce.removeLine(line.id)),
                 ),
               ],
             ),
@@ -345,7 +385,9 @@ class _RowAction extends StatelessWidget {
 
   final String label;
   final Color tint;
-  final VoidCallback onPressed;
+
+  /// Null while the row is waiting on the backend.
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -370,25 +412,37 @@ class _RowAction extends StatelessWidget {
 }
 
 class _StepButton extends StatelessWidget {
-  const _StepButton({required this.icon, required this.onTap});
+  const _StepButton({
+    required this.icon,
+    required this.onTap,
+    this.enabled = true,
+  });
 
   final IconData icon;
   final VoidCallback onTap;
+
+  /// False while the row is waiting on the backend, so a second tap cannot
+  /// queue a second change against a quantity that is about to move.
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final c = context.c;
     return Semantics(
       button: true,
-      child: InkResponse(
-        radius: 20,
-        onTap: onTap,
-        child: Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(color: c.skyMist, shape: BoxShape.circle),
-          child: Icon(icon, size: 16, color: c.ink),
+      enabled: enabled,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.45,
+        child: InkResponse(
+          radius: 20,
+          onTap: enabled ? onTap : null,
+          child: Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: c.skyMist, shape: BoxShape.circle),
+            child: Icon(icon, size: 16, color: c.ink),
+          ),
         ),
       ),
     );

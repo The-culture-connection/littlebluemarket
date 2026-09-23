@@ -73,7 +73,12 @@ class PostActionBar extends StatelessWidget {
     this.inCart = false,
     this.addedCount = 0,
     this.commentCount = 0,
+    this.busy = false,
   });
+
+  /// A cart change is in flight. The icon spins in place, so the tap is
+  /// visibly received even when the backend takes its time.
+  final bool busy;
 
   final VoidCallback? onComment;
   final VoidCallback? onAddToCart;
@@ -107,7 +112,8 @@ class PostActionBar extends StatelessWidget {
               tint: inCart ? context.c.accentDeep : null,
               count: addedCount,
               countLabel: '$addedCount added to their cart',
-              onTap: onAddToCart,
+              busy: busy,
+              onTap: busy ? null : onAddToCart,
             ),
             const SizedBox(width: 18),
           ],
@@ -537,15 +543,36 @@ class _DirectoryBody extends ConsumerWidget {
 }
 
 /// The action bar, wired to the repository.
-class _Actions extends ConsumerWidget {
+class _Actions extends ConsumerStatefulWidget {
   const _Actions({required this.post, this.productId});
 
   final Post post;
   final String? productId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final id = productId;
+  ConsumerState<_Actions> createState() => _ActionsState();
+}
+
+class _ActionsState extends ConsumerState<_Actions> {
+  /// True from the tap until the cart stream catches up, so the icon says
+  /// something is happening rather than sitting there looking ignored
+  /// (Grace, 2026-09-23: adding to cart takes a long time to register).
+  bool _busy = false;
+
+  Future<void> _guard(Future<void> Function() work) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await work();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final post = widget.post;
+    final id = widget.productId;
     // The viewer's own cart, live: the icon fills the moment the line lands.
     final cart = ref.watch(cartProvider).value;
     final line = id == null
@@ -564,6 +591,7 @@ class _Actions extends ConsumerWidget {
 
     return PostActionBar(
       inCart: line != null,
+      busy: _busy,
       addedCount: live?.saveCount ?? 0,
       commentCount: post.commentCount,
       onComment: () => context.goToPost(post.id),
@@ -574,24 +602,26 @@ class _Actions extends ConsumerWidget {
                 // Tapping the filled cart takes it back out, the way a
                 // second tap on a heart used to.
                 final messenger = ScaffoldMessenger.of(context);
-                try {
-                  await ref
-                      .read(commerceRepositoryProvider)
-                      .removeLine(line.id);
-                  messenger.showSnackBar(
-                    const SnackBar(content: Text('Removed from your cart')),
-                  );
-                } on RepositoryException catch (error) {
-                  messenger.showSnackBar(
-                    SnackBar(content: Text(describeError(error).body)),
-                  );
-                }
+                await _guard(() async {
+                  try {
+                    await ref
+                        .read(commerceRepositoryProvider)
+                        .removeLine(line.id);
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Removed from your cart')),
+                    );
+                  } on RepositoryException catch (error) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(describeError(error).body)),
+                    );
+                  }
+                });
                 return;
               }
               // The first time, say what the cart means here.
               await showCartTipOnce(context, ref);
               if (!context.mounted) return;
-              await addToCart(context, ref, id);
+              await _guard(() => addToCart(context, ref, id));
             }),
     );
   }
@@ -710,12 +740,16 @@ class _ActionIcon extends StatelessWidget {
     this.tint,
     this.count = 0,
     this.countLabel = '',
+    this.busy = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
   final Color? tint;
+
+  /// Draws a spinner the size of the icon in its place.
+  final bool busy;
 
   /// Drawn beside the icon. Zero draws nothing: "0 added" is a worse thing
   /// for a new seller to read than no number at all.
@@ -736,8 +770,20 @@ class _ActionIcon extends StatelessWidget {
         children: [
           Semantics(
             button: true,
-            label: label,
-            child: Icon(icon, size: 23, color: tint ?? c.ink),
+            label: busy ? 'Working' : label,
+            child: busy
+                ? SizedBox(
+                    width: 23,
+                    height: 23,
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: tint ?? c.ink,
+                      ),
+                    ),
+                  )
+                : Icon(icon, size: 23, color: tint ?? c.ink),
           ),
           if (count > 0) ...[
             const SizedBox(width: 6),
