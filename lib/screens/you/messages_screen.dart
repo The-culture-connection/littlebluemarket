@@ -40,7 +40,7 @@ class MessagesScreen extends ConsumerWidget {
             isEmpty: (inbox) => inbox.isEmpty,
             empty: const LbmEmpty(
               title: 'No messages yet',
-              body: 'Message a seller from their storefront.',
+              body: 'Message a seller from their profile.',
             ),
             data: (inbox) => LbmCard(
               margin: const EdgeInsets.symmetric(horizontal: 14),

@@ -157,4 +157,24 @@ void nameRequiredTests() {
     await tester.pump();
     expect(buttonOpacity().opacity, 1.0, reason: 'enabled once a name is there');
   });
+
+  // Grace's testers, 2026-09-23: "users cannot get out of the set up profile
+  // screen, it takes them back to confirming their email screen".
+  testWidgets('the setup screen has a way out that is not Back', (
+    tester,
+  ) async {
+    await _pumpAt(tester, '/setup');
+    expect(find.text('Look around as a guest'), findsOneWidget);
+    expect(find.text('Back to the start'), findsOneWidget);
+  });
+
+  // Customers were reading "storefront" as a promise of a shop they had not
+  // asked for, and asking why buying needed one (Grace, 2026-09-23).
+  testWidgets('nothing on the setup screen offers a storefront', (
+    tester,
+  ) async {
+    await _pumpAt(tester, '/setup');
+    expect(find.textContaining('storefront'), findsNothing);
+    expect(find.textContaining('Everyone here has one'), findsOneWidget);
+  });
 }

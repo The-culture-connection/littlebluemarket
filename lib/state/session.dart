@@ -200,6 +200,19 @@ class SessionNotifier extends StreamNotifier<Session> {
 
   Future<void> continueAsGuest() => _auth.continueAsGuest();
 
+  /// Leaves a half-finished sign-up.
+  ///
+  /// Signing out first is not optional: an account with no profile is an
+  /// [OnboardingSession], and the router sends one of those to `/setup` from
+  /// anywhere — which is why the setup screen was a room with no door and
+  /// Back led to the confirm-your-email screen and stayed there (Grace's
+  /// testers, 2026-09-23). The account itself is untouched; signing in again
+  /// returns to exactly this step.
+  Future<void> leaveOnboarding({required bool asGuest}) async {
+    await signOut();
+    if (asGuest) await continueAsGuest();
+  }
+
   /// Forgets this phone's push token first, while the rules still let the
   /// owner delete it; then signs out.
   Future<void> signOut() async {

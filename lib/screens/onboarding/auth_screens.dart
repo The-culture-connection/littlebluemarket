@@ -761,9 +761,13 @@ class _ConfirmedBadge extends StatelessWidget {
 
 // -------------------------------------------------------------------- setup
 
-/// Step three, first time only: the handle, a photo, and a bio.
+/// Step three, first time only: the name, a photo, a handle and a bio.
 ///
-/// The handle is asked first because it doubles as the storefront address.
+/// Nothing here says "storefront" any more. Customers read it as a promise
+/// that they were about to be given a shop, and asked why they were being
+/// made to open one to buy a candle (Grace's testers, 2026-09-23). A handle
+/// is a name people can reply to; a shop is something a seller claims later,
+/// on Sell with us.
 class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({super.key, this.intent = OnboardingIntent.newHere});
 
@@ -830,6 +834,20 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     }
   }
 
+  /// Leaves without a profile: as a guest on the Market, or back to the
+  /// welcome screen. See [SessionNotifier.leaveOnboarding].
+  Future<void> _leave({required bool asGuest}) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(sessionProvider.notifier).leaveOnboarding(asGuest: asGuest);
+      if (!mounted) return;
+      context.go(asGuest ? '/market' : '/');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _finish() async {
     if (_busy) return;
     final name = _validName;
@@ -886,7 +904,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   Widget build(BuildContext context) {
     return _OnboardingScaffold(
       title: 'Set up your profile',
-      subtitle: 'Your handle is also your storefront address.',
+      subtitle:
+          'Everyone here has one, buyers included. It is how you comment, '
+          'review what you buy, and message a maker — and how they know who '
+          'they are talking to.',
       fields: [
         Center(
           child: Column(
@@ -935,7 +956,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         LbmField(
           label: 'Handle',
           controller: _handle,
-          hintText: '@yourshop',
+          hintText: '@yourname',
+          helper: 'What people see when you comment. You can change it later.',
           onDark: true,
         ),
         const SizedBox(height: 13),
@@ -965,6 +987,29 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           onPressed: _busy || _validName == null ? null : _finish,
         ),
         const _LegalNote(),
+        // The door out. Without these two this screen was a room with no
+        // exit: Back went to the confirm-your-email step, which sent them
+        // straight here again (Grace's testers, 2026-09-23).
+        const SizedBox(height: 4),
+        _QuietAction(
+          'Look around as a guest',
+          onPressed: _busy ? () {} : () => _leave(asGuest: true),
+        ),
+        _QuietAction(
+          'Back to the start',
+          onPressed: _busy ? () {} : () => _leave(asGuest: false),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Your account is saved either way. Sign in again whenever you want '
+          'to finish this.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 11.5,
+            height: 1.5,
+            color: LbmConst.onWelcome.withValues(alpha: 0.7),
+          ),
+        ),
       ],
     );
   }

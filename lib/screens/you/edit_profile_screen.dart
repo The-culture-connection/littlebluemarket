@@ -20,7 +20,7 @@ import '../../widgets/tag_entry.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
 
-/// Photo, name, handle, bio, and the initiative hashtags on your storefront.
+/// Photo, name, handle, bio, and the initiative hashtags on your profile.
 ///
 /// Two versions of this screen, chosen by whether you sell. The prototype had
 /// one, which is why it offered every buyer a payouts-and-bank row.
@@ -216,8 +216,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           LbmField(label: 'Name', controller: _name),
           const SizedBox(height: 16),
           LbmField(
-            label: me.isSeller ? 'Handle · also your storefront' : 'Handle',
+            label: 'Handle',
             controller: _handle,
+            // Not "also your storefront" any more. Customers read that as a
+            // promise of a shop they had not asked for (Grace, 2026-09-23).
+            helper: 'What people see when you comment and review.',
           ),
           const SizedBox(height: 16),
           LbmField(
@@ -248,7 +251,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 8),
           Text(
             me.isSeller
-                ? 'These show on your storefront and pull your posts into '
+                ? 'These show on your shop page and pull your posts into '
                       'initiative shelves.'
                 : 'These pull your reviews and shoutouts into initiative '
                       'shelves.',
