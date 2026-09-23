@@ -33,6 +33,8 @@ export interface CartLine {
 interface CartDoc {
   id: string;
   lines: CartLine[];
+  /** The save-for-later shelf. Not in the cart, not in any total. */
+  saved: CartLine[];
   shippingCents?: number | null;
   taxCents?: number | null;
   currencyCode: string;
@@ -48,6 +50,7 @@ async function readCart(uid: string): Promise<CartDoc> {
   return {
     id: uid,
     lines: (data?.lines ?? []) as CartLine[],
+    saved: (data?.saved ?? []) as CartLine[],
     // Null rather than zero: not knowing shipping yet is different from
     // shipping being free, and showing zero is a lie checkout then corrects.
     shippingCents: (data?.shippingCents ?? null) as number | null,
@@ -202,6 +205,75 @@ export async function removeLine(
 
 export async function clearCart(uid: string): Promise<CartDoc> {
   return writeCart(uid, []);
+}
+
+// ------------------------------------------------------------ save for later
+//
+// A second shelf on the same document. Saved lines are not in the cart: they
+// carry no subtotal, they are not handed to checkout, and — this is the part
+// that has to be right — they release the public "in this many carts now"
+// marker, because a thing set aside for later is not a thing someone is
+// about to buy. `saveCount` is monotonic and stays where it is; that number
+// is "how many people have ever wanted this", which is still true.
+
+/** Reads the saved shelf, which older cart documents do not have. */
+async function readSaved(uid: string): Promise<CartLine[]> {
+  const snapshot = await cartRef(uid).get();
+  return (snapshot.data()?.saved ?? []) as CartLine[];
+}
+
+async function writeSaved(uid: string, saved: CartLine[]): Promise<void> {
+  await cartRef(uid).set(
+    { saved, updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+}
+
+/**
+ * Moves one line out of the cart onto the saved shelf. Its quantity comes
+ * with it, so moving it back is the same cart it was.
+ */
+export async function saveForLater(uid: string, lineId: string): Promise<CartDoc> {
+  const cart = await readCart(uid);
+  const line = cart.lines.find((l) => l.id === lineId);
+  if (!line) throw new HttpsError('not-found', 'That is not in your cart.');
+
+  const saved = await readSaved(uid);
+  // Keyed by line id like the cart itself, so saving the same thing twice is
+  // one entry rather than two.
+  await writeSaved(uid, [...saved.filter((l) => l.id !== lineId), line]);
+  // writeCart releases the marker and the "in carts now" count.
+  return writeCart(
+    uid,
+    cart.lines.filter((l) => l.id !== lineId),
+  );
+}
+
+/**
+ * Moves a saved line back into the cart.
+ *
+ * Re-priced and re-checked on the way in, never restored from the copy on
+ * the shelf: a thing can sit there for a month, and the price it was saved
+ * at is not a price we will honour.
+ */
+export async function moveToCart(uid: string, lineId: string): Promise<CartDoc> {
+  const saved = await readSaved(uid);
+  const line = saved.find((l) => l.id === lineId);
+  if (!line) throw new HttpsError('not-found', 'That is not on your saved list.');
+
+  await writeSaved(uid, saved.filter((l) => l.id !== lineId));
+  return addLine(uid, {
+    productId: line.productId,
+    variantId: line.variantId,
+    quantity: line.quantity,
+  });
+}
+
+/** Takes a saved line off the shelf without buying it. */
+export async function removeSaved(uid: string, lineId: string): Promise<CartDoc> {
+  const saved = await readSaved(uid);
+  await writeSaved(uid, saved.filter((l) => l.id !== lineId));
+  return readCart(uid);
 }
 
 export interface AddManyResult {

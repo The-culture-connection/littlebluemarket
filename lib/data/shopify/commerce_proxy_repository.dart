@@ -126,6 +126,24 @@ class CommerceProxyRepository implements CommerceRepository {
   }
 
   @override
+  Future<Cart> saveForLater(String lineId) async {
+    final data = await _call('commerceSaveForLater', {'lineId': lineId});
+    return CommerceMappers.cart(_requireUid, data);
+  }
+
+  @override
+  Future<Cart> moveToCart(String lineId) async {
+    final data = await _call('commerceMoveToCart', {'lineId': lineId});
+    return CommerceMappers.cart(_requireUid, data);
+  }
+
+  @override
+  Future<Cart> removeSaved(String lineId) async {
+    final data = await _call('commerceRemoveSaved', {'lineId': lineId});
+    return CommerceMappers.cart(_requireUid, data);
+  }
+
+  @override
   Future<CheckoutHandoff> buyNow({
     required String productId,
     String? variantId,

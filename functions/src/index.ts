@@ -51,7 +51,10 @@ import {
   buyNow,
   clearCart,
   liveVariants,
+  moveToCart,
   removeLine,
+  removeSaved,
+  saveForLater,
   updateLine,
 } from './cart.ts';
 import { normalizeOrder, recordFulfillment, recordPaidOrder } from './orders.ts';
@@ -160,6 +163,27 @@ export const commerceRemoveLine = onCall(commerceOptions, withLoudErrors('commer
 
 export const commerceClearCart = onCall(commerceOptions, withLoudErrors('commerceClearCart', async (request) =>
   clearCart(requireUid(request.auth)),
+));
+
+/** Save for later: the same three moves, on and off the second shelf. */
+function requireLineId(data: unknown): string {
+  const { lineId } = (data ?? {}) as { lineId?: unknown };
+  if (typeof lineId !== 'string' || !lineId) {
+    throw new HttpsError('invalid-argument', 'A line is required.');
+  }
+  return lineId;
+}
+
+export const commerceSaveForLater = onCall(commerceOptions, withLoudErrors('commerceSaveForLater', async (request) =>
+  saveForLater(requireUid(request.auth), requireLineId(request.data)),
+));
+
+export const commerceMoveToCart = onCall(commerceOptions, withLoudErrors('commerceMoveToCart', async (request) =>
+  moveToCart(requireUid(request.auth), requireLineId(request.data)),
+));
+
+export const commerceRemoveSaved = onCall(commerceOptions, withLoudErrors('commerceRemoveSaved', async (request) =>
+  removeSaved(requireUid(request.auth), requireLineId(request.data)),
 ));
 
 export const commerceBeginCheckout = onCall(commerceOptions, withLoudErrors('commerceBeginCheckout', async (request) => beginCheckout(requireUid(request.auth)),

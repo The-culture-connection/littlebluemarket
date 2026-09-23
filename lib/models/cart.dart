@@ -82,6 +82,7 @@ class Cart {
   const Cart({
     required this.id,
     required this.lines,
+    this.saved = const [],
     this.shippingCents,
     this.taxCents,
     this.currencyCode = 'USD',
@@ -91,11 +92,23 @@ class Cart {
 
   final String id;
   final List<CartLine> lines;
+
+  /// Set aside for later: on the cart screen, in no total, and not handed to
+  /// checkout. A second shelf, not a second cart.
+  final List<CartLine> saved;
+
   final int? shippingCents;
   final int? taxCents;
   final String currencyCode;
 
+  /// Whether there is anything to buy. Deliberately not counting [saved]:
+  /// the empty-cart card is about whether checkout has anything to do, and
+  /// the saved shelf is shown underneath it either way.
   bool get isEmpty => lines.isEmpty;
+
+  /// Whether the whole screen is empty — nothing bought-able and nothing
+  /// set aside.
+  bool get isBare => lines.isEmpty && saved.isEmpty;
 
   int get itemCount => lines.fold(0, (sum, line) => sum + line.quantity);
 
@@ -123,12 +136,14 @@ class Cart {
 
   Cart copyWith({
     List<CartLine>? lines,
+    List<CartLine>? saved,
     int? shippingCents,
     int? taxCents,
     bool clearQuote = false,
   }) => Cart(
     id: id,
     lines: lines ?? this.lines,
+    saved: saved ?? this.saved,
     shippingCents: clearQuote ? null : (shippingCents ?? this.shippingCents),
     taxCents: clearQuote ? null : (taxCents ?? this.taxCents),
     currencyCode: currencyCode,

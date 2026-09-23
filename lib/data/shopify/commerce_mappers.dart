@@ -10,14 +10,15 @@ import '../firebase/mappers.dart';
 /// Nothing above this file knows what the storefront calls anything.
 abstract final class CommerceMappers {
   static Cart cart(String id, Map<String, dynamic> data) {
-    final lines = data['lines'];
+    List<CartLine> shelf(Object? raw) => [
+      if (raw is List)
+        for (final item in raw)
+          if (item is Map) cartLine(Map<String, dynamic>.from(item)),
+    ];
     return Cart(
       id: FirestoreMappers.str(data['id'], id),
-      lines: [
-        if (lines is List)
-          for (final item in lines)
-            if (item is Map) cartLine(Map<String, dynamic>.from(item)),
-      ],
+      lines: shelf(data['lines']),
+      saved: shelf(data['saved']),
       // Null until the provider has quoted them. Absent is different from
       // zero, and showing zero shipping would be a lie the checkout corrects.
       shippingCents: data['shippingCents'] == null

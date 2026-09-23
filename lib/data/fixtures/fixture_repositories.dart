@@ -431,6 +431,47 @@ class FixtureCommerceRepository implements CommerceRepository {
   }
 
   @override
+  Future<Cart> saveForLater(String lineId) async {
+    final cart = _store.cart.value;
+    final line = cart.lines.where((l) => l.id == lineId).firstOrNull;
+    if (line == null) throw NotFoundException('cart line', lineId);
+    _store.cart.value = cart.copyWith(
+      lines: cart.lines.where((l) => l.id != lineId).toList(),
+      saved: [...cart.saved.where((l) => l.id != lineId), line],
+      clearQuote: true,
+    );
+    await _backend._settle();
+    return _store.cart.value;
+  }
+
+  @override
+  Future<Cart> moveToCart(String lineId) async {
+    final cart = _store.cart.value;
+    final line = cart.saved.where((l) => l.id == lineId).firstOrNull;
+    if (line == null) throw NotFoundException('saved line', lineId);
+    _store.cart.value = cart.copyWith(
+      saved: cart.saved.where((l) => l.id != lineId).toList(),
+    );
+    // Through addLine, so it is re-priced on the way in exactly as the live
+    // one is rather than restored at whatever it cost when it was set aside.
+    return addLine(
+      productId: line.productId,
+      variantId: line.variantId,
+      quantity: line.quantity,
+    );
+  }
+
+  @override
+  Future<Cart> removeSaved(String lineId) async {
+    final cart = _store.cart.value;
+    _store.cart.value = cart.copyWith(
+      saved: cart.saved.where((l) => l.id != lineId).toList(),
+    );
+    await _backend._settle();
+    return _store.cart.value;
+  }
+
+  @override
   Future<CheckoutHandoff> beginCheckout() async {
     final cart = _store.cart.value;
     if (cart.isEmpty) throw const ValidationException('Your cart is empty');

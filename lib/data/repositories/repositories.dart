@@ -122,6 +122,20 @@ abstract interface class CommerceRepository {
   Future<Cart> removeLine(String lineId);
   Future<Cart> clearCart();
 
+  /// Sets a line aside: off the cart, onto [Cart.saved], out of every total.
+  ///
+  /// It also gives up the public "in this many carts right now" count, which
+  /// is the honest thing to do — a thing kept for later is not a thing
+  /// somebody is about to buy. The monotonic "N added" is untouched.
+  Future<Cart> saveForLater(String lineId);
+
+  /// Puts a saved line back in the cart, re-priced from the store rather
+  /// than restored at whatever it cost when it was set aside.
+  Future<Cart> moveToCart(String lineId);
+
+  /// Takes a saved line off the shelf without buying it.
+  Future<Cart> removeSaved(String lineId);
+
   /// Hands the cart to whoever takes the money, tagged so the resulting order
   /// can be attributed back to this account.
   Future<CheckoutHandoff> beginCheckout();
