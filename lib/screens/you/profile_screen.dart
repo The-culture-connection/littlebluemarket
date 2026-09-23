@@ -70,7 +70,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         showBack: false,
         centerTitle: true,
         titleSize: 17,
-        title: me.handle,
+        // A profile with no handle is a real state: a new account before
+        // setup, or one whose borrowed identity has just been cleared. It
+        // should read as an invitation, not as a missing title.
+        title: me.handle.isEmpty ? 'Your profile' : me.handle,
         actions: [
           CircleIconButton(
             icon: Icons.notifications_none_rounded,

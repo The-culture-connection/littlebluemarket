@@ -45,7 +45,10 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
 
     return LbmScreen(
       appBar: LbmAppBar(
-        title: person.value?.handle ?? '',
+        title: switch (person.value?.handle) {
+          null || '' => 'Profile',
+          final handle => handle,
+        },
         actions: [
           CircleIconButton(
             icon: Icons.more_horiz_rounded,
