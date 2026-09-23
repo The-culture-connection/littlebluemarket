@@ -76,6 +76,10 @@ class _Body extends ConsumerWidget {
                 child: ProductGallery(
                   product: product,
                   borderRadius: LbmRadius.imageR,
+                  // The shape the seller uploaded, and a tap opens it full
+                  // screen to pinch (Grace's testers, 2026-09-23).
+                  natural: true,
+                  onTapPhoto: (i) => showPhotoViewer(context, product, index: i),
                 ),
               ),
               Padding(
@@ -135,7 +139,20 @@ class _Body extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 9),
+                    const SizedBox(height: 13),
+                    // Add to cart, before the description rather than after
+                    // the returns policy and the seller strip. It used to sit
+                    // at the very bottom of a page five screens long, so the
+                    // way to buy was the last thing anybody found (Grace's
+                    // testers, 2026-09-23).
+                    _BuyRow(
+                      product: product,
+                      productId: productId,
+                      spec: spec,
+                      variant: variant,
+                      isGuest: isGuest,
+                    ),
+                    const SizedBox(height: 13),
                     Text(
                       product.description,
                       style: TextStyle(
@@ -290,74 +307,95 @@ class _Body extends ConsumerWidget {
           ),
         ],
 
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 26),
-          child: Row(
+        const SizedBox(height: 26),
+      ],
+    );
+  }
+}
+
+/// The price and the two ways to act on it.
+///
+/// One widget rather than a row built inline, because it now has to read the
+/// same at the top of the page as it did at the bottom.
+class _BuyRow extends ConsumerWidget {
+  const _BuyRow({
+    required this.product,
+    required this.productId,
+    required this.spec,
+    required this.variant,
+    required this.isGuest,
+  });
+
+  final Product product;
+  final String productId;
+  final ProductSpec spec;
+  final Variant? variant;
+  final bool isGuest;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    return Row(
+      children: [
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      spec.lead,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: LbmText.xtiny.copyWith(color: c.ink2),
-                    ),
-                    Text(
-                      product.price,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: LbmText.display.copyWith(
-                        fontSize: 22,
-                        color: c.ink,
-                      ),
-                    ),
-                  ],
+              if (spec.lead.isNotEmpty)
+                Text(
+                  spec.lead,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: LbmText.xtiny.copyWith(color: c.ink2),
                 ),
+              Text(
+                product.price,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: LbmText.display.copyWith(fontSize: 22, color: c.ink),
               ),
-              const SizedBox(width: 10),
-              // A directory business sells on its own website: no cart, and
-              // Buy opens the site. Anyone may tap it, signed in or not.
-              if (product.isExternal)
-                Expanded(
-                  child: PillButton(
-                    'Buy on their website',
-                    icon: Icons.open_in_new_rounded,
-                    onPressed: () => openBuyUrl(context, ref, product),
-                  ),
-                )
-              else ...[
-                CircleIconButton(
-                  icon: Icons.add_shopping_cart_rounded,
-                  tooltip: 'Add to cart',
-                  onPressed: () => requireProfile(
-                    context,
-                    ref,
-                    () => addToCart(
-                      context,
-                      ref,
-                      productId,
-                      variantId: variant?.name,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: PillButton(
-                    isGuest ? 'Buy · sign up' : 'Buy',
-                    onPressed: () => requireProfile(
-                      context,
-                      ref,
-                      () => showBuySheet(context, product, variant: variant),
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
         ),
+        const SizedBox(width: 10),
+        // A directory business sells on its own website: no cart, and
+        // Buy opens the site. Anyone may tap it, signed in or not.
+        if (product.isExternal)
+          Expanded(
+            child: PillButton(
+              'Buy on their website',
+              icon: Icons.open_in_new_rounded,
+              onPressed: () => openBuyUrl(context, ref, product),
+            ),
+          )
+        else ...[
+          CircleIconButton(
+            icon: Icons.add_shopping_cart_rounded,
+            tooltip: 'Add to cart',
+            onPressed: () => requireProfile(
+              context,
+              ref,
+              () => addToCart(
+                context,
+                ref,
+                productId,
+                variantId: variant?.name,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: PillButton(
+              isGuest ? 'Buy · sign up' : 'Buy',
+              onPressed: () => requireProfile(
+                context,
+                ref,
+                () => showBuySheet(context, product, variant: variant),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
