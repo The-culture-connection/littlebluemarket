@@ -8,6 +8,7 @@ import '../../router/nav.dart';
 import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/named_text.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
@@ -102,12 +103,22 @@ class _NotificationRow extends ConsumerWidget {
             : c.accentMist.withValues(alpha: 0.4),
         leading: Icon(Icons.campaign_outlined, color: c.accentText),
         title: Text(notification.title ?? 'Little Blue Market'),
-        subtitle: Text(
-          notification.text.isEmpty
-              ? notification.age
-              : '${notification.text}\n${notification.age}',
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (notification.text.isNotEmpty)
+              // Any shop or hashtag the news names is tappable here too,
+              // not only in the popup: the bell is where an announcement
+              // stays once the popup has gone.
+              NamedText(
+                notification.text,
+                mentions: notification.mentions,
+                tagColor: c.accentText,
+                onOpenProfile: (uid) => context.goToSeller(uid),
+                onOpenTag: (tag) => context.goToResults(tag),
+              ),
+            Text(notification.age),
+          ],
         ),
         crossAxisAlignment: CrossAxisAlignment.start,
         onTap: open,

@@ -900,7 +900,7 @@ class SegmentedTabs extends StatelessWidget {
 ///
 /// Hashtags are a controlled vocabulary, so highlighting them is meaningful
 /// rather than decorative.
-class HashtagText extends StatelessWidget {
+class HashtagText extends StatefulWidget {
   const HashtagText(
     this.text, {
     super.key,
@@ -918,31 +918,75 @@ class HashtagText extends StatelessWidget {
   /// Tapping an @handle. Null leaves mentions bold but inert.
   final ValueChanged<String>? onMentionTap;
 
-  static final _pattern = RegExp(r'#\w+|(?<![\w.])@[A-Za-z0-9_.]+');
+  /// A `#hashtag`, or an `@handle` that does not end in a full stop.
+  ///
+  /// The handle half has to agree with `parseMentionHandles`, which strips
+  /// trailing dots because a full stop that ends a sentence is punctuation
+  /// and not part of a name. This used to be `@[A-Za-z0-9_.]+`, which
+  /// swallowed it: "ask @foundhouse." highlighted `@foundhouse.` and then
+  /// looked up a handle nobody has, so a mention at the end of a sentence
+  /// was a dead tap. Found writing the advert tests, 2026-09-24; it was
+  /// wrong for shoutouts and reviews too.
+  static final _pattern = RegExp(
+    r'#\w+|(?<![\w.])@[A-Za-z0-9_](?:[A-Za-z0-9_.]*[A-Za-z0-9_])?',
+  );
+
+  /// Whether [text] carries anything this widget would pick out. Lets a
+  /// caller skip the machinery for the ordinary case of plain prose.
+  static bool has(String text) => _pattern.hasMatch(text);
+
+  @override
+  State<HashtagText> createState() => _HashtagTextState();
+}
+
+class _HashtagTextState extends State<HashtagText> {
+  /// Recognizers are built per span and have to be disposed. They used to be
+  /// created in `build` and dropped on the floor, which leaks one per tag per
+  /// rebuild — cheap in a feed card that builds once, less so in a popup that
+  /// animates in over 420ms.
+  final _recognizers = <TapGestureRecognizer>[];
+
+  @override
+  void dispose() {
+    _disposeRecognizers();
+    super.dispose();
+  }
+
+  void _disposeRecognizers() {
+    for (final r in _recognizers) {
+      r.dispose();
+    }
+    _recognizers.clear();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final base = style ?? DefaultTextStyle.of(context).style;
+    _disposeRecognizers();
+    final text = widget.text;
+    final base = widget.style ?? DefaultTextStyle.of(context).style;
     final spans = <InlineSpan>[];
     var index = 0;
-    for (final match in _pattern.allMatches(text)) {
+    for (final match in HashtagText._pattern.allMatches(text)) {
       if (match.start > index) {
         spans.add(TextSpan(text: text.substring(index, match.start)));
       }
       final token = match[0]!;
       final isMention = token.startsWith('@');
+      final onTap = isMention ? widget.onMentionTap : widget.onTagTap;
+      TapGestureRecognizer? recognizer;
+      if (onTap != null) {
+        recognizer = TapGestureRecognizer()
+          ..onTap = () => onTap(isMention ? token.substring(1) : token);
+        _recognizers.add(recognizer);
+      }
       spans.add(
         TextSpan(
           text: token,
-          style: TextStyle(fontWeight: FontWeight.w800, color: tagColor),
-          recognizer: isMention
-              ? (onMentionTap == null
-                    ? null
-                    : (TapGestureRecognizer()
-                        ..onTap = () => onMentionTap!(token.substring(1))))
-              : (onTagTap == null
-                    ? null
-                    : (TapGestureRecognizer()..onTap = () => onTagTap!(token))),
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            color: widget.tagColor,
+          ),
+          recognizer: recognizer,
         ),
       );
       index = match.end;

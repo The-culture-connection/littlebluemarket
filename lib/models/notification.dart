@@ -30,7 +30,12 @@ class AppNotification {
     this.read = false,
     this.route,
     this.title,
+    this.mentions = const {},
   });
+
+  /// An announcement's resolved `@handles`, lowercased, each with the uid it
+  /// meant when it was written. Empty for everything else.
+  final Map<String, String> mentions;
 
   final String id;
   final NotificationKind kind;

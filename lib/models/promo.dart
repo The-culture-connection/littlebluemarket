@@ -43,7 +43,12 @@ class Promo {
     this.endsAt,
     this.impressions = 0,
     this.clicks = 0,
+    this.mentions = const {},
   });
+
+  /// The `@handles` the copy names, lowercased, each with the uid it meant
+  /// when it was written. See [MentionedProfiles].
+  final Map<String, String> mentions;
 
   final String id;
   final PromoKind kind;

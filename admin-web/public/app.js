@@ -237,6 +237,9 @@ function revalidate() {
   $('titleLeft').textContent = String(60 - title.length);
   $('bodyLeft').textContent = String(180 - body.length);
   $('sendBtn').disabled = !(title && body && title.length <= 60 && body.length <= 180);
+  // An announcement has no picture preview, so this line is the only place
+  // it says what will be tappable before it goes out to every phone.
+  renderNamedPreview($('namedPreview'), title, body);
 }
 $('title').addEventListener('input', revalidate);
 $('body').addEventListener('input', revalidate);
@@ -308,6 +311,57 @@ function renderPromoThumbs() {
   }
 }
 
+// ---------------------------------------------------------------- @ and #
+//
+// The phone picks out @handles and #hashtags in an announcement or an
+// advert and makes them tappable (Grace, 2026-09-24). These two patterns
+// are a copy of the ones in functions/src/mentions.ts and, in Dart, in
+// lib/models/notification.dart. Three copies is two too many, but the
+// alternative is a build step on a static page, and a preview that
+// disagreed with the phone would be worse than no preview.
+const NAMED_PATTERN = /#\w+|(?<![\w.])@[A-Za-z0-9_.]+/g;
+
+function escapeHtml(text) {
+  return text.replace(/[&<>"']/g, (ch) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+  ));
+}
+
+/** The copy as the phone will draw it: tokens picked out, everything else plain. */
+function namedHtml(text) {
+  let out = '';
+  let cursor = 0;
+  for (const match of text.matchAll(NAMED_PATTERN)) {
+    out += escapeHtml(text.slice(cursor, match.index));
+    out += `<span class="named">${escapeHtml(match[0])}</span>`;
+    cursor = match.index + match[0].length;
+  }
+  return out + escapeHtml(text.slice(cursor));
+}
+
+/** The distinct tokens in some copy, in order, for the "will be tappable" line. */
+function namedTokens(...texts) {
+  const seen = new Set();
+  const out = [];
+  for (const match of texts.join('\n').matchAll(NAMED_PATTERN)) {
+    const key = match[0].toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(match[0]);
+  }
+  return out;
+}
+
+/** Lists what a piece of copy will make tappable, or hides itself. */
+function renderNamedPreview(el, ...texts) {
+  const tokens = namedTokens(...texts);
+  el.hidden = tokens.length === 0;
+  if (tokens.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML =
+    'Tappable on the phone: ' +
+    tokens.map((t) => `<span class="named">${escapeHtml(t)}</span>`).join('');
+}
+
 function renderPromoPreview() {
   const kind = $('pKind').value;
   const title = $('pTitle').value.trim();
@@ -316,11 +370,14 @@ function renderPromoPreview() {
   const photo = promoPhotos.find((p) => !p.pending);
 
   $('pPreviewFrom').textContent = kind === 'announcement' ? 'FROM LITTLE BLUE MARKET' : 'SPONSORED';
+  // innerHTML, not textContent, so @handles and #hashtags show in the
+  // preview the way the phone will draw them. Everything that is not a
+  // token goes through escapeHtml first.
   const titleEl = $('pPreviewTitle');
-  titleEl.textContent = title || 'Your title here';
+  if (title) { titleEl.innerHTML = namedHtml(title); } else { titleEl.textContent = 'Your title here'; }
   titleEl.className = title ? 'promo-title' : 'promo-title promo-empty';
   const captionEl = $('pPreviewCaption');
-  captionEl.textContent = caption || 'Your caption here.';
+  if (caption) { captionEl.innerHTML = namedHtml(caption); } else { captionEl.textContent = 'Your caption here.'; }
   captionEl.className = caption ? 'promo-caption' : 'promo-caption promo-empty';
   const cta = $('pPreviewCta');
   cta.textContent = ctaLabel;

@@ -42,6 +42,7 @@ class Announcement {
     required this.audience,
     required this.route,
     required this.createdAt,
+    this.mentions = const {},
   });
 
   final String id;
@@ -52,6 +53,10 @@ class Announcement {
   /// Where a tap goes.
   final String route;
   final DateTime createdAt;
+
+  /// The `@handles` the copy names, lowercased, each with the uid it meant
+  /// when it was written. See [MentionedProfiles].
+  final Map<String, String> mentions;
 
   String get age => Fmt.relative(createdAt);
 
@@ -67,6 +72,7 @@ class Announcement {
     read: seenAt != null && !createdAt.isAfter(seenAt),
     route: route,
     title: title,
+    mentions: mentions,
   );
 }
 

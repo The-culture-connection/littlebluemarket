@@ -2,6 +2,7 @@ import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 import { HttpsError } from 'firebase-functions/v2/https';
 
+import { resolveNamed } from './mentions.ts';
 import { isAudience, type Audience } from './push.ts';
 
 /**
@@ -152,6 +153,10 @@ export async function savePromo(
   id?: string,
 ): Promise<{ id: string }> {
   const clean = validatePromo(input);
+  // The @handles and #hashtags in the title and the caption. Resolved before
+  // anything is written, so a mistyped handle is a message in the form
+  // rather than a dead link on every phone in the audience.
+  const named = await resolveNamed(clean.title, clean.caption);
   const db = getFirestore();
   const ref = id ? db.collection('promos').doc(id) : db.collection('promos').doc();
   const existing = id ? await ref.get() : null;
@@ -161,6 +166,7 @@ export async function savePromo(
   await ref.set(
     {
       ...clean,
+      ...named,
       // A new one starts live; an edit leaves Pause alone.
       ...(existing?.exists ? {} : { active: true, impressions: 0, clicks: 0, createdAt: FieldValue.serverTimestamp() }),
       updatedAt: FieldValue.serverTimestamp(),

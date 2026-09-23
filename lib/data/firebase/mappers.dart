@@ -44,6 +44,16 @@ abstract final class FirestoreMappers {
     _ => const [],
   };
 
+  /// A string-to-string map, skipping anything that is not one.
+  static Map<String, String> stringMap(Object? value) => switch (value) {
+    final Map<dynamic, dynamic> map => {
+      for (final entry in map.entries)
+        if (entry.key is String && entry.value is String)
+          entry.key as String: entry.value as String,
+    },
+    _ => const {},
+  };
+
   /// A server timestamp, or the epoch.
   ///
   /// Firestore returns null for a `serverTimestamp()` that has not resolved
@@ -180,6 +190,7 @@ abstract final class FirestoreMappers {
         body: str(data['body']),
         audience: AnnouncementAudience.fromValue(str(data['audience'])),
         route: str(data['route'], '/you/notifications'),
+        mentions: stringMap(data['mentions']),
         createdAt: time(data['createdAt']),
       );
 
@@ -192,6 +203,7 @@ abstract final class FirestoreMappers {
     imageUrls: strings(data['imageUrls']),
     ctaLabel: str(data['ctaLabel']),
     ctaUrl: str(data['ctaUrl']),
+    mentions: stringMap(data['mentions']),
     active: boolean(data['active'], true),
     createdAt: timeOrNull(data['createdAt']),
     startsAt: timeOrNull(data['startsAt']),

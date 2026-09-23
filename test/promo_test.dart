@@ -5,6 +5,7 @@ import 'package:little_blue_market/models/models.dart';
 import 'package:little_blue_market/state/promos.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/theme/app_theme.dart';
+import 'package:little_blue_market/widgets/named_text.dart';
 import 'package:little_blue_market/widgets/promo_popup.dart';
 
 Promo _promo({
@@ -16,11 +17,14 @@ Promo _promo({
   DateTime? startsAt,
   DateTime? endsAt,
   List<String> imageUrls = const [],
+  String title = 'Holiday market, December 14',
+  String caption = 'Forty makers, one room, all day.',
+  Map<String, String> mentions = const {},
 }) => Promo(
   id: 'p1',
   kind: kind,
-  title: 'Holiday market, December 14',
-  caption: 'Forty makers, one room, all day.',
+  title: title,
+  caption: caption,
   audience: audience,
   ctaLabel: ctaLabel,
   ctaUrl: ctaUrl,
@@ -28,6 +32,7 @@ Promo _promo({
   startsAt: startsAt,
   endsAt: endsAt,
   imageUrls: imageUrls,
+  mentions: mentions,
 );
 
 Future<void> _pumpCard(
@@ -35,19 +40,25 @@ Future<void> _pumpCard(
   Promo promo, {
   VoidCallback? onDismiss,
   VoidCallback? onCta,
+  ValueChanged<String>? onOpenProfile,
+  ValueChanged<String>? onOpenTag,
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    MaterialApp(
-      theme: buildLbmTheme(Brightness.light),
-      // Deliberately no Scaffold: the popup is mounted in the MaterialApp
-      // builder, so it has no Material above it and must bring its own.
-      home: PromoCard(
-        promo: promo,
-        onDismiss: onDismiss ?? () {},
-        onCta: onCta ?? () {},
+    ProviderScope(
+      child: MaterialApp(
+        theme: buildLbmTheme(Brightness.light),
+        // Deliberately no Scaffold: the popup is mounted in the MaterialApp
+        // builder, so it has no Material above it and must bring its own.
+        home: PromoCard(
+          promo: promo,
+          onDismiss: onDismiss ?? () {},
+          onCta: onCta ?? () {},
+          onOpenProfile: onOpenProfile,
+          onOpenTag: onOpenTag,
+        ),
       ),
     ),
   );
@@ -243,6 +254,97 @@ void main() {
       expect(all.length, greaterThanOrEqualTo(2));
       expect(all.map((p) => p.kind), contains(PromoKind.ad));
       expect(all.map((p) => p.kind), contains(PromoKind.announcement));
+    });
+  });
+
+  // Grace, 2026-09-24: "the ability to @profiles in announcements or
+  // advertisements, also hashtags".
+  group('@profiles and #hashtags in the copy', () {
+    testWidgets('a mention opens the uid it meant when it was written', (
+      tester,
+    ) async {
+      String? opened;
+      await _pumpCard(
+        tester,
+        _promo(
+          caption: 'Forty makers, including @foundhouse. #HolidayMarket',
+          // The handle as it was when the advert was composed. Handles
+          // change; the uid behind one does not.
+          mentions: const {'foundhouse': 'kali'},
+        ),
+        onOpenProfile: (uid) => opened = uid,
+        onOpenTag: (_) {},
+      );
+
+      // The exact run of glyphs, not the middle of the paragraph: a
+      // recognizer only fires for taps that land on its own span.
+      await tester.tapOnText(find.textRange.ofSubstring('@foundhouse'));
+      await tester.pumpAndSettle();
+      expect(opened, 'kali');
+    });
+
+    testWidgets('a hashtag runs its search', (tester) async {
+      String? tag;
+      await _pumpCard(
+        tester,
+        _promo(caption: 'Forty makers. #HolidayMarket'),
+        onOpenProfile: (_) {},
+        onOpenTag: (t) => tag = t,
+      );
+
+      await tester.tapOnText(find.textRange.ofSubstring('#HolidayMarket'));
+      await tester.pumpAndSettle();
+      expect(tag, '#HolidayMarket');
+    });
+
+    testWidgets('a mention in the title works too, not only the caption', (
+      tester,
+    ) async {
+      String? opened;
+      await _pumpCard(
+        tester,
+        _promo(
+          title: 'New from @foundhouse',
+          mentions: const {'foundhouse': 'kali'},
+        ),
+        onOpenProfile: (uid) => opened = uid,
+        onOpenTag: (_) {},
+      );
+
+      await tester.tapOnText(find.textRange.ofSubstring('@foundhouse'));
+      await tester.pumpAndSettle();
+      expect(opened, 'kali');
+    });
+
+    testWidgets('copy with nothing named is drawn as plain text', (
+      tester,
+    ) async {
+      await _pumpCard(
+        tester,
+        _promo(),
+        onOpenProfile: (_) {},
+        onOpenTag: (_) {},
+      );
+      // The ordinary advert costs nothing it did not cost before: no
+      // recognizers, no lookups, just Text.
+      expect(find.byType(NamedText), findsNothing);
+      expect(find.text('Forty makers, one room, all day.'), findsOneWidget);
+    });
+
+    testWidgets('without a way to navigate, mentions are inert but readable', (
+      tester,
+    ) async {
+      // What the layer passes when it has nowhere to send anyone. The words
+      // still have to be there.
+      await _pumpCard(
+        tester,
+        _promo(caption: 'Forty makers, including @foundhouse.'),
+      );
+      expect(find.byType(NamedText), findsNothing);
+      expect(
+        find.text('Forty makers, including @foundhouse.'),
+        findsOneWidget,
+      );
     });
   });
 }

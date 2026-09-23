@@ -7,10 +7,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/repositories/dev_error_sink.dart';
 import '../models/models.dart';
+import '../router/nav.dart';
 import '../state/promos.dart';
 import '../state/providers.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
+import 'named_text.dart';
 import 'primitives.dart';
 import 'remote_image.dart';
 
@@ -132,6 +134,27 @@ class _PromoLayerState extends ConsumerState<PromoLayer> {
     setState(() => _showing = null);
   }
 
+  /// A `@profile` or a `#hashtag` tapped in the copy.
+  ///
+  /// The popup goes first: leaving a modal scrim over the screen somebody
+  /// has just been sent to would be worse than not linking at all. The
+  /// router is asked directly, the way the floating cart does, because this
+  /// layer is mounted above it and has no GoRouterState to read.
+  void _openProfile(String uid) {
+    _dismiss();
+    widget.router.push('${branchPrefixOf(_path)}/seller/$uid');
+  }
+
+  void _openTag(String tag) {
+    _dismiss();
+    widget.router.push(
+      '${branchPrefixOf(_path)}/results?q=${Uri.encodeComponent(tag)}',
+    );
+  }
+
+  String get _path =>
+      widget.router.routeInformationProvider.value.uri.path;
+
   Future<void> _tapCta(Promo promo) async {
     final uri = promo.ctaUri;
     _dismiss();
@@ -209,6 +232,8 @@ class _PromoLayerState extends ConsumerState<PromoLayer> {
                     promo: showing,
                     onDismiss: _dismiss,
                     onCta: () => _tapCta(showing),
+                    onOpenProfile: _openProfile,
+                    onOpenTag: _openTag,
                   ),
                 ),
               ),
@@ -231,11 +256,22 @@ class PromoCard extends StatefulWidget {
     required this.promo,
     required this.onDismiss,
     required this.onCta,
+    this.onOpenProfile,
+    this.onOpenTag,
   });
 
   final Promo promo;
   final VoidCallback onDismiss;
   final VoidCallback onCta;
+
+  /// Tapping an `@profile` in the title or the caption. The card cannot
+  /// route by itself — it is mounted above the router — so the layer hands
+  /// it a way through, and takes the popup down on the way. Null leaves
+  /// mentions bold but inert, which is what the tests pump.
+  final ValueChanged<String>? onOpenProfile;
+
+  /// Tapping a `#hashtag`. Same arrangement.
+  final ValueChanged<String>? onOpenTag;
 
   @override
   State<PromoCard> createState() => _PromoCardState();
@@ -331,22 +367,24 @@ class _PromoCardState extends State<PromoCard> {
                                     ),
                                   ),
                                   const SizedBox(height: 7),
-                                  Text(
+                                  _named(
                                     promo.title,
                                     style: LbmText.display.copyWith(
                                       fontSize: 23,
                                       height: 1.15,
                                       color: c.ink,
                                     ),
+                                    tagColor: c.accentText,
                                   ),
                                   const SizedBox(height: 8),
-                                  Text(
+                                  _named(
                                     promo.caption,
                                     style: TextStyle(
                                       fontSize: 14.5,
                                       height: 1.5,
                                       color: c.ink2,
                                     ),
+                                    tagColor: c.accentText,
                                   ),
                                   if (promo.hasCta) ...[
                                     const SizedBox(height: 18),
@@ -368,6 +406,30 @@ class _PromoCardState extends State<PromoCard> {
           ),
         ),
       ),
+    );
+  }
+
+  /// The copy, with any `@profile` or `#hashtag` in it picked out.
+  ///
+  /// Plain [Text] when there is nothing to pick out and nowhere to go, so
+  /// the ordinary advert costs nothing it did not cost before.
+  Widget _named(
+    String text, {
+    required TextStyle style,
+    required Color tagColor,
+  }) {
+    final onProfile = widget.onOpenProfile;
+    final onTag = widget.onOpenTag;
+    if (onProfile == null || onTag == null || !HashtagText.has(text)) {
+      return Text(text, style: style);
+    }
+    return NamedText(
+      text,
+      mentions: widget.promo.mentions,
+      style: style,
+      tagColor: tagColor,
+      onOpenProfile: onProfile,
+      onOpenTag: onTag,
     );
   }
 

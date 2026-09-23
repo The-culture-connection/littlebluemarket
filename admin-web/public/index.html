@@ -64,6 +64,10 @@
   .promo-dots i { width: 7px; height: 7px; border-radius: 4px; background: rgba(255,255,255,.6); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
   .promo-dots i.on { width: 18px; background: #fff; }
   .promo-empty { color: var(--ink2); font-style: italic; }
+  /* What the phone will pick out and make tappable. */
+  .named { font-weight: 800; color: #2f6fb5; }
+  .named-preview { margin: 8px 0 0; font-size: 13px; color: var(--ink2); }
+  .named-preview .named { margin-right: 6px; display: inline-block; }
   /* The directory pull's running log: what it is doing, line by line, and
      the whole of any error. Grace saw a two-word red code and could not
      tell whether anything had happened at all (2026-09-14). */
@@ -110,6 +114,8 @@
     <label for="body">Message</label>
     <textarea id="body" maxlength="180" placeholder="What is happening, in a sentence or two."></textarea>
     <div class="count"><span id="bodyLeft">180</span> left</div>
+    <p class="hint" style="margin:6px 0 0">Type <strong>@handle</strong> to name a shop and <strong>#Hashtag</strong> to point at a search; both become tappable on the phone. The handle is the one on their profile, without the @ being part of the spelling. A handle that matches nobody is refused before anything is sent, so check the preview below.</p>
+    <div id="namedPreview" class="named-preview" hidden></div>
     <div class="row">
       <div>
         <label for="audience">Who</label>
@@ -174,8 +180,9 @@
     <div class="count"><span id="pTitleLeft">60</span> left</div>
 
     <label for="pCaption">Caption</label>
-    <textarea id="pCaption" maxlength="180" placeholder="Forty makers, one room, all day. Free entry."></textarea>
+    <textarea id="pCaption" maxlength="180" placeholder="Forty makers, one room, all day. Free entry. Makers include @foundhouse. #HolidayMarket"></textarea>
     <div class="count"><span id="pCaptionLeft">180</span> left</div>
+    <p class="hint" style="margin:6px 0 0">Type <strong>@handle</strong> to name a shop and <strong>#Hashtag</strong> to point at a search, in the title or the caption. Both become tappable on the phone: a shop opens its page, a hashtag runs the search. A handle that matches nobody is refused when you post, with the spelling it could not find.</p>
 
     <label for="pPhoto">Photo (optional, up to 4)</label>
     <input id="pPhoto" type="file" accept="image/*" multiple>

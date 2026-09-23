@@ -2,6 +2,7 @@ import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { getMessaging, type Message, type Messaging } from 'firebase-admin/messaging';
 import { logger } from 'firebase-functions';
 import { HttpsError } from 'firebase-functions/v2/https';
+import { resolveNamed } from './mentions.ts';
 
 /**
  * Push, in TypeScript, for both phones.
@@ -275,6 +276,10 @@ export async function sendAnnouncement(
   if (!isAudience(input.audience)) throw new HttpsError('invalid-argument', 'Pick who this goes to.');
 
   const route = (input.route ?? '').trim() || '/you/notifications';
+  // The @handles and #hashtags the copy names. Resolved before the push
+  // goes out, because a push cannot be taken back: a mistyped handle has to
+  // be a message in the form, not a dead link on every phone.
+  const named = await resolveNamed(title, body);
   const db = getFirestore();
   const ref = db.collection('announcements').doc();
   await ref.set({
@@ -282,6 +287,7 @@ export async function sendAnnouncement(
     body,
     audience: input.audience,
     route,
+    ...named,
     createdBy: input.byUid,
     createdAt: FieldValue.serverTimestamp(),
   });
