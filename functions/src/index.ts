@@ -125,13 +125,24 @@ function requireUid(auth: { uid?: string } | undefined): string {
  * call after a few idle minutes. Which is to say: on every call a real
  * shopper makes.
  *
- * It is the one place in this codebase worth paying idle for. A warm
- * 256MiB instance is a few dollars a month; a cart that feels broken is the
- * sale.
+ * It is the one place in this codebase worth paying idle for — but it is
+ * paid for per function, not once, and `commerceOptions` covers eleven of
+ * them, so it is a standing charge of roughly a dollar a month each rather
+ * than "a few dollars" in total. Firebase refuses to deploy a raised
+ * minimum bill without `--force`, which is the right guard. Set
+ * `WARM_COMMERCE=1` in `functions/.env.<project>` to turn it on for a
+ * project; the reads below were cut down anyway, so zero is still much
+ * faster than it was.
  */
+const WARM_COMMERCE = Number(process.env.WARM_COMMERCE ?? 0) || 0;
+
 const commerceOptions = {
   secrets: [SHOPIFY_CLIENT_SECRET, SHOPIFY_STOREFRONT_PRIVATE_TOKEN],
-  minInstances: 1,
+  // How many instances to keep warm. Zero today: see the note above. Raising
+  // it to 1 is the single biggest thing that can be done about how a cart
+  // tap feels, and it is a standing monthly charge per function, so it is
+  // Grace's call and not a default.
+  minInstances: WARM_COMMERCE,
 };
 
 export const commerceAddLine = onCall(commerceOptions, withLoudErrors('commerceAddLine', async (request) => {
