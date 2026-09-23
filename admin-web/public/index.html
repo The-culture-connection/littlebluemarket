@@ -146,6 +146,16 @@
     <p class="hint">Copies every <strong>published</strong> listing on littlebluecart.com into the app, so shoppers can browse the directory by category and search it before any of those businesses have signed up. It runs on its own every six hours; this button does it now and tells you what it found. Safe to press twice.</p>
     <div><button id="dirSyncBtn" class="primary">Pull the directory now</button></div>
     <div id="dirNotice" class="notice" hidden></div>
+
+    <h3 style="margin:22px 0 4px">Take the directory back off an account</h3>
+    <p class="hint">For when one account was wrongly given other people's listings, which happens when the website account it matched is the one that <em>enters</em> listings rather than owning them. This releases every listing currently attributed to that account back to unclaimed and deletes the directory posts that went with them. Their own posts are left alone. <strong>Check first</strong> counts without changing anything.</p>
+    <label for="relUid">The app account's id</label>
+    <input id="relUid" placeholder="d1GMG6NPhUQplgS8p1nWT1ZedQ92">
+    <div class="row" style="margin-top:8px">
+      <div><button id="relCheckBtn" class="quiet">Check first</button></div>
+      <div><button id="relRunBtn" class="primary">Release it</button></div>
+    </div>
+    <div id="relNotice" class="notice" hidden></div>
     <pre id="dirLog" class="log" aria-live="polite"></pre>
     <div class="logrow">
       <button id="dirCopy" class="quiet tiny" hidden>Copy for Claude</button>

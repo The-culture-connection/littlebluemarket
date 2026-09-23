@@ -711,6 +711,47 @@ $('dirCopy').addEventListener('click', async () => {
   }
 });
 
+// Taking a directory back off an account that was wrongly given it. Two
+// buttons on purpose: the first counts and writes nothing, so the number is
+// seen before anything is deleted.
+async function releaseDirectory(dryRun) {
+  const uid = $('relUid').value.trim();
+  if (!uid) {
+    notice('relNotice', 'Paste the app account id first.', false);
+    return;
+  }
+  if (!dryRun) {
+    const ok = window.confirm(
+      `Release every directory listing attributed to ${uid}?\n\n` +
+      'The listings go back to unclaimed and the directory posts made for ' +
+      'them are deleted. Their own posts are left alone. This cannot be ' +
+      'undone, though the next directory pull re-mirrors the listings.',
+    );
+    if (!ok) return;
+  }
+  $('relCheckBtn').disabled = true;
+  $('relRunBtn').disabled = true;
+  notice('relNotice', dryRun ? 'Counting…' : 'Releasing…', true);
+  try {
+    const call = httpsCallable(functions, 'adminReleaseDirectory', { timeout: DIR_CALL_TIMEOUT_MS });
+    const { data } = await call({ uid, dryRun });
+    notice(
+      'relNotice',
+      dryRun
+        ? `${data.listings} listings and ${data.posts} directory posts are attributed to that account. Nothing was changed.`
+        : `Released ${data.listings} listings and deleted ${data.posts} directory posts.`,
+      true,
+    );
+  } catch (error) {
+    notice('relNotice', describe(error), false);
+  } finally {
+    $('relCheckBtn').disabled = false;
+    $('relRunBtn').disabled = false;
+  }
+}
+$('relCheckBtn').addEventListener('click', () => releaseDirectory(true));
+$('relRunBtn').addEventListener('click', () => releaseDirectory(false));
+
 $('dirSyncBtn').addEventListener('click', async () => {
   if (!window.confirm('Pull every published listing from littlebluecart.com now?\n\nThis can take several minutes the first time. Leave this page open; the log below shows what it is doing.')) return;
   $('dirSyncBtn').disabled = true;
