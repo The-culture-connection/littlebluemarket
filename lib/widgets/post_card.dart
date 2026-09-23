@@ -71,6 +71,8 @@ class PostActionBar extends StatelessWidget {
     this.onComment,
     this.onAddToCart,
     this.inCart = false,
+    this.addedCount = 0,
+    this.commentCount = 0,
   });
 
   final VoidCallback? onComment;
@@ -79,6 +81,16 @@ class PostActionBar extends StatelessWidget {
   /// Whether the viewer's cart already holds this listing. A filled, accent
   /// cart says so; tapping it again takes the listing back out.
   final bool inCart;
+
+  /// How many people have ever added this listing — the product's own save
+  /// count, so it reads the same on every post about that product.
+  ///
+  /// Beside the icon rather than in a line of prose under the picture: this
+  /// is the affinity number on Little Blue Market, and next to the thing you
+  /// tap is where people look for it (Grace's testers, 2026-09-23).
+  final int addedCount;
+
+  final int commentCount;
 
   @override
   Widget build(BuildContext context) {
@@ -93,13 +105,17 @@ class PostActionBar extends StatelessWidget {
                   : Icons.add_shopping_cart_rounded,
               label: inCart ? 'Remove from cart' : 'Add to cart',
               tint: inCart ? context.c.accentDeep : null,
+              count: addedCount,
+              countLabel: '$addedCount added to their cart',
               onTap: onAddToCart,
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 18),
           ],
           _ActionIcon(
             icon: Icons.chat_bubble_outline_rounded,
             label: 'Comments',
+            count: commentCount,
+            countLabel: '$commentCount comments',
             onTap: onComment,
           ),
         ],
@@ -178,8 +194,6 @@ class _ListingBody extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _CountLine(post: post),
-              const SizedBox(height: 8),
               Text(
                 post.body,
                 style: TextStyle(fontSize: 14, height: 1.5, color: c.ink),
@@ -400,11 +414,8 @@ class _ReviewBody extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _CountLine(post: post),
-              if (post.tags.isNotEmpty) ...[
-                const SizedBox(height: 8),
+              if (post.tags.isNotEmpty)
                 TagChips(post.tags, onTap: (tag) => context.goToResults(tag)),
-              ],
             ],
           ),
         ),
@@ -476,11 +487,8 @@ class _ShoutoutBody extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _CountLine(post: post),
-              if (post.tags.isNotEmpty) ...[
-                const SizedBox(height: 8),
+              if (post.tags.isNotEmpty)
                 TagChips(post.tags, onTap: (tag) => context.goToResults(tag)),
-              ],
             ],
           ),
         ),
@@ -522,10 +530,7 @@ class _DirectoryBody extends ConsumerWidget {
               : DirectoryListingCard(listing: current, bare: true),
         ),
         _Actions(post: post),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 2, 16, 16),
-          child: _CountLine(post: post),
-        ),
+        const SizedBox(height: 14),
       ],
     );
   }
@@ -549,8 +554,18 @@ class _Actions extends ConsumerWidget {
             (l) => l?.productId == id,
             orElse: () => null,
           );
+    // Live where possible: the feed's copy of the product was taken when the
+    // feed loaded, and the count has usually moved since.
+    final listing = post;
+    final snapshot = listing is ListingPost ? listing.product : null;
+    final live = snapshot == null
+        ? null
+        : ref.watch(liveProductProvider(snapshot.id)).value ?? snapshot;
+
     return PostActionBar(
       inCart: line != null,
+      addedCount: live?.saveCount ?? 0,
+      commentCount: post.commentCount,
       onComment: () => context.goToPost(post.id),
       onAddToCart: id == null
           ? null
@@ -693,6 +708,8 @@ class _ActionIcon extends StatelessWidget {
     required this.label,
     this.onTap,
     this.tint,
+    this.count = 0,
+    this.countLabel = '',
   });
 
   final IconData icon;
@@ -700,54 +717,50 @@ class _ActionIcon extends StatelessWidget {
   final VoidCallback? onTap;
   final Color? tint;
 
+  /// Drawn beside the icon. Zero draws nothing: "0 added" is a worse thing
+  /// for a new seller to read than no number at all.
+  final int count;
+
+  /// What the number means, for a screen reader. The icon's own [label] is
+  /// what tapping it does, and the two are different sentences.
+  final String countLabel;
+
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: InkResponse(
-        onTap: onTap ?? () {},
-        radius: 22,
-        child: Icon(icon, size: 23, color: tint ?? context.c.ink),
-      ),
-    );
-  }
-}
-
-/// "N added · M comments" for a listing; "M comments" for everything else.
-/// "Added" is the product's own save count, so the number is the same on
-/// every post about that product.
-class _CountLine extends ConsumerWidget {
-  const _CountLine({required this.post});
-
-  final Post post;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
-    final snapshot = post is ListingPost ? (post as ListingPost).product : null;
-    // Live where possible: the feed's copy of the product was taken when the
-    // feed loaded, and the count has usually moved since.
-    final product = snapshot == null
-        ? null
-        : ref.watch(liveProductProvider(snapshot.id)).value ?? snapshot;
-    return Text.rich(
-      TextSpan(
-        style: LbmText.tiny.copyWith(color: c.ink2),
+    return InkResponse(
+      onTap: onTap ?? () {},
+      radius: 22,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          if (product != null) ...[
-            TextSpan(
-              text: '${Fmt.count(product.saveCount)} added',
-              style: TextStyle(fontWeight: FontWeight.w700, color: c.ink),
+          Semantics(
+            button: true,
+            label: label,
+            child: Icon(icon, size: 23, color: tint ?? c.ink),
+          ),
+          if (count > 0) ...[
+            const SizedBox(width: 6),
+            Semantics(
+              label: countLabel,
+              excludeSemantics: true,
+              child: Text(
+                Fmt.count(count),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: tint ?? c.ink2,
+                  fontFeatures: kTabularFigures,
+                ),
+              ),
             ),
-            const TextSpan(text: ' · '),
           ],
-          TextSpan(text: '${Fmt.count(post.commentCount)} comments'),
         ],
       ),
     );
   }
 }
+
 
 /// Someone's cart, posted: a row of what is in it and one tap to add it all.
 class _CartBody extends ConsumerStatefulWidget {
@@ -849,11 +862,8 @@ class _CartBodyState extends ConsumerState<_CartBody> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _CountLine(post: post),
-              if (post.tags.isNotEmpty) ...[
-                const SizedBox(height: 8),
+              if (post.tags.isNotEmpty)
                 TagChips(post.tags, onTap: (tag) => context.goToResults(tag)),
-              ],
             ],
           ),
         ),

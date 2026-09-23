@@ -142,6 +142,11 @@ void main() {
     tester,
   ) async {
     final container = await _signedIn(tester);
+    // The floating cart now sits over the bottom right of every screen, and
+    // the feed's first post header starts just under it behind all the
+    // rails. A person scrolls; a test has to say so.
+    await tester.dragFrom(const Offset(195, 400), const Offset(0, -260));
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.more_horiz_rounded).first);
     await tester.pumpAndSettle();
     expect(find.textContaining('Block '), findsOneWidget);

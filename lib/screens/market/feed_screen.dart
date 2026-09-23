@@ -57,13 +57,8 @@ class FeedScreen extends ConsumerWidget {
                   active: filters.nearMe,
                   onTap: () => toggleNearMe(context, ref),
                 ),
-                const SizedBox(width: 8),
-                CircleIconButton(
-                  icon: Icons.shopping_bag_outlined,
-                  tooltip: 'Your cart',
-                  badge: ref.watch(cartCountProvider) > 0,
-                  onPressed: () => context.goToCart(),
-                ),
+                // No cart icon here any more: CartLayer floats one over
+                // every screen, and two on the feed was one too many.
               ],
             ),
             const SizedBox(height: 11),

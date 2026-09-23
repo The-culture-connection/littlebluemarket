@@ -6,7 +6,7 @@ import 'package:little_blue_market/models/market_taxonomy.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 import 'package:little_blue_market/screens/market/collection_screen.dart';
-import 'package:little_blue_market/widgets/feedback_button.dart';
+import 'package:little_blue_market/widgets/floating_cart_button.dart';
 import 'package:little_blue_market/widgets/post_card.dart';
 import 'package:little_blue_market/widgets/primitives.dart';
 
@@ -145,20 +145,21 @@ void main() {
       expect(find.text('Post'), findsOneWidget);
     });
 
-    test('the bug button lifts clear of a composer, and only there', () {
+    test('the floating cart lifts clear of a composer, and only there', () {
       // Screens whose bottom belongs to a composer: the button sat on the
       // Send button (Grace, 2026-09-14). The Open chat IS the community
       // root; the first attempt guessed '/community/chatroom', which is not
-      // a route, so nothing moved and Grace reported it again.
-      expect(FeedbackLayer.isRaised('/community'), isTrue);
-      expect(FeedbackLayer.isRaised('/community/chatroom'), isFalse);
-      expect(FeedbackLayer.isRaised('/community/thread/t1'), isTrue);
-      expect(FeedbackLayer.isRaised('/market/post/p1'), isTrue);
-      expect(FeedbackLayer.isRaised('/you/dm/kali'), isTrue);
+      // a route, so nothing moved and Grace reported it again. The rule
+      // outlived the bug button it was written for.
+      expect(CartLayer.isRaised('/community'), isTrue);
+      expect(CartLayer.isRaised('/community/chatroom'), isFalse);
+      expect(CartLayer.isRaised('/community/thread/t1'), isTrue);
+      expect(CartLayer.isRaised('/market/post/p1'), isTrue);
+      expect(CartLayer.isRaised('/you/dm/kali'), isTrue);
       // Everywhere else it stays where it was.
-      expect(FeedbackLayer.isRaised('/market'), isFalse);
-      expect(FeedbackLayer.isRaised('/you'), isFalse);
-      expect(FeedbackLayer.isRaised('/market/search'), isFalse);
+      expect(CartLayer.isRaised('/market'), isFalse);
+      expect(CartLayer.isRaised('/you'), isFalse);
+      expect(CartLayer.isRaised('/market/search'), isFalse);
     });
 
     testWidgets('the search pill on the results screen reopens search', (

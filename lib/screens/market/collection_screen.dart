@@ -31,14 +31,6 @@ class CollectionScreen extends ConsumerWidget {
     return LbmScreen(
       appBar: LbmAppBar(
         title: collection.value?.title ?? 'Collection',
-        actions: [
-          CircleIconButton(
-            icon: Icons.shopping_bag_outlined,
-            tooltip: 'Your cart',
-            badge: ref.watch(cartCountProvider) > 0,
-            onPressed: () => context.goToCart(),
-          ),
-        ],
       ),
       child: RefreshIndicator(
         onRefresh: () async {

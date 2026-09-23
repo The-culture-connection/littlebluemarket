@@ -18,7 +18,7 @@ import 'state/push_coordinator.dart';
 import 'state/session.dart';
 import 'theme/app_theme.dart';
 import 'widgets/dev_error_surface.dart';
-import 'widgets/feedback_button.dart';
+import 'widgets/floating_cart_button.dart';
 import 'widgets/phone_frame.dart';
 import 'widgets/promo_popup.dart';
 import 'widgets/splash_overlay.dart';
@@ -124,8 +124,8 @@ class LittleBlueMarketApp extends ConsumerWidget {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaler: scale),
           // Both dev overlays render nothing in release and under test. The
-          // splash artwork holds for a moment on launch; the bug button sits
-          // over every screen and photographs what is under it.
+          // splash artwork holds for a moment on launch; the cart floats
+          // over every screen.
           // On the web the whole app sits inside a phone-sized frame.
           child: PhoneFrame(
             child: SplashOverlay(
@@ -144,9 +144,7 @@ class LittleBlueMarketApp extends ConsumerWidget {
                           focus.unfocus();
                         }
                       },
-                      // PromoLayer inside FeedbackLayer, so a bug report's
-                      // screenshot shows the popup the person was looking at.
-                      child: FeedbackLayer(
+                      child: CartLayer(
                         router: router,
                         child: PromoLayer(router: router, child: child!),
                       ),

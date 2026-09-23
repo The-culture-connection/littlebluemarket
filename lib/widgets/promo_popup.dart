@@ -26,7 +26,7 @@ import 'remote_image.dart';
 /// anywhere outside, a flick downwards, or twelve seconds of being ignored.
 /// Still one per app opening, and never the same one twice.
 ///
-/// Mounted in the `MaterialApp` builder inside `FeedbackLayer`, which is why
+/// Mounted in the `MaterialApp` builder inside `CartLayer`, which is why
 /// it floats over every tab and a bug report's screenshot shows it.
 class PromoLayer extends ConsumerStatefulWidget {
   const PromoLayer({super.key, required this.router, required this.child});

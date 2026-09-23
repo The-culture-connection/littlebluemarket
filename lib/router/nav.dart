@@ -6,8 +6,15 @@ import 'package:go_router/go_router.dart';
 /// Pushing the copy that belongs to the current branch is what keeps each tab's
 /// back stack its own: opening a seller from the Market feed must not throw you
 /// into the You tab.
-String branchPrefix(BuildContext context) {
-  final path = GoRouterState.of(context).uri.path;
+String branchPrefix(BuildContext context) =>
+    branchPrefixOf(GoRouterState.of(context).uri.path);
+
+/// The same rule, from a path alone.
+///
+/// The floating cart is mounted above the router, in the `MaterialApp`
+/// builder, so there is no `GoRouterState` over its context to read — it
+/// knows the current address from the router's own delegate instead.
+String branchPrefixOf(String path) {
   if (path.startsWith('/community')) return '/community';
   if (path.startsWith('/you')) return '/you';
   return '/market';

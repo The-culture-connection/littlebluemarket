@@ -113,32 +113,19 @@ void main() {
     expect(find.text(_disclaimer), findsNothing);
   });
 
-  testWidgets('the bug button is on the feed and opens the sheet', (
+  testWidgets('the floating cart is on the feed and opens the cart', (
     tester,
   ) async {
     await _pumpSignedIn(tester);
-    expect(
-      find.bySemanticsLabel('Report a bug or send a critique'),
-      findsOneWidget,
-    );
-    await tester.tap(find.byIcon(Icons.bug_report_outlined));
+    expect(find.bySemanticsLabel('Your cart'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.shopping_bag_rounded));
     await tester.pumpAndSettle();
-    expect(find.text('Tell us what happened'), findsOneWidget);
-    expect(find.text('Send'), findsOneWidget);
-
-    // Sending needs words; then it lands in the store for the Admin screen.
-    await tester.enterText(
-      find.widgetWithText(TextField, 'What were you doing, and what went wrong?'),
-      'The cart spins forever',
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Send'));
-    await tester.pumpAndSettle();
-    expect(find.text('Tell us what happened'), findsNothing);
-    expect(find.text('Sent. Thank you for telling us.'), findsOneWidget);
+    expect(find.text('Your cart'), findsWidgets);
+    // And it takes itself off the cart screen rather than floating over it.
+    expect(find.byIcon(Icons.shopping_bag_rounded), findsNothing);
   });
 
-  testWidgets('the bug button stays off the welcome screen', (tester) async {
+  testWidgets('the floating cart stays off the welcome screen', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -151,6 +138,6 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.byIcon(Icons.bug_report_outlined), findsNothing);
+    expect(find.byIcon(Icons.shopping_bag_rounded), findsNothing);
   });
 }
