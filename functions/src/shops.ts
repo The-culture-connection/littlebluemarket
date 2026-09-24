@@ -313,25 +313,37 @@ export async function backfillShopShells(
  * that would have followed. Grace, 2026-09-24, chose the clean break rather
  * than leaving the existing ones in place.
  *
- * `auto: true` is the whole test, and it is exact. A machine-written post
- * carries it; a post a seller wrote through `ListingComposer` gets a random
- * id and no such field, so a seller's own words are never in scope however
- * many products they have posted.
+ * Two facts together decide, and both are needed.
+ *
+ * `auto: true` separates a machine-written post from a seller's own: a post
+ * written through `ListingComposer` gets a random id and no such field, so
+ * a seller's words are never in scope however many products they have
+ * posted.
+ *
+ * `kind == 'listing'` then keeps this to products. `directoryPostFor` in
+ * `directory.ts` also stamps `auto: true`, on the `kind: 'directory'` post
+ * a published littlebluecart.com listing makes. That is a different feature
+ * and it still writes: sweeping those as well would delete posts the
+ * six-hourly sync puts straight back, so the sweep and the sync would churn
+ * against each other every time Grace ran this.
  *
  * Deleting fires `onPostWritten`, which walks each author's `postCount`
  * down through `bumpCounterFloored`, so the counts follow without a second
  * pass and none of them can go negative on the way.
  */
 export async function removeAutoListingPosts(db: Firestore): Promise<number> {
-  const snapshot = await db.collection('posts').where('auto', '==', true).select().get();
+  // Queried on `kind` alone and filtered in code: the pair would want a
+  // composite index, and this set only shrinks now that nothing adds to it.
+  const snapshot = await db.collection('posts').where('kind', '==', 'listing').select('auto').get();
+  const doomed = snapshot.docs.filter((doc) => doc.get('auto') === true);
 
-  for (let i = 0; i < snapshot.size; i += 400) {
+  for (let i = 0; i < doomed.length; i += 400) {
     const batch = db.batch();
-    for (const doc of snapshot.docs.slice(i, i + 400)) batch.delete(doc.ref);
+    for (const doc of doomed.slice(i, i + 400)) batch.delete(doc.ref);
     await batch.commit();
   }
-  if (snapshot.size) logger.warn('Removed posts that products wrote for themselves', { posts: snapshot.size });
-  return snapshot.size;
+  if (doomed.length) logger.warn('Removed posts that products wrote for themselves', { posts: doomed.length });
+  return doomed.length;
 }
 
 /** The same id the app derives, so a moved thread lands where the buyer's

@@ -66,20 +66,24 @@ test('a moved thread lands on the id the app will look under', () => {
   assert.equal(conversationIdFor('zed', 'shop_found-house'), 'shop_found-house_zed');
 });
 
-test('the sweep is told apart by who wrote a post, not by what it is about', () => {
-  // `removeAutoListingPosts` matches `auto == true` and nothing else. The
-  // risk it has to avoid is deleting a post a seller wrote on purpose about
-  // one of their own products, which is the same kind, about the same
-  // product, by the same author, and differs only in carrying no `auto`.
-  const sweeps = (post: Record<string, unknown>) => post.auto === true;
+test('the sweep takes machine-written product posts and only those', () => {
+  // `removeAutoListingPosts` needs both facts, and each one alone is wrong.
+  const sweeps = (post: Record<string, unknown>) =>
+    post.kind === 'listing' && post.auto === true;
 
   assert.equal(sweeps({ kind: 'listing', authorId: 'shop_polly-politics', auto: true }), true);
   // A claimed seller's machine-written post goes too: Grace chose the clean
   // break over leaving the ones already in the feed (2026-09-24).
   assert.equal(sweeps({ kind: 'listing', authorId: 'd1GMG6NPhUQplgS8p1nWT1ZedQ92', auto: true }), true);
 
-  // What a person wrote stays, whatever it is about.
+  // Without `auto`, what a person wrote stays. This is the same kind, about
+  // the same product, by the same author, and differs only in the flag.
   assert.equal(sweeps({ kind: 'listing', authorId: 'd1GMG6NPhUQplgS8p1nWT1ZedQ92' }), false);
   assert.equal(sweeps({ kind: 'listing', authorId: 'kali', auto: false }), false);
+
+  // Without `kind`, a directory post would go. `directoryPostFor` stamps
+  // `auto: true` as well and the six-hourly sync still writes them, so
+  // sweeping one would delete a post the next sync puts straight back.
+  assert.equal(sweeps({ kind: 'directory', authorId: 'kali', auto: true }), false);
   assert.equal(sweeps({ kind: 'review', authorId: 'kali' }), false);
 });
