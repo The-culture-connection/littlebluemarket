@@ -1735,8 +1735,8 @@ class FixtureDiagnosticsRepository implements DiagnosticsRepository {
       (checked: Fx.people.length, updated: 0);
 
   @override
-  Future<({int vendors, int shells, int products})> backfillShopShells() async =>
-      (vendors: 0, shells: 0, products: 0);
+  Future<({int vendors, int shells, int products, int posts})> backfillShopShells() async =>
+      (vendors: 0, shells: 0, products: 0, posts: 0);
 
   @override
   Future<String> setSellerVendor({

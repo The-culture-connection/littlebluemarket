@@ -268,7 +268,7 @@ async function moveShellConversations(
  */
 export async function backfillShopShells(
   db: Firestore = getFirestore(),
-): Promise<{ vendors: number; shells: number; products: number }> {
+): Promise<{ vendors: number; shells: number; products: number; posts: number }> {
   const snapshot = await db.collection('catalog').select('vendorName', 'sellerId').get();
 
   // vendor string -> the product docs under it that have no shop.
@@ -300,8 +300,43 @@ export async function backfillShopShells(
       await batch.commit();
     }
   }
-  logger.info('Shop shells backfilled', { vendors: vendors.size, shells, products });
-  return { vendors: vendors.size, shells, products };
+  const posts = await removeShellListingPosts(db);
+  logger.info('Shop shells backfilled', { vendors: vendors.size, shells, products, posts });
+  return { vendors: vendors.size, shells, products, posts };
+}
+
+/**
+ * Deletes the feed posts a shop that nobody has signed up for should never
+ * have written.
+ *
+ * `mirrorProduct` posts a listing for every active product that has a
+ * seller. Giving every vendor a shell made that true of all of them, and
+ * 108 had already been written before it was noticed. They are easy to miss
+ * in the feed because `autoPostFor` stamps a post with the **product's**
+ * creation date rather than the post's, so they landed scattered through
+ * months of history instead of in a block at the top.
+ *
+ * Only posts whose author is a shell, so a real seller's listings are never
+ * touched.
+ */
+async function removeShellListingPosts(db: Firestore): Promise<number> {
+  // 'shop_' to 'shop_\uffff' is every shell uid and nothing else: a real
+  // Firebase uid is 28 characters of base62 and cannot start with 'shop_'.
+  const snapshot = await db
+    .collection('posts')
+    .where('authorId', '>=', 'shop_')
+    .where('authorId', '<', 'shop_\uffff')
+    .select('authorId', 'kind')
+    .get();
+
+  const doomed = snapshot.docs.filter((doc) => doc.get('kind') === 'listing');
+  for (let i = 0; i < doomed.length; i += 400) {
+    const batch = db.batch();
+    for (const doc of doomed.slice(i, i + 400)) batch.delete(doc.ref);
+    await batch.commit();
+  }
+  if (doomed.length) logger.warn('Removed listing posts by unclaimed shops', { posts: doomed.length });
+  return doomed.length;
 }
 
 /** The same id the app derives, so a moved thread lands where the buyer's

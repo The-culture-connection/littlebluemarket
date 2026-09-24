@@ -119,7 +119,7 @@ class FirestoreDiagnosticsRepository implements DiagnosticsRepository {
       }, operation: 'callable adminBackfillProfileTags');
 
   @override
-  Future<({int vendors, int shells, int products})> backfillShopShells() =>
+  Future<({int vendors, int shells, int products, int posts})> backfillShopShells() =>
       guardFirestore(() async {
         final result = await _functions
             .httpsCallable(
@@ -133,6 +133,7 @@ class FirestoreDiagnosticsRepository implements DiagnosticsRepository {
           vendors: FirestoreMappers.integer(result.data['vendors']),
           shells: FirestoreMappers.integer(result.data['shells']),
           products: FirestoreMappers.integer(result.data['products']),
+          posts: FirestoreMappers.integer(result.data['posts']),
         );
       }, operation: 'callable adminBackfillShopShells');
 

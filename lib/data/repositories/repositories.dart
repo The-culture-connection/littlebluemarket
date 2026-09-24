@@ -587,7 +587,7 @@ abstract interface class DiagnosticsRepository {
 
   /// Gives every vendor already in the catalogue a shop profile, and
   /// attaches the listings that have no shop to it. Idempotent.
-  Future<({int vendors, int shells, int products})> backfillShopShells();
+  Future<({int vendors, int shells, int products, int posts})> backfillShopShells();
 
   /// One page of the catalog import. Call until [BackfillProgress.done].
   Future<BackfillProgress> backfillCatalog({bool reset = false});

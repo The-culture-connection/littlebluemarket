@@ -65,3 +65,19 @@ test('a moved thread lands on the id the app will look under', () => {
   // A shell uid has an underscore of its own; the id is still the sorted join.
   assert.equal(conversationIdFor('zed', 'shop_found-house'), 'shop_found-house_zed');
 });
+
+test('every shell uid sorts inside the range the cleanup sweeps, and nothing else does', () => {
+  // `removeShellListingPosts` finds its posts with a range query on authorId,
+  // 'shop_' to 'shop_\uffff', because Firestore has no starts-with. If a real
+  // uid could land in that range the sweep would delete a real seller's
+  // listings, so this is the check that keeps it safe.
+  const inRange = (uid: string) => uid >= 'shop_' && uid < 'shop_\uffff';
+
+  for (const vendor of ['Polly Politics', 'Allways Drops', 'zzz', '1 Thing']) {
+    assert.equal(inRange(shopUidFor(vendor)), true, vendor);
+  }
+  // Real uids are 28 characters of base62: no underscore, so none can match.
+  for (const real of ['d1GMG6NPhUQplgS8p1nWT1ZedQ92', 'LlLpQCwWg4bxxnd1dqxVLESm7G32', 'shop', 'shoq']) {
+    assert.equal(inRange(real), false, real);
+  }
+});

@@ -322,7 +322,8 @@ class _AdminCardState extends ConsumerState<_AdminCard> {
   Future<String> _backfillShops() async {
     final r = await _repo.backfillShopShells();
     return 'Gave ${r.shells} of ${r.vendors} shops a profile, and attached '
-        '${r.products} listings that had none.';
+        '${r.products} listings that had none. Took ${r.posts} feed posts '
+        'back off shops nobody has signed up for.';
   }
 
   Future<String> _sync() async {
