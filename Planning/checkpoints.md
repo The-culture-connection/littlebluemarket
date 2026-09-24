@@ -868,6 +868,23 @@ does, for anyone, and a seller who wants one in the feed says so.
   0" on a shop with tiles below it means the products are drafts rather
   than on sale, which is the one thing the figure deliberately leaves out.
 
+- [ ] **CP-20E The unclaimed shop is a badge, not a banner.**
+  *Claude built:* the card that explained an unclaimed shop in four lines
+  and a button is now a small chip under the shop's name, reading "Not
+  active on the app yet". Tapping it opens a sheet with the whole
+  explanation and the "Is this your shop?" door. The listing page shows the
+  same chip, and its sheet leaves the door off.
+  **Grace does:** open an unclaimed shop, such as @romantique-books → read
+  the chip under the name → tap it → close it → **Is this your shop?**.
+  Then open one of its products and find the chip beside the shop.
+  **Pass:** the profile shows the products without scrolling. The chip says
+  only that the shop is not active. The sheet still says the products are
+  real, that you can buy as normal, and that a message waits. From the
+  listing the sheet has no claim button.
+  **If it fails:** a chip on a shop somebody has signed up for is wrong;
+  send the handle. Nothing under the name on an unclaimed shop means the
+  phone is on an older build.
+
 ### Sequencing
 
 Stage 0 → Stage 1 → CP-A1 → (CP-A2 and CP-A3 independent) → CP-A4 needs CP-A3 → CP-A5 independent of A2–A4 → Stage 3 needs Stage 0 and CP-A1 (CP-A4 for seller sales) → Stages 4–9 in order (CP-S2 to CP-S5 can run any time after Stage 4; CP-S1 and CP-S6 wait on Stage 8) → Stage 10 in order, CP-D0 first and nothing else in it until the doctor confirms the dev project points at staging → Stage 11 needs CP-D2 → Stage 12 is independent of 10 and 11 (its Android path is testable on the emulator; CP-N4 last) → Stage 13 needs CP-D2/D3 (E1 first, then E2, E3, E4). One commit and push per checkpoint.

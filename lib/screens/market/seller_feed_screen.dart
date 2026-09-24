@@ -14,7 +14,6 @@ import '../../widgets/screen.dart';
 import '../../widgets/seller_products_grid.dart';
 import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
-import '../../widgets/unclaimed_shop.dart';
 
 /// The public view of a profile.
 ///
@@ -89,8 +88,6 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
                   _NotifyMeButton(personId: person.id),
               ],
             ),
-            // A shop that is on the market but has nobody behind it yet.
-            UnclaimedShopCard(person: person),
             // A buyer has no shop, so they get one tab rather than an empty
             // one. The first tab is the shop's **products**, and used to be
             // labelled "Posted", which put a grid of products under a word

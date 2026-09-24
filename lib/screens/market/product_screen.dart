@@ -298,12 +298,19 @@ class _Body extends ConsumerWidget {
               ),
             ),
           ),
-          // A shop on the market that nobody has signed up for yet: you can
-          // still buy, and a message waits for them.
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: UnclaimedShopCard(person: seller, compact: true),
-          ),
+          // A shop on the market that nobody has signed up for yet. A badge
+          // rather than the paragraph it used to be: on a listing the shop
+          // is not the subject of the screen, and the buyer's two questions
+          // (is this real, will a message reach them) are one tap away. No
+          // claim door here; that belongs on the shop's own page.
+          if (seller.unclaimed)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: UnclaimedShopBadge(person: seller, offerClaim: false),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
             child: PillButton(

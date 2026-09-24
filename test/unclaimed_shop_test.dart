@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/models/models.dart';
 import 'package:little_blue_market/theme/app_theme.dart';
+import 'package:little_blue_market/widgets/primitives.dart';
 import 'package:little_blue_market/widgets/unclaimed_shop.dart';
 
 /// A shop that is on the market but that nobody has signed up for (Grace,
@@ -37,29 +38,55 @@ Future<void> _pump(WidgetTester tester, Widget child) async {
 }
 
 void main() {
-  group('the card on a shop profile and a listing', () {
-    testWidgets('says the shop is not on the app, and offers the way in', (
+  group('the badge on a shop profile and a listing', () {
+    // It was a card with four lines and a button, and on a shell profile it
+    // was the biggest thing on the screen. Grace, 2026-09-24: "I want it to
+    // not be so large and I want it to only let others know that this
+    // seller is not active on the app... maybe make it a small badge of
+    // some kind that is clickable."
+    testWidgets('says the one thing, and nothing else, until it is tapped', (
       tester,
     ) async {
-      await _pump(tester, UnclaimedShopCard(person: _shop()));
-      expect(find.text('Not on the app yet'), findsOneWidget);
-      expect(find.textContaining('you can buy it as normal'), findsOneWidget);
-      expect(find.text('Is this your shop?'), findsOneWidget);
-    });
-
-    testWidgets('the compact one leaves the claim door off', (tester) async {
-      // On a listing the shop is not the subject of the screen, and the
-      // door belongs on the shop's own page.
-      await _pump(tester, UnclaimedShopCard(person: _shop(), compact: true));
-      expect(find.text('Not on the app yet'), findsOneWidget);
+      await _pump(tester, UnclaimedShopBadge(person: _shop()));
+      expect(find.text('Not active on the app yet'), findsOneWidget);
+      // The explanation is behind the tap. This is the whole point: none of
+      // it is on the profile taking up room.
+      expect(find.textContaining('you can buy it as normal'), findsNothing);
       expect(find.text('Is this your shop?'), findsNothing);
     });
 
-    testWidgets('a claimed shop gets no card at all', (tester) async {
-      await _pump(tester, UnclaimedShopCard(person: _shop(unclaimed: false)));
-      expect(find.text('Not on the app yet'), findsNothing);
-      // Drawn as nothing, not as an empty box with padding round it.
-      expect(find.byType(Container), findsNothing);
+    testWidgets('tapping it explains, and offers the way in', (tester) async {
+      await _pump(tester, UnclaimedShopBadge(person: _shop()));
+      await tester.tap(find.text('Not active on the app yet'));
+      await tester.pumpAndSettle();
+
+      // Nothing was cut in the move: the two facts a buyer needs are both
+      // here, in words, plus the door for whoever owns the shop.
+      expect(find.textContaining('you can buy it as normal'), findsOneWidget);
+      expect(find.textContaining('message will wait'), findsOneWidget);
+      expect(find.text('Is this your shop?'), findsOneWidget);
+    });
+
+    testWidgets('on a listing the sheet leaves the claim door off', (
+      tester,
+    ) async {
+      // There the shop is not the subject of the screen, and the door
+      // belongs on the shop's own page.
+      await _pump(
+        tester,
+        UnclaimedShopBadge(person: _shop(), offerClaim: false),
+      );
+      await tester.tap(find.text('Not active on the app yet'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('you can buy it as normal'), findsOneWidget);
+      expect(find.text('Is this your shop?'), findsNothing);
+    });
+
+    testWidgets('a claimed shop gets no badge at all', (tester) async {
+      await _pump(tester, UnclaimedShopBadge(person: _shop(unclaimed: false)));
+      expect(find.text('Not active on the app yet'), findsNothing);
+      // Drawn as nothing, not as an empty chip with padding round it.
+      expect(find.byType(LbmChip), findsNothing);
     });
   });
 

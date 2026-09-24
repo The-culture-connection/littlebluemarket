@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'linked_text.dart';
 import 'primitives.dart';
+import 'unclaimed_shop.dart';
 
 /// The identity block shared by your own profile and any seller's feed.
 ///
@@ -103,6 +104,17 @@ class ProfileIdentity extends ConsumerWidget {
             person.name,
             style: LbmText.display.copyWith(fontSize: 18, color: c.ink),
           ),
+          // Directly under the name, because it is a fact about this shop
+          // rather than an announcement. It draws nothing at all for a shop
+          // somebody has signed up for, which is every real seller and
+          // every person (Grace, 2026-09-24).
+          if (person.unclaimed) ...[
+            const SizedBox(height: 7),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: UnclaimedShopBadge(person: person),
+            ),
+          ],
           const SizedBox(height: 3),
           // Web addresses in the bio open in the browser.
           LinkedText(

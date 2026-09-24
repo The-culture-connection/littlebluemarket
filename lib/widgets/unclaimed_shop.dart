@@ -16,80 +16,107 @@ import 'sheets.dart';
 /// whole point: a message into silence is worse than a message you were
 /// told might wait.
 ///
-/// Two shapes, because two places need it and they need different lengths:
-/// [UnclaimedShopCard] on the profile and the listing, [UnclaimedShopStrip]
-/// above a message thread.
-class UnclaimedShopCard extends ConsumerWidget {
-  const UnclaimedShopCard({super.key, required this.person, this.compact = false});
+/// It used to say so in a card with four lines of explanation and a button,
+/// which on a shell profile was the largest thing on the screen and pushed
+/// the products below the fold. Grace, the same day: "I want it to not be
+/// so large and I want it to only let others know that this seller is not
+/// active on the app... maybe make it a small badge of some kind that is
+/// clickable."
+///
+/// So the fact is a badge and the explanation is a tap. Nothing was cut:
+/// every word of the old card is in [showUnclaimedShopSheet], including the
+/// two things that matter to a buyer, that the products are real and that a
+/// message is kept.
+class UnclaimedShopBadge extends ConsumerWidget {
+  const UnclaimedShopBadge({
+    super.key,
+    required this.person,
+    this.offerClaim = true,
+  });
 
   final Person person;
 
-  /// The shorter wording, for the "Sold by" strip on a listing where the
-  /// shop is not the subject of the screen.
-  final bool compact;
+  /// Whether the sheet offers the way in for the person who owns the shop.
+  /// True on the shop's own profile, false on a listing, where the shop is
+  /// not the subject of the screen.
+  final bool offerClaim;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.c;
     if (!person.unclaimed) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
-        decoration: BoxDecoration(
-          color: c.skyMist,
-          borderRadius: LbmRadius.cardR,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.storefront_outlined, size: 18, color: c.ink3),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Not on the app yet',
-                    style: LbmText.tiny.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: c.ink,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              compact
-                  ? 'You can buy from them as normal. A message will wait '
-                        'until they sign up.'
-                  : '${person.name} sells on Little Blue Market, but nobody '
-                        'has signed up for the shop yet. Everything here is '
-                        'real and you can buy it as normal. A message will '
-                        'wait for them until they do.',
-              style: LbmText.xtiny.copyWith(color: c.ink2, height: 1.55),
-            ),
-            // The way in, for the person who owns it. The claim itself is
-            // the shop's own verified email; this is only the door.
-            if (!compact) ...[
-              const SizedBox(height: 12),
-              PillButton(
-                'Is this your shop?',
-                style: PillStyle.ghost,
-                small: true,
-                onPressed: () => requireProfile(
-                  context,
-                  ref,
-                  () => context.push('/you/claim-shop'),
-                ),
-              ),
-            ],
-          ],
-        ),
+    return LbmChip(
+      'Not active on the app yet',
+      fontSize: 11.5,
+      // A question mark rather than an exclamation: this is something to
+      // know about the shop, not a warning about it.
+      trailingIcon: Icons.help_outline_rounded,
+      onTap: () => showUnclaimedShopSheet(
+        context,
+        ref,
+        person: person,
+        offerClaim: offerClaim,
       ),
     );
   }
+}
+
+/// What the badge says when it is tapped: the whole explanation, once.
+Future<void> showUnclaimedShopSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  required Person person,
+  bool offerClaim = true,
+}) {
+  return showLbmSheet(context, (sheetContext) {
+    final c = sheetContext.c;
+    return LbmSheet(
+      children: [
+        Row(
+          children: [
+            Icon(Icons.storefront_outlined, size: 20, color: c.ink3),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                'Not active on the app yet',
+                style: LbmText.display.copyWith(fontSize: 19, color: c.ink),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          '${person.name} sells on Little Blue Market, but nobody has signed '
+          'up for the shop on the app yet.',
+          style: LbmText.tiny.copyWith(color: c.ink2, height: 1.55),
+        ),
+        const SizedBox(height: 10),
+        // The two facts a buyer actually needs, and the reason this is worth
+        // a sheet rather than a tooltip.
+        Text(
+          'Everything here is real and you can buy it as normal. A message '
+          'will wait for them until they sign up.',
+          style: LbmText.tiny.copyWith(color: c.ink2, height: 1.55),
+        ),
+        if (offerClaim) ...[
+          const SizedBox(height: 16),
+          // The way in, for the person who owns it. The claim itself is the
+          // shop's own verified email; this is only the door.
+          PillButton(
+            'Is this your shop?',
+            style: PillStyle.ghost,
+            onPressed: () {
+              Navigator.of(sheetContext).pop();
+              requireProfile(
+                context,
+                ref,
+                () => context.push('/you/claim-shop'),
+              );
+            },
+          ),
+        ],
+      ],
+    );
+  });
 }
 
 /// The same fact, one line, above a message thread.
