@@ -107,6 +107,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       );
       return;
     }
+    // A profile with no handle is a real state: a brand new account, or one
+    // whose borrowed identity has just been cleared. Leaving the field blank
+    // used to come back as "That handle is taken", which is both wrong and
+    // impossible to act on (Grace's client, 2026-09-24). Ask plainly.
+    if (_handle.text.replaceFirst('@', '').trim().isEmpty) {
+      setState(
+        () => _error =
+            'Pick a handle. It is how people find you and mention you, and '
+            'it goes on everything you write.',
+      );
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;

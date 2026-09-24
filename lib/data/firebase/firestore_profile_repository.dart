@@ -104,9 +104,24 @@ class FirestoreProfileRepository implements ProfileRepository {
   Future<void> updateProfile(ProfileEdit edit) => guardFirestore(() async {
     final id = _requireUid;
 
+    // An empty handle means "leave mine alone", not "check whether the
+    // empty handle is free". `handleAvailable('')` answers false, quite
+    // reasonably, and that came back to the person as "That handle is
+    // taken" when they had simply not typed one. Unreachable while everyone
+    // had a handle seeded into the field; reachable the moment a profile's
+    // handle was cleared (Grace's client, 2026-09-24).
     final handle = edit.handle?.trim();
-    if (handle != null && !await handleAvailable(handle)) {
-      throw const ValidationException('That handle is taken', field: 'handle');
+    final wanted = handle == null || handle.replaceFirst('@', '').trim().isEmpty
+        ? null
+        : handle;
+    if (wanted != null && !await handleAvailable(wanted)) {
+      throw ValidationException(
+        // Naming it is the difference between a message you can act on and
+        // one you cannot.
+        '${wanted.startsWith('@') ? wanted : '@$wanted'} is already someone '
+            "else's handle. Try another.",
+        field: 'handle',
+      );
     }
 
     // The first save *creates* the profile, and the rules insist a new
@@ -130,11 +145,11 @@ class FirestoreProfileRepository implements ProfileRepository {
         // in step for profiles the directory sync writes.
         'nameLower': edit.name!.trim().toLowerCase(),
       },
-      if (handle != null) ...{
-        'handle': handle,
+      if (wanted != null) ...{
+        'handle': wanted,
         // Stored lowercase alongside the display form, because Firestore
         // cannot do a case-insensitive query.
-        'handleLower': handle.toLowerCase().replaceFirst('@', ''),
+        'handleLower': wanted.toLowerCase().replaceFirst('@', ''),
       },
       if (edit.bio != null) 'bio': edit.bio!.trim(),
       if (edit.cityState != null) 'cityState': edit.cityState!.trim(),

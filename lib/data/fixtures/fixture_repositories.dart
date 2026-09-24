@@ -1252,14 +1252,23 @@ class FixtureProfileRepository implements ProfileRepository {
     final current = people[_backend.uid];
     if (current == null) throw const UnauthenticatedException();
 
-    final handle = edit.handle;
-    if (handle != null && !await handleAvailable(handle)) {
-      throw const ValidationException('That handle is taken', field: 'handle');
+    // An empty handle means "leave mine alone"; see the note in
+    // FirestoreProfileRepository.updateProfile.
+    final handle = edit.handle?.trim();
+    final wanted = handle == null || handle.replaceFirst('@', '').trim().isEmpty
+        ? null
+        : handle;
+    if (wanted != null && !await handleAvailable(wanted)) {
+      throw ValidationException(
+        '${wanted.startsWith('@') ? wanted : '@$wanted'} is already someone '
+            "else's handle. Try another.",
+        field: 'handle',
+      );
     }
 
     people[_backend.uid] = current.copyWith(
       name: edit.name,
-      handle: handle,
+      handle: wanted,
       bio: edit.bio,
       tags: edit.tags,
       avatarUrl: edit.avatarUrl,
