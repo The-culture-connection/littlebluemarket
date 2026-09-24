@@ -803,6 +803,53 @@ lowercase name mirror on every profile that existed before today.
   row shows them picked out and both tap through. A misspelled handle stops
   the send before any push goes out.
 
+### Stage 20, A product is not a post (Grace's ask, 2026-09-24)
+
+Grace: "the app is showing products of sellers that are not on the app as
+posted... allow sellers to post their own products from there." A product
+used to post itself to the feed the moment it was mirrored. It no longer
+does, for anyone, and a seller who wants one in the feed says so.
+
+- [ ] **CP-20A Clear the feed of posts nobody wrote.** *Claude built:*
+  mirroring writes no post at all, and the Shop profiles sweep takes out
+  every post carrying `auto: true`. A post a seller wrote through the
+  composer has no such flag and is never in scope.
+  **Grace does:** in the app, **Edit profile → Staff tools → Shop profiles**.
+  Read the line it prints. Then Market, pull down to refresh.
+  **Pass:** the line ends with how many posts it took back off shops, about
+  108 on production. The feed no longer shows product tiles from shops that
+  have never opened the app. Post counts on profiles go down to match and
+  none of them is negative.
+  **If it fails:** a feed still full of products means the phone is on a
+  cached copy; force-close and reopen. Run it once per environment: dev and
+  production keep separate posts.
+
+- [ ] **CP-20B A seller posts one of their own products.** *Claude built:*
+  every tile on your own Products tab carries a small megaphone button. It
+  opens the composer with that product already chosen, so there is nothing
+  to pick. The tap on the tile still opens the product page.
+  **Grace does:** sign in as a seller → **You** → **Products** → tap the
+  picture of a product (it should open the product page) → back → tap the
+  small round button in the bottom corner of the same tile → write a caption
+  → **Post it**. Then Market, pull to refresh.
+  **Pass:** the product page opens from the picture and the composer from
+  the button, never the other way round. The composer shows the product you
+  tapped and no list to choose from. After posting, the product is in the
+  Market feed as your post, and your **Posted** count goes up by one.
+  **If it fails:** no button on the tiles means you are looking at somebody
+  else's profile, or at the public view of your own; it is only on **You**.
+
+- [ ] **CP-20C A shop's listings are all on its Products tab.**
+  *Claude built:* the littlebluecart.com listings moved out of the band
+  above the tabs and into the Products tab, under the two product grids, so
+  everything a shop carries is in one place.
+  **Grace does:** search a business that is in the directory → open its
+  profile → **Products**. Then **Reviews written**.
+  **Pass:** Products shows the photo strip, the Market products, "Sold on
+  their website", then the "Little Blue Cart directory" cards. Nothing
+  about the directory appears above the tabs any more, and nothing about it
+  appears under Reviews written.
+
 ### Sequencing
 
 Stage 0 → Stage 1 → CP-A1 → (CP-A2 and CP-A3 independent) → CP-A4 needs CP-A3 → CP-A5 independent of A2–A4 → Stage 3 needs Stage 0 and CP-A1 (CP-A4 for seller sales) → Stages 4–9 in order (CP-S2 to CP-S5 can run any time after Stage 4; CP-S1 and CP-S6 wait on Stage 8) → Stage 10 in order, CP-D0 first and nothing else in it until the doctor confirms the dev project points at staging → Stage 11 needs CP-D2 → Stage 12 is independent of 10 and 11 (its Android path is testable on the emulator; CP-N4 last) → Stage 13 needs CP-D2/D3 (E1 first, then E2, E3, E4). One commit and push per checkpoint.

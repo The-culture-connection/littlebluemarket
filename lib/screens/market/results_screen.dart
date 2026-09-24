@@ -281,11 +281,25 @@ class GridCell extends StatelessWidget {
     required this.product,
     this.badge,
     required this.onTap,
+    this.actionIcon,
+    this.actionLabel,
+    this.onAction,
   });
 
   final Product product;
   final String? badge;
   final VoidCallback onTap;
+
+  /// An optional second thing to do with the tile, drawn as a small button
+  /// in the bottom corner. The tap itself always opens the product, so
+  /// anything else needs a target of its own rather than a long press
+  /// nobody would find. Used by a seller's own Products tab, to post one.
+  final IconData? actionIcon;
+
+  /// What that button does, in words. It is the accessible name as well as
+  /// the tooltip, so it has to read as an action: "Post this to the feed".
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -325,6 +339,34 @@ class GridCell extends StatelessWidget {
                       fontSize: 9.5,
                       fontWeight: FontWeight.w800,
                       color: LbmConst.artInk,
+                    ),
+                  ),
+                ),
+              ),
+            if (actionIcon != null && onAction != null)
+              Positioned(
+                right: 4,
+                bottom: 4,
+                child: Semantics(
+                  button: true,
+                  label: actionLabel,
+                  child: Tooltip(
+                    message: actionLabel ?? '',
+                    child: Material(
+                      color: Colors.white.withValues(alpha: 0.92),
+                      shape: const CircleBorder(),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: onAction,
+                        child: Padding(
+                          padding: const EdgeInsets.all(7),
+                          child: Icon(
+                            actionIcon,
+                            size: 17,
+                            color: LbmConst.artInk,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

@@ -165,6 +165,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       own: true,
                       heading: me.isSeller ? 'Sold on your website' : null,
                     ),
+                  // The same tab a visitor sees, so what you check here is
+                  // what they get. Your pending listings are in it too.
+                  if (directoryLinked)
+                    DirectoryListings(ownerUid: me.id, own: true),
                 ],
               ),
               (true, 1) || (false, 0) => _PostedGrid(personId: me.id),

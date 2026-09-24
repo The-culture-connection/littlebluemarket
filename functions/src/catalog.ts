@@ -5,7 +5,7 @@ import { ensureOnAppChannel, productCollectionHandles, publishToAllChannels } fr
 import { geohash } from './geohash.ts';
 import { toCents } from './orders.ts';
 import { normalizeVendorName } from './sellers.ts';
-import { ensureShopShell, isShopUid } from './shops.ts';
+import { ensureShopShell } from './shops.ts';
 import { forgetVendorCache, resolveSellerUid } from './vendors.ts';
 
 /**
@@ -241,30 +241,27 @@ export function catalogDocFor(
 }
 
 /**
- * The feed entry a live product makes for itself.
+ * Mirroring a product writes no post. Deliberately, and this comment is the
+ * only thing left of the code that did.
  *
- * The feed is a stream of posts, and a marketplace whose sellers have not
- * posted yet is an empty screen. So a product that is active on the store
- * and attributed to a seller posts itself, once, as that seller. The id is
- * derived from the product, so a re-mirror updates rather than duplicates,
- * and the counters are left to the social functions.
+ * A product used to post itself to the feed the moment it was mirrored, on
+ * the theory that a marketplace whose sellers have not posted yet is an
+ * empty screen. Filling the screen was not worth what it cost. The feed
+ * read as though every shop were talking when none of them had said
+ * anything, and a shop that had never opened the app appeared to be posting
+ * (Grace, 2026-09-24: "the app is showing products of sellers that are not
+ * on the app as posted").
+ *
+ * A product is now something a shop *has*, shown on its Products tab, and a
+ * post is something a seller *says*. A seller who wants a product in the
+ * feed posts it, from that tab, through `ListingComposer`, which writes an
+ * ordinary post with no `auto` flag. An empty feed is the honest answer
+ * until somebody posts.
+ *
+ * Do not reinstate this without reading `shops.ts`: every vendor now has a
+ * profile, so "active product with a seller" is sixteen thousand products,
+ * not the few hundred it was when this was written.
  */
-export function autoPostFor(
-  productId: string,
-  sellerUid: string,
-  doc: Record<string, unknown>,
-): Record<string, unknown> {
-  return {
-    kind: 'listing',
-    authorId: sellerUid,
-    productId,
-    tags: Array.isArray(doc.tags) ? doc.tags : [],
-    auto: true,
-    createdAt: doc.createdAt instanceof Date ? doc.createdAt : FieldValue.serverTimestamp(),
-    likeCount: FieldValue.increment(0),
-    commentCount: FieldValue.increment(0),
-  };
-}
 
 /** Mirrors one product. Webhook and backfill both end here. */
 export async function mirrorProduct(payload: RestProduct): Promise<void> {
@@ -314,24 +311,9 @@ export async function mirrorProduct(payload: RestProduct): Promise<void> {
   // The spec table is a subdocument so a feed read does not carry it.
   await ref.collection('spec').doc('detail').set(spec, { merge: true });
 
-  // A live product belonging to a **real** seller is a feed entry. One that
-  // is no longer live keeps its post: comments on it are still real, and the
-  // card reads the product's own state.
-  //
-  // Not a shop shell's. Until 2026-09-24 an unclaimed vendor's products
-  // carried `sellerId: ''` and this never ran for them; giving every vendor
-  // a shell made `sellerUid` truthy for all of them, which would have put a
-  // listing post in the feed for every one of the sixteen thousand mirrored
-  // products the next time each was touched. That is the Liberal Lawn flood
-  // again with three more zeroes. A shop nobody has signed up for does not
-  // broadcast; its products are found by browsing and searching, which is
-  // what the shell was for. Claiming it is what starts the posting.
-  if (doc.active === true && sellerUid && !isShopUid(sellerUid)) {
-    await db
-      .collection('posts')
-      .doc(`listing_${id}`)
-      .set(autoPostFor(id, sellerUid, doc), { merge: true });
-  }
+  // No post. A mirrored product is stock on a shelf, not an announcement;
+  // see the note above `mirrorProduct`'s neighbour where `autoPostFor` used
+  // to be.
 
   // Every active product must be on the app's channel, or the storefront
   // refuses it at checkout however visible it is in the app.

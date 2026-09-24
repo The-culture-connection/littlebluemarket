@@ -66,18 +66,20 @@ test('a moved thread lands on the id the app will look under', () => {
   assert.equal(conversationIdFor('zed', 'shop_found-house'), 'shop_found-house_zed');
 });
 
-test('every shell uid sorts inside the range the cleanup sweeps, and nothing else does', () => {
-  // `removeShellListingPosts` finds its posts with a range query on authorId,
-  // 'shop_' to 'shop_\uffff', because Firestore has no starts-with. If a real
-  // uid could land in that range the sweep would delete a real seller's
-  // listings, so this is the check that keeps it safe.
-  const inRange = (uid: string) => uid >= 'shop_' && uid < 'shop_\uffff';
+test('the sweep is told apart by who wrote a post, not by what it is about', () => {
+  // `removeAutoListingPosts` matches `auto == true` and nothing else. The
+  // risk it has to avoid is deleting a post a seller wrote on purpose about
+  // one of their own products, which is the same kind, about the same
+  // product, by the same author, and differs only in carrying no `auto`.
+  const sweeps = (post: Record<string, unknown>) => post.auto === true;
 
-  for (const vendor of ['Polly Politics', 'Allways Drops', 'zzz', '1 Thing']) {
-    assert.equal(inRange(shopUidFor(vendor)), true, vendor);
-  }
-  // Real uids are 28 characters of base62: no underscore, so none can match.
-  for (const real of ['d1GMG6NPhUQplgS8p1nWT1ZedQ92', 'LlLpQCwWg4bxxnd1dqxVLESm7G32', 'shop', 'shoq']) {
-    assert.equal(inRange(real), false, real);
-  }
+  assert.equal(sweeps({ kind: 'listing', authorId: 'shop_polly-politics', auto: true }), true);
+  // A claimed seller's machine-written post goes too: Grace chose the clean
+  // break over leaving the ones already in the feed (2026-09-24).
+  assert.equal(sweeps({ kind: 'listing', authorId: 'd1GMG6NPhUQplgS8p1nWT1ZedQ92', auto: true }), true);
+
+  // What a person wrote stays, whatever it is about.
+  assert.equal(sweeps({ kind: 'listing', authorId: 'd1GMG6NPhUQplgS8p1nWT1ZedQ92' }), false);
+  assert.equal(sweeps({ kind: 'listing', authorId: 'kali', auto: false }), false);
+  assert.equal(sweeps({ kind: 'review', authorId: 'kali' }), false);
 });

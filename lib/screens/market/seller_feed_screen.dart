@@ -6,7 +6,6 @@ import '../../router/nav.dart';
 import '../../state/providers.dart';
 import '../../state/session.dart';
 import '../../widgets/async.dart';
-import '../../widgets/directory_listing_card.dart';
 import '../../widgets/directory_storefront.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/report_sheet.dart';
@@ -92,9 +91,6 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
             ),
             // A shop that is on the market but has nobody behind it yet.
             UnclaimedShopCard(person: person),
-            // A business listed on littlebluecart.com shows its listing the
-            // way a seller shows a storefront. Nothing when there is none.
-            _DirectorySection(personId: person.id),
             // A buyer has no shop, so they get one tab rather than an empty
             // one. The first tab is the shop's **products**, and used to be
             // labelled "Posted", which put a grid of products under a word
@@ -115,47 +111,18 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
                   ownerUid: person.id,
                   heading: person.isSeller ? 'Sold on their website' : null,
                 ),
+              // Everything this shop has is on this one tab, so the
+              // littlebluecart.com listings belong here too rather than in a
+              // band of their own above the tabs, where they read as part of
+              // the profile header (Grace, 2026-09-24: a products tab
+              // "which will also list directory listings").
+              DirectoryListings(ownerUid: person.id),
             ] else
               _ReviewsWritten(personId: person.id),
             const SizedBox(height: 26),
           ],
         ),
       ),
-    );
-  }
-}
-
-/// This person's published littlebluecart.com listings, from the public
-/// mirror. Decided by the query, not by a field on the profile.
-class _DirectorySection extends ConsumerWidget {
-  const _DirectorySection({required this.personId});
-
-  final String personId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final listings = ref.watch(directoryListingsOfProvider(personId));
-    return LbmAsync<List<DirectoryListing>>(
-      listings,
-      skeleton: const SizedBox.shrink(),
-      errorBuilder: (_, _) => const SizedBox.shrink(),
-      data: (list) => list.isEmpty
-          ? const SizedBox.shrink()
-          : Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionHead('Little Blue Cart directory'),
-                  const SizedBox(height: 8),
-                  for (final listing in list)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: DirectoryListingCard(listing: listing),
-                    ),
-                ],
-              ),
-            ),
     );
   }
 }

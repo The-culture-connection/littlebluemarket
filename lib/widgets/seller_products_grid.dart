@@ -6,7 +6,9 @@ import '../router/nav.dart';
 import '../screens/market/results_screen.dart';
 import '../state/providers.dart';
 import 'async.dart';
+import 'composers.dart';
 import 'primitives.dart';
+import 'sheets.dart';
 import 'skeleton.dart';
 
 /// A seller's products, three across.
@@ -84,6 +86,19 @@ class SellerProductsGrid extends ConsumerWidget {
             product: products[i],
             badge: products[i].price,
             onTap: () => context.goToProduct(products[i].id),
+            // Products stopped posting themselves on 2026-09-24. A seller
+            // who wants one in the feed says so, here, on the tile: this is
+            // the only place they are all laid out, and it is where Grace
+            // asked for it. The tap still opens the product, so posting
+            // needs its own target.
+            actionIcon: own ? Icons.campaign_outlined : null,
+            actionLabel: 'Post this to the feed',
+            onAction: own
+                ? () => showLbmSheet(
+                    context,
+                    (_) => ListingComposer(product: products[i]),
+                  )
+                : null,
           ),
         ),
       ),

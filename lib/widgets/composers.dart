@@ -552,7 +552,15 @@ class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
 /// Reads from the seller's own catalog rather than asking them to retype it,
 /// which is what "post the goods you already uploaded" means.
 class ListingComposer extends ConsumerStatefulWidget {
-  const ListingComposer({super.key});
+  const ListingComposer({super.key, this.product});
+
+  /// The product to post, when the seller has already said which.
+  ///
+  /// Tapping Post on a tile in your own Products tab arrives here with the
+  /// product in hand, so the picker would be a list of one thing they have
+  /// already chosen. Null from the Post button on your profile, where
+  /// picking is the first thing to do.
+  final Product? product;
 
   @override
   ConsumerState<ListingComposer> createState() => _ListingComposerState();
@@ -563,6 +571,12 @@ class _ListingComposerState extends ConsumerState<ListingComposer> {
   var _tags = <String>[];
   Product? _picked;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _picked = widget.product;
+  }
 
   @override
   void dispose() {
@@ -606,6 +620,24 @@ class _ListingComposerState extends ConsumerState<ListingComposer> {
     }
   }
 
+  /// The caption, the hashtags and the button. The same tail whether the
+  /// product was picked here or handed in, so the two doors cannot drift.
+  List<Widget> _tail(BuildContext context) => [
+    const SizedBox(height: 8),
+    LbmField(
+      label: 'Say something about it (optional)',
+      controller: _caption,
+      maxLines: 3,
+    ),
+    const SizedBox(height: 10),
+    TagEntry(tags: _tags, onChanged: (tags) => setState(() => _tags = tags)),
+    const SizedBox(height: 14),
+    PillButton(
+      _saving ? 'Posting…' : 'Post it',
+      onPressed: _saving ? null : _submit,
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
@@ -620,6 +652,34 @@ class _ListingComposerState extends ConsumerState<ListingComposer> {
                     if (!p.isGone) p,
                 ],
               );
+
+    final chosen = widget.product;
+    if (chosen != null) {
+      return LbmSheet(
+        children: [
+          Text(
+            'Post this to the feed',
+            style: LbmText.display.copyWith(fontSize: 21, color: c.ink),
+          ),
+          const SizedBox(height: 14),
+          ListRow(
+            background: c.accentMist,
+            borderRadius: const BorderRadius.all(Radius.circular(18)),
+            leading: SizedBox(
+              width: 40,
+              child: ProductArt(
+                chosen,
+                square: true,
+                borderRadius: const BorderRadius.all(Radius.circular(10)),
+              ),
+            ),
+            title: Text(chosen.title, maxLines: 2),
+            subtitle: Text(chosen.price),
+          ),
+          ..._tail(context),
+        ],
+      );
+    }
 
     return LbmSheet(
       children: [
@@ -670,24 +730,7 @@ class _ListingComposerState extends ConsumerState<ListingComposer> {
                     onTap: () => setState(() => _picked = product),
                   ),
                 ),
-              if (_picked != null) ...[
-                const SizedBox(height: 8),
-                LbmField(
-                  label: 'Say something about it (optional)',
-                  controller: _caption,
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 10),
-                TagEntry(
-                  tags: _tags,
-                  onChanged: (tags) => setState(() => _tags = tags),
-                ),
-                const SizedBox(height: 14),
-                PillButton(
-                  _saving ? 'Posting…' : 'Post it',
-                  onPressed: _saving ? null : _submit,
-                ),
-              ],
+              if (_picked != null) ..._tail(context),
             ],
           ),
         ),

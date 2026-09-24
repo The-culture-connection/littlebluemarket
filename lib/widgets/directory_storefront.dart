@@ -9,6 +9,7 @@ import '../state/providers.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
+import 'directory_listing_card.dart';
 import 'primitives.dart';
 
 /// The littlebluecart.com half of a Products tab (Stage 13).
@@ -156,6 +157,57 @@ class DirectoryProductsGrid extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// Someone's littlebluecart.com listings, as cards, inside their Products
+/// tab.
+///
+/// Grace, 2026-09-24, asked for a products tab "which will also list
+/// directory listings". These used to sit in a band above the tabs, which
+/// read as part of the profile header rather than as things the business
+/// has. Everything a shop carries is now on the one tab: Market products,
+/// website products, then these.
+///
+/// Which listings show is decided by the query, not by a field on the
+/// profile. The owner sees their pending ones as well, so a listing that is
+/// waiting on littlebluecart.com is not simply missing to the one person
+/// who would wonder where it went.
+class DirectoryListings extends ConsumerWidget {
+  const DirectoryListings({super.key, required this.ownerUid, this.own = false});
+
+  final String ownerUid;
+  final bool own;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final listings = own
+        ? ref.watch(myDirectoryListingsProvider)
+        : ref.watch(directoryListingsOfProvider(ownerUid));
+    return LbmAsync<List<DirectoryListing>>(
+      listings,
+      skeleton: const SizedBox.shrink(),
+      // A directory that cannot be reached is not worth a card on somebody
+      // else's profile: the rest of the tab is still true.
+      errorBuilder: (_, _) => const SizedBox.shrink(),
+      data: (list) => list.isEmpty
+          ? const SizedBox.shrink()
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionHead('Little Blue Cart directory'),
+                  const SizedBox(height: 8),
+                  for (final listing in list)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: DirectoryListingCard(listing: listing),
+                    ),
+                ],
+              ),
+            ),
     );
   }
 }

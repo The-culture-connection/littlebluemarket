@@ -1,8 +1,8 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
+import * as catalog from '../src/catalog.ts';
 import {
-  autoPostFor,
   catalogDocFor,
   hashtagFor,
   listingIdFromTags,
@@ -118,15 +118,13 @@ test('a store tag becomes one hashtag, however it was typed', () => {
   assert.equal(hashtagFor('  '), null);
 });
 
-test('a live, attributed product posts itself as its seller, with its tags', () => {
-  const { doc } = catalogDocFor(rest, { uid: 'kali' }, []);
-  const post = autoPostFor('15858163777696', 'kali', doc) as any;
-  assert.equal(post.kind, 'listing');
-  assert.equal(post.authorId, 'kali');
-  assert.equal(post.productId, '15858163777696');
-  assert.deepEqual(post.tags, ['#FeministGift', '#WomanOwned', '#New']);
-  assert.equal(post.auto, true);
-  assert.equal(post.createdAt instanceof Date, true);
+test('mirroring a product writes no post: there is nothing left to build one with', () => {
+  // A product used to post itself as its seller the moment it was mirrored.
+  // It does not any more (Grace, 2026-09-24): a product is something a shop
+  // has, a post is something a seller says, and the two had been conflated.
+  // The builder is gone rather than merely unused, so reinstating the
+  // behaviour cannot be a one-line accident.
+  assert.equal('autoPostFor' in catalog, false);
 });
 
 test('search words cover the description, not only the title', () => {

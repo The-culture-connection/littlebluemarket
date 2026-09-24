@@ -300,43 +300,38 @@ export async function backfillShopShells(
       await batch.commit();
     }
   }
-  const posts = await removeShellListingPosts(db);
+  const posts = await removeAutoListingPosts(db);
   logger.info('Shop shells backfilled', { vendors: vendors.size, shells, products, posts });
   return { vendors: vendors.size, shells, products, posts };
 }
 
 /**
- * Deletes the feed posts a shop that nobody has signed up for should never
- * have written.
+ * Takes out of the feed every post a product wrote for itself.
  *
- * `mirrorProduct` posts a listing for every active product that has a
- * seller. Giving every vendor a shell made that true of all of them, and
- * 108 had already been written before it was noticed. They are easy to miss
- * in the feed because `autoPostFor` stamps a post with the **product's**
- * creation date rather than the post's, so they landed scattered through
- * months of history instead of in a block at the top.
+ * Mirroring no longer writes one (see `catalog.ts`), so this is the clearing
+ * up after that decision: the posts already written are as wrong as the ones
+ * that would have followed. Grace, 2026-09-24, chose the clean break rather
+ * than leaving the existing ones in place.
  *
- * Only posts whose author is a shell, so a real seller's listings are never
- * touched.
+ * `auto: true` is the whole test, and it is exact. A machine-written post
+ * carries it; a post a seller wrote through `ListingComposer` gets a random
+ * id and no such field, so a seller's own words are never in scope however
+ * many products they have posted.
+ *
+ * Deleting fires `onPostWritten`, which walks each author's `postCount`
+ * down through `bumpCounterFloored`, so the counts follow without a second
+ * pass and none of them can go negative on the way.
  */
-async function removeShellListingPosts(db: Firestore): Promise<number> {
-  // 'shop_' to 'shop_\uffff' is every shell uid and nothing else: a real
-  // Firebase uid is 28 characters of base62 and cannot start with 'shop_'.
-  const snapshot = await db
-    .collection('posts')
-    .where('authorId', '>=', 'shop_')
-    .where('authorId', '<', 'shop_\uffff')
-    .select('authorId', 'kind')
-    .get();
+export async function removeAutoListingPosts(db: Firestore): Promise<number> {
+  const snapshot = await db.collection('posts').where('auto', '==', true).select().get();
 
-  const doomed = snapshot.docs.filter((doc) => doc.get('kind') === 'listing');
-  for (let i = 0; i < doomed.length; i += 400) {
+  for (let i = 0; i < snapshot.size; i += 400) {
     const batch = db.batch();
-    for (const doc of doomed.slice(i, i + 400)) batch.delete(doc.ref);
+    for (const doc of snapshot.docs.slice(i, i + 400)) batch.delete(doc.ref);
     await batch.commit();
   }
-  if (doomed.length) logger.warn('Removed listing posts by unclaimed shops', { posts: doomed.length });
-  return doomed.length;
+  if (snapshot.size) logger.warn('Removed posts that products wrote for themselves', { posts: snapshot.size });
+  return snapshot.size;
 }
 
 /** The same id the app derives, so a moved thread lands where the buyer's
