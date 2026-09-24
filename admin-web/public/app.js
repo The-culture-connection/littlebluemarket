@@ -33,7 +33,10 @@ const $ = (id) => document.getElementById(id);
 {
   const tag = document.getElementById('envTag');
   const live = config.projectId === 'little-blue-cart-prod';
-  tag.textContent = live ? 'LIVE · little-blue-cart-prod' : `STAGING · `;
+  // The project, always, on both. It had been lost out of the staging half
+  // at some point, leaving "STAGING · " with nothing after it, which is the
+  // one line that tells the two consoles apart.
+  tag.textContent = `${live ? 'LIVE' : 'STAGING'} · ${config.projectId}`;
   tag.className = live ? 'envtag live' : 'envtag';
   tag.hidden = false;
   document.title = live ? 'Little Blue Market · Admin' : 'STAGING · LBM Admin';
@@ -334,7 +337,7 @@ function renderPromoThumbs() {
 //
 // A fresh regex each call, too, so nothing shares `lastIndex`.
 function namedPattern() {
-  return /#\w+|(?<![\w.])@[A-Za-z0-9_.]+/g;
+  return /#\w+|(?<![\w.])@[A-Za-z0-9_](?:[A-Za-z0-9_.-]*[A-Za-z0-9_])?/g;
 }
 
 function escapeHtml(text) {
@@ -368,6 +371,26 @@ function namedTokens(...texts) {
   return out;
 }
 
+/**
+ * Where the button will go, in words.
+ *
+ * A hoisted function, like `namedPattern`, so nothing depends on where in
+ * this file it sits. Mirrors `cleanCtaTarget` in `functions/src/promos.ts`
+ * and `Promo.ctaProfileUid`/`ctaTag` on the phone: the first character is
+ * what decides, and if those three ever disagree the preview is the one
+ * that lies to whoever is writing the advert.
+ */
+function ctaWhere(target) {
+  if (!target) return '';
+  if (target.startsWith('@')) {
+    return `Opens ${target} in the app. Refused when it posts if nobody has that handle.`;
+  }
+  if (target.startsWith('#')) {
+    return `Runs the search ${target} in the app.`;
+  }
+  return 'Opens this web address outside the app.';
+}
+
 /** Lists what a piece of copy will make tappable, or hides itself. */
 function renderNamedPreview(el, ...texts) {
   const tokens = namedTokens(...texts);
@@ -398,6 +421,13 @@ function renderPromoPreview() {
   const cta = $('pPreviewCta');
   cta.textContent = ctaLabel;
   cta.hidden = !ctaLabel;
+  // Where the button goes, in words. The three destinations look alike in
+  // a text box, and getting one wrong is only visible once the advert is
+  // live on everybody's phone (Grace asked for in-app links, 2026-09-24).
+  const where = $('pCtaWhere');
+  const target = $('pCtaUrl').value.trim();
+  where.textContent = ctaWhere(target);
+  where.hidden = !target;
   const img = $('pPreviewImg');
   if (photo) { img.src = photo.url; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
   // The dots the phone draws when there is more than one photo: people

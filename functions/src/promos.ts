@@ -2,7 +2,7 @@ import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 import { HttpsError } from 'firebase-functions/v2/https';
 
-import { resolveNamed } from './mentions.ts';
+import { parseHashtags, parseMentionHandles, resolveNamed } from './mentions.ts';
 import { isAudience, type Audience } from './push.ts';
 
 /**
@@ -123,7 +123,7 @@ export function validatePromo(input: PromoInput): CleanPromo {
   if (ctaLabel.length > PROMO_CTA_LABEL_MAX) {
     throw new HttpsError('invalid-argument', `Keep the button's wording under ${PROMO_CTA_LABEL_MAX} characters.`);
   }
-  const ctaUrl = cleanUrl(input.ctaUrl, 'The button link');
+  const ctaUrl = cleanCtaTarget(input.ctaUrl);
   // A button with no link is a dead end, and a link with no button is
   // invisible. Both or neither.
   if (Boolean(ctaLabel) !== Boolean(ctaUrl)) {
@@ -156,7 +156,13 @@ export async function savePromo(
   // The @handles and #hashtags in the title and the caption. Resolved before
   // anything is written, so a mistyped handle is a message in the form
   // rather than a dead link on every phone in the audience.
-  const named = await resolveNamed(clean.title, clean.caption);
+  // The button's target joins them when it names something in the app, so
+  // an @handle on the button is refused here if it matches nobody and
+  // carries a uid afterwards. Only then: a web address can contain both an
+  // @ and a #, and `https://instagram.com/@someone` resolved as a mention
+  // would refuse a perfectly good link.
+  const ctaNames = /^[@#]/.test(clean.ctaUrl) ? clean.ctaUrl : '';
+  const named = await resolveNamed(clean.title, clean.caption, ctaNames);
   const db = getFirestore();
   const ref = id ? db.collection('promos').doc(id) : db.collection('promos').doc();
   const existing = id ? await ref.get() : null;
@@ -231,4 +237,57 @@ export async function recordPromoEvent(id: string, event: unknown): Promise<{ ok
     logger.info('Promo count skipped', { id, event, message: (error as Error).message });
   }
   return { ok: true };
+}
+
+/**
+ * Where the button goes: somewhere in the app, or out to the web.
+ *
+ * Grace, 2026-09-24: "can we also add cta links for things within the app?
+ * I would like to add it to be a search of a hashtag or a person's profile."
+ * Sending someone to a browser to find a shop that is three taps away was
+ * the only thing the button could do, and for an advert about a shop on
+ * this market that is the wrong door.
+ *
+ * The syntax is the one already in use in the copy, so there is nothing new
+ * to learn and the admin website's preview already highlights it:
+ *
+ *   `@polly-politics`  that profile
+ *   `#WomenOwned`      that search
+ *   anything else      an https address, as before
+ *
+ * Stored raw, as typed. The phone decides from the first character, and a
+ * handle is turned into a uid by `resolveNamed` at save time, alongside the
+ * ones in the title and the caption, so a renamed shop keeps working and a
+ * handle that matches nobody is refused here rather than becoming a dead
+ * button on every phone in the audience.
+ */
+export function cleanCtaTarget(raw: unknown): string {
+  const text = typeof raw === 'string' ? raw.trim() : '';
+  if (!text) return '';
+
+  if (text.startsWith('@')) {
+    // One handle, not a sentence. Anything else is a typo worth catching
+    // while somebody is looking at the form.
+    const handles = parseMentionHandles(text);
+    if (handles.length !== 1 || `@${handles[0]}` !== text) {
+      throw new HttpsError(
+        'invalid-argument',
+        `The button link has to be one handle on its own, like @polly-politics. Got ${text}`,
+      );
+    }
+    return text;
+  }
+
+  if (text.startsWith('#')) {
+    const tags = parseHashtags(text);
+    if (tags.length !== 1 || tags[0] !== text) {
+      throw new HttpsError(
+        'invalid-argument',
+        `The button link has to be one hashtag on its own, like #WomenOwned. Got ${text}`,
+      );
+    }
+    return text;
+  }
+
+  return cleanUrl(text, 'The button link');
 }

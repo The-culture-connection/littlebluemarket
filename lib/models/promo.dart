@@ -80,14 +80,41 @@ class Promo {
 
   bool get hasPhoto => imageUrls.isNotEmpty;
 
-  bool get hasCta => ctaLabel.trim().isNotEmpty && ctaUri != null;
+  bool get hasCta =>
+      ctaLabel.trim().isNotEmpty &&
+      (ctaProfileUid != null || ctaTag != null || ctaUri != null);
 
-  /// The button's destination, or null when it is not a usable web address.
-  /// A link typed without a scheme still works, the way the directory card
-  /// already treats a business's website.
+  /// The uid of the profile the button opens, or null.
+  ///
+  /// Grace, 2026-09-24: "can we also add cta links for things within the
+  /// app? I would like to add it to be a search of a hashtag or a person's
+  /// profile." The button used to have one destination, a web page, so an
+  /// advert about a shop on this market sent people out to a browser to
+  /// find something three taps away.
+  ///
+  /// The uid rather than the handle, from the same [mentions] map the copy
+  /// uses: an advert outlives the handle it was written with, and a shop
+  /// that renames itself in March should still be the shop the button opens
+  /// in September.
+  String? get ctaProfileUid {
+    final raw = ctaUrl.trim();
+    if (!raw.startsWith('@')) return null;
+    final uid = mentions[raw.substring(1).toLowerCase()];
+    return uid == null || uid.isEmpty ? null : uid;
+  }
+
+  /// The hashtag the button searches for, with its '#', or null.
+  String? get ctaTag {
+    final raw = ctaUrl.trim();
+    return raw.startsWith('#') && raw.length > 1 ? raw : null;
+  }
+
+  /// The button's destination on the web, or null when it goes somewhere in
+  /// the app or is not a usable address. A link typed without a scheme still
+  /// works, the way the directory card already treats a business's website.
   Uri? get ctaUri {
     final raw = ctaUrl.trim();
-    if (raw.isEmpty) return null;
+    if (raw.isEmpty || raw.startsWith('@') || raw.startsWith('#')) return null;
     final full = raw.startsWith(RegExp('https?://')) ? raw : 'https://$raw';
     final uri = Uri.tryParse(full);
     return uri == null || uri.host.isEmpty ? null : uri;

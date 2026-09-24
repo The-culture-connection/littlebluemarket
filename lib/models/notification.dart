@@ -133,13 +133,20 @@ class NotificationPrefs {
   };
 }
 
-/// The `@handle`s a text names, in order, without duplicates. Handles are
-/// letters, digits, dots and underscores; an email address is not a mention.
+/// The `@handle`s a text names, in order, without duplicates.
+///
+/// Handles are letters, digits, dots, underscores and hyphens; an email
+/// address is not a mention. The hyphen matters: every shop nobody has
+/// signed up for carries a derived handle with the words joined by one, so
+/// without it `@romantique-books` named `@romantique`, who does not exist.
+///
+/// A trailing dot or hyphen is punctuation rather than part of the name.
 List<String> parseMentionHandles(String text) {
   final seen = <String>{};
   final out = <String>[];
-  for (final match in RegExp(r'(?<![\w.])@([A-Za-z0-9_.]+)').allMatches(text)) {
-    final handle = match.group(1)!.replaceAll(RegExp(r'\.+$'), '');
+  for (final match
+      in RegExp(r'(?<![\w.])@([A-Za-z0-9_.-]+)').allMatches(text)) {
+    final handle = match.group(1)!.replaceAll(RegExp(r'[.-]+$'), '');
     if (handle.isEmpty) continue;
     final key = handle.toLowerCase();
     if (seen.add(key)) out.add(handle);

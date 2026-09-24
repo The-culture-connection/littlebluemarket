@@ -106,10 +106,14 @@ Future<void> showUnclaimedShopSheet(
             style: PillStyle.ghost,
             onPressed: () {
               Navigator.of(sheetContext).pop();
+              // The shop travels with them, so a refusal can name it.
+              // Nothing is granted on the strength of it; the Shipturtle
+              // roster match is still the only thing that connects a shop.
+              final shop = Uri.encodeQueryComponent(person.name);
               requireProfile(
                 context,
                 ref,
-                () => context.push('/you/claim-shop'),
+                () => context.push('/you/claim-shop?shop=$shop'),
               );
             },
           ),

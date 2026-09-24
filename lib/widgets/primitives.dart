@@ -928,7 +928,7 @@ class HashtagText extends StatefulWidget {
   /// was a dead tap. Found writing the advert tests, 2026-09-24; it was
   /// wrong for shoutouts and reviews too.
   static final _pattern = RegExp(
-    r'#\w+|(?<![\w.])@[A-Za-z0-9_](?:[A-Za-z0-9_.]*[A-Za-z0-9_])?',
+    r'#\w+|(?<![\w.])@[A-Za-z0-9_](?:[A-Za-z0-9_.-]*[A-Za-z0-9_])?',
   );
 
   /// Whether [text] carries anything this widget would pick out. Lets a

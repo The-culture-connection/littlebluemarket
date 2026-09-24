@@ -316,7 +316,11 @@ GoRouter buildRouter(Ref ref) {
                   ),
                   GoRoute(
                     path: 'claim-shop',
-                    builder: (context, state) => const ClaimShopScreen(),
+                    // The shop they tapped, so a refusal can name it rather
+                    // than talk about vendor accounts in the abstract.
+                    builder: (context, state) => ClaimShopScreen(
+                      shopName: state.uri.queryParameters['shop'] ?? '',
+                    ),
                   ),
                   GoRoute(
                     path: 'sell',

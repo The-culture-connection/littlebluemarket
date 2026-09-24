@@ -52,7 +52,9 @@
      phone draws, so what Grace approves here is what people get. */
   .phone { background: #4b5566; border-radius: 16px; padding: 20px 16px; margin-top: 4px; }
   .promo { background: #fff; border-radius: 20px; box-shadow: 0 10px 30px rgba(15,22,33,.35); overflow: hidden; max-width: 320px; margin: 0 auto; }
-  .promo img { width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block; background: var(--mist); }
+  /* The phone gives the picture its own shape and never crops it, so the
+     preview must not crop either, or the preview lies about the result. */
+  .promo img { width: 100%; max-height: 380px; object-fit: contain; display: block; background: var(--mist); }
   .promo-body { padding: 15px 17px 18px; }
   .promo-row { display: flex; align-items: center; justify-content: flex-end; max-width: 320px; margin: 0 auto 9px; }
   .promo-from { font-size: 10.5px; font-weight: 800; letter-spacing: .7px; color: var(--ink2); }
@@ -220,7 +222,7 @@
 
     <label for="pPhoto">Photo (optional, up to 4)</label>
     <input id="pPhoto" type="file" accept="image/*" multiple>
-    <p class="hint" style="margin:6px 0 0"><strong>Best size: 1080 &times; 1350 pixels</strong> (4:5, standing up, the same shape Instagram calls "portrait"). The popup gives the picture the whole top of the card, so a tall one fills it and a wide one leaves bands of white. Anything from 3:4 to 1:1 is accepted; further from that and it is refused, with the size it found. Smallest side at least 600 pixels, or it looks soft on a phone.</p>
+    <p class="hint" style="margin:6px 0 0"><strong>Best size: 1080 &times; 1350 pixels</strong> (4:5, standing up, the same shape Instagram calls "portrait"). The popup gives the picture its own shape and never crops it, so nothing you upload gets cut off. On a short phone a very tall picture shrinks to fit, with a little space at the sides. Anything from 3:4 to 1:1 is accepted; further from that and it is refused, with the size it found. Smallest side at least 600 pixels, or it looks soft on a phone.</p>
     <ul id="pThumbs" class="thumbs"></ul>
 
     <div class="row">
@@ -230,10 +232,11 @@
       </div>
       <div>
         <label for="pCtaUrl">Button link</label>
-        <input id="pCtaUrl" placeholder="littlebluecart.com/market-day">
+        <input id="pCtaUrl" placeholder="@polly-politics, #WomenOwned, or littlebluecart.com/market-day">
       </div>
     </div>
-    <p class="hint" style="margin:6px 0 0">Both or neither: a button with no link goes nowhere, and a link with no button is invisible. Links have to be https.</p>
+    <p class="hint" style="margin:6px 0 0">Both or neither: a button with no link goes nowhere, and a link with no button is invisible. The button can go three places. Type <strong>@handle</strong> on its own to open that shop or person in the app, <strong>#Hashtag</strong> on its own to run that search, or a web address, which has to be https. A handle that matches nobody is refused here rather than becoming a dead button on every phone.</p>
+    <p class="hint" id="pCtaWhere" hidden></p>
 
     <div class="row">
       <div>

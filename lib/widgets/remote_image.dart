@@ -55,12 +55,19 @@ class RemoteImage extends StatefulWidget {
     required this.url,
     this.aspectRatio = 16 / 9,
     this.fill = false,
+    this.fit = BoxFit.cover,
     this.cacheWidth = 600,
     this.borderRadius,
   });
 
   final String url;
   final double aspectRatio;
+
+  /// How the picture sits in its box. `cover` fills and crops, which is
+  /// right for a card in a list where every tile has to be the same shape.
+  /// `contain` is for a box already cut to the picture's own shape, where
+  /// cropping would be losing something for no reason.
+  final BoxFit fit;
 
   /// Fill whatever room the parent gives instead of imposing
   /// [aspectRatio]. The promo popup has to fit on screen without
@@ -93,7 +100,7 @@ class _RemoteImageState extends State<RemoteImage> {
 
     Widget image = Image.network(
       resolveImageUrl(widget.url),
-      fit: BoxFit.cover,
+      fit: widget.fit,
       cacheWidth: widget.cacheWidth,
       errorBuilder: (_, _, _) {
         // Called during layout, so the rebuild cannot happen inline.

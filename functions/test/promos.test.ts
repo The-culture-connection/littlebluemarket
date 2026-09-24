@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import {
+  cleanCtaTarget,
   PROMO_CAPTION_MAX,
   PROMO_CTA_LABEL_MAX,
   PROMO_PHOTOS_MAX,
@@ -110,4 +111,49 @@ test("an event is 'seen' or 'tap' and nothing else", () => {
   assert.equal(isPromoEvent('tap'), true);
   assert.equal(isPromoEvent('impression'), false);
   assert.equal(isPromoEvent(1), false);
+});
+
+/**
+ * Where the button goes (Grace, 2026-09-24: "can we also add cta links for
+ * things within the app? I would like to add it to be a search of a hashtag
+ * or a person's profile").
+ *
+ * The first character decides, and the same rule is written three times:
+ * here, in `Promo.ctaProfileUid`/`ctaTag` on the phone, and in `ctaWhere`
+ * in the admin website's preview. These are the cases that keep them honest.
+ */
+void test('a handle on its own is an in-app button, stored as typed', () => {
+  assert.equal(cleanCtaTarget('@polly-politics'), '@polly-politics');
+  assert.equal(cleanCtaTarget('  @polly-politics  '), '@polly-politics');
+});
+
+void test('a hashtag on its own is a search', () => {
+  assert.equal(cleanCtaTarget('#WomenOwned'), '#WomenOwned');
+  // The case typed is kept: the search is case-insensitive, the label is not.
+  assert.equal(cleanCtaTarget('#womenowned'), '#womenowned');
+});
+
+void test('a sentence is not a button target, however it starts', () => {
+  // A button goes one place. "@polly and @sam" has no single destination,
+  // and silently taking the first would be worse than refusing.
+  assert.throws(() => cleanCtaTarget('@polly and @sam'), /one handle on its own/);
+  assert.throws(() => cleanCtaTarget('@polly-politics shop'), /one handle on its own/);
+  assert.throws(() => cleanCtaTarget('#Women #Owned'), /one hashtag on its own/);
+  assert.throws(() => cleanCtaTarget('#Women Owned'), /one hashtag on its own/);
+});
+
+void test('anything else is still a web address, with the old rules', () => {
+  assert.equal(cleanCtaTarget('littlebluecart.com/market'), 'https://littlebluecart.com/market');
+  assert.throws(() => cleanCtaTarget('http://example.com'), /https/);
+  assert.equal(cleanCtaTarget(''), '');
+  assert.equal(cleanCtaTarget(undefined), '');
+});
+
+void test('a web address that happens to contain an @ is a web address', () => {
+  // The reason `savePromo` only sends an in-app target to `resolveNamed`:
+  // this one would otherwise be read as a mention of nobody and refused.
+  assert.equal(
+    cleanCtaTarget('https://instagram.com/@romantiquebooks'),
+    'https://instagram.com/@romantiquebooks',
+  );
 });

@@ -885,6 +885,49 @@ does, for anyone, and a seller who wants one in the feed says so.
   send the handle. Nothing under the name on an unclaimed shop means the
   phone is on an older build.
 
+- [ ] **CP-20F The picture is never cut off.** *Claude built:* the popup
+  gave the picture a fixed height and cropped it to fit, which on most
+  phones worked out roughly square, so every 4:5 portrait, the shape the
+  admin website asks for, lost its top and bottom. The box now takes the
+  picture's own shape. On a phone too short for a tall one it shrinks to
+  fit, with a little space at the sides, rather than losing anything.
+  **Grace does:** admin website → **Adverts and popups** → upload the same
+  1080 x 1350 png → look at the preview → post it → in the app, force-close,
+  reopen, wait for the popup.
+  **Pass:** the whole picture is there, top and bottom, in the preview and
+  on the phone. **Best size is still 1080 x 1350**, and anything from 3:4 to
+  1:1 is accepted.
+  **If it fails:** a picture still cut off means the phone is on an older
+  build.
+
+- [ ] **CP-20G The button can go somewhere in the app.** *Claude built:*
+  the button link takes `@handle` to open that shop or person, `#Hashtag` to
+  run that search, or a web address as before. The admin website says which
+  of the three it will be, under the field, as you type. A handle nobody has
+  is refused when you post rather than becoming a dead button.
+  **Grace does:** admin website → **Adverts and popups** → button wording
+  "See the shop", button link `@romantique-books` → read the line under the
+  field → post it. Then in the app, wait for the popup and tap the button.
+  Repeat with `#WomenOwned`, then with a plain web address.
+  **Pass:** the line says where it goes. The handle opens that shop, the
+  hashtag runs that search, the web address opens the browser. All three
+  count as a tap in the advert's numbers.
+  **If it fails:** "Nobody on Little Blue Market has the handle ..." means
+  the spelling does not match a profile. A hyphenated handle like
+  `@romantique-books` is fine now; it was not before this.
+
+- [ ] **CP-20H A shop that is not yours says so.** *Claude built:* tapping
+  "Is this your shop?" carries the shop's name to the claim screen, so the
+  refusal names it instead of talking about vendor accounts in the abstract.
+  It also catches the confusing case where the check connects a different
+  shop than the one you tapped.
+  **Grace does:** sign in as somebody who is not a vendor → open an
+  unclaimed shop → the badge → **Is this your shop?** → **Connect my shop**.
+  **Pass:** it says "<shop> is not your shop", names what actually connects
+  one, and offers nothing else to try. It does not leave the screen.
+  **If it fails:** wording about a vendor account with no shop named means
+  the shop did not travel with the tap; say which screen you started from.
+
 ### Sequencing
 
 Stage 0 → Stage 1 → CP-A1 → (CP-A2 and CP-A3 independent) → CP-A4 needs CP-A3 → CP-A5 independent of A2–A4 → Stage 3 needs Stage 0 and CP-A1 (CP-A4 for seller sales) → Stages 4–9 in order (CP-S2 to CP-S5 can run any time after Stage 4; CP-S1 and CP-S6 wait on Stage 8) → Stage 10 in order, CP-D0 first and nothing else in it until the doctor confirms the dev project points at staging → Stage 11 needs CP-D2 → Stage 12 is independent of 10 and 11 (its Android path is testable on the emulator; CP-N4 last) → Stage 13 needs CP-D2/D3 (E1 first, then E2, E3, E4). One commit and push per checkpoint.

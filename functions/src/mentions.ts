@@ -28,9 +28,11 @@ import { HttpsError } from 'firebase-functions/v2/https';
 export function parseMentionHandles(text: string): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const match of text.matchAll(/(?<![\w.])@([A-Za-z0-9_.]+)/g)) {
-    // A full stop that ends a sentence is punctuation, not part of a handle.
-    const handle = (match[1] ?? '').replace(/\.+$/, '');
+  for (const match of text.matchAll(/(?<![\w.])@([A-Za-z0-9_.-]+)/g)) {
+    // A full stop that ends a sentence, or a dash between phrases, is
+    // punctuation rather than part of a handle. The hyphen is IN the class
+    // on purpose: a shop shell handle is `@romantique-books`.
+    const handle = (match[1] ?? '').replace(/[.-]+$/, '');
     if (!handle) continue;
     const key = handle.toLowerCase();
     if (seen.has(key)) continue;

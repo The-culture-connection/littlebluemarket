@@ -155,7 +155,26 @@ class _PromoLayerState extends ConsumerState<PromoLayer> {
   String get _path =>
       widget.router.routeInformationProvider.value.uri.path;
 
+  /// The button. Three destinations now, and the tap is counted for all
+  /// three: an advert that sends people to a shop has earned the click as
+  /// much as one that sends them to a website (Grace, 2026-09-24).
+  ///
+  /// `_openProfile` and `_openTag` take the popup down themselves, so the
+  /// in-app cases do not dismiss twice.
   Future<void> _tapCta(Promo promo) async {
+    final uid = promo.ctaProfileUid;
+    if (uid != null) {
+      ref.read(promoRepositoryProvider).recordTap(promo.id);
+      _openProfile(uid);
+      return;
+    }
+    final tag = promo.ctaTag;
+    if (tag != null) {
+      ref.read(promoRepositoryProvider).recordTap(promo.id);
+      _openTag(tag);
+      return;
+    }
+
     final uri = promo.ctaUri;
     _dismiss();
     if (uri == null) return;
@@ -293,9 +312,10 @@ class _PromoCardState extends State<PromoCard> {
     final promo = widget.promo;
     final isNews = promo.kind == PromoKind.announcement;
     final photos = promo.imageUrls;
-    // The picture's share of the screen. Two fifths leaves room for a
+    // The most the picture may take. Two fifths leaves room for a
     // 60-character title, a 180-character caption and the button on the
-    // shortest phone we support, with nothing to scroll.
+    // shortest phone we support, with nothing to scroll. It is a ceiling,
+    // not a height: see [_PhotoFrame].
     final photoHeight = (MediaQuery.sizeOf(context).height * 0.4).clamp(
       180.0,
       420.0,
@@ -341,8 +361,9 @@ class _PromoCardState extends State<PromoCard> {
                             // the words have theirs, so the whole card fits
                             // at a glance with nothing to scroll.
                             if (photos.isNotEmpty)
-                              SizedBox(
-                                height: photoHeight,
+                              _PhotoFrame(
+                                url: photos.first,
+                                maxHeight: photoHeight,
                                 child: _photos(photos, c),
                               ),
                             Padding(
@@ -476,7 +497,15 @@ class _PromoCardState extends State<PromoCard> {
   /// admin console asks for, which is the shape this flatters.
   Widget _photos(List<String> photos, LbmColors c) {
     if (photos.length == 1) {
-      return RemoteImage(url: photos.first, fill: true, cacheWidth: 900);
+      return RemoteImage(
+        url: photos.first,
+        fill: true,
+        // The box is already the picture's shape, so contain and cover agree
+        // except on a phone too short for it, where contain shrinks to fit
+        // and cover would cut the top off.
+        fit: BoxFit.contain,
+        cacheWidth: 900,
+      );
     }
     return Stack(
       alignment: Alignment.bottomCenter,
@@ -487,7 +516,12 @@ class _PromoCardState extends State<PromoCard> {
             itemCount: photos.length,
             onPageChanged: (i) => setState(() => _page = i),
             itemBuilder: (context, i) =>
-                RemoteImage(url: photos[i], fill: true, cacheWidth: 900),
+                RemoteImage(
+                  url: photos[i],
+                  fill: true,
+                  fit: BoxFit.contain,
+                  cacheWidth: 900,
+                ),
           ),
         ),
         Padding(
@@ -518,4 +552,100 @@ class _PromoCardState extends State<PromoCard> {
       ],
     );
   }
+}
+
+/// The picture's box: the picture's own shape, up to a ceiling.
+///
+/// It used to be a fixed height with the image drawn `cover`, which on most
+/// phones worked out roughly square. The admin website asks for 4:5
+/// portraits, so every portrait had its top and bottom cut off. Grace,
+/// 2026-09-24, with a screenshot of an announcement whose headline was
+/// sliced in half: "The png I posted to announcements is cut off."
+///
+/// Two things fix it together. The box takes the picture's own shape, so a
+/// 4:5 is drawn as a 4:5 and nothing is lost; and the picture is drawn
+/// `contain` rather than `cover`, so on a phone too short for the whole
+/// thing it shrinks to fit with the card's own colour at the sides instead
+/// of losing the top of the image. A popup has to fit on screen without
+/// scrolling, and the alternative to bands is a cut, which is what was
+/// being complained about.
+///
+/// 4:5 until the picture has loaded, because that is the shape the admin
+/// website asks for, so the common case settles without a jump.
+class _PhotoFrame extends StatefulWidget {
+  const _PhotoFrame({
+    required this.url,
+    required this.maxHeight,
+    required this.child,
+  });
+
+  /// The first photograph, which is the one that sets the shape. The rest of
+  /// a carousel is drawn inside the same box.
+  final String url;
+  final double maxHeight;
+  final Widget child;
+
+  @override
+  State<_PhotoFrame> createState() => _PhotoFrameState();
+}
+
+class _PhotoFrameState extends State<_PhotoFrame> {
+  static const _default = 4 / 5;
+
+  double _aspect = _default;
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(_PhotoFrame old) {
+    super.didUpdateWidget(old);
+    if (old.url != widget.url) _resolve();
+  }
+
+  void _resolve() {
+    _detach();
+    if (widget.url.isEmpty) return;
+    final provider = NetworkImage(resolveImageUrl(widget.url));
+    final listener = ImageStreamListener((info, _) {
+      final height = info.image.height.toDouble();
+      if (height <= 0) return;
+      final aspect = info.image.width.toDouble() / height;
+      if (!mounted || aspect == _aspect) return;
+      setState(() => _aspect = aspect);
+      // An image that cannot be read leaves the 4:5 default, which is the
+      // same box it had before this widget existed.
+    }, onError: (_, _) {});
+    _listener = listener;
+    _stream = provider.resolve(createLocalImageConfiguration(context))
+      ..addListener(listener);
+  }
+
+  void _detach() {
+    final listener = _listener;
+    if (listener != null) _stream?.removeListener(listener);
+    _stream = null;
+    _listener = null;
+  }
+
+  @override
+  void dispose() {
+    _detach();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final width = box.maxWidth;
+      // Its own shape, unless that is taller than the card can afford.
+      final height = (width / _aspect).clamp(120.0, widget.maxHeight);
+      return SizedBox(width: width, height: height, child: widget.child);
+    },
+  );
 }
