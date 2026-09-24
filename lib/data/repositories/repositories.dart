@@ -46,6 +46,18 @@ abstract interface class CatalogRepository {
   /// moment ago appears without a pull-to-refresh.
   Stream<List<Product>> watchProductsBySeller(String sellerId);
 
+  /// How many products this shop has on sale.
+  ///
+  /// Counted, not measured off a page: a shop's grid arrives thirty at a
+  /// time and most shops on the market have far more than thirty. A header
+  /// figure taken from the first page would read "30" for a shop with two
+  /// hundred, which is the same disagreement between a number and the
+  /// tiles under it that Grace reported in September.
+  ///
+  /// Only what is on sale. A draft is not a product anybody can buy, and
+  /// the seller's own drafts are surfaced separately.
+  Future<int> productCountFor(String sellerId);
+
   /// Authoritative price and stock, straight from the provider. The only read
   /// that must not be served from the mirror, because overselling is worse
   /// than a spinner.

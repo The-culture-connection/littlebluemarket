@@ -850,6 +850,24 @@ does, for anyone, and a seller who wants one in the feed says so.
   about the directory appears above the tabs any more, and nothing about it
   appears under Reviews written.
 
+- [ ] **CP-20D Products in the header, and a grid that can reach it.**
+  *Claude built:* a shop's header now reads Products, Posts, Bought. The
+  figure is a counted total, not the length of what is on screen, because a
+  shop's grid arrives thirty at a time and most shops have far more. So the
+  grid gained **Load more**, or the number and the tiles would disagree.
+  A buyer has no Products figure at all.
+  **Grace does:** search a shop with a lot of products, such as one of the
+  bigger vendors → open its profile → read the three figures → **Products**
+  tab → scroll to the bottom → **Load more**, twice.
+  **Pass:** the Products figure is the shop's real total, well over thirty
+  for a big shop. Each Load more adds thirty more tiles and the button goes
+  away at the end. Your own profile shows the same three figures; a buyer's
+  shows two, with no gap where the third would be.
+  **If it fails:** a dash instead of a number means the count has not
+  arrived; it needs the new index, which goes out with the deploy. "Products
+  0" on a shop with tiles below it means the products are drafts rather
+  than on sale, which is the one thing the figure deliberately leaves out.
+
 ### Sequencing
 
 Stage 0 → Stage 1 → CP-A1 → (CP-A2 and CP-A3 independent) → CP-A4 needs CP-A3 → CP-A5 independent of A2–A4 → Stage 3 needs Stage 0 and CP-A1 (CP-A4 for seller sales) → Stages 4–9 in order (CP-S2 to CP-S5 can run any time after Stage 4; CP-S1 and CP-S6 wait on Stage 8) → Stage 10 in order, CP-D0 first and nothing else in it until the doctor confirms the dev project points at staging → Stage 11 needs CP-D2 → Stage 12 is independent of 10 and 11 (its Android path is testable on the emulator; CP-N4 last) → Stage 13 needs CP-D2/D3 (E1 first, then E2, E3, E4). One commit and push per checkpoint.

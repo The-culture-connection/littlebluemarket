@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/models.dart';
+import '../state/providers.dart';
 import '../router/nav.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
@@ -13,13 +15,18 @@ import 'primitives.dart';
 /// becomes Bought. There is no Follow button on either version — discovery
 /// runs on hashtags and search.
 ///
-/// There was a third stat, Total sales, between them. It came off on
-/// 2026-09-24 (Grace): gross sales are still counted and still right, but a
-/// public shop's takings are a strange thing to print next to their name,
-/// and "$0" beside a shop that opened last week reads as a verdict rather
-/// than a fact. `Person.grossSalesLabel` is untouched and ready if it earns
-/// its place back.
-class ProfileIdentity extends StatelessWidget {
+/// A shop gets a third, Products, on the left (Grace, 2026-09-24). It is the
+/// first thing anyone wants to know about a shop and the only one of the
+/// three that is really about the shop rather than the person behind it, so
+/// it leads. A buyer has no products and gets two.
+///
+/// There was a different third stat, Total sales, between the other two. It
+/// came off earlier the same day: gross sales are still counted and still
+/// right, but a public shop's takings are a strange thing to print next to
+/// their name, and "$0" beside a shop that opened last week reads as a
+/// verdict rather than a fact. `Person.grossSalesLabel` is untouched and
+/// ready if it earns its place back.
+class ProfileIdentity extends ConsumerWidget {
   const ProfileIdentity({
     super.key,
     required this.person,
@@ -33,8 +40,14 @@ class ProfileIdentity extends StatelessWidget {
   final List<Widget> actions;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
+    // Null until it arrives, and the cell holds its place with a dash
+    // rather than a nought: a shop with two hundred products flashing "0"
+    // for a moment is worse than one that admits it is still counting.
+    final products = person.isSeller
+        ? ref.watch(sellerProductCountProvider(person.id)).value
+        : null;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
@@ -48,9 +61,18 @@ class ProfileIdentity extends StatelessWidget {
               Expanded(
                 child: Row(
                   children: [
-                    // Equal shares. Revenue can be a wide figure, so each cell
+                    // Equal shares. A count can be a wide figure, so each cell
                     // takes a fixed share and shrinks its own value to fit
                     // rather than pushing its neighbours off the row.
+                    if (person.isSeller)
+                      Expanded(
+                        child: _Stat(
+                          // A plain hyphen: the display font carries it, and
+                          // it holds the cell's width while counting.
+                          value: products == null ? '-' : Fmt.count(products),
+                          label: 'Products',
+                        ),
+                      ),
                     Expanded(
                       child: _Stat(
                         value: Fmt.count(person.posts),

@@ -108,6 +108,21 @@
       ]
     },
     {
+      "_comment": "The Products figure in a shop's header: count(sellerId == x AND active). An aggregation, so a shop with two hundred products costs one read rather than two hundred.",
+      "collectionGroup": "catalog",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sellerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "active",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "_comment": "The radius search. Geohash prefixes are range-scanned, so the hash must be the last ordered field. See Risk: Firestore cannot combine this with array-contains, which is why text ranking happens over the candidate set.",
       "collectionGroup": "catalog",
       "queryScope": "COLLECTION",

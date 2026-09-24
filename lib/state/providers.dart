@@ -59,6 +59,18 @@ final sellerProductsProvider = StreamProvider.family<List<Product>, String>((
   return ref.watch(catalogRepositoryProvider).watchProductsBySeller(sellerId);
 });
 
+/// How many products a shop has on sale, for the figure in its header.
+///
+/// Its own provider rather than `sellerProductsProvider.length`, because
+/// that stream is one page of thirty and most shops have more. One
+/// aggregation read, cached for as long as the profile is open.
+final sellerProductCountProvider = FutureProvider.family<int, String>((
+  ref,
+  sellerId,
+) {
+  return ref.watch(catalogRepositoryProvider).productCountFor(sellerId);
+});
+
 // -------------------------------------------------------------- collections
 
 /// Every non-empty collection on the store, for the feed rail.

@@ -95,6 +95,11 @@ class FixtureCatalogRepository implements CatalogRepository {
   );
 
   @override
+  Future<int> productCountFor(String sellerId) => _backend._delayed(
+    Fx.products.values.where((p) => p.sellerId == sellerId && p.active).length,
+  );
+
+  @override
   Future<List<Variant>> liveVariants(String productId) async {
     if (Product.isExternalId(productId)) return const [];
     final spec = Fx.specs[productId];

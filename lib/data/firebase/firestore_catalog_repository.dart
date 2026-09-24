@@ -131,6 +131,19 @@ class FirestoreCatalogRepository implements CatalogRepository {
       }, operation: 'firestore catalog productsBySeller');
 
   @override
+  Future<int> productCountFor(String sellerId) => guardFirestore(() async {
+    // An aggregation, so a shop with two hundred products costs one read
+    // rather than two hundred. Firestore bills count() by index entries
+    // scanned, in thousands.
+    final result = await _catalog
+        .where('sellerId', isEqualTo: sellerId)
+        .where('active', isEqualTo: true)
+        .count()
+        .get();
+    return result.count ?? 0;
+  }, operation: 'firestore catalog productCountFor');
+
+  @override
   Stream<List<Product>> watchProductsBySeller(String sellerId) => _catalog
       .where('sellerId', isEqualTo: sellerId)
       .orderBy('createdAt', descending: true)
