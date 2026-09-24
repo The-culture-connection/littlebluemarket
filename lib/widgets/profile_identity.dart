@@ -9,9 +9,16 @@ import 'primitives.dart';
 
 /// The identity block shared by your own profile and any seller's feed.
 ///
-/// The stat row is Instagram's, remapped: Followers becomes Revenue, Following
-/// becomes Purchases. There is no Follow button on either version — discovery
+/// The stat row is Instagram's, remapped: Posts stays Posts, Following
+/// becomes Bought. There is no Follow button on either version — discovery
 /// runs on hashtags and search.
+///
+/// There was a third stat, Total sales, between them. It came off on
+/// 2026-09-24 (Grace): gross sales are still counted and still right, but a
+/// public shop's takings are a strange thing to print next to their name,
+/// and "$0" beside a shop that opened last week reads as a verdict rather
+/// than a fact. `Person.grossSalesLabel` is untouched and ready if it earns
+/// its place back.
 class ProfileIdentity extends StatelessWidget {
   const ProfileIdentity({
     super.key,
@@ -50,19 +57,18 @@ class ProfileIdentity extends StatelessWidget {
                         label: 'Posts',
                       ),
                     ),
-                    // Buyers have no sales, and a "$0" next to their name
-                    // reads as a judgement rather than a fact.
-                    if (person.isSeller)
-                      Expanded(
-                        child: _Stat(
-                          value: person.grossSalesLabel,
-                          label: 'Total sales',
-                        ),
-                      ),
+                    // No sales figure here for now (Grace, 2026-09-24).
+                    // Gross sales are still counted and still right; they
+                    // are simply not a thing to put on a public profile
+                    // while the numbers are this young, and "$0" beside a
+                    // new shop's name reads as a verdict rather than a
+                    // fact. `grossSalesLabel` is untouched and ready when
+                    // it earns its place back.
                     Expanded(
                       child: _Stat(
                         value: Fmt.count(person.purchases),
-                        label: 'Purchases',
+                        // The same word as the tab below it.
+                        label: 'Bought',
                       ),
                     ),
                   ],

@@ -95,11 +95,15 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
             // A business listed on littlebluecart.com shows its listing the
             // way a seller shows a storefront. Nothing when there is none.
             _DirectorySection(personId: person.id),
-            // A buyer has no storefront, so they get one tab rather than an
-            // empty "Posted" one.
+            // A buyer has no shop, so they get one tab rather than an empty
+            // one. The first tab is the shop's **products**, and used to be
+            // labelled "Posted", which put a grid of products under a word
+            // that means something else and directly under a "Posts" count
+            // that disagreed with it: a shop showing "1 Posts" above twelve
+            // product tiles looked plainly broken (Grace, 2026-09-24).
             if (person.isSeller || hasDirectory)
               SegmentedTabs(
-                labels: const ['Posted', 'Reviews written'],
+                labels: const ['Products', 'Reviews written'],
                 selected: _tab,
                 onChanged: (i) => setState(() => _tab = i),
               ),

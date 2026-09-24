@@ -5,6 +5,7 @@ import 'package:little_blue_market/data/fixtures/fixture_data.dart';
 import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/router/app_router.dart';
 import 'package:little_blue_market/state/providers.dart';
+import 'package:little_blue_market/widgets/profile_identity.dart';
 import 'package:little_blue_market/state/session.dart';
 
 /// Boots the real app straight into the market, so the tab bar and the gate
@@ -143,9 +144,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(Fx.me.handle), findsOneWidget);
-    // The stat row is Instagram's, remapped.
-    expect(find.text('Total sales'), findsOneWidget);
-    expect(find.text('Purchases'), findsOneWidget);
+    // The stat row is Instagram's, remapped: Posts and Bought, no Follow.
+    // Scoped to the identity block, because "Bought" is also a tab below it.
+    Finder stat(String label) => find.descendant(
+      of: find.byType(ProfileIdentity),
+      matching: find.text(label),
+    );
+    expect(stat('Posts'), findsOneWidget);
+    expect(stat('Bought'), findsOneWidget);
+    // Sales came off the public profile on 2026-09-24: still counted,
+    // no longer printed next to somebody's name.
+    expect(find.text('Total sales'), findsNothing);
     expect(find.text('Followers'), findsNothing);
     expect(find.text('Following'), findsNothing);
     expect(find.text('Follow'), findsNothing);

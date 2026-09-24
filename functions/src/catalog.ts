@@ -5,7 +5,7 @@ import { ensureOnAppChannel, productCollectionHandles, publishToAllChannels } fr
 import { geohash } from './geohash.ts';
 import { toCents } from './orders.ts';
 import { normalizeVendorName } from './sellers.ts';
-import { ensureShopShell } from './shops.ts';
+import { ensureShopShell, isShopUid } from './shops.ts';
 import { forgetVendorCache, resolveSellerUid } from './vendors.ts';
 
 /**
@@ -314,10 +314,19 @@ export async function mirrorProduct(payload: RestProduct): Promise<void> {
   // The spec table is a subdocument so a feed read does not carry it.
   await ref.collection('spec').doc('detail').set(spec, { merge: true });
 
-  // A live, attributed product is a feed entry. One that is no longer live
-  // keeps its post: comments on it are still real, and the card reads the
-  // product's own state.
-  if (doc.active === true && sellerUid) {
+  // A live product belonging to a **real** seller is a feed entry. One that
+  // is no longer live keeps its post: comments on it are still real, and the
+  // card reads the product's own state.
+  //
+  // Not a shop shell's. Until 2026-09-24 an unclaimed vendor's products
+  // carried `sellerId: ''` and this never ran for them; giving every vendor
+  // a shell made `sellerUid` truthy for all of them, which would have put a
+  // listing post in the feed for every one of the sixteen thousand mirrored
+  // products the next time each was touched. That is the Liberal Lawn flood
+  // again with three more zeroes. A shop nobody has signed up for does not
+  // broadcast; its products are found by browsing and searching, which is
+  // what the shell was for. Claiming it is what starts the posting.
+  if (doc.active === true && sellerUid && !isShopUid(sellerUid)) {
     await db
       .collection('posts')
       .doc(`listing_${id}`)

@@ -46,6 +46,16 @@ test('the shop shows its brand name when Shipturtle knows one', () => {
   assert.equal(shopNameFor('Found House Ceramics', '   '), 'Found House Ceramics');
 });
 
+test('a shell is told apart from a real account, which is what gates the feed', () => {
+  // `mirrorProduct` posts a listing to the feed for a product with a seller.
+  // Giving every vendor a shell made every product have one, which would
+  // have posted sixteen thousand listings the next time each was touched.
+  // This is the check that stops it, so it is the check worth pinning.
+  assert.equal(isShopUid(shopUidFor('Polly Politics')), true);
+  assert.equal(isShopUid('d1GMG6NPhUQplgS8p1nWT1ZedQ92'), false);
+  assert.equal(isShopUid(''), false);
+});
+
 test('a moved thread lands on the id the app will look under', () => {
   // Mirrors Conversation.idFor in lib/models/message.dart: the sorted pair
   // joined with one underscore. If these disagree, a claimed shop's history
