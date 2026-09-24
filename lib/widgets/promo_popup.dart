@@ -312,14 +312,14 @@ class _PromoCardState extends State<PromoCard> {
     final promo = widget.promo;
     final isNews = promo.kind == PromoKind.announcement;
     final photos = promo.imageUrls;
-    // The most the picture may take. Two fifths leaves room for a
-    // 60-character title, a 180-character caption and the button on the
-    // shortest phone we support, with nothing to scroll. It is a ceiling,
-    // not a height: see [_PhotoFrame].
-    final photoHeight = (MediaQuery.sizeOf(context).height * 0.4).clamp(
-      180.0,
-      420.0,
-    );
+    // How tall the card itself may be, close button and outer padding
+    // already taken off. The picture is not capped: it fills the card's
+    // width whatever shape it is, and this is what stops the card running
+    // off the bottom of a short phone when it does. See [_PhotoFrame].
+    final cardHeight =
+        MediaQuery.sizeOf(context).height -
+        MediaQuery.paddingOf(context).vertical -
+        74;
 
     return Center(
       // Room for the X above, and never edge to edge on a small phone.
@@ -353,17 +353,24 @@ class _PromoCardState extends State<PromoCard> {
                       type: MaterialType.transparency,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(22),
-                        child: Column(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxHeight: cardHeight),
+                          // The picture sets its own height, so on a short
+                          // phone with a tall picture and a long caption the
+                          // card can want more room than there is. It
+                          // scrolls rather than either cutting the picture
+                          // or running off the screen. In the ordinary case
+                          // nothing scrolls and this costs nothing.
+                          child: SingleChildScrollView(
+                            child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // The picture takes whatever height is left once
-                            // the words have theirs, so the whole card fits
-                            // at a glance with nothing to scroll.
+                            // Always the card's full width, whatever shape
+                            // the picture is.
                             if (photos.isNotEmpty)
                               _PhotoFrame(
                                 url: photos.first,
-                                maxHeight: photoHeight,
                                 child: _photos(photos, c),
                               ),
                             Padding(
@@ -418,6 +425,8 @@ class _PromoCardState extends State<PromoCard> {
                               ),
                             ),
                           ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -500,10 +509,10 @@ class _PromoCardState extends State<PromoCard> {
       return RemoteImage(
         url: photos.first,
         fill: true,
-        // The box is already the picture's shape, so contain and cover agree
-        // except on a phone too short for it, where contain shrinks to fit
-        // and cover would cut the top off.
-        fit: BoxFit.contain,
+        // The box is exactly the picture's shape now, so cover and contain
+        // draw the same pixels. cover, because it leaves no hairline of
+        // background when the division lands a fraction short.
+        fit: BoxFit.cover,
         cacheWidth: 900,
       );
     }
@@ -554,35 +563,41 @@ class _PromoCardState extends State<PromoCard> {
   }
 }
 
-/// The picture's box: the picture's own shape, up to a ceiling.
+/// The picture's box: the card's full width, and the picture's own shape.
 ///
-/// It used to be a fixed height with the image drawn `cover`, which on most
+/// Three goes at this in one day, which is worth recording so nobody
+/// reinstates one of the first two.
+///
+/// It began as a fixed height with the picture drawn `cover`, which on most
 /// phones worked out roughly square. The admin website asks for 4:5
-/// portraits, so every portrait had its top and bottom cut off. Grace,
-/// 2026-09-24, with a screenshot of an announcement whose headline was
-/// sliced in half: "The png I posted to announcements is cut off."
+/// portraits, so every picture uploaded as instructed had its top and
+/// bottom cut off. Grace, 2026-09-24, with a screenshot of an announcement
+/// whose headline was sliced in half: "The png I posted to announcements is
+/// cut off."
 ///
-/// Two things fix it together. The box takes the picture's own shape, so a
-/// 4:5 is drawn as a 4:5 and nothing is lost; and the picture is drawn
-/// `contain` rather than `cover`, so on a phone too short for the whole
-/// thing it shrinks to fit with the card's own colour at the sides instead
-/// of losing the top of the image. A popup has to fit on screen without
-/// scrolling, and the alternative to bands is a cut, which is what was
-/// being complained about.
+/// Then it took the picture's shape but kept a ceiling on the height, and
+/// drew `contain` so nothing was cut. That traded the crop for bands of
+/// white down both sides, because a 4:5 at the card's width is taller than
+/// the ceiling on every phone. Grace again, the same day: "what is the
+/// aspect ratio I can do so it fills the entire popup space? so there is
+/// not white space."
+///
+/// The answer was that there is no such ratio while the ceiling exists: the
+/// shape that exactly fills depends on the phone, so no single picture can
+/// suit them all. So the ceiling is gone. The picture takes the card's full
+/// width and whatever height its own shape asks for, which means **any**
+/// shape fills the width and nothing is ever cut or banded. What gives
+/// instead is the card, which scrolls on a phone too short for a tall
+/// picture and a long caption together.
 ///
 /// 4:5 until the picture has loaded, because that is the shape the admin
 /// website asks for, so the common case settles without a jump.
 class _PhotoFrame extends StatefulWidget {
-  const _PhotoFrame({
-    required this.url,
-    required this.maxHeight,
-    required this.child,
-  });
+  const _PhotoFrame({required this.url, required this.child});
 
   /// The first photograph, which is the one that sets the shape. The rest of
   /// a carousel is drawn inside the same box.
   final String url;
-  final double maxHeight;
   final Widget child;
 
   @override
@@ -643,8 +658,10 @@ class _PhotoFrameState extends State<_PhotoFrame> {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
       final width = box.maxWidth;
-      // Its own shape, unless that is taller than the card can afford.
-      final height = (width / _aspect).clamp(120.0, widget.maxHeight);
+      // Its own shape. The clamp is not a design decision, only a guard
+      // against a corrupt or absurd image dragging the card to nothing or
+      // to a mile.
+      final height = (width / _aspect).clamp(120.0, 1200.0);
       return SizedBox(width: width, height: height, child: widget.child);
     },
   );

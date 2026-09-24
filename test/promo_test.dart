@@ -66,6 +66,8 @@ Future<void> _pumpCard(
 }
 
 void main() {
+  _photoFillsTheWidth();
+
   group('the model decides what is live and who sees it', () {
     final now = DateTime(2026, 9, 14, 12);
 
@@ -184,11 +186,29 @@ void main() {
       );
     });
 
-    testWidgets('it all fits: nothing to scroll', (tester) async {
+    testWidgets('it all fits: nothing actually scrolls', (tester) async {
       // Grace: "everything should fit in the modal at first glance no
-      // scroll view". The picture takes the room the words leave.
+      // scroll view". That still holds, and this is the test of it, but it
+      // is now a test of the result rather than of the machinery.
+      //
+      // The card gained a scroll view on 2026-09-24, when the picture
+      // stopped being capped so that it could fill the card's width at any
+      // shape with no white space. A picture that tall plus a long caption
+      // can, on a short enough phone, want more room than there is, and
+      // scrolling is a better answer there than cutting the picture or
+      // running off the bottom of the screen. What must not happen is the
+      // ordinary advert needing a scroll, so that is what is asserted.
       await _pumpCard(tester, _promo(imageUrls: const ['https://x.test/a.png']));
-      expect(find.byType(SingleChildScrollView), findsNothing);
+      final scroller = tester.widget<Scrollable>(find.byType(Scrollable));
+      expect(
+        scroller.controller?.position.maxScrollExtent ??
+            tester
+                .state<ScrollableState>(find.byType(Scrollable))
+                .position
+                .maxScrollExtent,
+        0,
+        reason: 'at a glance, with nothing hidden below the fold',
+      );
     });
 
     testWidgets('a flick downwards pushes it away', (tester) async {
@@ -345,6 +365,58 @@ void main() {
         find.text('Forty makers, including @foundhouse.'),
         findsOneWidget,
       );
+    });
+  });
+}
+
+/// The picture fills the card's width, whatever shape it is.
+///
+/// Three goes at this on 2026-09-24. A fixed height with `cover` cut the
+/// top and bottom off every 4:5, the shape the admin website asks for
+/// ("The png I posted to announcements is cut off"). A capped height with
+/// `contain` traded the crop for white bands down both sides ("what is the
+/// aspect ration I can do so it fills the entire popup space? so there is
+/// not white space"). There was no such ratio, because the shape that
+/// exactly filled depended on the phone.
+///
+/// So there is no cap: the picture takes the full width and its own height,
+/// and the card scrolls if that is more than the phone has. These are the
+/// tests that stop a ceiling coming back.
+void _photoFillsTheWidth() {
+  group('the picture fills the width', () {
+    // A tall 4:5, the shape the admin website recommends, on a phone where
+    // the old ceiling would have banded it.
+    testWidgets('the photo box is exactly as wide as the card', (
+      tester,
+    ) async {
+      await _pumpCard(
+        tester,
+        _promo(imageUrls: const ['https://example.com/a.png']),
+      );
+
+      // The card is the decorated box the picture sits inside. Its width and
+      // the picture's have to agree, or there is white space at the sides,
+      // which is the thing being complained about.
+      final card = tester.getSize(
+        find.byType(Dismissible).first,
+      );
+      final photo = tester.getSize(
+        find
+            .descendant(
+              of: find.byType(Dismissible),
+              matching: find.byType(SizedBox),
+            )
+            .first,
+      );
+      expect(photo.width, card.width, reason: 'no bands at the sides');
+      expect(photo.height, greaterThan(0));
+    });
+
+    testWidgets('a card with no picture draws no empty box', (tester) async {
+      await _pumpCard(tester, _promo());
+      // Nothing reserved where a picture would be: an advert without one is
+      // a title, a caption and a button, and no gap above them.
+      expect(find.byType(Image), findsNothing);
     });
   });
 }

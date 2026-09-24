@@ -898,7 +898,14 @@ does, for anyone, and a seller who wants one in the feed says so.
   on the phone. **Best size is still 1080 x 1350**, and anything from 3:4 to
   1:1 is accepted.
   **If it fails:** a picture still cut off means the phone is on an older
-  build.
+  build. White space down the sides means the same: the height ceiling that
+  caused it was taken out on the second go.
+
+  **Any accepted shape fills the popup, edge to edge, with nothing cropped.**
+  The popup takes the picture's shape rather than forcing one, so there is
+  no ratio to hit. 1080 x 1350 stays the recommendation because it is the
+  most of the screen a picture can take while the words still fit at a
+  glance.
 
 - [ ] **CP-20G The button can go somewhere in the app.** *Claude built:*
   the button link takes `@handle` to open that shop or person, `#Hashtag` to

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Little Blue Market — Pinterest-style feed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#9CBFE3;--paperDeep:#84AEDC;--surface:#fff;--ink:#152E52;--ink2:#31507B;--ink3:#5F7BA3;
+  --sky:#70A0D0;--skyDeep:#2A5992;--skyMist:#DCE9F7;--skyWash:#F0F5FC;
+  --accent:#D56ED1;--accentDeep:#A93BA5;--accentInk:#fff;--accentMist:#F7E2F6;--accentText:#7E2A7A;
+  --sage:#4E8A69;--sageMist:#DDEDE4;--clay:#C4796B;
+  --scrim:rgba(34,40,49,.72);--shadow:0 3px 14px -5px rgba(13,35,66,.38);--lift:0 14px 34px -12px rgba(13,35,66,.5);
+  --display:'Fraunces',Georgia,serif;--body:'Nunito',system-ui,sans-serif;
+}
+.dark{
+  --paper:#101E38;--paperDeep:#0B1629;--surface:#1A2C4E;--ink:#E8F0FB;--ink2:#A6BEDB;--ink3:#7A93B5;
+  --skyDeep:#9CC3EC;--skyMist:#24406B;--skyWash:#16294A;
+  --accentDeep:#D56ED1;--accentInk:#2A0A28;--accentMist:#3B1F3A;--accentText:#EFA8EC;
+  --sage:#8CC3A2;--sageMist:#24422F;--scrim:rgba(5,8,14,.82);
+  --shadow:0 3px 14px -5px rgba(0,0,0,.5);--lift:0 14px 34px -12px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#EEF3F9;color:#152E52;font-family:var(--body);font-size:14px}
+.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 18px;border-bottom:1px solid #DCE4EE;background:#fff;position:sticky;top:0;z-index:5}
+.top h1{font-family:var(--display);font-size:20px;margin:0 14px 0 0;font-weight:700}
+.seg{display:inline-flex;background:#E7EEF7;border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;padding:6px 13px;border-radius:999px;font:800 12.5px var(--body);color:#31507B;cursor:pointer}
+.seg button.on{background:#152E52;color:#fff}
+.top .hint{color:#5B7290;font-size:12.5px;margin-left:auto}
+.wrap{display:flex;gap:26px;padding:22px 18px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.phone{width:390px;height:844px;border-radius:44px;background:#0d1626;padding:10px;box-shadow:0 30px 60px -20px rgba(13,35,66,.5);flex:none;position:relative}
+.screen{width:100%;height:100%;border-radius:36px;overflow:hidden;background:linear-gradient(180deg,var(--paperDeep) 0,var(--paper) 220px);color:var(--ink);position:relative}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:30px;background:#0d1626;border-radius:0 0 18px 18px;z-index:9}
+.view{position:absolute;inset:0;display:flex;flex-direction:column}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 10px 110px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+/* header */
+.hdr{padding:50px 12px 8px;display:flex;align-items:center;gap:8px}
+.hdr h2{font-family:var(--display);font-size:24px;margin:0;font-weight:700;flex:1;letter-spacing:-.01em}
+.search{flex:1;height:42px;border-radius:999px;background:rgba(255,255,255,.92);display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--ink3);font-weight:700;box-shadow:var(--shadow);cursor:pointer}
+.dark .search{background:var(--surface)}
+.circ{width:42px;height:42px;border-radius:999px;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);position:relative;flex:none;cursor:pointer;color:var(--ink)}
+.dark .circ{background:var(--surface)}
+.circ.pink{background:var(--accentDeep);color:var(--accentInk)}
+.circ .n{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:99px;background:var(--accentDeep);color:var(--accentInk);font-size:10.5px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 5px;animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+.tabsrow{display:flex;gap:4px;padding:2px 12px 10px;align-items:center}
+.tabsrow div{padding:7px 12px;border-radius:999px;font-weight:900;font-size:14px;color:var(--ink2);cursor:pointer;position:relative}
+.tabsrow div.on{color:var(--ink)}
+.tabsrow div.on:after{content:'';position:absolute;left:12px;right:12px;bottom:1px;height:3px;border-radius:9px;background:var(--ink)}
+.tabsrow .spacer{flex:1}
+.tabsrow .chipsm{padding:6px 11px;background:rgba(255,255,255,.55);font-size:12px;border-radius:999px}
+.dark .tabsrow .chipsm{background:var(--skyMist)}
+/* masonry */
+.masonry{columns:2;column-gap:10px}
+.pin{break-inside:avoid;margin-bottom:12px;cursor:pointer;position:relative;transition:transform .15s}
+.pin:active{transform:scale(.97)}
+.pin.wide{column-span:all}
+.ph{position:relative;border-radius:18px;overflow:hidden;background:var(--skyMist)}
+.ph img{display:block;width:100%;height:auto;transition:transform .5s}
+.pin:hover .ph img{transform:scale(1.03)}
+.ph .fb{display:none;aspect-ratio:4/5;align-items:flex-start;padding:12px 44px 12px 12px;font:800 13px var(--body);color:#173257;background:linear-gradient(135deg,#F9DDE9,#DCE9F7)}
+.ph.nf img{display:none}.ph.nf .fb{display:flex}
+.cartbtn{position:absolute;right:8px;bottom:8px;height:34px;padding:0 12px 0 9px;border-radius:999px;background:var(--accentDeep);color:var(--accentInk);display:flex;align-items:center;gap:5px;font:900 12px var(--body);box-shadow:0 4px 12px -4px rgba(0,0,0,.4);transition:transform .2s}
+.cartbtn svg{width:16px;height:16px}
+.cartbtn.on{background:var(--ink);color:#fff;animation:bounce .45s cubic-bezier(.2,1.6,.4,1)}
+.dark .cartbtn.on{background:#fff;color:var(--ink)}
+.pin .cap{padding:7px 4px 0}
+.pin .t{font-weight:800;font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pin .m{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:11.5px;color:var(--ink2);font-weight:700}
+.pin .m .price{font-family:var(--display);font-size:14px;color:var(--ink);font-weight:700;margin-left:auto}
+.av{border-radius:99px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;flex:none;font-size:10px;width:22px;height:22px}
+.av.md{width:36px;height:36px;font-size:13px}.av.lg{width:64px;height:64px;font-size:20px}
+.added{position:absolute;left:8px;top:8px;background:rgba(21,46,82,.72);backdrop-filter:blur(6px);color:#fff;font:800 11px var(--body);padding:4px 8px;border-radius:99px;display:flex;align-items:center;gap:4px}
+.added svg{width:12px;height:12px}
+/* special pins */
+.hero{border-radius:20px;overflow:hidden;position:relative;min-height:200px;background:linear-gradient(160deg,#A93BA5,#5E2A8F 70%,#2A5992);color:#fff;padding:18px;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:var(--lift)}
+.hero .k{font-size:10.5px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;opacity:.85}
+.hero h3{font-family:var(--display);font-size:30px;line-height:1.02;margin:6px 0 8px;font-weight:800;letter-spacing:-.01em}
+.hero p{margin:0;font-size:13.5px;opacity:.92;max-width:250px;line-height:1.4}
+.hero .cta{margin-top:12px;align-self:flex-start;background:#fff;color:#7E2A7A;padding:9px 16px;border-radius:99px;font-weight:900;font-size:13px}
+.hero .glyph{position:absolute;right:-30px;top:-20px;font-size:170px;opacity:.14;transform:rotate(-14deg)}
+.hero img{position:absolute;right:0;top:0;height:100%;width:52%;object-fit:cover;opacity:.9;mask-image:linear-gradient(90deg,transparent,#000 40%);-webkit-mask-image:linear-gradient(90deg,transparent,#000 40%)}
+.hero.photo{background:#2A5992}
+.hero.photo .grad{position:absolute;inset:0;background:linear-gradient(90deg,#1c3f70 30%,transparent 80%),linear-gradient(0deg,rgba(21,46,82,.7),transparent 60%)}
+.hero>*{position:relative}
+.note{border-radius:18px;padding:14px;background:var(--surface);box-shadow:var(--shadow);min-height:150px;display:flex;flex-direction:column;justify-content:space-between}
+.note .ic{font-size:26px}
+.note b{font-family:var(--display);font-size:16px;line-height:1.15;display:block;margin:8px 0 4px;font-weight:700}
+.note span{font-size:12px;color:var(--ink2);font-weight:700;line-height:1.35}
+.note .go{margin-top:10px;align-self:flex-start;background:var(--accentMist);color:var(--accentText);padding:6px 11px;border-radius:99px;font-weight:900;font-size:12px}
+.note.pink{background:var(--accentDeep);color:var(--accentInk)}.note.pink span{color:var(--accentInk);opacity:.85}.note.pink .go{background:#fff;color:#7E2A7A}
+.dark .note.pink .go{background:var(--accentInk);color:var(--accentDeep)}
+.note.sage{background:var(--sageMist)}.note.sage .go{background:var(--sage);color:#fff}
+.collage{display:grid;grid-template-columns:1fr 1fr;gap:3px;border-radius:18px;overflow:hidden;background:var(--skyMist)}
+.collage img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.collage .more{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--ink);color:#fff;font:900 16px var(--display)}
+.review .ph{aspect-ratio:1}
+.review .ph img{height:100%;object-fit:cover}
+.starsbar{position:absolute;left:8px;bottom:8px;background:#fff;color:var(--accent);padding:4px 8px;border-radius:99px;font-size:12px;letter-spacing:1px;font-weight:900}
+.dark .starsbar{background:var(--surface)}
+.quote{background:var(--surface);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
+.quote .q{font-family:var(--display);font-size:16px;line-height:1.25;font-weight:600}
+.quote .by{margin-top:10px;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:var(--ink2)}
+.shout{border-radius:18px;padding:16px 14px;background:linear-gradient(150deg,var(--sky),#4A7FC0);color:#fff;min-height:190px;display:flex;flex-direction:column;justify-content:flex-end}
+.shout .k{font-size:10.5px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
+.shout .q{font-family:var(--display);font-size:17px;line-height:1.2;margin:6px 0 10px;font-weight:700}
+.shout .by{font-size:12px;font-weight:800;display:flex;align-items:center;gap:6px}
+.makers{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding:2px}
+.maker{flex:none;width:96px;text-align:center;cursor:pointer}
+.maker .ring{width:64px;height:64px;border-radius:99px;padding:3px;background:linear-gradient(135deg,var(--accent),var(--sky));margin:0 auto 6px}
+.maker .ring .av{width:100%;height:100%;border:3px solid var(--paper);font-size:16px}
+.maker b{display:block;font-size:11.5px;line-height:1.2}
+.maker span{font-size:10.5px;color:var(--ink2);font-weight:800}
+.sect{font-family:var(--display);font-size:18px;font-weight:700;margin:6px 2px 10px;display:flex;align-items:center}
+.sect .see{margin-left:auto;font:900 12px var(--body);color:var(--skyDeep)}
+/* tab bar */
+.tabs{position:absolute;left:12px;right:12px;bottom:12px;height:66px;background:var(--surface);border-radius:999px;box-shadow:var(--lift);display:flex;align-items:center;padding:6px;z-index:4}
+.tab{flex:1;height:54px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:900;color:var(--ink3);cursor:pointer;position:relative;transition:color .2s}
+.tab.on{color:var(--ink)}
+.tab svg{width:22px;height:22px}
+.tab .dot{position:absolute;top:10px;right:24px;width:7px;height:7px;border-radius:99px;background:var(--accent)}
+.tabs .fabc{width:54px;height:54px;border-radius:99px;background:var(--accentDeep);color:var(--accentInk);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:300;flex:none;margin:0 4px;cursor:pointer;box-shadow:0 6px 16px -6px rgba(169,59,165,.7)}
+/* pin detail */
+.detail .big{border-radius:24px;overflow:hidden;background:var(--skyMist);position:relative}
+.detail .big img{width:100%;display:block}
+.detail .big .fb{display:none;aspect-ratio:4/5;background:linear-gradient(135deg,#F9DDE9,#DCE9F7)}
+.detail .big.nf img{display:none}.detail .big.nf .fb{display:block}
+.floatbar{position:absolute;top:50px;left:12px;right:12px;display:flex;justify-content:space-between;z-index:3}
+.floatbar .circ{background:rgba(255,255,255,.9)}
+.sheetcard{background:var(--surface);border-radius:26px;margin-top:-26px;position:relative;padding:18px 16px 16px;box-shadow:var(--lift)}
+.sheetcard h3{font-family:var(--display);font-size:23px;line-height:1.1;margin:0 0 6px;font-weight:700}
+.rowm{display:flex;align-items:center;gap:8px}
+.bigbtn{border:0;flex:1;height:50px;border-radius:999px;font:900 15px var(--body);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.bigbtn.cart{background:var(--accentDeep);color:var(--accentInk);box-shadow:0 8px 20px -8px rgba(169,59,165,.8)}
+.bigbtn.cart.on{background:var(--ink);color:#fff;animation:bounce .45s cubic-bezier(.2,1.6,.4,1)}
+.bigbtn.ghost{background:var(--skyMist);color:var(--skyDeep);flex:.7}
+.proof{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:var(--ink2);margin:12px 0 4px}
+.proof .avs{display:flex}.proof .avs .av{margin-right:-7px;border:2px solid var(--surface)}
+.price{font-family:var(--display);font-weight:700}
+.comments{margin-top:14px;border-top:1px solid var(--skyWash);padding-top:10px}
+.cm{display:flex;gap:8px;padding:6px 0;font-size:13px}
+.cm b{font-weight:900}
+.quick{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:6px 0}
+.chip{flex:none;padding:7px 12px;border-radius:999px;background:var(--skyWash);color:var(--ink2);font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap}
+.chip.acc{background:var(--accentMist);color:var(--accentText)}
+/* seller */
+.sellhead{text-align:center;padding:6px 0 14px}
+.sellhead .av{margin:0 auto 8px}
+.sellhead h3{font-family:var(--display);font-size:24px;margin:0;font-weight:700}
+.sellhead .m{font-size:12.5px;color:var(--ink2);font-weight:800;margin-top:3px}
+.sellhead .btns{display:flex;gap:8px;justify-content:center;margin-top:12px}
+.btn{border:0;background:var(--accentDeep);color:var(--accentInk);font:900 13px var(--body);padding:9px 16px;border-radius:999px;cursor:pointer}
+.btn.ghost{background:rgba(255,255,255,.7);color:var(--ink)}
+.dark .btn.ghost{background:var(--skyMist);color:var(--ink)}
+.stats3{display:flex;gap:6px;margin:0 0 14px}
+.stats3 div{flex:1;text-align:center;background:rgba(255,255,255,.55);border-radius:14px;padding:8px}
+.dark .stats3 div{background:var(--skyMist)}
+.stats3 b{font-family:var(--display);font-size:18px;display:block}
+.stats3 span{font-size:10.5px;font-weight:800;color:var(--ink2)}
+/* overlays */
+.toast{position:absolute;left:16px;right:16px;top:58px;background:var(--surface);border-radius:18px;padding:10px 14px;box-shadow:var(--lift);display:flex;gap:10px;align-items:center;z-index:30;animation:down .4s cubic-bezier(.2,1.3,.4,1)}
+.toast img{width:40px;height:40px;border-radius:12px;object-fit:cover}
+.toast .ic{width:40px;height:40px;border-radius:12px;background:var(--accentMist);display:flex;align-items:center;justify-content:center;font-size:20px}
+.toast b{display:block;font-size:13.5px}.toast span{font-size:12px;color:var(--ink2);font-weight:700}
+.toast .go{margin-left:auto;font:900 12px var(--body);color:var(--accentDeep)}
+.overlay{position:absolute;inset:0;background:var(--scrim);z-index:20;display:flex;align-items:flex-end}
+.sheet{width:100%;background:var(--surface);border-radius:30px 30px 0 0;padding:12px 18px 26px;animation:up .32s cubic-bezier(.2,1.1,.4,1)}
+.sheet .grab{width:44px;height:5px;border-radius:99px;background:var(--skyMist);margin:0 auto 14px}
+.sheet h3{font-family:var(--display);margin:0 0 6px;font-size:22px}
+.sheet .opt{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--skyWash);cursor:pointer;font-weight:800}
+.sheet .opt:last-of-type{border:0}
+.sheet .opt .ic{width:44px;height:44px;border-radius:14px;background:var(--skyWash);display:flex;align-items:center;justify-content:center;font-size:22px}
+.sheet .opt span{font-size:12px;color:var(--ink2);display:block;font-weight:700}
+.pop{position:absolute;inset:0;background:var(--scrim);z-index:20;display:flex;align-items:center;justify-content:center;padding:24px}
+.pop .card{background:var(--surface);border-radius:28px;overflow:hidden;width:100%;box-shadow:var(--lift);animation:pop .4s cubic-bezier(.2,1.3,.4,1)}
+.pop .pi{height:190px;position:relative;background:#2A5992}
+.pop .pi img{width:100%;height:100%;object-fit:cover;opacity:.9}
+.pop .pb{padding:16px 18px 18px}
+.pop h3{font-family:var(--display);font-size:26px;line-height:1.05;margin:0 0 8px}
+.pop p{margin:0 0 14px;color:var(--ink2);font-size:14px;line-height:1.5;font-weight:600}
+@keyframes down{from{transform:translateY(-40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes up{from{transform:translateY(60px);opacity:0}to{transform:none;opacity:1}}
+@keyframes pop{from{transform:scale(.8);opacity:0}to{transform:none;opacity:1}}
+@keyframes bounce{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+/* panel */
+.panel{width:420px;max-width:100%;background:#fff;border-radius:22px;box-shadow:0 10px 28px -14px rgba(13,35,66,.35);overflow:hidden;color:#152E52}
+.pbody{padding:18px 20px;max-height:800px;overflow-y:auto;font-size:13.5px;line-height:1.55}
+.pbody h4{font-family:var(--display);font-size:17px;margin:16px 0 6px}
+.pbody h4:first-child{margin-top:0}
+.pbody p{margin:0 0 10px}
+.pbody ul{padding-left:18px;margin:0 0 10px}.pbody li{margin-bottom:5px}
+.pbody .sw{display:inline-block;width:12px;height:12px;border-radius:4px;vertical-align:-1px;margin-right:4px}
+.pbody .small{font-size:12px;color:#5B7290}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Little Blue Market · Pinterest-style feed</h1>
+  <div class="seg" id="themeSeg"><button class="on" data-t="light">Light</button><button data-t="dark">Dark</button></div>
+  <div class="seg" id="userSeg"><button class="on" data-u="new">New user</button><button data-u="regular">Regular</button></div>
+  <span class="hint">Tap any pin. Tap the cart pill on a photo to add without leaving the feed.</span>
+</div>
+<div class="wrap">
+  <div class="phone"><div class="notch"></div><div class="screen" id="screen"></div></div>
+  <div class="panel"><div class="pbody" id="pbody"></div></div>
+</div>
+<script>
+const CDN='https://cdn.shopify.com/s/files/1/0755/1975/4395/files/';
+const img=(f,w=600)=>CDN+f+(f.includes('?')?'&':'?')+'width='+w;
+const V={
+  DD:{n:'Daybreak Digitals',c:'#2A5992',loc:'Detroit, MI'},
+  UA:{n:'Untamed Alchemy',c:'#4E8A69',loc:'Marquette, MI'},
+  BF:{n:'Berries & Flour',c:'#C4796B',loc:'Ypsilanti, MI'},
+  SG:{n:'Art by Sim Garber',c:'#D56ED1',loc:'Ann Arbor, MI'},
+  MW:{n:'Madi Winger Art',c:'#D9A05B',loc:'Grand Rapids, MI'},
+  SS:{n:'Silver Statements',c:'#5F6A82',loc:'Lansing, MI'},
+  GW:{n:'Gwynstone',c:'#7BAE8B',loc:'Traverse City, MI'},
+  MJ:{n:"Maker Jill's",c:'#B565B0',loc:'Flint, MI'},
+  WB:{n:'Waveberry Co',c:'#70A0D0',loc:'Kalamazoo, MI'},
+  RB:{n:'Romantique Books',c:'#8C2E88',loc:'Detroit, MI'},
+  ME:{n:'Morgan Ellis',c:'#152E52',loc:'Ypsilanti, MI'},
+  RO:{n:'Rae Ortiz',c:'#D98A9A'},KB:{n:'Kali Brooks',c:'#B565B0'},AM:{n:'Ama Mensah',c:'#4E8A69'},TW:{n:'Torres Woodshop',c:'#D9A05B'}
+};
+const ini=k=>V[k].n.split(/\s|&/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const av=(k,cls='')=>`<div class="av ${cls}" style="background:${V[k].c}">${ini(k)}</div>`;
+const P={
+  tee:{v:'DD',t:'Books > Bots graphic tee',p:'$26.95',f:'books-over-bots-unisex-graphic-tee-literary-pro-library-anti-ai-data-centers-statement-tshirt-comfort-colors-berry.jpg?v=1790207741',added:212,com:14,d:'Comfort Colors, berry. Screen-printed in Detroit. Runs true to size.'},
+  cream:{v:'UA',t:'Summer Song herbal face cream',p:'$32',f:'file_eb87eb84-1f58-4b2d-a0d7-a3abd81e5d8a.jpg?v=1790211611',added:88,com:6,d:'Calendula and chamomile in a whipped shea base. Small batch.'},
+  lotion:{v:'UA',t:'Lux Lavande hand & body lotion',p:'$32',f:'file_69848864-dcd3-4794-88a9-1c03b58deea6.jpg?v=1790196655',added:64,com:3,d:'Lavender from the farm, pressed and blended by hand.'},
+  jam:{v:'BF',t:'6-pack jam sampler',p:'$25',f:'20250605_011114_f25e51b5-7252-443e-a4d4-56a1d0fa213c.jpg?v=1789620444',added:340,com:41,d:'Six 2oz jars. This season: strawberry rhubarb, blueberry basil, peach.'},
+  raccoon:{v:'SG',t:'Magical raccoon glossy sticker',p:'$3',f:'img_3560.jpg?v=1789612977',added:512,com:22,d:'Waterproof vinyl, 3". He is doing his best.'},
+  sunflower:{v:'MW',t:'Checkered sunflowers arch earrings',p:'$25',f:'20250813_140914_bd9101f4-a97c-4145-94c8-ab73af14f4f6.jpg?v=1789946191',added:176,com:9,d:'Polymer clay, hand-cut. Hypoallergenic posts.'},
+  hoop:{v:'MW',t:'Raspberry pink hoops',p:'$20',f:'20260109_122322.jpg?v=1789946134',added:98,com:4,d:'Lightweight clay hoops. 1.5".'},
+  lapis:{v:'MW',t:'Lapis pebble drop',p:'$20',f:'20260806_123753.jpg?v=1789946245',added:71,com:2,d:'Clay set with a lapis pebble.'},
+  courage:{v:'SS',t:'"Have courage and be kind" necklace',p:'$40',f:'il_fullxfull.1452286832_n5dd.jpg?v=1790099439',added:143,com:11,d:'Hand-stamped sterling bar on an 18" chain.'},
+  cuff:{v:'SS',t:'Wanderlust cuff bracelet',p:'$26',f:'il_fullxfull.1034718756_n51y.jpg?v=1790090096',added:57,com:3,d:'Aluminum cuff, hand-stamped. Fits most wrists.'},
+  trinket:{v:'GW',t:'Blue foil heart trinket box',p:'$34',f:'il_fullxfull.4743049816_61mf.jpg?v=1788532657',added:39,com:2,d:'Stainless box with a lampwork glass bead.'},
+  advent:{v:'MJ',t:'Village advent calendar',p:'$41',f:'IMG_6983.jpg?v=1789337019',added:120,com:18,d:'Hand-painted wood houses. Numbered doors.'},
+  creature:{v:'WB',t:'90s toy creature sticker',p:'$2.50',f:'il_fullxfull.7907408935_okao.jpg?v=1790206851',added:203,com:7,d:'Retro plush monster. Waterproof.'},
+  book:{v:'RB',t:'Stalker · signed by the author',p:'$20',f:'61u3-G7M9jL._SL1500.jpg?v=1789575536',added:44,com:5,d:'The Line Walkers, book one. Signed paperback.'},
+};
+const S={theme:'light',user:'new',screen:'feed',arg:null,stack:[],carted:{},toast:null,sheet:null,popup:true,tab:'for you'};
+const $=id=>document.getElementById(id);
+function go(s,arg){S.stack.push({screen:S.screen,arg:S.arg});S.screen=s;S.arg=arg;S.sheet=null;render();}
+function back(){const p=S.stack.pop();if(p){S.screen=p.screen;S.arg=p.arg;}else S.screen='feed';S.sheet=null;render();}
+function tabTo(s){S.stack=[];S.screen=s;S.arg=null;S.sheet=null;render();}
+function toast(t,s,k){S.toast={t,s,k};render();clearTimeout(S._tt);S._tt=setTimeout(()=>{S.toast=null;render();},2400);}
+function cart(k,ev){ev&&ev.stopPropagation();S.carted[k]=!S.carted[k];if(S.carted[k])toast('In your little blue cart',P[k].t,k);else render();}
+function nf(el){el.parentElement.classList.add('nf');}
+const I={
+  cart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.5 11h11l2-7H7"/><circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>',
+  search:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  bag:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>',
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"/></svg>',
+  you:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
+  mail:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 7l9 6 9-6"/></svg>',
+  share:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="M7 8l5-5 5 5"/><path d="M5 14v6h14v-6"/></svg>'
+};
+function tabs(on){return `<div class="tabs">
+  <div class="tab ${on==='market'?'on':''}" onclick="tabTo('feed')">${I.home}Market</div>
+  <div class="tab ${on==='community'?'on':''}" onclick="toast('Community','Open chat + forums (see the first mockup)','')">${I.chat}Community<span class="dot"></span></div>
+  <div class="fabc" onclick="S.sheet='compose';render()">+</div>
+  <div class="tab" onclick="go('cartscreen')">${I.bag}Cart${Object.keys(S.carted).filter(k=>S.carted[k]).length?'<span class="dot"></span>':''}</div>
+  <div class="tab ${on==='you'?'on':''}" onclick="toast('You','Profile hub (see the first mockup)','')">${I.you}You</div></div>`;}
+
+function pin(k,opts={}){const p=P[k],on=!!S.carted[k];return `<div class="pin" onclick="go('detail','${k}')">
+  <div class="ph"><img src="${img(p.f)}" alt="" onerror="nf(this)" loading="lazy"><div class="fb" style="aspect-ratio:${['4/5','1','3/4','5/6'][p.t.length%4]}">${p.t}</div>
+    ${opts.proof?`<div class="added">${I.cart} ${p.added}</div>`:''}
+    <div class="cartbtn ${on?'on':''}" onclick="cart('${k}',event)">${on?I.check:I.cart}${on?'Carted':'Cart'}</div></div>
+  <div class="cap"><div class="t">${p.t}</div><div class="m">${av(p.v)}<span>${V[p.v].n.split(' ')[0]}</span><span class="price">${p.p}</span></div></div></div>`;}
+function hero(){return `<div class="pin wide" onclick="S.popup=true;render()"><div class="hero photo"><img src="${img(P.jam.f,700)}" alt="" onerror="this.style.display='none'"><div class="grad"></div><div class="k">From Little Blue Market</div><h3>no likes here.<br>just carts.</h3><p>Tap the cart on anything you love. Makers see it. Your cart keeps it.</p><span class="cta">Show me</span></div></div>`;}
+function announce(){return `<div class="pin wide" onclick="toast('Reminder set','Town hall Mon 7pm · we\\'ll ping you','')"><div class="hero" style="min-height:150px"><div class="glyph">🛒</div><div class="k">Town hall · Monday 7pm</div><h3 style="font-size:24px">What should we build next?</h3><p>Live in the app. Come argue with us.</p><span class="cta">Remind me</span></div></div>`;}
+function note(ic,t,s,go_,cls='',cta='Go'){return `<div class="pin" onclick="${go_}"><div class="note ${cls}"><div><div class="ic">${ic}</div><b>${t}</b><span>${s}</span></div><div class="go">${cta} →</div></div></div>`;}
+function reviewPin(k,stars,q){const p=P[k];return `<div class="pin review" onclick="go('detail','${k}')"><div class="ph"><img src="${img(p.f)}" alt="" onerror="nf(this)" loading="lazy"><div class="fb">${p.t}</div><div class="starsbar">★★★★★</div></div><div class="cap"><div class="t">"${q}"</div><div class="m">${av('RO')}<span>Rae · bought it</span></div></div></div>`;}
+function quotePin(){return `<div class="pin" onclick="go('detail','jam')"><div class="quote"><div class="q">"The peach one did not survive the car ride home."</div><div class="by">${av('AM')} Ama · on the jam sampler ★★★★★</div></div></div>`;}
+function cartPin(){return `<div class="pin" onclick="go('detail','sunflower')"><div class="collage"><img src="${img(P.sunflower.f,300)}" onerror="this.style.visibility='hidden'"><img src="${img(P.courage.f,300)}" onerror="this.style.visibility='hidden'"><img src="${img(P.cream.f,300)}" onerror="this.style.visibility='hidden'"><div class="more">+3</div></div><div class="cap"><div class="t">Kali's cart · gift run for her sister</div><div class="m">${av('KB')}<span>6 items · $148</span><span class="price" style="color:var(--accentDeep);font:900 12px var(--body)" onclick="event.stopPropagation();toast('6 items added','Kali\\'s whole cart is now in yours','')">Add all</span></div></div></div>`;}
+function shoutPin(){return `<div class="pin" onclick="go('seller','UA')"><div class="shout"><div class="k">Shoutout</div><div class="q">Untamed Alchemy replaced a cracked jar before I even asked. This is why I shop here.</div><div class="by">${av('TW')} Torres Woodshop</div></div></div>`;}
+function makers(){return `<div class="pin wide"><div class="sect">Makers near you <span class="see" onclick="event.stopPropagation()">See all</span></div><div class="makers">${['DD','UA','BF','MW','SS','SG'].map(k=>`<div class="maker" onclick="go('seller','${k}')"><div class="ring">${av(k)}</div><b>${V[k].n}</b><span>${['4 new','restock','new','12 mi','','new'][['DD','UA','BF','MW','SS','SG'].indexOf(k)]||V[k].loc.split(',')[0]}</span></div>`).join('')}</div></div>`;}
+
+const SC={};
+SC.feed=()=>{const isNew=S.user==='new';const cn=Object.keys(S.carted).filter(k=>S.carted[k]).length;
+  let m='';
+  m+= isNew? hero() : announce();
+  m+= pin('jam',{proof:true});
+  m+= pin('sunflower');
+  m+= isNew? note('👋','Say hi in Open chat','23 makers are in there right now.',"toast('Open chat','You\\'d land in the room with a prefilled hello','')",'','Wave') : note('📦','How was the jam?','Delivered Tuesday. One tap to rate.',"S.sheet='review';render()",'pink','Rate');
+  m+= pin('tee',{proof:true});
+  m+= reviewPin('cream',5,'Smells like July. My skin stopped fighting me.');
+  m+= pin('raccoon',{proof:true});
+  m+= cartPin();
+  m+= pin('courage');
+  m+= makers();
+  m+= pin('advent');
+  m+= shoutPin();
+  m+= pin('hoop');
+  m+= quotePin();
+  m+= note('🧵','#VoteCollection deadline Friday','6 sellers asked what qualifies.',"toast('Forum thread','Would open the thread','')",'sage','Read');
+  m+= pin('trinket');
+  m+= pin('creature',{proof:true});
+  m+= pin('lotion');
+  m+= pin('book');
+  m+= pin('cuff');
+  m+= pin('lapis');
+  return `<div class="view">
+    <div class="hdr"><div class="search">${I.search} Search goods, makers, #tags</div><div class="circ" onclick="go('cartscreen')">${I.bag}${cn?`<span class="n">${cn}</span>`:''}</div></div>
+    <div class="tabsrow">${['For you','Near me','Following'].map(t=>`<div class="${S.tab===t.toLowerCase()?'on':''}" onclick="S.tab='${t.toLowerCase()}';render()">${t}</div>`).join('')}<span class="spacer"></span><span class="chipsm">#VoteCollection</span></div>
+    <div class="scroll"><div class="masonry">${m}</div></div>${tabs('market')}</div>`;};
+SC.detail=()=>{const k=S.arg||'jam',p=P[k],on=!!S.carted[k];const rel=Object.keys(P).filter(x=>x!==k).slice(0,6);
+  return `<div class="view detail"><div class="floatbar"><div class="circ" onclick="back()">‹</div><div class="circ" onclick="toast('Shared','Link copied','')">${I.share}</div></div>
+  <div class="scroll" style="padding:0 0 110px"><div class="big" style="border-radius:0 0 0 0"><img src="${img(p.f,800)}" alt="" onerror="nf(this)"><div class="fb"></div></div>
+  <div class="sheetcard">
+    <div class="rowm" style="margin-bottom:10px" onclick="go('seller','${p.v}')">${av(p.v,'md')}<div style="flex:1"><b style="font-size:14px">${V[p.v].n}</b><div style="font-size:12px;color:var(--ink2);font-weight:800">${V[p.v].loc} · replies in ~1h</div></div><span class="chip acc">Message</span></div>
+    <h3>${p.t}</h3>
+    <div class="rowm"><span class="price" style="font-size:24px">${p.p}</span><span style="color:var(--accent);font-weight:900;letter-spacing:1px">★★★★★</span><span style="font-size:12.5px;font-weight:800;color:var(--ink2)">4.9 · 31 reviews</span></div>
+    <p style="margin:8px 0 0;font-size:14px;line-height:1.5;font-weight:600;color:var(--ink2)">${p.d}</p>
+    <div class="proof"><div class="avs">${av('RO')}${av('AM')}${av('KB')}</div><span><b>${p.added+(on?1:0)} carted</b> · Rae and 2 people you've bought from</span></div>
+    <div class="rowm" style="margin-top:12px"><button class="bigbtn cart ${on?'on':''}" onclick="cart('${k}')">${on?I.check.replace('<svg','<svg width="20" height="20"'):I.cart.replace('<svg','<svg width="20" height="20"')}${on?'In your cart':'Add to cart'}</button><button class="bigbtn ghost" onclick="toast('Checkout','Shopify checkout, in-app','')">Buy now</button></div>
+    <div class="comments"><div class="rowm"><b style="font-size:14px">${p.com} comments</b><span class="see" style="margin-left:auto;font-size:12px;font-weight:900;color:var(--skyDeep)">All</span></div>
+      <div class="cm">${av('RO')}<div><b>Rae</b> Wore mine to the market Saturday, three people asked where it's from.</div></div>
+      <div class="cm">${av(p.v)}<div><b>${V[p.v].n.split(' ')[0]}</b> 🛒 Thank you!! Restocking Friday.</div></div>
+      <div class="quick"><span class="chip">Is this still available?</span><span class="chip">Love this 💙</span><span class="chip">Do you ship to…</span></div></div>
+    </div>
+    <div style="padding:16px 10px 0"><div class="sect">More like this</div><div class="masonry">${rel.map(x=>pin(x)).join('')}</div></div>
+  </div>${tabs('market')}</div>`;};
+SC.seller=()=>{const v=S.arg||'DD';const mine=Object.keys(P).filter(k=>P[k].v===v);const more=Object.keys(P).filter(k=>P[k].v!==v).slice(0,4);
+  return `<div class="view"><div class="hdr"><div class="circ" onclick="back()">‹</div><h2></h2><div class="circ" onclick="toast('Message','DM thread','')">${I.mail}</div></div>
+  <div class="scroll"><div class="sellhead">${av(v,'lg')}<h3>${V[v].n}</h3><div class="m">${V[v].loc} · joined Aug 2026</div><div class="btns"><button class="btn" onclick="toast('Drop alerts on','Push + a pin in your feed when they post','')">Get drop alerts</button><button class="btn ghost" onclick="toast('Message','DM thread','')">Message</button></div></div>
+  <div class="stats3"><div><b>212</b><span>sales</span></div><div><b>4.9</b><span>rating</span></div><div><b>${mine.reduce((a,k)=>a+P[k].added,0)}</b><span>carted</span></div><div><b>~1h</b><span>replies</span></div></div>
+  <div class="sect">Shop</div><div class="masonry">${mine.map(k=>pin(k,{proof:true})).join('')}${more.map(k=>pin(k)).join('')}</div></div>${tabs('market')}</div>`;};
+SC.cartscreen=()=>{const ks=Object.keys(S.carted).filter(k=>S.carted[k]);return `<div class="view"><div class="hdr"><div class="circ" onclick="back()">‹</div><h2>Your little blue cart</h2></div><div class="scroll">
+  ${ks.length?`<div class="masonry">${ks.map(k=>pin(k)).join('')}</div><div style="padding:6px 2px"><button class="bigbtn cart" style="width:100%" onclick="toast('Checkout','Shopify checkout, in-app','')">Check out · ${ks.length} item${ks.length>1?'s':''}</button><div style="text-align:center;margin-top:10px;font-weight:800;color:var(--ink2);font-size:13px;cursor:pointer" onclick="S.sheet='compose';render()">Post this cart to the feed →</div></div>`
+  :`<div class="note" style="text-align:center;padding:34px 16px;align-items:center"><div class="ic" style="font-size:44px">🛒</div><b style="font-size:20px">Nothing here yet</b><span>Tap the cart pill on any photo. That's the like button here.</span><div class="go" onclick="tabTo('feed')">Back to the market →</div></div>`}
+  </div>${tabs('cart')}</div>`;};
+
+function overlays(){let h='';
+  if(S.popup&&S.screen==='feed') h+=`<div class="pop" onclick="S.popup=false;render()"><div class="card" onclick="event.stopPropagation()"><div class="pi"><img src="${img(P.raccoon.f,700)}" onerror="this.style.display='none'"></div><div class="pb"><h3>${S.user==='new'?'welcome in 💙':'no likes here. just carts.'}</h3><p>${S.user==='new'?'Real makers, mostly Michigan. There\'s no like button — tap the little cart on anything you love and it\'s yours to keep for later.':'The cart pill on every photo is the like. Makers see the count. Nothing to buy right now? Cart it anyway.'}</p><button class="bigbtn cart" style="width:100%" onclick="S.popup=false;render()">${S.user==='new'?'Show me':'Got it'}</button></div></div></div>`;
+  if(S.sheet==='compose') h+=`<div class="overlay" onclick="S.sheet=null;render()"><div class="sheet" onclick="event.stopPropagation()"><div class="grab"></div><h3>Post something</h3>${[['🛒','Post my cart','A snapshot of what\'s in it'],['⭐','Review something I bought','Jam sampler is waiting'],['📣','Shoutout a maker','They get a push'],['🏷️','List a product','Sellers · goes to review first']].map(([i,t,s])=>`<div class="opt" onclick="S.sheet=null;render();toast('Posted 🎉','It\\'s live in the feed · +10 pts','')"><div class="ic">${i}</div><div>${t}<span>${s}</span></div></div>`).join('')}</div></div>`;
+  if(S.sheet==='review') h+=`<div class="overlay" onclick="S.sheet=null;render()"><div class="sheet" onclick="event.stopPropagation()"><div class="grab"></div><div class="rowm"><img src="${img(P.jam.f,200)}" style="width:52px;height:52px;border-radius:14px;object-fit:cover" onerror="this.style.display='none'"><div><h3 style="margin:0;font-size:20px">How was the jam?</h3><span style="font-size:12px;color:var(--ink2);font-weight:800">Berries & Flour · delivered Tue</span></div></div><div style="font-size:40px;letter-spacing:8px;text-align:center;margin:16px 0 4px;color:var(--accent)">★★★★★</div><div style="text-align:center;font-size:11.5px;font-weight:800;color:var(--ink3);margin-bottom:10px">Tap a star · that alone counts</div><div class="quick">${['Peach is gone already','Great gift','Would buy again','Jar was leaking'].map(q=>`<span class="chip">${q}</span>`).join('')}</div><button class="bigbtn cart" style="width:100%;margin-top:8px" onclick="S.sheet=null;render();toast('Review posted','Berries & Flour will see it · +15 pts','jam')">Post review</button></div></div>`;
+  if(S.toast) h+=`<div class="toast">${S.toast.k?`<img src="${img(P[S.toast.k].f,200)}" onerror="this.style.display='none'">`:`<div class="ic">✨</div>`}<div><b>${S.toast.t}</b><span>${S.toast.s}</span></div>${S.toast.k?`<span class="go" onclick="go('cartscreen')">View</span>`:''}</div>`;
+  return h;}
+function render(){$('screen').innerHTML=(SC[S.screen]||SC.feed)()+overlays();document.body.classList.toggle('dark',S.theme==='dark');
+  document.querySelectorAll('#themeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.t===S.theme));document.querySelectorAll('#userSeg button').forEach(b=>b.classList.toggle('on',b.dataset.u===S.user));}
+document.querySelectorAll('#themeSeg button').forEach(b=>b.onclick=()=>{S.theme=b.dataset.t;render();});
+document.querySelectorAll('#userSeg button').forEach(b=>b.onclick=()=>{S.user=b.dataset.u;S.popup=true;S.carted={};tabTo('feed');});
+$('pbody').innerHTML=`<h4>What changed vs. the last one</h4>
+<p><b>The photo is the card.</b> No white frame, no header row, no action bar. Image with 18px corners straight on the blue, a two-line title, a tiny maker avatar and the price. Two columns, real aspect ratios, so the feed has rhythm instead of a stack of identical rectangles.</p>
+<p><b>One orchid thing per photo.</b> The pink is reserved for the cart pill on each image and the big Add-to-cart button on the pin. Chips, tabs and secondary buttons went to ink / sky-mist. When you see pink now, it's the thing to press.</p>
+<p><b>Big serif, small everything else.</b> Announcement headlines at 30px Fraunces, product titles at 13px Nunito. That contrast is what "punchy" is.</p>
+<p><b>Everything else is a pin too.</b> Announcements are wide photo pins with a gradient. Nudges ("How was the jam?") are small tinted note-pins. Reviews are the product photo with a star strip. Cart posts are a 2×2 collage with "+3". Shoutouts are a text pin on a blue gradient. Nothing breaks the grid.</p>
+<p><b>Motion.</b> Cart pill bounces and flips to "Carted"; the toast drops with a spring and shows the photo you just carted; pins scale on press; sheets slide up.</p>
+<p><b>Paper has depth.</b> Subtle vertical gradient on the blue (deeper at the top), lifted shadows only on the floating pieces (tab bar, sheet, hero).</p>
+<h4>Pinterest patterns used</h4>
+<ul><li>Masonry with the primary action on the image (Save → Cart).</li><li>Pin detail: image first, seller row, one huge button, comments, then "More like this" keeps you scrolling.</li><li>Maker "boards": a seller page is just their pins.</li><li>Segmented top tabs: For you · Near me · Following.</li><li>Quiet chrome, loud content.</li></ul>
+<h4>Photos</h4>
+<p class="small">All product photos are live from littlebluemarket.com's Shopify CDN (Daybreak Digitals, Untamed Alchemy, Berries &amp; Flour, Art by Sim Garber, Madi Winger Art, Silver Statements, Gwynstone, Maker Jill's, Waveberry Co, Romantique Books). Locations, counts, comments and reviews are invented for the mockup. If the in-chat preview blocks external images you'll see pastel placeholders — open the file from your folder in a browser and they load.</p>
+<h4>Palette check</h4>
+<p class="small"><span class="sw" style="background:#9CBFE3"></span>paper <span class="sw" style="background:#152E52"></span>ink <span class="sw" style="background:#D56ED1"></span>accent (cart only) <span class="sw" style="background:#A93BA5"></span>accent-deep <span class="sw" style="background:#70A0D0"></span>sky — same tokens as tokens.dart, nothing new to add.</p>
+<h4>If you like this direction</h4>
+<p>Next step is a phased Claude Code plan: (1) <code>PostCard</code> → <code>PinCard</code> variants and a two-column <code>SliverMasonryGrid</code> (flutter_staggered_grid_view) in <code>feed_screen.dart</code>; (2) pin detail as the new <code>post_screen.dart</code>; (3) the feed recipe in a Cloud Function (announcement + posts + moments + nudges); (4) motion via <code>AnimatedScale</code>/<code>flutter_animate</code>. Backend-wise nothing new is required for phase 1–2.</p>`;
+render();
+</script>
+</body>
+</html>

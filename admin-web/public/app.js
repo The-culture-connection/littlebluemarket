@@ -462,12 +462,15 @@ function promoWhen(id) {
 
 // What shape a picture has to be, and what to say when it is not.
 //
-// The popup hands the picture the whole top of the card, so a portrait
-// fills it and a landscape leaves bands of white above and below. 4:5 is
-// the target (1080 x 1350, what Instagram calls portrait); 3:4 to 1:1 is
-// close enough to look deliberate. Refused rather than warned about,
-// because Grace asked for an error and because a wrong-shaped advert is
-// not obvious until it is live on everybody's phone.
+// The popup takes the picture's own shape, so every shape in this range
+// fills the card edge to edge with nothing cropped and no white space
+// (Grace, 2026-09-24: "what is the aspect ration I can do so it fills the
+// entire popup space?"). The range is a house style rather than a
+// technical limit: 4:5 is the target (1080 x 1350, what Instagram calls
+// portrait), and much taller than 3:4 makes the card scroll on a short
+// phone. Refused rather than warned about, because Grace asked for an
+// error and because a wrong-shaped advert is not obvious until it is live
+// on everybody's phone.
 const PHOTO_BEST = { w: 1080, h: 1350 };
 const PHOTO_MIN_RATIO = 0.75; // 3:4, taller
 const PHOTO_MAX_RATIO = 1.0; //  1:1, square

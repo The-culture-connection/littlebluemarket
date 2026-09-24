@@ -52,9 +52,11 @@
      phone draws, so what Grace approves here is what people get. */
   .phone { background: #4b5566; border-radius: 16px; padding: 20px 16px; margin-top: 4px; }
   .promo { background: #fff; border-radius: 20px; box-shadow: 0 10px 30px rgba(15,22,33,.35); overflow: hidden; max-width: 320px; margin: 0 auto; }
-  /* The phone gives the picture its own shape and never crops it, so the
-     preview must not crop either, or the preview lies about the result. */
-  .promo img { width: 100%; max-height: 380px; object-fit: contain; display: block; background: var(--mist); }
+  /* The phone gives the picture the card's full width and the picture's
+     own height, cropping nothing and padding nothing. The preview has to
+     do the same or it lies about the result: no max-height, no object-fit,
+     because either one puts space here that the phone will not have. */
+  .promo img { width: 100%; height: auto; display: block; background: var(--mist); }
   .promo-body { padding: 15px 17px 18px; }
   .promo-row { display: flex; align-items: center; justify-content: flex-end; max-width: 320px; margin: 0 auto 9px; }
   .promo-from { font-size: 10.5px; font-weight: 800; letter-spacing: .7px; color: var(--ink2); }
@@ -222,7 +224,7 @@
 
     <label for="pPhoto">Photo (optional, up to 4)</label>
     <input id="pPhoto" type="file" accept="image/*" multiple>
-    <p class="hint" style="margin:6px 0 0"><strong>Best size: 1080 &times; 1350 pixels</strong> (4:5, standing up, the same shape Instagram calls "portrait"). The popup gives the picture its own shape and never crops it, so nothing you upload gets cut off. On a short phone a very tall picture shrinks to fit, with a little space at the sides. Anything from 3:4 to 1:1 is accepted; further from that and it is refused, with the size it found. Smallest side at least 600 pixels, or it looks soft on a phone.</p>
+    <p class="hint" style="margin:6px 0 0"><strong>Best size: 1080 &times; 1350 pixels</strong> (4:5, standing up, the same shape Instagram calls "portrait"). <strong>Every accepted shape fills the popup edge to edge</strong>, with no white space and nothing cropped: the popup takes the picture's own shape rather than forcing one. So pick the shape that suits the artwork. Anything from 3:4 to 1:1 is accepted; further from that and it is refused, with the size it found. Smallest side at least 600 pixels, or it looks soft on a phone.</p>
     <ul id="pThumbs" class="thumbs"></ul>
 
     <div class="row">
