@@ -133,7 +133,7 @@ class _ThreadHead extends ConsumerWidget {
             thread.body,
             tagColor: c.skyDeep,
             style: TextStyle(fontSize: 14, height: 1.6, color: c.ink2),
-            onTagTap: (tag) => context.goToResults(tag),
+            onTagTap: (tag) => context.goToTag(tag),
           ),
           const SizedBox(height: 13),
           Text(

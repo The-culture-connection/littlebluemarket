@@ -450,6 +450,18 @@ class TagCount {
   String get countLabel => '${Fmt.count(postCount)} posts';
 }
 
+/// The key a hashtag is filed under: no leading hash, lower case.
+///
+/// The same rule the backend uses when it counts a tag and fans a post out to
+/// whoever follows it (`functions/src/index.ts`, `keyOf`). It has to match
+/// exactly, or the page somebody follows and the page the backend notifies
+/// them about are two different pages.
+String tagKey(String tag) =>
+    tag.trim().replaceFirst(RegExp('^#'), '').toLowerCase();
+
+/// The display form of a key: a hash and the word.
+String tagLabel(String key) => '#${tagKey(key)}';
+
 @immutable
 class Forum {
   const Forum({

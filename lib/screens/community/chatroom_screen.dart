@@ -202,7 +202,7 @@ class _ChatBubble extends ConsumerWidget {
           height: 1.5,
           color: mine ? c.accentInk : c.ink,
         ),
-        onTagTap: (tag) => context.goToResults(tag),
+        onTagTap: (tag) => context.goToTag(tag),
       ),
     );
 

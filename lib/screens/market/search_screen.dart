@@ -269,7 +269,7 @@ class _TagGrid extends StatelessWidget {
           final tag = tags[i];
           return LbmCard(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-            onTap: () => context.goToResults(tag.tag),
+            onTap: () => context.goToTag(tag.tag),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,

@@ -128,6 +128,10 @@ class FixtureStore {
   /// People the demo user follows for post notifications.
   final following = Watchable<Set<String>>({});
 
+  /// Hashtags this person follows, by key, mapped to whether they also want
+  /// to be told about new posts under them.
+  final followedTags = Watchable<Map<String, bool>>({});
+
   /// Website-link products of directory businesses (Stage 13). One belongs
   /// to `dee` from the start so the product page and feed card can render.
   final directoryProducts = Watchable<Map<String, Product>>({

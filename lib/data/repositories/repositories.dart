@@ -269,9 +269,34 @@ abstract interface class SocialRepository {
   /// Everyone this viewer follows.
   ///
   /// [watchFollowing] answers "am I following this one", which is what a
-  /// profile button needs and what the Following tab cannot use: that needs
-  /// the whole set to filter a stream by.
+  /// profile button needs and what a feed filtered to followed people cannot
+  /// use: that needs the whole set to filter a stream by.
   Stream<Set<String>> watchFollowedPeople();
+
+  /// Everything posted under one hashtag, newest first.
+  Stream<List<Post>> watchTagFeed(String tag, {int limit = 30});
+
+  /// The hashtags this viewer follows, by [tagKey].
+  Stream<Set<String>> watchFollowedTags();
+
+  /// The ones they also want told about.
+  ///
+  /// A subset of [watchFollowedTags]: following a tag puts it in your own
+  /// list, and notify is the separate decision to be interrupted about it.
+  Stream<Set<String>> watchNotifiedTags();
+
+  /// Follows or unfollows a hashtag.
+  ///
+  /// Unfollowing clears notify too: being notified about something you are
+  /// not following is the kind of state nobody can explain later.
+  Future<void> setFollowingTag(
+    String tag, {
+    required bool on,
+    bool notify = false,
+  });
+
+  /// Turns notifications on or off for a tag. Turning them on follows it.
+  Future<void> setTagNotify(String tag, {required bool on});
 
   /// News from Little Blue Market, newest first, every audience: the phone
   /// keeps the ones meant for this viewer.

@@ -905,6 +905,50 @@ class FixtureSocialRepository implements SocialRepository {
   Stream<Set<String>> watchFollowedPeople() => _store.following.stream;
 
   @override
+  Stream<List<Post>> watchTagFeed(String tag, {int limit = 30}) {
+    final key = tagKey(tag);
+    return _store.posts.stream.map(
+      (posts) => [
+        for (final post in posts)
+          if (post.tags.any((t) => tagKey(t) == key)) post,
+      ].take(limit).toList(),
+    );
+  }
+
+  @override
+  Stream<Set<String>> watchFollowedTags() =>
+      _store.followedTags.stream.map((all) => all.keys.toSet());
+
+  @override
+  Stream<Set<String>> watchNotifiedTags() => _store.followedTags.stream.map(
+    (all) => {
+      for (final entry in all.entries)
+        if (entry.value) entry.key,
+    },
+  );
+
+  @override
+  Future<void> setFollowingTag(
+    String tag, {
+    required bool on,
+    bool notify = false,
+  }) async {
+    await _backend._settle();
+    final next = {..._store.followedTags.value};
+    final key = tagKey(tag);
+    if (on) {
+      next[key] = notify;
+    } else {
+      next.remove(key);
+    }
+    _store.followedTags.value = next;
+  }
+
+  @override
+  Future<void> setTagNotify(String tag, {required bool on}) =>
+      setFollowingTag(tag, on: true, notify: on);
+
+  @override
   Future<void> setFollowing(String personId, bool on) async {
     await _backend._settle();
     if (personId == _backend.uid) {

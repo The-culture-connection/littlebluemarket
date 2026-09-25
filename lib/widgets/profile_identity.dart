@@ -124,7 +124,7 @@ class ProfileIdentity extends ConsumerWidget {
           ),
           if (person.tags.isNotEmpty) ...[
             const SizedBox(height: 14),
-            TagChips(person.tags, onTap: (tag) => context.goToResults(tag)),
+            TagChips(person.tags, onTap: (tag) => context.goToTag(tag)),
           ],
           const SizedBox(height: 14),
           ...actions,

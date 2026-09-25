@@ -113,6 +113,53 @@ class LbmMasonry extends StatelessWidget {
 
   static const _gap = SliverToBoxAdapter(child: SizedBox(height: rowGap));
 
+  /// The same two columns, not scrolling, for a capped run of pins inside a
+  /// page that already scrolls.
+  ///
+  /// "Also sold by this maker" and "More reviews" are six pins at most, so
+  /// they can be laid out at once. A sliver grid cannot go inside another
+  /// scroll view, and nesting one costs either a fight over the drag or a
+  /// shrink-wrap that builds everything anyway.
+  ///
+  /// Children alternate between the columns rather than filling the shorter
+  /// one, because which is shorter is not known until after layout. With a
+  /// handful of pins the difference is not visible.
+  static Widget fixed({
+    required List<Widget> children,
+    double horizontal = gutter,
+  }) {
+    if (children.isEmpty) return const SizedBox.shrink();
+
+    final left = <Widget>[];
+    final right = <Widget>[];
+    for (var i = 0; i < children.length; i++) {
+      (i.isEven ? left : right).add(children[i]);
+    }
+
+    Widget column(List<Widget> items) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) const SizedBox(height: rowGap),
+          items[i],
+        ],
+      ],
+    );
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: horizontal),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: column(left)),
+          const SizedBox(width: gutter),
+          Expanded(child: right.isEmpty ? const SizedBox() : column(right)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return CustomScrollView(

@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/models.dart' show tagKey;
+
 /// Screens that can be reached from more than one tab — a post, a product, a
 /// seller's feed, a DM — are registered under every branch that leads to them.
 /// Pushing the copy that belongs to the current branch is what keeps each tab's
@@ -43,6 +45,14 @@ extension LbmNavigation on BuildContext {
 
   /// Everything filed under one store collection, by handle.
   void goToCollection(String handle) => _pushInBranch('/collection/$handle');
+
+  /// A hashtag's own page: everything posted under it, and the way to follow
+  /// it.
+  ///
+  /// Pushed, once, rather than replacing the way a search does. A tag is a
+  /// place you arrive at from a post, and Back should return to that post
+  /// rather than to the Market.
+  void goToTag(String tag) => _pushInBranch('/tag/${tagKey(tag)}');
 
   /// Every published business in one littlebluecart.com category, by slug.
   void goToDirectoryCategory(String slug) =>

@@ -16,6 +16,7 @@ import '../screens/market/directory_browse_screen.dart';
 import '../screens/market/results_screen.dart';
 import '../screens/market/reviews_screen.dart';
 import '../screens/market/search_screen.dart';
+import '../screens/market/tag_screen.dart';
 import '../screens/market/seller_feed_screen.dart';
 import '../screens/you/delete_account_screen.dart';
 import '../screens/onboarding/auth_screens.dart';
@@ -63,6 +64,12 @@ List<RouteBase> _sharedRoutes() => [
     path: 'reviews/:id',
     builder: (context, state) =>
         ReviewsScreen(productId: state.pathParameters['id']!),
+  ),
+  // A hashtag is a place, reachable from wherever it was tapped.
+  GoRoute(
+    path: 'tag/:key',
+    builder: (context, state) =>
+        TagScreen(tag: state.pathParameters['key']!),
   ),
   GoRoute(
     path: 'seller/:id',

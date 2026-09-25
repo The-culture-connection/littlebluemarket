@@ -722,6 +722,88 @@ class FirestoreSocialRepository implements SocialRepository {
         .guarded(operation: 'firestore following list');
   }
 
+  /// `users/{me}/followedTags/{key}`, the same key the fan-out reads.
+  CollectionReference<Map<String, dynamic>>? get _followedTags {
+    final me = uid;
+    if (me == null) return null;
+    return _db.collection('users').doc(me).collection('followedTags');
+  }
+
+  /// Everything under one hashtag.
+  ///
+  /// A post stores its tags as they were typed, so `#PlasticFree` and
+  /// `#plasticfree` are two different strings in the `tags` array, while the
+  /// page is reached by its lowercase key. `arrayContainsAny` has no
+  /// case-insensitive form, so the query asks for the handful of spellings
+  /// people actually use and the client checks the rest by key.
+  ///
+  /// The honest fix is a lowercased `tagKeys` array written beside `tags`
+  /// when a post is created, which is a backend change and belongs with the
+  /// rest of the tag fan-out.
+  @override
+  Stream<List<Post>> watchTagFeed(String tag, {int limit = 30}) {
+    final key = tagKey(tag);
+    final spellings = <String>{
+      '#$key',
+      '#${key.toUpperCase()}',
+      if (key.isNotEmpty) '#${key[0].toUpperCase()}${key.substring(1)}',
+    }.toList();
+
+    return watchFeed(tags: spellings, limit: limit).map(
+      (posts) => [
+        for (final post in posts)
+          if (post.tags.any((t) => tagKey(t) == key)) post,
+      ],
+    );
+  }
+
+  @override
+  Stream<Set<String>> watchFollowedTags() {
+    final tags = _followedTags;
+    if (tags == null) return Stream.value(const {});
+    return tags
+        .snapshots()
+        .map((snapshot) => {for (final doc in snapshot.docs) doc.id})
+        .guarded(operation: 'firestore followed tags');
+  }
+
+  @override
+  Stream<Set<String>> watchNotifiedTags() {
+    final tags = _followedTags;
+    if (tags == null) return Stream.value(const {});
+    return tags
+        .where('notify', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) => {for (final doc in snapshot.docs) doc.id})
+        .guarded(operation: 'firestore notified tags');
+  }
+
+  @override
+  Future<void> setFollowingTag(
+    String tag, {
+    required bool on,
+    bool notify = false,
+  }) => guardFirestore(() async {
+    _requireUid;
+    final key = tagKey(tag);
+    final doc = _followedTags!.doc(key);
+    if (!on) {
+      await doc.delete();
+      return;
+    }
+    await doc.set({
+      'tag': key,
+      'notify': notify,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  });
+
+  @override
+  Future<void> setTagNotify(String tag, {required bool on}) =>
+      // Asking to be told about a tag is also asking to follow it; there is
+      // no state where you are notified about something you do not follow.
+      setFollowingTag(tag, on: true, notify: on);
+
   @override
   Future<void> setFollowing(String personId, bool on) =>
       guardFirestore(() async {

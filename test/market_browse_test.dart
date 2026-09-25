@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/models/market_taxonomy.dart';
+import 'package:little_blue_market/models/models.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 import 'package:little_blue_market/screens/market/collection_screen.dart';
@@ -240,17 +241,16 @@ void main() {
     });
 
 
-    testWidgets('a hashtag tapped on the search screen replaces it', (
+    testWidgets('a hashtag tapped on the search screen opens its page', (
       tester,
     ) async {
       final container = await _pumpFeed(tester);
       await tester.tap(find.text('Search goods, services, #tags'));
       await tester.pumpAndSettle();
 
-      // The popular-tag tiles: tapping one used to push results on top of
-      // the search field, so Back went to the field and not to the Market.
-      // Asked for by name rather than as "the first card on the screen",
-      // which the two rails above it are now.
+      // A hashtag is a place now rather than a search: it has its own page,
+      // which you can follow and come back from. Keyword searches still
+      // replace each other; that is the next test.
       final tags = await container.read(popularTagsProvider.future);
       final tile = find.text(tags.first.tag).first;
       await tester.ensureVisible(tile);
@@ -258,12 +258,9 @@ void main() {
       await tester.tap(tile);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Back'));
-      await tester.pumpAndSettle();
-      // Back from a search lands on the Market. "Browse the Market" used to
-      // be the marker for that and is on the Search screen itself now, so it
-      // would pass wherever we landed; the feed's own tabs are the tell.
-      expect(find.text('For you'), findsOneWidget);
+      expect(find.text('COLLECTION'), findsOneWidget);
+      expect(find.text(tagLabel(tags.first.tag)), findsWidgets);
+      expect(find.text('Follow'), findsOneWidget);
     });
   });
 }

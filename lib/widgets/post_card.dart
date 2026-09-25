@@ -254,7 +254,7 @@ class _ListingBody extends ConsumerWidget {
                 style: TextStyle(fontSize: 14, height: 1.5, color: c.ink),
               ),
               const SizedBox(height: 8),
-              TagChips(post.tags, onTap: (tag) => context.goToResults(tag)),
+              TagChips(post.tags, onTap: (tag) => context.goToTag(tag)),
             ],
           ),
         ),
@@ -470,7 +470,7 @@ class _ReviewBody extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (post.tags.isNotEmpty)
-                TagChips(post.tags, onTap: (tag) => context.goToResults(tag)),
+                TagChips(post.tags, onTap: (tag) => context.goToTag(tag)),
             ],
           ),
         ),
@@ -518,7 +518,7 @@ class _ShoutoutBody extends ConsumerWidget {
           child: HashtagText(
             post.text,
             style: TextStyle(fontSize: 14.5, height: 1.55, color: c.ink),
-            onTagTap: (tag) => context.goToResults(tag),
+            onTagTap: (tag) => context.goToTag(tag),
             onMentionTap: (handle) => openMention(context, ref, handle),
           ),
         ),
@@ -543,7 +543,7 @@ class _ShoutoutBody extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (post.tags.isNotEmpty)
-                TagChips(post.tags, onTap: (tag) => context.goToResults(tag)),
+                TagChips(post.tags, onTap: (tag) => context.goToTag(tag)),
             ],
           ),
         ),
@@ -911,7 +911,7 @@ class _CartBodyState extends ConsumerState<_CartBody> {
             child: HashtagText(
               post.caption!,
               style: TextStyle(fontSize: 14.5, height: 1.55, color: c.ink),
-              onTagTap: (tag) => context.goToResults(tag),
+              onTagTap: (tag) => context.goToTag(tag),
             ),
           ),
         SizedBox(
@@ -958,7 +958,7 @@ class _CartBodyState extends ConsumerState<_CartBody> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (post.tags.isNotEmpty)
-                TagChips(post.tags, onTap: (tag) => context.goToResults(tag)),
+                TagChips(post.tags, onTap: (tag) => context.goToTag(tag)),
             ],
           ),
         ),
@@ -1125,7 +1125,7 @@ class ReviewRow extends ConsumerWidget {
                   const SizedBox(height: 8),
                   TagChips(
                     review.tags,
-                    onTap: (tag) => context.goToResults(tag),
+                    onTap: (tag) => context.goToTag(tag),
                   ),
                 ],
               ],

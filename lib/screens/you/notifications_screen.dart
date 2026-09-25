@@ -115,7 +115,7 @@ class _NotificationRow extends ConsumerWidget {
                 mentions: notification.mentions,
                 tagColor: c.accentText,
                 onOpenProfile: (uid) => context.goToSeller(uid),
-                onOpenTag: (tag) => context.goToResults(tag),
+                onOpenTag: (tag) => context.goToTag(tag),
               ),
             Text(notification.age),
           ],
