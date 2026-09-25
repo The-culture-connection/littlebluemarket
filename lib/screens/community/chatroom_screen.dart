@@ -34,9 +34,14 @@ class _ChatroomScreenState extends ConsumerState<ChatroomScreen> {
   }
 
   /// Pulling the list past its top opens Forums, the way the grip suggests.
+  ///
+  /// Positive, because the list is reversed: the visual top is the far end
+  /// of its scroll, so dragging down there overscrolls forwards. The sign
+  /// was negative while the list ran top down, and flipping the list without
+  /// flipping this would have left the grip doing nothing.
   bool _onOverscroll(ScrollNotification notification) {
     if (notification is OverscrollNotification &&
-        notification.overscroll < -18) {
+        notification.overscroll > 18) {
       _openForums();
     }
     return false;
@@ -106,12 +111,16 @@ class _ChatroomScreenState extends ConsumerState<ChatroomScreen> {
                   title: 'Quiet in here',
                   body: 'Say the first thing.',
                 ),
+                // Bottom up: the room opens on what was just said, not on
+                // the first thing anybody ever typed in it, and a message
+                // you send is on screen without scrolling for it.
                 data: (messages) => ListView.separated(
                   padding: const EdgeInsets.all(14),
+                  reverse: true,
                   itemCount: messages.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 14),
                   itemBuilder: (context, i) =>
-                      _ChatBubble(message: messages[i]),
+                      _ChatBubble(message: messages[messages.length - 1 - i]),
                 ),
               ),
             ),

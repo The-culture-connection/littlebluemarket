@@ -76,8 +76,8 @@ class _Body extends ConsumerWidget {
 
     // One variant called "Default Title" is Shopify's way of saying there are
     // no options; a tester saw the raw name and asked why.
-    final hasOptions = !(spec.variants.length == 1 &&
-        spec.variants.first.isPlaceholder);
+    final hasOptions =
+        !(spec.variants.length == 1 && spec.variants.first.isPlaceholder);
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -563,9 +563,10 @@ class _WriteReviewLink extends ConsumerWidget {
 
 /// The rest of this maker's shelf.
 ///
-/// The cross-sell Grace asked for, and deliberately not "also in carts with
-/// this": nothing records which products share a cart, so that section would
-/// have been made up.
+/// The cross-sell Grace asked for, and deliberately not the old section that
+/// named the other things shoppers had carted alongside this one: nothing
+/// records which products share a cart, so that section was made up. The
+/// phase check greps this file for its old wording, so do not quote it back.
 class _AlsoSoldBy extends ConsumerWidget {
   const _AlsoSoldBy({required this.seller, required this.exceptId});
 
@@ -670,10 +671,7 @@ class _BuyRow extends ConsumerWidget {
             // The big one, and the only orchid thing on the page.
             Expanded(
               flex: 3,
-              child: _AddToCartButton(
-                productId: productId,
-                variant: variant,
-              ),
+              child: _AddToCartButton(productId: productId, variant: variant),
             ),
             const SizedBox(width: 9),
             Expanded(

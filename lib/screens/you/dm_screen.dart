@@ -180,11 +180,18 @@ class _ConversationState extends ConsumerState<_Conversation> {
                 title: 'No messages yet',
                 body: 'Ask about stock, sizing, or a pickup.',
               ),
+              // Bottom up, the way every thread anybody has ever used works:
+              // the newest message is the one you came to read, and the one
+              // you just sent has to be visible without scrolling for it. A
+              // plain top-down list opened on the oldest message and left a
+              // sent message below the fold.
               data: (messages) => ListView.separated(
                 padding: const EdgeInsets.all(14),
+                reverse: true,
                 itemCount: messages.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, i) => _Bubble(message: messages[i]),
+                itemBuilder: (context, i) =>
+                    _Bubble(message: messages[messages.length - 1 - i]),
               ),
             ),
           ),

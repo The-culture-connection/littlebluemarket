@@ -42,7 +42,17 @@ class Watchable<T> {
           onError: out.addError,
         );
       },
-      onCancel: () => subscription?.cancel(),
+      // Cancels, but does not hand the cancellation back as a future to be
+      // awaited. `Stream.first` waits on whatever `cancel()` returns before
+      // completing its own future, so returning the inner subscription's
+      // cancellation made `watchRating(id).first` in `productDetailProvider`
+      // hang: the product page sat on its skeleton forever in the fixture
+      // backend, and in every widget test. Nothing here needs awaiting —
+      // `_controller` is a broadcast controller this object owns.
+      onCancel: () {
+        subscription?.cancel();
+        subscription = null;
+      },
     );
     return out.stream;
   }
