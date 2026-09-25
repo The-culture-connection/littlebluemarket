@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
 import 'directory_listing_card.dart';
+import 'lbm_toast.dart';
 import 'primitives.dart';
 import 'product_art.dart';
 import 'report_sheet.dart';
@@ -176,6 +177,45 @@ Future<void> addToCart(
         const SnackBar(content: Text('Added to your cart')),
       );
     }
+  } on RepositoryException catch (error) {
+    messenger.showSnackBar(SnackBar(content: Text(describeError(error).body)));
+  }
+}
+
+/// Adds every line of a posted cart at once, and says what happened.
+///
+/// A cart post is a snapshot, so some of it may be gone by the time somebody
+/// taps Add all: the message says how many landed and why the rest did not,
+/// rather than silently adding four of seven.
+Future<void> addManyToCart(
+  BuildContext context,
+  WidgetRef ref,
+  List<String> productIds,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final result = await ref
+        .read(commerceRepositoryProvider)
+        .addManyLines(productIds);
+    if (!context.mounted) return;
+    final skipped = result.skipped.length;
+    if (skipped == 0) {
+      LbmToast.show(
+        context,
+        title: 'In your little blue cart',
+        subtitle: '${result.added.length} things',
+        action: ('View', context.goToCart),
+      );
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Added ${result.added.length}; $skipped could not be added '
+          '(${result.skipped.values.toSet().join(', ')})',
+        ),
+      ),
+    );
   } on RepositoryException catch (error) {
     messenger.showSnackBar(SnackBar(content: Text(describeError(error).body)));
   }

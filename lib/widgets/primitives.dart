@@ -851,6 +851,82 @@ class NearMeButton extends StatelessWidget {
 }
 
 /// The two-up segmented control used on profiles and Shipping.
+/// The three ways into the feed: For you, Near me, Following.
+///
+/// An ink underline rather than [SegmentedTabs]' filled pills. Two reasons:
+/// the pills are `accentDeep`, and orchid now means the cart and only the
+/// cart; and a row of solid pills above a grid of photographs is a second
+/// heavy thing competing with the pictures.
+class TopTabs extends StatelessWidget {
+  const TopTabs({
+    super.key,
+    required this.labels,
+    required this.selected,
+    required this.onChanged,
+    this.padding = const EdgeInsets.fromLTRB(14, 2, 14, 0),
+  });
+
+  final List<String> labels;
+  final int selected;
+  final ValueChanged<int> onChanged;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Padding(
+      padding: padding,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          for (var i = 0; i < labels.length; i++)
+            Flexible(
+              child: Semantics(
+                button: true,
+                selected: i == selected,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                    onTap: () => onChanged(i),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            labels[i],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: kBodyFont,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: i == selected ? c.ink : c.ink3,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Container(
+                            height: 2.5,
+                            decoration: BoxDecoration(
+                              color: i == selected
+                                  ? c.ink
+                                  : Colors.transparent,
+                              borderRadius: LbmRadius.pillR,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class SegmentedTabs extends StatelessWidget {
   const SegmentedTabs({
     super.key,
@@ -1060,6 +1136,77 @@ class InlineLink extends StatelessWidget {
 }
 
 /// The card that tells a guest what they are missing.
+/// The dark bar a guest sees pinned above the tab bar.
+///
+/// It replaced the tinted card at the top of the feed, which was the first
+/// thing in the grid and so the first thing scrolled past and forgotten. Down
+/// here it stays put: the grid is the whole screen, and the one thing a guest
+/// cannot do is always in sight without ever being in the way.
+///
+/// Fixed dark in both themes, like the chat pin, because a themed ink would
+/// come out near-white in dark mode and take its own label with it.
+class GuestJoinBar extends StatelessWidget {
+  const GuestJoinBar({super.key, this.onJoin});
+
+  final VoidCallback? onJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    const white = LbmConst.onGradient;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+      padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+      decoration: const BoxDecoration(
+        color: LbmConst.chatInk,
+        borderRadius: BorderRadius.all(Radius.circular(20)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Looking around as a guest. Sign up to buy, post, or join in.',
+              style: TextStyle(
+                fontFamily: kBodyFont,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                height: 1.35,
+                color: white.withValues(alpha: 0.92),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              color: white,
+              borderRadius: LbmRadius.pillR,
+            ),
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                borderRadius: LbmRadius.pillR,
+                onTap: onJoin,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  child: Text(
+                    'Join',
+                    style: TextStyle(
+                      fontFamily: kBodyFont,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w900,
+                      color: LbmConst.chatInk,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class GuestBanner extends StatelessWidget {
   const GuestBanner({super.key});
 

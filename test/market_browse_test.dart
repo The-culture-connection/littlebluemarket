@@ -6,8 +6,8 @@ import 'package:little_blue_market/models/market_taxonomy.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 import 'package:little_blue_market/screens/market/collection_screen.dart';
-import 'package:little_blue_market/widgets/floating_cart_button.dart';
-import 'package:little_blue_market/widgets/post_card.dart';
+import 'package:little_blue_market/router/app_router.dart';
+import 'package:little_blue_market/widgets/pins/review_pin.dart';
 import 'package:little_blue_market/widgets/primitives.dart';
 import 'package:little_blue_market/widgets/screen.dart';
 
@@ -43,13 +43,30 @@ Future<ProviderContainer> _pumpFeed(
   return container;
 }
 
-/// Scrolls the feed until a post card is reachable and opens it. The feed
-/// leads with rails, banners and tip cards, so the first card starts below
-/// the fold.
-Future<void> _openFirstPost(WidgetTester tester) async {
-  await tester.dragFrom(const Offset(195, 400), const Offset(0, -420));
+/// The browse hub.
+///
+/// The shop rail and the directory rail moved here from the top of the feed
+/// in the redesign (plan T2.2): browsing by category is something you go
+/// looking for, and on the feed the rails pushed the first photograph below
+/// the fold. Everything these tests assert about the rails is unchanged; only
+/// the screen they are on is.
+Future<ProviderContainer> _pumpSearch(WidgetTester tester) async {
+  final container = await _pumpFeed(tester);
+  container.read(routerProvider).go('/market/search');
   await tester.pumpAndSettle();
-  await tester.tap(find.byType(PostCard).first);
+  return container;
+}
+
+/// Opens a post's own screen from the grid.
+///
+/// A review pin, deliberately: the whole pin is the tap target either way,
+/// but a listing pin leads to the product, which is where a listing's detail
+/// lives now. The post screen is the one with a composer on it.
+Future<void> _openFirstPost(WidgetTester tester) async {
+  final pin = find.byType(ReviewPin).first;
+  await tester.ensureVisible(pin);
+  await tester.pumpAndSettle();
+  await tester.tap(pin);
   await tester.pumpAndSettle();
 }
 
@@ -83,7 +100,7 @@ void main() {
     testWidgets('it says Browse the Market, not Browse the shop', (
       tester,
     ) async {
-      await _pumpFeed(tester);
+      await _pumpSearch(tester);
       expect(find.text('Browse the Market'), findsOneWidget);
       expect(find.text('Browse the shop'), findsNothing);
     });
@@ -91,7 +108,7 @@ void main() {
     testWidgets('only headings are on it, not every collection', (
       tester,
     ) async {
-      await _pumpFeed(tester);
+      await _pumpSearch(tester);
       // The demo store carries three of the seven, plus initiatives and
       // subcategories that must not be on the rail. The rail is a lazy
       // horizontal list, so the third chip is only built once scrolled to.
@@ -116,7 +133,7 @@ void main() {
     });
 
     testWidgets('a heading offers the narrower ones inside it', (tester) async {
-      await _pumpFeed(tester);
+      await _pumpSearch(tester);
       await tester.tap(find.text('Apparel & Accessories'));
       await tester.pumpAndSettle();
 
@@ -139,38 +156,39 @@ void main() {
       await _pumpFeed(tester, guest: false);
       expect(find.text('Post'), findsNothing);
 
-      final card = tester.widget<LbmCard>(
-        find
-            .descendant(
-              of: find.byType(PostCard).first,
-              matching: find.byType(LbmCard),
-            )
-            .first,
-      );
-      // It had no tap at all: the only way to a post was the speech bubble.
-      expect(card.onTap, isNotNull);
-
-      card.onTap!();
+      // The whole pin is the tap target, as the whole card was: the original
+      // bug here was a feed card with no tap at all, where the only way to a
+      // post was the speech bubble. A review pin is the one that still leads
+      // to the post screen; a listing pin leads to the product, which is
+      // where a listing's own detail lives.
+      final pin = find.byType(ReviewPin).first;
+      await tester.ensureVisible(pin);
       await tester.pumpAndSettle();
+      await tester.tap(pin);
+      await tester.pumpAndSettle();
+
       // The post screen, which is where the comments are.
       expect(find.text('Post'), findsOneWidget);
     });
 
-    testWidgets('the floating cart never lands on a Send button', (
-      tester,
-    ) async {
+    testWidgets('the cart never lands on a Send button', (tester) async {
       // Reported twice against the bug button, "fixed" once against a route
       // that does not exist, and still wrong on the post screen, where the
       // cart sat squarely on Send (Grace, 2026-09-23, with a photograph).
-      // The old test asserted a list of route prefixes, which is precisely
-      // the thing that was wrong; this one asserts the pixels.
+      //
+      // The cart floated over the bottom right of every screen then, and
+      // keeping it clear of whatever was underneath was a running battle. It
+      // is in the tab bar now, which is a row the layout makes room for
+      // rather than a thing on top of the layout, so it cannot cover
+      // anything. The test still asserts the pixels, because that is the part
+      // that was wrong twice.
       await _pumpFeed(tester, guest: false);
       await _openFirstPost(tester);
 
       final composer = find.byType(Composer);
       expect(composer, findsOneWidget, reason: 'the post screen has one');
-      final cart = find.byIcon(Icons.shopping_bag_rounded);
-      expect(cart, findsOneWidget);
+      final cart = find.byIcon(Icons.shopping_bag_outlined);
+      expect(cart, findsOneWidget, reason: 'the cart is still reachable');
 
       final send = tester.getRect(
         find.descendant(of: composer, matching: find.byType(CircleIconButton)),
@@ -181,40 +199,21 @@ void main() {
         isFalse,
         reason: 'the cart is on the Send button: $button over $send',
       );
-      expect(
-        button.bottom,
-        lessThanOrEqualTo(tester.getRect(composer).top),
-        reason: 'the cart should sit above the composer, not beside it',
-      );
     });
 
-    testWidgets('and sits low again on a screen with no composer', (
-      tester,
-    ) async {
+    testWidgets('and gets out of the way of the keyboard', (tester) async {
       await _pumpFeed(tester, guest: false);
-      final low = tester.getRect(find.byIcon(Icons.shopping_bag_rounded));
       await _openFirstPost(tester);
-      final high = tester.getRect(find.byIcon(Icons.shopping_bag_rounded));
-      expect(high.top, lessThan(low.top), reason: 'lifted for the composer');
+      expect(find.byIcon(Icons.shopping_bag_outlined), findsOneWidget);
 
-      await tester.pageBack();
+      // The whole bar goes when the keyboard is up, so a composer sits
+      // directly above the keys with nothing over it.
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
       await tester.pumpAndSettle();
-      expect(
-        tester.getRect(find.byIcon(Icons.shopping_bag_rounded)).top,
-        low.top,
-        reason: 'and back down once the composer has gone',
-      );
-    });
 
-    test('the offset leaves room only when a composer asks for it', () {
-      expect(
-        CartLayer.bottomOffset(viewPaddingBottom: 0, composerInset: 0),
-        96,
-      );
-      expect(
-        CartLayer.bottomOffset(viewPaddingBottom: 24, composerInset: 66),
-        24 + 96 + 66 + 8,
-      );
+      expect(find.byIcon(Icons.shopping_bag_outlined), findsNothing);
+      expect(find.byType(Composer), findsOneWidget);
     });
 
     testWidgets('the search pill on the results screen reopens search', (
@@ -244,17 +243,27 @@ void main() {
     testWidgets('a hashtag tapped on the search screen replaces it', (
       tester,
     ) async {
-      await _pumpFeed(tester);
+      final container = await _pumpFeed(tester);
       await tester.tap(find.text('Search goods, services, #tags'));
       await tester.pumpAndSettle();
+
       // The popular-tag tiles: tapping one used to push results on top of
       // the search field, so Back went to the field and not to the Market.
-      await tester.tap(find.byType(LbmCard).first);
+      // Asked for by name rather than as "the first card on the screen",
+      // which the two rails above it are now.
+      final tags = await container.read(popularTagsProvider.future);
+      final tile = find.text(tags.first.tag).first;
+      await tester.ensureVisible(tile);
+      await tester.pumpAndSettle();
+      await tester.tap(tile);
       await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
-      expect(find.text('Browse the Market'), findsOneWidget);
+      // Back from a search lands on the Market. "Browse the Market" used to
+      // be the marker for that and is on the Search screen itself now, so it
+      // would pass wherever we landed; the feed's own tabs are the tell.
+      expect(find.text('For you'), findsOneWidget);
     });
   });
 }

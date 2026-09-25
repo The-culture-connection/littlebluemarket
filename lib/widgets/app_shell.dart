@@ -3,10 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../router/nav.dart';
+import '../state/providers.dart';
 import '../state/session.dart';
 import '../state/tips.dart';
 import '../state/tour.dart';
 import '../theme/tokens.dart';
+import 'composers.dart';
 import 'first_tour.dart';
 import 'keep_it_here_dialog.dart';
 import 'sheets.dart';
@@ -126,7 +129,7 @@ class LbmTabBar extends ConsumerWidget {
                       dimmed: true,
                       onTap: () => showGateSheet(context),
                     )
-                  else ...[
+                  else
                     _TabButton(
                       icon: Icons.chat_bubble_outline_rounded,
                       activeIcon: Icons.chat_bubble_rounded,
@@ -135,6 +138,14 @@ class LbmTabBar extends ConsumerWidget {
                       badge: true,
                       onTap: () => _goBranch(Tabs.community),
                     ),
+                  // Posting is the middle of the bar rather than a button
+                  // floating over the grid, where it covered a pin and moved
+                  // as you scrolled. It is the one orchid thing here, for the
+                  // same reason the cart pill is the one orchid thing on a
+                  // photograph: there is exactly one of each.
+                  const _ComposeButton(),
+                  const _CartTab(),
+                  if (!isGuest)
                     _TabButton(
                       icon: Icons.person_outline_rounded,
                       activeIcon: Icons.person_rounded,
@@ -142,13 +153,70 @@ class LbmTabBar extends ConsumerWidget {
                       selected: current == Tabs.you,
                       onTap: () => _goBranch(Tabs.you),
                     ),
-                  ],
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The orchid circle in the middle of the bar: post something.
+///
+/// Guests get the gate instead, the same as every other thing that writes.
+class _ComposeButton extends ConsumerWidget {
+  const _ComposeButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Semantics(
+        button: true,
+        label: 'Post something',
+        child: Material(
+          color: c.accentDeep,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () => requireProfile(
+              context,
+              ref,
+              () => showNewPostSheet(context, ref),
+            ),
+            child: SizedBox(
+              width: 54,
+              height: 54,
+              child: Icon(Icons.add_rounded, size: 28, color: c.accentInk),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The cart, in the bar.
+///
+/// Pushed rather than switched to: the cart is a shared route registered
+/// under every branch, so opening it from the Market and from Community
+/// keeps each tab's own back stack.
+class _CartTab extends ConsumerWidget {
+  const _CartTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(cartCountProvider);
+    return _TabButton(
+      icon: Icons.shopping_bag_outlined,
+      activeIcon: Icons.shopping_bag_rounded,
+      label: 'Cart',
+      selected: false,
+      count: count,
+      onTap: context.goToCart,
     );
   }
 }
@@ -162,6 +230,7 @@ class _TabButton extends StatelessWidget {
     required this.onTap,
     this.badge = false,
     this.dimmed = false,
+    this.count = 0,
   });
 
   final IconData icon;
@@ -175,6 +244,10 @@ class _TabButton extends StatelessWidget {
 
   /// The locked slot a guest sees.
   final bool dimmed;
+
+  /// How many things are in the cart. Zero draws nothing: an empty cart does
+  /// not need a badge saying it is empty.
+  final int count;
 
   @override
   Widget build(BuildContext context) {
@@ -236,6 +309,32 @@ class _TabButton extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: c.accentDeep,
                               shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      if (count > 0)
+                        Positioned(
+                          top: -1,
+                          right: 6,
+                          child: Container(
+                            constraints: const BoxConstraints(minWidth: 16),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: c.accentDeep,
+                              borderRadius: LbmRadius.pillR,
+                            ),
+                            child: Text(
+                              '$count',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                height: 1.3,
+                                color: c.accentInk,
+                              ),
                             ),
                           ),
                         ),

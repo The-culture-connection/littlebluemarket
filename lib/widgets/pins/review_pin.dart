@@ -61,6 +61,7 @@ class ReviewPin extends ConsumerWidget {
                   ),
                 ),
               ),
+              Positioned(right: 2, top: 2, child: PinMore(post: post)),
               Positioned(
                 left: 8,
                 bottom: 8,

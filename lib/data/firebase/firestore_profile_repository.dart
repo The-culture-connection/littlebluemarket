@@ -100,6 +100,25 @@ class FirestoreProfileRepository implements ProfileRepository {
             .toList();
       });
 
+  /// Sellers, by handle.
+  ///
+  /// Ordered by `handleLower` because that is the index `users` already has.
+  /// It is not distance and the rail must not claim it is: people carry
+  /// `lat`/`lng` but nothing geohashes them the way the catalogue geohashes
+  /// products, so there is no proximity query to make here yet.
+  @override
+  Future<List<Person>> nearbySellers({int limit = 8}) =>
+      guardFirestore(() async {
+        final snapshot = await _users
+            .where('isSeller', isEqualTo: true)
+            .orderBy('handleLower')
+            .limit(limit)
+            .get();
+        return snapshot.docs
+            .map((doc) => FirestoreMappers.person(doc.id, doc.data()))
+            .toList();
+      });
+
   @override
   Future<void> updateProfile(ProfileEdit edit) => guardFirestore(() async {
     final id = _requireUid;

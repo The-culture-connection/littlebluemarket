@@ -902,6 +902,9 @@ class FixtureSocialRepository implements SocialRepository {
       _store.following.stream.map((set) => set.contains(personId));
 
   @override
+  Stream<Set<String>> watchFollowedPeople() => _store.following.stream;
+
+  @override
   Future<void> setFollowing(String personId, bool on) async {
     await _backend._settle();
     if (personId == _backend.uid) {
@@ -1023,6 +1026,20 @@ class FixtureSocialRepository implements SocialRepository {
       .stream
       .map((threads) => threads.where((t) => t.forumId == forumId).toList());
 
+  /// The same rule as Firestore's: busiest first, newest to break a tie.
+  @override
+  Stream<List<ForumThread>> watchHotThreads({int limit = 6}) =>
+      _store.threads.stream.map((threads) {
+        final sorted = [...threads]
+          ..sort((a, b) {
+            final byCount = b.commentCount.compareTo(a.commentCount);
+            return byCount != 0
+                ? byCount
+                : b.createdAt.compareTo(a.createdAt);
+          });
+        return sorted.take(limit).toList();
+      });
+
   @override
   Stream<ForumThread> watchThread(String id) =>
       _store.threads.stream.map((threads) {
@@ -1123,6 +1140,21 @@ class FixtureMessagingRepository implements MessagingRepository {
   @override
   Stream<List<Message>> watchChatroom({int limit = 100}) =>
       _store.chatroom.stream.map((messages) => messages.take(limit).toList());
+
+  @override
+  Stream<ChatMoment> watchChatMoment() => _store.chatroom.stream.map((
+    messages,
+  ) {
+    final hourAgo = DateTime.now().subtract(const Duration(hours: 1));
+    return ChatMoment(
+      latest: messages.length <= 2
+          ? messages
+          : messages.sublist(messages.length - 2),
+      lastHourCount: messages
+          .where((m) => m.createdAt.isAfter(hourAgo))
+          .length,
+    );
+  });
 
   @override
   Future<void> sendToChatroom(String text) async {
@@ -1249,6 +1281,18 @@ class FixtureProfileRepository implements ProfileRepository {
           .take(limit)
           .toList(),
     );
+  }
+
+  /// Sellers by handle, the same stand-in order the Firestore one uses. Not
+  /// distance: see the interface.
+  @override
+  Future<List<Person>> nearbySellers({int limit = 8}) {
+    final sellers =
+        _store.people.value.values.where((p) => p.isSeller).toList()
+          ..sort(
+            (a, b) => a.handle.toLowerCase().compareTo(b.handle.toLowerCase()),
+          );
+    return _backend._delayed(sellers.take(limit).toList());
   }
 
   @override

@@ -113,19 +113,21 @@ void main() {
     expect(find.text(_disclaimer), findsNothing);
   });
 
-  testWidgets('the floating cart is on the feed and opens the cart', (
-    tester,
-  ) async {
+  testWidgets('the cart is in the tab bar and opens the cart', (tester) async {
+    // The cart used to float over the bottom right of every screen. It is a
+    // tab now: always in the same place, with its count on it, and unable to
+    // sit on top of whatever is underneath it.
     await _pumpSignedIn(tester);
-    expect(find.bySemanticsLabel('Your cart'), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.shopping_bag_rounded));
+    // By its bag icon, not its label: the pins in the grid each carry a pill
+    // that also reads "Cart".
+    expect(find.byIcon(Icons.shopping_bag_outlined), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.shopping_bag_outlined));
     await tester.pumpAndSettle();
     expect(find.text('Your cart'), findsWidgets);
-    // And it takes itself off the cart screen rather than floating over it.
-    expect(find.byIcon(Icons.shopping_bag_rounded), findsNothing);
   });
 
-  testWidgets('the floating cart stays off the welcome screen', (tester) async {
+  testWidgets('there is no cart on the welcome screen', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -138,6 +140,6 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.byIcon(Icons.shopping_bag_rounded), findsNothing);
+    expect(find.byIcon(Icons.shopping_bag_outlined), findsNothing);
   });
 }

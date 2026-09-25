@@ -45,24 +45,30 @@ class AnnouncementPin extends StatelessWidget {
           child: Stack(
             children: [
               if (hero && photo != null && photo.isNotEmpty)
+                // Filled and then aligned, rather than a Positioned with no
+                // left edge: that leaves the width unbounded, and a
+                // FractionallySizedBox inside it asks for a fraction of
+                // infinity.
                 Positioned.fill(
-                  left: null,
-                  child: FractionallySizedBox(
-                    widthFactor: 0.52,
+                  child: Align(
                     alignment: Alignment.centerRight,
-                    child: ShaderMask(
-                      // Fades the photograph into the gradient rather than
-                      // butting it against the type. Under `dstIn` these two
-                      // are an alpha ramp, not colours: nothing here is ever
-                      // painted black, so no token applies.
-                      shaderCallback: (rect) => const LinearGradient(
-                        colors: [Colors.transparent, Colors.black],
-                        stops: [0, 0.4],
-                      ).createShader(rect),
-                      blendMode: BlendMode.dstIn,
-                      child: ProductPhoto(
-                        url: photo,
-                        fallback: const SizedBox.shrink(),
+                    child: FractionallySizedBox(
+                      widthFactor: 0.52,
+                      heightFactor: 1,
+                      child: ShaderMask(
+                        // Fades the photograph into the gradient rather than
+                        // butting it against the type. Under `dstIn` these
+                        // two are an alpha ramp, not colours: nothing here is
+                        // ever painted black, so no token applies.
+                        shaderCallback: (rect) => const LinearGradient(
+                          colors: [Colors.transparent, Colors.black],
+                          stops: [0, 0.4],
+                        ).createShader(rect),
+                        blendMode: BlendMode.dstIn,
+                        child: ProductPhoto(
+                          url: photo,
+                          fallback: const SizedBox.shrink(),
+                        ),
                       ),
                     ),
                   ),
@@ -101,17 +107,27 @@ class AnnouncementPin extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        a.title,
-                        maxLines: hero ? 3 : 4,
-                        overflow: TextOverflow.ellipsis,
-                        style: hero
-                            ? LbmText.headline.copyWith(color: white)
-                            : LbmText.display.copyWith(
-                                fontSize: 18,
-                                height: 1.1,
-                                color: white,
-                              ),
+                      ConstrainedBox(
+                        // Kept clear of the photograph fading in from the
+                        // right. Without this the headline runs across it and
+                        // the last word of it is unreadable.
+                        constraints: BoxConstraints(
+                          maxWidth: hero && photo != null && photo.isNotEmpty
+                              ? 250
+                              : double.infinity,
+                        ),
+                        child: Text(
+                          a.title,
+                          maxLines: hero ? 3 : 4,
+                          overflow: TextOverflow.ellipsis,
+                          style: hero
+                              ? LbmText.headline.copyWith(color: white)
+                              : LbmText.display.copyWith(
+                                  fontSize: 18,
+                                  height: 1.1,
+                                  color: white,
+                                ),
+                        ),
                       ),
                       if (a.body.isNotEmpty) ...[
                         const SizedBox(height: 8),

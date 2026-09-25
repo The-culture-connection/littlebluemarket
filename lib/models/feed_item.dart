@@ -34,6 +34,11 @@ final class ProductItem extends FeedItem {
   /// Enough people have carted it to be worth saying so on the pin.
   final bool proof;
 
+  /// How many carts a listing has to be in before the pin says so.
+  ///
+  /// Below this it is not social proof, it is just a number.
+  static const proofThreshold = 50;
+
   Product get product => post.product;
 
   @override

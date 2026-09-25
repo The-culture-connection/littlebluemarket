@@ -5,6 +5,7 @@ import 'package:little_blue_market/data/fixtures/fixture_data.dart';
 import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/router/app_router.dart';
 import 'package:little_blue_market/state/providers.dart';
+import 'package:little_blue_market/widgets/cart_pill.dart';
 import 'package:little_blue_market/widgets/profile_identity.dart';
 import 'package:little_blue_market/state/session.dart';
 
@@ -43,13 +44,25 @@ Future<ProviderContainer> _pumpApp(WidgetTester tester, {required bool guest}) a
   return container;
 }
 
-/// Scrolls the feed until the first Buy button is on screen, then taps it.
-Future<void> _tapFirstBuy(WidgetTester tester) async {
-  final buy = find.text('Buy').first;
-  await tester.ensureVisible(buy);
+/// Opens a listing from the grid and taps its Buy button.
+///
+/// Buy left the feed with the redesign: a pin carries the cart pill and
+/// nothing else, and buying something is a decision made on the thing's own
+/// page. The gate it runs into is the same gate.
+/// Taps the cart pill on the first pin in the grid.
+Future<void> _tapFirstCartPill(WidgetTester tester) async {
+  final pill = find.byType(CartPill).first;
+  await tester.ensureVisible(pill);
   await tester.pumpAndSettle();
-  await tester.tap(buy);
+  await tester.tap(pill);
   await tester.pumpAndSettle();
+
+  // The very first add explains what the cart means here before it adds
+  // anything. A guest never gets this far; a member has to say Got it.
+  if (find.text('Got it').evaluate().isNotEmpty) {
+    await tester.tap(find.text('Got it'));
+    await tester.pumpAndSettle();
+  }
 }
 
 void main() {
@@ -76,7 +89,9 @@ void main() {
 
   testWidgets('a guest gets the gate instead of the cart', (tester) async {
     await _pumpApp(tester, guest: true);
-    await _tapFirstBuy(tester);
+    // Straight from the grid: the cart pill is the one commerce action a pin
+    // offers, and it is the one a guest is most likely to reach for.
+    await _tapFirstCartPill(tester);
 
     expect(find.text('Make a profile to do that'), findsOneWidget);
     expect(find.text('Your cart'), findsNothing);
@@ -103,15 +118,22 @@ void main() {
   testWidgets('a signed-in buyer reaches the cart, not the gate', (
     tester,
   ) async {
-    await _pumpApp(tester, guest: false);
-    await _tapFirstBuy(tester);
+    final container = await _pumpApp(tester, guest: false);
+    await _tapFirstCartPill(tester);
 
-    // Buy means buy now (2026-09-09): the item goes into the cart and the
-    // checkout hand-off opens at once. The prototype's sheet confirmed an
-    // order against a hardcoded address and an invented flat shipping rate,
-    // then navigated as though an order had been placed.
-    expect(find.text('Finish in checkout'), findsOneWidget);
+    // The same action that gates a guest goes straight through for a member:
+    // the line lands in the cart and nothing asks them to sign up.
     expect(find.text('Make a profile to do that'), findsNothing);
+    expect(
+      container.read(cartProvider).value?.lines,
+      isNotEmpty,
+      reason: 'the pill is the commerce action a pin offers',
+    );
+
+    // Buy now itself, and its "Finish in checkout" hand-off, is driven in
+    // `checkout_sheet_test.dart`. It cannot be reached from here any more:
+    // Buy left the feed with the redesign and lives on a product's own page,
+    // which does not get past its skeleton in a widget test.
   });
 
   testWidgets('the cart does not invent a total it cannot know', (

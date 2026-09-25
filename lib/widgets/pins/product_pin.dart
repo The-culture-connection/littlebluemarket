@@ -23,11 +23,6 @@ class ProductPin extends ConsumerWidget {
 
   final ProductItem item;
 
-  /// How many carts a listing has to be in before the pin says so.
-  ///
-  /// Below this it is not social proof, it is just a number.
-  static const proofThreshold = 50;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final product = item.product;
@@ -55,6 +50,7 @@ class ProductPin extends ConsumerWidget {
                     icon: Icons.shopping_cart_outlined,
                   ),
                 ),
+              Positioned(right: 2, top: 2, child: PinMore(post: item.post)),
               Positioned(
                 right: 8,
                 bottom: 8,

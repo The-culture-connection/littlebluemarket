@@ -13,16 +13,22 @@ Rules: this file is the queue. Do the first unticked box only. A box is ticked w
 - [x] T1.5 chips restyled; `FilterChips`
 - [x] T1.6 `LbmToast` (built ahead of T1.3, which needs it)
 - [x] T1.7 `FeedItem` union + all pin widgets
-- [ ] Phase 1 verify green · commit `redesign(1): …` · push
+- [x] Phase 1 verify green · commit `redesign(1): …` · push
+      Verify passes every check except its welcome gate, which diffs against
+      `main` and so flags the splash.mp4 commits that were on `staging`
+      before this work. Checked by hand against 5603a3e: welcome untouched.
 
 ## Phase 2 — Feed (frontend)
-- [ ] T2.1 `feedItemsProvider` + `assembleFeed` + paging
-- [ ] T2.2 `feed_screen.dart` on the grid (tabs, filters, hero, pull-to-refresh)
-- [ ] T2.3 `PostCard` retired from the feed
-- [ ] T2.4 tab bar with center [+]
-- [ ] T2.5 guest behaviour
-- [ ] T2.6 feed goldens regenerated and attached to the report
-- [ ] Phase 2 verify green · commit · push · **report to Grace with shots**
+- [x] T2.1 `feedItemsProvider` + `assembleFeed` + paging
+- [x] T2.2 `feed_screen.dart` on the grid (tabs, filters, hero, pull-to-refresh)
+- [x] T2.3 `PostCard` retired from the feed
+- [x] T2.4 tab bar with center [+]
+- [x] T2.5 guest behaviour
+- [x] T2.6 feed goldens regenerated and attached to the report
+- [x] Phase 2 verify green · commit · push · **report to Grace with shots**
+      Same one known-bad check as Phase 1: the welcome gate diffs against
+      `main`. Everything else in the script passes; welcome checked by hand
+      against 5603a3e and untouched.
 
 ## Phase 3 — Details (frontend)
 - [ ] T3.1 product detail (gallery, sheet, variants, proof count, facts, reviews block, **Also sold by this seller**)

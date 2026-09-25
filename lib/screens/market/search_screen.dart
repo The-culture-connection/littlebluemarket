@@ -10,6 +10,8 @@ import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
+import 'collection_screen.dart' show CollectionRail;
+import 'directory_browse_screen.dart' show DirectoryRail;
 
 /// The search entry point: scope, the initiative hashtags, and recent searches.
 class SearchScreen extends ConsumerStatefulWidget {
@@ -97,6 +99,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ],
             ),
           ),
+          // The store's real taxonomy, and littlebluecart.com's beside it.
+          // Both used to sit on top of the Market feed, where they pushed the
+          // first photograph below the fold and answered a question nobody
+          // had asked yet. Browsing by category is a thing you come looking
+          // for, so it lives on the screen you come looking on.
+          const CollectionRail(),
+          const DirectoryRail(),
           const SectionHead('Popular right now — initiatives'),
           LbmAsync<List<TagCount>>(
             tags,

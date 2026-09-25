@@ -45,6 +45,24 @@ class FirestoreMessagingRepository implements MessagingRepository {
       .guarded();
 
   @override
+  Stream<ChatMoment> watchChatMoment() => watchChatroom(limit: 60).map((
+    messages,
+  ) {
+    final hourAgo = DateTime.now().subtract(const Duration(hours: 1));
+    return ChatMoment(
+      // `watchChatroom` hands them back oldest first, so the last two are
+      // the ones the pin wants, still in reading order.
+      latest: messages.length <= 2
+          ? messages
+          : messages.sublist(messages.length - 2),
+      lastHourCount: messages
+          .where((m) => m.createdAt.isAfter(hourAgo))
+          .length,
+      // hereNow stays 0: there is no presence anywhere in this system.
+    );
+  });
+
+  @override
   Future<void> sendToChatroom(String text) => guardFirestore(() async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;

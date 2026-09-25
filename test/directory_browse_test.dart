@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/models/models.dart';
+import 'package:little_blue_market/router/app_router.dart';
 import 'package:little_blue_market/screens/market/directory_browse_screen.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
@@ -38,6 +39,19 @@ Future<ProviderContainer> _pumpFeed(
   return container;
 }
 
+/// The browse hub, which is where both rails live since the redesign moved
+/// them off the top of the feed (plan T2.2). Nothing these tests assert about
+/// the rail has changed; only the screen it is on.
+Future<ProviderContainer> _pumpSearch(
+  WidgetTester tester, {
+  bool guest = true,
+}) async {
+  final container = await _pumpFeed(tester, guest: guest);
+  container.read(routerProvider).go('/market/search');
+  await tester.pumpAndSettle();
+  return container;
+}
+
 /// Taps a chip on the directory rail, scrolling the rail itself to reach
 /// it: the chips run off the side of a phone, and the page's own vertical
 /// scrollable cannot bring a horizontal one into view.
@@ -58,18 +72,24 @@ Future<void> _openCategory(WidgetTester tester, String chip) async {
 }
 
 void main() {
-  testWidgets('the directory rail sits on the feed, next to the shop rail', (
+  testWidgets('the directory rail sits on Search, next to the shop rail', (
     tester,
   ) async {
-    await _pumpFeed(tester);
+    await _pumpSearch(tester);
     expect(find.text('Browse the directory'), findsOneWidget);
     expect(find.text('littlebluecart.com'), findsOneWidget);
+  });
+
+  testWidgets('it is off the feed, which is photographs now', (tester) async {
+    await _pumpFeed(tester);
+    expect(find.text('Browse the directory'), findsNothing);
+    expect(find.text('Browse the Market'), findsNothing);
   });
 
   testWidgets('the rail is built from the categories the directory has', (
     tester,
   ) async {
-    final container = await _pumpFeed(tester);
+    final container = await _pumpSearch(tester);
     final categories = await container.read(
       directoryCategoriesProvider.future,
     );
@@ -91,7 +111,7 @@ void main() {
   testWidgets('a category shows its businesses, with a way to claim one', (
     tester,
   ) async {
-    await _pumpFeed(tester);
+    await _pumpSearch(tester);
     await _openCategory(tester, 'Home & Garden');
 
     // The screen is titled in the directory's own words.
@@ -107,7 +127,7 @@ void main() {
   testWidgets('a claimed listing does not offer to be claimed', (
     tester,
   ) async {
-    await _pumpFeed(tester);
+    await _pumpSearch(tester);
     await _openCategory(tester, 'Travel');
 
     // Field Trips belongs to dee in the demo data.
@@ -118,7 +138,7 @@ void main() {
   testWidgets('a guest tapping Claim is asked to make a profile first', (
     tester,
   ) async {
-    await _pumpFeed(tester);
+    await _pumpSearch(tester);
     await _openCategory(tester, 'Bath, Beauty & Wellness');
     expect(find.text('Cedar & Salt Bath Co.'), findsOneWidget);
 

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/models.dart';
+import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../primitives.dart';
+import '../report_sheet.dart';
 
 /// The two lines under a photograph: what it is, and whose it is.
 ///
@@ -99,6 +102,73 @@ class PinPrice extends StatelessWidget {
       Fmt.money(cents),
       maxLines: 1,
       style: LbmText.display.copyWith(fontSize: 14, color: context.c.ink),
+    );
+  }
+}
+
+/// The "…" in the corner of a pin: report this, or block whoever posted it.
+///
+/// It survived the redesign on purpose. The grid has no action bar under each
+/// card any more, and reporting something offensive is not a thing to make
+/// people tap through to find; a moderation affordance that costs an extra
+/// screen is one people stop using. Same sheet as the post's own screen and a
+/// maker's board, so there is one place that decides what it offers.
+class PinMore extends ConsumerWidget {
+  const PinMore({super.key, required this.post, this.onSurface = false});
+
+  final Post post;
+
+  /// True on a white card rather than a photograph, where the button does not
+  /// need its own fill to be legible.
+  final bool onSurface;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final author = ref.watch(personProvider(post.authorId)).value;
+
+    final dots = Icon(
+      Icons.more_horiz_rounded,
+      size: 17,
+      color: onSurface ? c.ink2 : c.ink,
+    );
+
+    return Semantics(
+      button: true,
+      label: 'More',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: author == null
+            ? null
+            : () => showMoreSheet(
+                context,
+                ref,
+                subjectUid: post.authorId,
+                subjectName: author.name,
+                subjectHandle: author.handle,
+                postId: post.id,
+              ),
+        child: SizedBox(
+          // A real target, even though the dot cluster is small.
+          width: 34,
+          height: 34,
+          child: Center(
+            child: onSurface
+                ? dots
+                : DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: c.surface,
+                      shape: BoxShape.circle,
+                      boxShadow: c.shadowSoft,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: dots,
+                    ),
+                  ),
+          ),
+        ),
+      ),
     );
   }
 }

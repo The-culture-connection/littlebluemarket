@@ -554,6 +554,26 @@ class FirestoreSocialRepository implements SocialRepository {
       )
       .guarded();
 
+  /// Busiest first, newest to break a tie.
+  ///
+  /// Needs the composite index on `threads` (`commentCount` desc,
+  /// `createdAt` desc); see `firebase/firestore.indexes.json`. Old documents
+  /// written before `commentCount` existed sort as 0 rather than dropping
+  /// out, because Firestore omits documents missing an ordered field, so the
+  /// tail is topped up by [watchThreads]-style recency below.
+  @override
+  Stream<List<ForumThread>> watchHotThreads({int limit = 6}) => _threads
+      .orderBy('commentCount', descending: true)
+      .orderBy('createdAt', descending: true)
+      .limit(limit)
+      .snapshots()
+      .map(
+        (snapshot) => snapshot.docs
+            .map((doc) => FirestoreMappers.thread(doc.id, doc.data()))
+            .toList(),
+      )
+      .guarded();
+
   @override
   Stream<ForumThread> watchThread(String id) =>
       _threads.doc(id).snapshots().map((doc) {
@@ -687,6 +707,19 @@ class FirestoreSocialRepository implements SocialRepository {
         .snapshots()
         .map((doc) => doc.exists)
         .guarded(operation: 'firestore following');
+  }
+
+  @override
+  Stream<Set<String>> watchFollowedPeople() {
+    final me = uid;
+    if (me == null) return Stream.value(const {});
+    return _db
+        .collection('users')
+        .doc(me)
+        .collection('following')
+        .snapshots()
+        .map((snapshot) => {for (final doc in snapshot.docs) doc.id})
+        .guarded(operation: 'firestore following list');
   }
 
   @override

@@ -266,6 +266,13 @@ abstract interface class SocialRepository {
   Stream<bool> watchFollowing(String personId);
   Future<void> setFollowing(String personId, bool on);
 
+  /// Everyone this viewer follows.
+  ///
+  /// [watchFollowing] answers "am I following this one", which is what a
+  /// profile button needs and what the Following tab cannot use: that needs
+  /// the whole set to filter a stream by.
+  Stream<Set<String>> watchFollowedPeople();
+
   /// News from Little Blue Market, newest first, every audience: the phone
   /// keeps the ones meant for this viewer.
   Stream<List<Announcement>> watchAnnouncements({int limit = 20});
@@ -285,6 +292,14 @@ abstract interface class SocialRepository {
   Stream<bool> watchForumMembership(String forumId);
 
   Stream<List<ForumThread>> watchThreads(String forumId);
+
+  /// The threads worth putting in the Market feed, across every forum.
+  ///
+  /// Busiest first, newest to break a tie. A thread nobody has answered is
+  /// not a conversation to join, so this is ordered by replies rather than by
+  /// recency: the pin's whole claim is that something is going on in there.
+  Stream<List<ForumThread>> watchHotThreads({int limit = 6});
+
   Stream<ForumThread> watchThread(String id);
   Future<String> createThread(NewThread draft);
   Stream<List<ThreadComment>> watchThreadComments(String threadId);
@@ -298,6 +313,12 @@ abstract interface class SocialRepository {
 /// The open chatroom and one-to-one threads.
 abstract interface class MessagingRepository {
   Stream<List<Message>> watchChatroom({int limit = 100});
+
+  /// What the open room looks like right now, for the pin in the feed.
+  ///
+  /// Derived from the same messages [watchChatroom] serves, so the pin and
+  /// the room can never disagree about what was last said.
+  Stream<ChatMoment> watchChatMoment();
   Future<void> sendToChatroom(String text);
 
   Stream<List<Conversation>> watchInbox();
@@ -326,6 +347,15 @@ abstract interface class ProfileRepository {
 
   /// Seller lookup for @-mentions in a shoutout.
   Future<List<Person>> searchPeople(String query, {int limit = 10});
+
+  /// Makers to put in the rail in the feed.
+  ///
+  /// **Not actually sorted by distance.** The rail is headed "Makers near
+  /// you" in the mockup, but a proximity query needs the geohash index the
+  /// catalogue uses for products and people are not indexed that way. This
+  /// returns sellers in a stable order until that exists; the caller decides
+  /// what to call the rail, and must not promise nearness it is not getting.
+  Future<List<Person>> nearbySellers({int limit = 8});
 
   Future<void> updateProfile(ProfileEdit edit);
   Future<String> uploadAvatar(List<int> bytes, {required String contentType});

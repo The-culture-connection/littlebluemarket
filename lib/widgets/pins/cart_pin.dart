@@ -50,35 +50,40 @@ class CartPin extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          ClipRRect(
-            borderRadius: LbmRadius.imageR,
-            child: ColoredBox(
-              color: c.skyMist,
-              child: GridView.count(
-                crossAxisCount: 2,
-                mainAxisSpacing: 3,
-                crossAxisSpacing: 3,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  for (final line in shown)
-                    _CollageTile(url: line.imageUrl, title: line.title),
-                  if (hidden > 0)
-                    ColoredBox(
-                      color: c.ink,
-                      child: Center(
-                        child: Text(
-                          '+$hidden',
-                          style: LbmText.display.copyWith(
-                            fontSize: 16,
-                            color: c.surface,
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: LbmRadius.imageR,
+                child: ColoredBox(
+                  color: c.skyMist,
+                  child: GridView.count(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 3,
+                    crossAxisSpacing: 3,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      for (final line in shown)
+                        _CollageTile(url: line.imageUrl, title: line.title),
+                      if (hidden > 0)
+                        ColoredBox(
+                          color: c.ink,
+                          child: Center(
+                            child: Text(
+                              '+$hidden',
+                              style: LbmText.display.copyWith(
+                                fontSize: 16,
+                                color: c.surface,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
-            ),
+              Positioned(right: 2, top: 2, child: PinMore(post: post)),
+            ],
           ),
           PinCaption(
             title: post.caption?.isNotEmpty == true

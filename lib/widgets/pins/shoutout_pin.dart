@@ -8,6 +8,7 @@ import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../primitives.dart';
+import 'pin_caption.dart';
 
 /// Somebody naming a maker they want other people to find.
 ///
@@ -49,7 +50,16 @@ class ShoutoutPin extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const _Kicker('Shoutout'),
+            Row(
+              children: [
+                // Flexible, not fixed: at twice the clamped text scale the
+                // kicker alone is wider than a column, and the "…" beside it
+                // has a fixed 34.
+                const Flexible(child: _Kicker('Shoutout')),
+                const SizedBox(width: 4),
+                PinMore(post: post),
+              ],
+            ),
             const SizedBox(height: 6),
             Text(
               post.text,
@@ -97,6 +107,8 @@ class _Kicker extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label.toUpperCase(),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: LbmText.pinMeta.copyWith(
         fontSize: 10.5,
         fontWeight: FontWeight.w900,

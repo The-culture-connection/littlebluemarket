@@ -18,7 +18,6 @@ import 'state/push_coordinator.dart';
 import 'state/session.dart';
 import 'theme/app_theme.dart';
 import 'widgets/dev_error_surface.dart';
-import 'widgets/floating_cart_button.dart';
 import 'widgets/phone_frame.dart';
 import 'widgets/promo_popup.dart';
 import 'widgets/splash_overlay.dart';
@@ -144,10 +143,13 @@ class LittleBlueMarketApp extends ConsumerWidget {
                           focus.unfocus();
                         }
                       },
-                      child: CartLayer(
-                        router: router,
-                        child: PromoLayer(router: router, child: child!),
-                      ),
+                      // The floating cart used to live here, above
+                      // everything. The tab bar carries it now, with its
+                      // count on it, on every screen the floating one
+                      // appeared on: two carts on one screen is one too many,
+                      // and the floating one was the one that kept landing on
+                      // other people's buttons.
+                      child: PromoLayer(router: router, child: child!),
                     ),
                     const DevBackendBadge(),
                   ],

@@ -89,8 +89,22 @@ class FixtureStore {
   final listings = Watchable<List<Listing>>([]);
   final notifications = Watchable<List<AppNotification>>([]);
 
-  /// News from the demo merchant. Empty until the Admin screen sends one.
-  final announcements = Watchable<List<Announcement>>([]);
+  /// News from the demo merchant.
+  ///
+  /// One to start with, because the newest unread announcement is the hero at
+  /// the top of the feed and an empty list meant the demo backend could never
+  /// show the one thing the redesign leads with. Sending another from the
+  /// Admin screen pushes this one down, which is the behaviour to look at.
+  late final announcements = Watchable<List<Announcement>>([
+    Announcement(
+      id: 'a_demo_1',
+      title: 'Six new makers joined this week',
+      body: 'Ceramics, two bakers and a bookbinder. Say hello in the chat.',
+      audience: AnnouncementAudience.all,
+      route: '/community',
+      createdAt: DateTime.now().subtract(const Duration(hours: 5)),
+    ),
+  ]);
 
   /// One advert and one announcement, so the fading popup is visible with no
   /// backend at all. Live ones are written from the admin website.
