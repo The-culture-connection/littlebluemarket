@@ -6,13 +6,13 @@ Rules: this file is the queue. Do the first unticked box only. A box is ticked w
 - [ ] P1–P8 in the plan all true; branch `redesign/pinterest-grid` created; baseline `scripts\test-all.ps1` "All green." recorded in the first commit message.
 
 ## Phase 1 — Foundations (frontend)
-- [ ] T1.1 masonry dependency + `LbmMasonry`
-- [ ] T1.2 `NaturalPhoto`
-- [ ] T1.3 `CartPill` + bounce + toast + guest gate
-- [ ] T1.4 `LbmText.headline/pinTitle/pinMeta`
-- [ ] T1.5 chips restyled; `FilterChips`
-- [ ] T1.6 `LbmToast`
-- [ ] T1.7 `FeedItem` union + all pin widgets
+- [x] T1.1 masonry dependency + `LbmMasonry`
+- [x] T1.2 `NaturalPhoto`
+- [x] T1.3 `CartPill` + bounce + toast + guest gate
+- [x] T1.4 `LbmText.headline/pinTitle/pinMeta`
+- [x] T1.5 chips restyled; `FilterChips`
+- [x] T1.6 `LbmToast` (built ahead of T1.3, which needs it)
+- [x] T1.7 `FeedItem` union + all pin widgets
 - [ ] Phase 1 verify green · commit `redesign(1): …` · push
 
 ## Phase 2 — Feed (frontend)

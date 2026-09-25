@@ -24,6 +24,43 @@ abstract final class LbmText {
     height: 1.15,
   );
 
+  /// The one big line on a screen: the hero announcement, a tag's name.
+  ///
+  /// [display] tops out around 22, which is a title rather than a headline.
+  /// The redesign needs something that can carry a screen on its own, so this
+  /// is tighter as well as bigger: at 30 the default 1.15 leading opens a gap
+  /// between two lines that reads as two separate thoughts.
+  static const headline = TextStyle(
+    fontFamily: kDisplayFont,
+    fontSize: 30,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -0.3,
+    height: 1.02,
+  );
+
+  /// A pin's caption line under the photograph.
+  ///
+  /// Small and heavy rather than large and light: in a 180-wide column the
+  /// title competes with the photo above it, and weight reads at that size
+  /// where size alone would just crowd the image.
+  static const pinTitle = TextStyle(
+    fontFamily: kBodyFont,
+    fontSize: 13,
+    fontWeight: FontWeight.w800,
+    height: 1.3,
+  );
+
+  /// The quieter second line of a pin: the shop, the count, the age.
+  ///
+  /// Carries no colour, like every style here; use `context.c.ink2` at the
+  /// point of use so light and dark each get the right one.
+  static const pinMeta = TextStyle(
+    fontFamily: kBodyFont,
+    fontSize: 11.5,
+    fontWeight: FontWeight.w700,
+    height: 1.35,
+  );
+
   /// The italic section label that sits above a group of cards.
   static const sectionLabel = TextStyle(
     fontFamily: kDisplayFont,

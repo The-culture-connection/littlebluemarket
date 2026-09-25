@@ -30,6 +30,10 @@ dependencies:
   flutter_local_notifications: ^22.3.0
   # Plays the launch animation on the splash. See widgets/splash_overlay.dart.
   video_player: ^2.10.0
+  # The two-column grid the feed is laid out on. A plain GridView gives every
+  # cell the same aspect ratio; here the photo sets the height, so the two
+  # columns have to fill independently. See widgets/masonry.dart.
+  flutter_staggered_grid_view: ^0.7.0
 
 dev_dependencies:
   flutter_test:

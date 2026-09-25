@@ -374,10 +374,11 @@ enum ChipStyle {
   /// `skyMist` on ink — the default.
   plain,
 
-  /// An initiative hashtag: `accentMist` on `accentText`.
+  /// A hashtag: `skyMist` on `skyDeep`, so it reads as a link into a
+  /// collection rather than as something to press.
   initiative,
 
-  /// The selected chip in a scope row: a solid `accentDeep` fill.
+  /// The selected chip in a scope row: a solid `ink` fill.
   on,
 
   /// The quietest fill, `skyWash` on secondary ink.
@@ -392,6 +393,7 @@ class LbmChip extends StatelessWidget {
     this.onTap,
     this.fontSize = 12,
     this.trailingIcon,
+    this.accent = false,
   });
 
   final String label;
@@ -400,13 +402,26 @@ class LbmChip extends StatelessWidget {
   final double fontSize;
   final IconData? trailingIcon;
 
+  /// Tints a [ChipStyle.plain] chip with the accent.
+  ///
+  /// The last place in the design where a chip is allowed to be pink, and
+  /// only for the two affordances that ask the person for something: "Ask"
+  /// on a product, "Rate" on a delivered order. Everywhere else orchid means
+  /// the cart, and a chip competing with a [CartPill] on the same photograph
+  /// is the flatness this redesign is undoing.
+  final bool accent;
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
     final (Color bg, Color fg) = switch (style) {
+      ChipStyle.plain when accent => (c.accentMist, c.accentText),
       ChipStyle.plain => (c.skyMist, c.ink),
-      ChipStyle.initiative => (c.accentMist, c.accentText),
-      ChipStyle.on => (c.accentDeep, c.accentInk),
+      ChipStyle.initiative => (c.skyMist, c.skyDeep),
+      // Ink and surface swap themselves between the themes: a navy pill with
+      // white text in light, a near-white pill with navy text in dark. Both
+      // read as "this one is on" against the paper behind them.
+      ChipStyle.on => (c.ink, c.surface),
       ChipStyle.quiet => (c.skyWash, c.ink2),
     };
 

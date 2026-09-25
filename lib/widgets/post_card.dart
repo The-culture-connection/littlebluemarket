@@ -155,18 +155,27 @@ Future<void> openMention(
 }
 
 /// Adds a listing to the cart and says so, or says why it could not.
+///
+/// [announce] is off for [CartPill], which raises an [LbmToast] with the
+/// product's photograph instead. Two notifications for one tap is one too
+/// many, and the failure message is still shown either way.
 Future<void> addToCart(
   BuildContext context,
   WidgetRef ref,
   String productId, {
   String? variantId,
+  bool announce = true,
 }) async {
   final messenger = ScaffoldMessenger.of(context);
   try {
     await ref
         .read(commerceRepositoryProvider)
         .addLine(productId: productId, variantId: variantId);
-    messenger.showSnackBar(const SnackBar(content: Text('Added to your cart')));
+    if (announce) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Added to your cart')),
+      );
+    }
   } on RepositoryException catch (error) {
     messenger.showSnackBar(SnackBar(content: Text(describeError(error).body)));
   }

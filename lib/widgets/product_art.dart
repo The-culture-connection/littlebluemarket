@@ -359,20 +359,38 @@ class _ProductGalleryState extends State<ProductGallery> {
 /// hand it to the layout, and an `AspectRatio` has to be told a number before
 /// anything is drawn.
 class _NaturalFrame extends StatefulWidget {
-  const _NaturalFrame({required this.url, required this.child});
+  const _NaturalFrame({
+    required this.url,
+    required this.child,
+    this.minAspect = ProductGallery.minAspect,
+    this.maxAspect = ProductGallery.maxAspect,
+  });
 
   /// Null keeps the 4:3 frame — the feed, and listings with no photograph.
   final String? url;
   final Widget child;
+
+  /// The detail page allows anything from 3:4 to 16:9; a grid pin is narrower
+  /// than that, so [NaturalPhoto] passes a tighter pair. See [NaturalPhoto].
+  final double minAspect;
+  final double maxAspect;
 
   @override
   State<_NaturalFrame> createState() => _NaturalFrameState();
 }
 
 class _NaturalFrameState extends State<_NaturalFrame> {
-  double _aspect = 4 / 3;
+  /// The photograph's own ratio, once its pixels have been decoded. Kept raw
+  /// rather than pre-clamped so that changing the clamp re-derives the shape
+  /// from the file instead of squeezing an already-squeezed number.
+  double? _raw;
   ImageStream? _stream;
   ImageStreamListener? _listener;
+
+  /// 4:3 until the pixels are known, but never outside the caller's clamp: a
+  /// pin that started at 4:3 and settled at 5:4 would visibly jump.
+  double get _aspect =>
+      (_raw ?? 4 / 3).clamp(widget.minAspect, widget.maxAspect);
 
   @override
   void didChangeDependencies() {
@@ -383,7 +401,10 @@ class _NaturalFrameState extends State<_NaturalFrame> {
   @override
   void didUpdateWidget(_NaturalFrame old) {
     super.didUpdateWidget(old);
-    if (old.url != widget.url) _resolve();
+    if (old.url != widget.url) {
+      _raw = null;
+      _resolve();
+    }
   }
 
   void _resolve() {
@@ -395,12 +416,11 @@ class _NaturalFrameState extends State<_NaturalFrame> {
         ? AssetImage(asset) as ImageProvider
         : NetworkImage(resolveImageUrl(url));
     final listener = ImageStreamListener((info, _) {
-      final aspect = ProductGallery.naturalAspect(
-        info.image.width.toDouble(),
-        info.image.height.toDouble(),
-      );
-      if (!mounted || aspect == _aspect) return;
-      setState(() => _aspect = aspect);
+      final w = info.image.width.toDouble();
+      final h = info.image.height.toDouble();
+      final raw = w <= 0 || h <= 0 ? 4 / 3 : w / h;
+      if (!mounted || raw == _raw) return;
+      setState(() => _raw = raw);
     }, onError: (_, _) {});
     _listener = listener;
     _stream = provider.resolve(createLocalImageConfiguration(context))
@@ -423,6 +443,66 @@ class _NaturalFrameState extends State<_NaturalFrame> {
   @override
   Widget build(BuildContext context) =>
       AspectRatio(aspectRatio: _aspect, child: widget.child);
+}
+
+/// A photograph at its own shape, with nothing drawn around it.
+///
+/// This is the pin in the redesigned grid: the photo *is* the card, so there
+/// is no white frame, no fixed 4:3 and no padding between the image and the
+/// paper. Rounded corners and the image, and that is all.
+///
+/// The clamp is tighter than [ProductGallery]'s. A detail page is the full
+/// width of the phone and can carry a 16:9 banner; a pin is 180 wide inside a
+/// two-column grid, where the same banner would be a 100px strip with a
+/// caption under it. 3:4 to 5:4 keeps every pin recognisably a photograph.
+class NaturalPhoto extends StatelessWidget {
+  const NaturalPhoto({
+    super.key,
+    required this.url,
+    this.minAspect = 3 / 4,
+    this.maxAspect = 5 / 4,
+    this.radius = LbmRadius.imageR,
+    this.fallback,
+  });
+
+  /// Empty means there is no photograph, which is not an error: the listing
+  /// gets [fallback] at 4:5, the shape a portrait phone photo would have had.
+  final String url;
+
+  final double minAspect;
+  final double maxAspect;
+  final BorderRadius radius;
+
+  /// Drawn instead of the photo when [url] is empty, and instead of a broken
+  /// image when it fails to load. Usually the pastel tile via [ProductArt].
+  final Widget? fallback;
+
+  /// The shape the fallback takes, so a photoless pin still reads as a pin
+  /// rather than a square hole in the column.
+  static const fallbackAspect = 4 / 5;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final missing = url.isEmpty;
+    final placeholder =
+        fallback ?? ColoredBox(color: c.skyWash, child: const SizedBox.expand());
+
+    return ClipRRect(
+      borderRadius: radius,
+      child: missing
+          ? AspectRatio(aspectRatio: fallbackAspect, child: placeholder)
+          : _NaturalFrame(
+              url: url,
+              minAspect: minAspect,
+              maxAspect: maxAspect,
+              child: ColoredBox(
+                color: c.skyWash,
+                child: ProductPhoto(url: url, fallback: placeholder),
+              ),
+            ),
+    );
+  }
 }
 
 /// One listing's photographs, full screen, pinchable.

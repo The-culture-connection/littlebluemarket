@@ -103,3 +103,34 @@ class Conversation {
     unread: unread ?? this.unread,
   );
 }
+
+/// What the open chatroom looks like right now, for the pin in the feed.
+///
+/// The pin has to say something is happening without making the person open
+/// the room to find out, so it carries the last couple of messages and how
+/// busy the last hour was rather than a count of everything ever said.
+@immutable
+class ChatMoment {
+  const ChatMoment({
+    this.latest = const [],
+    this.lastHourCount = 0,
+    this.hereNow = 0,
+  });
+
+  /// The last two messages, oldest first.
+  final List<Message> latest;
+
+  /// How many messages landed in the last hour. Zero is a real answer: the
+  /// pin then says the room is quiet rather than inventing activity.
+  final int lastHourCount;
+
+  /// How many people are in the room this second.
+  ///
+  /// **Always 0.** There is no presence data anywhere in this system, and the
+  /// mockup's "23 here now" is a drawing, not a number we have. The field is
+  /// here so the pin has somewhere to read it from the day presence exists;
+  /// until then no pin may print it. See `Planning/redesign-plan.md` §8.
+  final int hereNow;
+
+  bool get isQuiet => lastHourCount == 0;
+}

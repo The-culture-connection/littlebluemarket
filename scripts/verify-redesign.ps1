@@ -63,6 +63,6 @@ switch ($Phase) {
   default { Write-Host "unknown phase $Phase"; Pop-Location; exit 2 }
 }
 
-Write-Host "Phase $Phase: all checks passed." -ForegroundColor Green
+Write-Host "Phase ${Phase}: all checks passed." -ForegroundColor Green
 Pop-Location
 exit 0

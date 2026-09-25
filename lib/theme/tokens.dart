@@ -177,6 +177,25 @@ class LbmColors extends ThemeExtension<LbmColors> {
     ],
   );
 
+  /// The violet that sits between the orchid and the blue in the hero
+  /// gradient. It is not a token in its own right — nothing else may use it —
+  /// but the gradient cannot be mixed from the palette without it, and a raw
+  /// colour belongs here rather than in a widget.
+  static const _heroMid = Color(0xFF5E2A8F);
+
+  /// Behind the one announcement at the top of the feed.
+  ///
+  /// Derived rather than stored, so it follows the palette in both themes and
+  /// costs nothing in [copyWith] or [lerp].
+  List<Color> get heroGradient => [accentDeep, _heroMid, skyDeep];
+
+  /// Where the hero's colours sit along that gradient.
+  static const heroStops = [0.0, 0.7, 1.0];
+
+  /// Behind a shoutout: the same idea in blue, because a shoutout is about a
+  /// maker rather than about the market.
+  List<Color> get shoutoutGradient => [sky, skyDeep];
+
   @override
   LbmColors copyWith({
     Color? paper,
@@ -266,6 +285,23 @@ abstract final class LbmConst {
 
   /// Ink used on top of [welcomeBlue].
   static const onWelcome = Color(0xFFF3F8FE);
+
+  /// The open-chat pin's background, fixed across modes.
+  ///
+  /// It is the one tile in the grid that is deliberately dark, which is how a
+  /// scroll past it registers as "something is happening" without a label.
+  /// [LbmColors.ink] cannot do that job: it inverts, so in dark mode the tile
+  /// came out near-white and its white type vanished. This is light mode's
+  /// ink, held still — dark enough to carry [onGradient] in either theme, and
+  /// darker than the white cards around it.
+  static const chatInk = Color(0xFF152E52);
+
+  /// Type on the hero and shoutout gradients.
+  ///
+  /// Those gradients are deep in both themes, so their label does not flip
+  /// with the palette the way [LbmColors.accentInk] does. A themed ink here
+  /// would go dark-on-dark the moment the phone switched to dark mode.
+  static const onGradient = Color(0xFFFFFFFF);
 
   /// The exact background of the app icon (`assets/images/splash-icon.png`,
   /// sampled), and of the native launch screens on both phones
