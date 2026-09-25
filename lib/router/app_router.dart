@@ -27,6 +27,7 @@ import '../screens/you/admin_screen.dart';
 import '../screens/you/notification_settings_screen.dart';
 import '../screens/you/notifications_screen.dart';
 import '../screens/you/sell_screen.dart';
+import '../screens/you/shop_screen.dart';
 import '../screens/onboarding/eula_screen.dart';
 import '../screens/you/blocked_screen.dart';
 import '../screens/you/claim_shop_screen.dart';
@@ -87,6 +88,8 @@ List<RouteBase> _sharedRoutes() => [
       personId: state.uri.queryParameters['to'] == null
           ? null
           : state.pathParameters['id'],
+      // Carried from "Ask" on a product page.
+      aboutProductId: state.uri.queryParameters['about'],
     ),
   ),
   GoRoute(
@@ -334,9 +337,13 @@ GoRouter buildRouter(Ref ref) {
                       shopName: state.uri.queryParameters['shop'] ?? '',
                     ),
                   ),
+                  // One address, two screens: somebody who already sells
+                  // wants their shop, and somebody who does not wants the
+                  // way in. Splitting them into two routes only meant every
+                  // link had to know which kind of person was tapping it.
                   GoRoute(
                     path: 'sell',
-                    builder: (context, state) => SellWithUsScreen(
+                    builder: (context, state) => _SellOrShop(
                       autoCheck: state.uri.queryParameters['auto'] == '1',
                       apply: state.uri.queryParameters['apply'] == '1',
                     ),
@@ -397,6 +404,24 @@ GoRouter buildRouter(Ref ref) {
       ),
     ],
   );
+}
+
+/// `/you/sell` for whoever is asking: a seller's own shop, or the way in.
+class _SellOrShop extends ConsumerWidget {
+  const _SellOrShop({required this.autoCheck, required this.apply});
+
+  final bool autoCheck;
+  final bool apply;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // `apply` and `auto` are the two doors into becoming a seller, so they
+    // always mean the application screen even for somebody who already is.
+    if (!apply && !autoCheck && ref.watch(isSellerProvider)) {
+      return const ShopScreen();
+    }
+    return SellWithUsScreen(autoCheck: autoCheck, apply: apply);
+  }
 }
 
 /// Re-runs the redirect when the session changes *kind*, so signing out of a

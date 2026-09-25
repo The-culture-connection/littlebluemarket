@@ -1201,7 +1201,7 @@ class FixtureMessagingRepository implements MessagingRepository {
   });
 
   @override
-  Future<void> sendToChatroom(String text) async {
+  Future<void> sendToChatroom(String text, {String? attachedProductId}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
     _store.chatroom.value = [
@@ -1212,6 +1212,7 @@ class FixtureMessagingRepository implements MessagingRepository {
         authorId: _backend.uid,
         createdAt: DateTime.now(),
         text: trimmed,
+        attachedProductId: attachedProductId,
       ),
     ];
   }

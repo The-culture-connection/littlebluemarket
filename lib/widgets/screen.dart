@@ -115,19 +115,42 @@ class LbmAppBar extends StatelessWidget {
 /// says why, instead of the message silently vanishing. A second tap while
 /// one is in flight does nothing, so a double tap is one message.
 class Composer extends StatelessWidget {
-  const Composer({super.key, required this.hintText, this.onSend});
+  const Composer({
+    super.key,
+    required this.hintText,
+    this.onSend,
+    this.quickReplies = const [],
+    this.initialText = '',
+  });
 
   final String hintText;
   final Future<void> Function(String text)? onSend;
 
+  /// Ready-made openers, above the field.
+  ///
+  /// Tapping one fills the field rather than sending it: the point is to get
+  /// past the empty box, not to put words in somebody's mouth. Most people
+  /// who mean to say "is this still available?" mean to add something to it.
+  final List<String> quickReplies;
+
+  /// What the field starts with. Used when a screen opens with a question
+  /// already in mind, such as Ask on a product page.
+  final String initialText;
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    // Tells the floating cart how much room to leave, so it never lands on
+    // Tells anything floating how much room to leave, so it never lands on
     // the Send button. See ComposerInsetReporter for why this is measured
     // rather than listed.
     return ComposerInsetReporter(
-      child: _ComposerBody(hintText: hintText, onSend: onSend, colors: c),
+      child: _ComposerBody(
+        hintText: hintText,
+        onSend: onSend,
+        colors: c,
+        quickReplies: quickReplies,
+        initialText: initialText,
+      ),
     );
   }
 }
@@ -137,18 +160,22 @@ class _ComposerBody extends StatefulWidget {
     required this.hintText,
     required this.onSend,
     required this.colors,
+    required this.quickReplies,
+    required this.initialText,
   });
 
   final String hintText;
   final Future<void> Function(String text)? onSend;
   final LbmColors colors;
+  final List<String> quickReplies;
+  final String initialText;
 
   @override
   State<_ComposerBody> createState() => _ComposerBodyState();
 }
 
 class _ComposerBodyState extends State<_ComposerBody> {
-  final _controller = TextEditingController();
+  late final _controller = TextEditingController(text: widget.initialText);
   var _sending = false;
 
   @override
@@ -182,26 +209,60 @@ class _ComposerBodyState extends State<_ComposerBody> {
     return Container(
       color: c.paper,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: LbmField(
-              controller: _controller,
-              hintText: widget.hintText,
-              pill: true,
-              readOnly: _sending,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _send(),
+          if (widget.quickReplies.isNotEmpty) ...[
+            SizedBox(
+              height: 34,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: widget.quickReplies.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 7),
+                itemBuilder: (context, i) {
+                  final phrase = widget.quickReplies[i];
+                  return Center(
+                    child: LbmChip(
+                      phrase,
+                      style: ChipStyle.quiet,
+                      fontSize: 12.5,
+                      onTap: () => setState(() {
+                        _controller.text = phrase;
+                        _controller.selection = TextSelection.collapsed(
+                          offset: phrase.length,
+                        );
+                      }),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-          const SizedBox(width: 9),
-          CircleIconButton(
-            icon: _sending ? Icons.hourglass_top_rounded : Icons.send_rounded,
-            iconSize: 20,
-            tooltip: _sending ? 'Sending' : 'Send',
-            background: c.accentDeep,
-            color: c.accentInk,
-            onPressed: _sending ? null : _send,
+            const SizedBox(height: 8),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: LbmField(
+                  controller: _controller,
+                  hintText: widget.hintText,
+                  pill: true,
+                  readOnly: _sending,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _send(),
+                ),
+              ),
+              const SizedBox(width: 9),
+              CircleIconButton(
+                icon: _sending
+                    ? Icons.hourglass_top_rounded
+                    : Icons.send_rounded,
+                iconSize: 20,
+                tooltip: _sending ? 'Sending' : 'Send',
+                background: c.accentDeep,
+                color: c.accentInk,
+                onPressed: _sending ? null : _send,
+              ),
+            ],
           ),
         ],
       ),

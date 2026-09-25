@@ -53,6 +53,11 @@ class _ChatroomScreenState extends ConsumerState<ChatroomScreen> {
           ? null
           : Composer(
               hintText: 'Message the room…',
+              // Somebody who has not posted anything yet gets an opener;
+              // everybody else gets the two things people actually say.
+              quickReplies: (ref.watch(meProvider)?.posts ?? 0) == 0
+                  ? const ["Say hi, I'm new here", "Where is everyone based?"]
+                  : const ["I'm in", 'Claimed one'],
               // Reaches the repository, so it is there when you come back.
               onSend: (text) =>
                   ref.read(messagingRepositoryProvider).sendToChatroom(text),

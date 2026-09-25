@@ -13,6 +13,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/photo_source.dart';
 import '../../widgets/primitives.dart';
+import '../../widgets/shipturtle.dart';
 import '../../widgets/tag_entry.dart';
 import '../../widgets/screen.dart';
 
@@ -861,7 +862,7 @@ Future<void> showUnderReviewDialog(
           borderRadius: BorderRadius.all(Radius.circular(22)),
         ),
         title: Text(
-          'Under review',
+          'Sent for review',
           style: LbmText.display.copyWith(fontSize: 21, color: c.ink),
         ),
         content: Text(
@@ -873,8 +874,24 @@ Future<void> showUnderReviewDialog(
           style: LbmText.body.copyWith(color: c.ink2, fontSize: 14),
         ),
         actions: [
+          // The hand-off. Approval happens in Shipturtle, so the primary
+          // button goes there rather than dismissing and leaving the seller
+          // with nowhere to look.
+          Consumer(
+            builder: (buttonContext, ref, _) => PillButton(
+              'Track it in Shipturtle',
+              icon: Icons.open_in_new_rounded,
+              small: true,
+              expand: false,
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                openShipturtle(context, ref);
+              },
+            ),
+          ),
           PillButton(
-            'Got it',
+            'Back to your shop',
+            style: PillStyle.quiet,
             small: true,
             expand: false,
             onPressed: () => Navigator.of(dialogContext).pop(),

@@ -63,16 +63,18 @@ class FirestoreMessagingRepository implements MessagingRepository {
   });
 
   @override
-  Future<void> sendToChatroom(String text) => guardFirestore(() async {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
-    await _chatroom.add({
-      'conversationId': Message.chatroomId,
-      'authorId': _requireUid,
-      'text': trimmed,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  });
+  Future<void> sendToChatroom(String text, {String? attachedProductId}) =>
+      guardFirestore(() async {
+        final trimmed = text.trim();
+        if (trimmed.isEmpty) return;
+        await _chatroom.add({
+          'conversationId': Message.chatroomId,
+          'authorId': _requireUid,
+          'text': trimmed,
+          'attachedProductId': ?attachedProductId,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      });
 
   // ---------------------------------------------------------- conversations
 

@@ -344,7 +344,9 @@ abstract interface class MessagingRepository {
   /// Derived from the same messages [watchChatroom] serves, so the pin and
   /// the room can never disagree about what was last said.
   Stream<ChatMoment> watchChatMoment();
-  Future<void> sendToChatroom(String text);
+  /// [attachedProductId] puts the listing in the bubble, so a maker can drop
+  /// something into the room and have it carted from there.
+  Future<void> sendToChatroom(String text, {String? attachedProductId});
 
   Stream<List<Conversation>> watchInbox();
 

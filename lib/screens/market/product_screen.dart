@@ -291,8 +291,13 @@ class _MakerRow extends ConsumerWidget {
           'Ask',
           accent: true,
           fontSize: 12.5,
-          onTap: () =>
-              requireProfile(context, ref, () => context.goToDm(seller.id)),
+          // About this listing, not just to this person: the thread opens
+          // with the question written and the product in the first bubble.
+          onTap: () => requireProfile(
+            context,
+            ref,
+            () => context.goToDmAbout(seller.id, product.id),
+          ),
         ),
       ],
     );

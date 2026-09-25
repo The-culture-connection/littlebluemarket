@@ -41,6 +41,16 @@ extension LbmNavigation on BuildContext {
   /// resolves it. The inbox pushes a conversation id directly.
   void goToDm(String personId) => _pushInBranch('/dm/$personId?to=1');
 
+  /// A message about one listing.
+  ///
+  /// The product travels with the address, so the thread opens with the
+  /// question already written and the listing in the first bubble. Asking
+  /// "is this still available?" with no way to tell which "this" was the
+  /// commonest thing makers had to ask back.
+  void goToDmAbout(String personId, String productId) => _pushInBranch(
+    '/dm/$personId?to=1&about=${Uri.encodeComponent(productId)}',
+  );
+
   void goToCart() => _pushInBranch('/cart');
 
   /// Everything filed under one store collection, by handle.

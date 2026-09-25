@@ -6,7 +6,6 @@ import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/router/app_router.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/widgets/cart_pill.dart';
-import 'package:little_blue_market/widgets/profile_identity.dart';
 import 'package:little_blue_market/state/session.dart';
 
 /// Boots the real app straight into the market, so the tab bar and the gate
@@ -165,21 +164,46 @@ void main() {
     await tester.tap(find.text('You'));
     await tester.pumpAndSettle();
 
-    expect(find.text(Fx.me.handle), findsOneWidget);
-    // The stat row is Instagram's, remapped: Posts and Bought, no Follow.
-    // Scoped to the identity block, because "Bought" is also a tab below it.
-    Finder stat(String label) => find.descendant(
-      of: find.byType(ProfileIdentity),
-      matching: find.text(label),
-    );
-    expect(stat('Posts'), findsOneWidget);
-    expect(stat('Bought'), findsOneWidget);
-    // Sales came off the public profile on 2026-09-24: still counted,
-    // no longer printed next to somebody's name.
-    expect(find.text('Total sales'), findsNothing);
+    expect(find.text(Fx.me.name), findsOneWidget);
+    expect(find.textContaining(Fx.me.handle), findsWidgets);
+
+    // Four numbers, and only ones this system holds. "Bought" and "Posts"
+    // are also chips below, hence findsWidgets rather than one.
+    expect(find.text('Bought'), findsWidgets);
+    expect(find.text('Posts'), findsWidgets);
+    expect(find.text('Reviews'), findsWidgets);
+
+    // Total sales is a seller's own number and the demo user is one, so it
+    // is here. Sales came off *public* profiles on 2026-09-24; the redesign
+    // plan puts them back on a maker's board (T3.3, "per product decision"),
+    // which reverses that. Flagged in the report for Grace.
     expect(find.text('Followers'), findsNothing);
     expect(find.text('Following'), findsNothing);
     expect(find.text('Follow'), findsNothing);
+  });
+
+  testWidgets('the You tab is quiet: no points, shipping or orders', (
+    tester,
+  ) async {
+    await _pumpApp(tester, guest: false);
+    await tester.tap(find.text('You'));
+    await tester.pumpAndSettle();
+
+    // Grace, 2026-09-25: "make it quieter". None of these exist in the
+    // product, and the ones that do (shipping, orders) belong to Shipturtle.
+    final banned = RegExp(
+      r'points|level \d|streak|shipping|orders',
+      caseSensitive: false,
+    );
+    for (final element in find.byType(Text).evaluate()) {
+      final data = (element.widget as Text).data;
+      if (data == null) continue;
+      expect(
+        banned.hasMatch(data),
+        isFalse,
+        reason: 'the You hub should not say "$data"',
+      );
+    }
   });
   testWidgets('Notify me on a profile follows and unfollows in one tap', (
     tester,

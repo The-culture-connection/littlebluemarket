@@ -31,6 +31,7 @@ class ThreadScreen extends ConsumerWidget {
           ? null
           : Composer(
               hintText: 'Add a comment…',
+              quickReplies: const ["Mine's in too", 'What qualifies?'],
               onSend: (text) => ref
                   .read(socialRepositoryProvider)
                   .addThreadComment(threadId: threadId, text: text),

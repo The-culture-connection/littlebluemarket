@@ -10,9 +10,9 @@ import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/filter_chips.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/product_art.dart';
-import '../../widgets/profile_identity.dart';
 import '../../widgets/composers.dart';
 import '../../widgets/directory_storefront.dart';
 import '../../widgets/screen.dart';
@@ -68,12 +68,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return LbmScreen(
       appBar: LbmAppBar(
         showBack: false,
-        centerTitle: true,
-        titleSize: 17,
-        // A profile with no handle is a real state: a new account before
-        // setup, or one whose borrowed identity has just been cleared. It
-        // should read as an invitation, not as a missing title.
-        title: me.handle.isEmpty ? 'Your profile' : me.handle,
+        titleSize: 22,
+        title: 'You',
         actions: [
           CircleIconButton(
             icon: Icons.notifications_none_rounded,
@@ -86,6 +82,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             tooltip: 'Messages',
             badge: (unread ?? 0) > 0,
             onPressed: () => context.push('/you/messages'),
+          ),
+          CircleIconButton(
+            icon: Icons.settings_outlined,
+            tooltip: 'Edit profile',
+            onPressed: () => context.push('/you/edit'),
           ),
         ],
       ),
@@ -113,39 +114,45 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           padding: EdgeInsets.zero,
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            ProfileIdentity(
-              person: me,
-              actions: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: PillButton(
-                        'Edit profile',
-                        style: PillStyle.ghost,
-                        onPressed: () => context.push('/you/edit'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    PillButton(
-                      'Post',
-                      icon: Icons.add_rounded,
-                      expand: false,
-                      onPressed: () => showNewPostSheet(context, ref),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const _DirectoryCard(),
+            _YouIdentity(person: me),
+            _YouStats(person: me),
+            // One quiet prompt, and only when there is something waiting.
+            const _ReviewBanner(),
+            if (sellerLike)
+              _QuietRow(
+                icon: Icons.storefront_outlined,
+                title: 'Your shop',
+                subtitle: 'Listings, what is under review, sales',
+                onTap: () => context.push('/you/sell'),
+              )
+            else
+              _QuietRow(
+                icon: Icons.add_business_outlined,
+                title: 'Got something to sell?',
+                subtitle: 'Apply to open a shop',
+                onTap: () => context.push('/you/sell'),
+              ),
+            const SizedBox(height: 6),
             // A seller gets their shop first. The labels are shorter when there
-            // are three, so the pill row survives large text.
-            SegmentedTabs(
-              labels: sellerLike
-                  ? const ['Products', 'Posted', 'Bought']
-                  : const ['Posted', 'Bought & received'],
-              selected: tab,
-              onChanged: (i) => setState(() => _tab = i),
+            // are three, so the row survives large text.
+            FilterChips(
+              items: sellerLike
+                  ? const [
+                      ('products', 'Products'),
+                      ('posts', 'Posts'),
+                      ('bought', 'Bought'),
+                    ]
+                  : const [('posts', 'Posts'), ('bought', 'Bought')],
+              selected: (sellerLike
+                  ? ['products', 'posts', 'bought']
+                  : ['posts', 'bought'])[tab],
+              onSelect: (key) => setState(() {
+                _tab = (sellerLike
+                    ? ['products', 'posts', 'bought']
+                    : ['posts', 'bought']).indexOf(key);
+              }),
             ),
+            const SizedBox(height: 12),
             // The tab now actually switches the grid. It was tracked and ignored.
             // Market products first, the directory's after: a directory
             // business that later joins the Market keeps its website-link
@@ -183,29 +190,271 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-/// The littlebluecart.com row, for an account that is joined to it. Nothing
-/// at all otherwise: the door is in Edit profile.
-class _DirectoryCard extends ConsumerWidget {
-  const _DirectoryCard();
+/// Who you are, quietly.
+///
+/// No ring round the avatar, no points, no level, no streak: none of those
+/// exist in this product and drawing them was the busiest part of the old
+/// screen (Grace, 2026-09-25, "make it quieter").
+class _YouIdentity extends StatelessWidget {
+  const _YouIdentity({required this.person});
+
+  final Person person;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Avatar(person, size: AvatarSize.lg),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  person.name.isEmpty ? 'Your profile' : person.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: LbmText.display.copyWith(fontSize: 22, color: c.ink),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    if (person.handle.isNotEmpty) person.handle,
+                    if (person.cityState.isNotEmpty) person.cityState,
+                  ].join(' · '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: LbmText.pinMeta.copyWith(
+                    fontSize: 12.5,
+                    color: c.ink2,
+                  ),
+                ),
+                if (person.tags.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  TagChips(
+                    person.tags,
+                    onTap: (tag) => context.goToTag(tag),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Four numbers, and only ones this system holds.
+class _YouStats extends ConsumerWidget {
+  const _YouStats({required this.person});
+
+  final Person person;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
-    final link = ref.watch(directoryLinkProvider).value;
-    if (link == null || !link.linked) return const SizedBox.shrink();
-    String plural(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';
+    final inCart = ref.watch(cartCountProvider);
+    final posts = ref.watch(postsByProvider(person.id)).value;
+    final reviews = posts?.whereType<ReviewPost>().length;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-      child: LbmCard(
-        child: ListRow(
-          leading: Icon(Icons.storefront_outlined, color: c.ink3),
-          title: const Text('Little Blue Cart directory'),
-          subtitle: Text(
-            '${plural(link.listingCount, 'listing')} · '
-            '${plural(link.orderCount, 'website order')}',
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: LbmRadius.cardR,
+          boxShadow: c.shadowSoft,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _YouStat(value: '${person.purchases}', label: 'Bought'),
+            ),
+            Expanded(
+              child: person.isSeller
+                  // A seller's own number is what they have sold. Gross, and
+                  // the label says so.
+                  ? _YouStat(
+                      value: person.grossSalesLabel,
+                      label: 'Total sales',
+                    )
+                  : _YouStat(value: '$inCart', label: 'In cart'),
+            ),
+            Expanded(
+              child: _YouStat(
+                value: reviews == null ? '—' : '$reviews',
+                label: 'Reviews',
+              ),
+            ),
+            Expanded(
+              child: _YouStat(value: '${person.posts}', label: 'Posts'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _YouStat extends StatelessWidget {
+  const _YouStat({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          child: Text(
+            value,
+            maxLines: 1,
+            style: LbmText.display.copyWith(
+              fontSize: 19,
+              color: c.ink,
+              fontFeatures: kTabularFigures,
+            ),
           ),
-          trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
-          onTap: () => context.push('/you/directory'),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: LbmText.pinMeta.copyWith(fontSize: 11, color: c.ink2),
+        ),
+      ],
+    );
+  }
+}
+
+/// The one banner on this screen: something you bought is waiting to be
+/// reviewed.
+///
+/// Nothing about shipping, nothing about orders. Shipturtle owns those and
+/// the app does not pretend to.
+class _ReviewBanner extends ConsumerWidget {
+  const _ReviewBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final purchases = ref.watch(purchasesProvider).value ?? const <Purchase>[];
+    final waiting = [for (final p in purchases) if (p.canReview) p];
+    if (waiting.isEmpty) return const SizedBox.shrink();
+
+    final first = waiting.first;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+      child: LbmCard(
+        padding: const EdgeInsets.all(10),
+        onTap: () => context.push('/you/purchases'),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.all(Radius.circular(10)),
+              child: SizedBox(
+                width: 36,
+                height: 36,
+                child: ColoredBox(
+                  color: c.skyWash,
+                  child: first.imageUrl == null || first.imageUrl!.isEmpty
+                      ? Icon(Icons.star_rounded, size: 18, color: c.accent)
+                      : ProductPhoto(
+                          url: first.imageUrl!,
+                          cacheWidth: 110,
+                          fallback: ColoredBox(color: c.skyMist),
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                waiting.length == 1
+                    ? 'One thing you bought is waiting for a review'
+                    : '${waiting.length} things you bought are waiting for '
+                          'a review',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: LbmText.pinMeta.copyWith(
+                  fontSize: 12.5,
+                  color: c.ink,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            LbmChip('Rate', accent: true, fontSize: 12.5),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A single quiet row: an icon, two lines, and a chevron.
+class _QuietRow extends StatelessWidget {
+  const _QuietRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+      child: LbmCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        onTap: onTap,
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: c.skyDeep),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: LbmText.pinTitle.copyWith(
+                      fontSize: 14,
+                      color: c.ink,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: LbmText.pinMeta.copyWith(color: c.ink2),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: c.ink3),
+          ],
         ),
       ),
     );

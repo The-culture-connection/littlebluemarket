@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
+import '../../widgets/message_product_card.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
 import '../../widgets/unclaimed_shop.dart';
@@ -23,16 +24,24 @@ import '../../widgets/unclaimed_shop.dart';
 /// The `?to=` form is the other entry point — "message this seller" from a
 /// storefront, where the conversation may not exist yet.
 class DmScreen extends ConsumerStatefulWidget {
-  const DmScreen({super.key, this.conversationId, this.personId})
-    : assert(
-        conversationId != null || personId != null,
-        'a conversation or a person is required',
-      );
+  const DmScreen({
+    super.key,
+    this.conversationId,
+    this.personId,
+    this.aboutProductId,
+  }) : assert(
+         conversationId != null || personId != null,
+         'a conversation or a person is required',
+       );
 
   final String? conversationId;
 
   /// Set when arriving from a storefront rather than the inbox.
   final String? personId;
+
+  /// Set when arriving from "Ask" on a product page: the thread opens with
+  /// the question written and the listing attached to it.
+  final String? aboutProductId;
 
   @override
   ConsumerState<DmScreen> createState() => _DmScreenState();
@@ -42,7 +51,12 @@ class _DmScreenState extends ConsumerState<DmScreen> {
   @override
   Widget build(BuildContext context) {
     final direct = widget.conversationId;
-    if (direct != null) return _Conversation(conversationId: direct);
+    if (direct != null) {
+      return _Conversation(
+        conversationId: direct,
+        aboutProductId: widget.aboutProductId,
+      );
+    }
 
     // Arrived from a storefront: find or create the thread first.
     final resolved = ref.watch(conversationIdProvider(widget.personId!));
@@ -57,15 +71,19 @@ class _DmScreenState extends ConsumerState<DmScreen> {
         appBar: const LbmAppBar(title: 'Message'),
         child: LbmErrorCard(error: error, onRetry: retry),
       ),
-      data: (id) => _Conversation(conversationId: id),
+      data: (id) => _Conversation(
+        conversationId: id,
+        aboutProductId: widget.aboutProductId,
+      ),
     );
   }
 }
 
 class _Conversation extends ConsumerStatefulWidget {
-  const _Conversation({required this.conversationId});
+  const _Conversation({required this.conversationId, this.aboutProductId});
 
   final String conversationId;
+  final String? aboutProductId;
 
   @override
   ConsumerState<_Conversation> createState() => _ConversationState();
@@ -110,6 +128,9 @@ class _ConversationState extends ConsumerState<_Conversation> {
         ?.where((c) => c.id == conversationId)
         .firstOrNull
         ?.otherThan(uid);
+    final about = widget.aboutProductId == null
+        ? null
+        : ref.watch(productProvider(widget.aboutProductId!)).value;
 
     return LbmScreen(
       appBar: LbmAppBar(
@@ -119,12 +140,33 @@ class _ConversationState extends ConsumerState<_Conversation> {
       ),
       bottom: Composer(
         hintText: 'Message…',
+        // The questions makers are asked most, so a buyer does not have to
+        // compose one from nothing.
+        quickReplies: const [
+          'Is this still available?',
+          'Do you do pickup?',
+          'Could you make one in another colour?',
+        ],
+        initialText: about == null
+            ? ''
+            : 'Hi! Is the ${about.title} still available?',
         onSend: (text) => ref
             .read(messagingRepositoryProvider)
-            .send(conversationId: conversationId, text: text),
+            .send(
+              conversationId: conversationId,
+              text: text,
+              attachedProductId: widget.aboutProductId,
+            ),
       ),
       child: Column(
         children: [
+          // What they came to ask about, before the thread, so the question
+          // in the field has something visible attached to it.
+          if (widget.aboutProductId case final productId?)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+              child: MessageProductCard(productId: productId),
+            ),
           // A shop that is on the market but has nobody reading yet. Said
           // before the first message rather than after it, because that is
           // when it changes what somebody writes (Grace, 2026-09-24).
@@ -234,13 +276,27 @@ class _Bubble extends ConsumerWidget {
                   ),
                   boxShadow: mine ? null : c.shadowSoft,
                 ),
-                child: Text(
-                  message.text,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    height: 1.5,
-                    color: mine ? c.accentInk : c.ink,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // What the message is about, when it is about something.
+                    // A question sent from a product page arrives with the
+                    // thing attached, so the maker does not have to ask which
+                    // one, and the buyer can cart it from the conversation.
+                    if (message.attachedProductId case final productId?) ...[
+                      MessageProductCard(productId: productId, onDark: mine),
+                      const SizedBox(height: 8),
+                    ],
+                    Text(
+                      message.text,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        height: 1.5,
+                        color: mine ? c.accentInk : c.ink,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 3),
