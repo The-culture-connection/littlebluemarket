@@ -1,4 +1,4 @@
-# Little Blue Market — UX map (v2, Sept 24 2026)
+# Little Blue Market — UX map (final, Sept 25 2026)
 
 Companion to `Planning/feed-and-details-mockup.html`. Pinterest-style grid; the photo is the card; orchid is reserved for cart actions.
 
@@ -7,13 +7,14 @@ Companion to `Planning/feed-and-details-mockup.html`. Pinterest-style grid; the 
 1. **Land on a moment.** Welcome popup once ("adding to cart is the like"), then the feed opens on the announcement hero.
 2. **Scroll the grid.** Products, reviews, cart posts, forum threads, an Open-chat moment, a poll and a shoutout all in one two-column masonry. Filter chips: All · Products · Reviews · Carts · Forums · Chat · Community.
 3. **Cart from the grid.** Tap the pill on a photo → bounce, toast with the photo, cart badge ticks. No screen change.
-4. **Open a product.** Gallery with dots → maker row with **Ask** → price, variants, proof ("340 carted · Rae and 2 people you've bought from") → one big Add to cart + Buy now → ship / pickup / returns facts → description → Reviews (histogram, verified/with-photos chips, maker replies, Write one) → Talk about it (comments + quick chips) → More from this maker → Also in carts with this.
+4. **Open a product.** Gallery with dots → maker row with **Ask** → price, variants, proof ("340 carted · Rae and 2 people you've bought from") → one big Add to cart + Buy now → ship / pickup / returns facts → description → Reviews (histogram, verified/with-photos chips, maker replies, Write one) → Talk about it (comments + quick chips) → Also sold by this seller (their other products).
 5. **Ask the maker.** Ask opens a DM already "about" that product; the maker can drop a product card that carts from inside the thread.
-6. **Buy → deliver → review.** After delivery a pink "How was the jam?" note appears in the feed, the You tab and the bell. One-tap stars, chips, optional photo. The review becomes a pin.
+6. **Buy → deliver → review.** After delivery a "How was the jam?" nudge appears in the feed and a quiet banner on the You tab. One-tap stars, chips, optional photo. The review becomes a pin. No points.
 7. **Review → someone else's cart.** Review pins show the photo with a star strip; the reviewer sees "4 carted from this review".
 8. **Community in the feed.** Forum pins: question + best reply + who's in it + Join in. Chat pin: live dot, last two messages, "14 in the last hour". Tapping lands inside with quick replies preloaded.
-9. **Post your cart.** Cart screen → "Post this cart" → snapshot pin with a collage and Add all. Other people's carts are bundles.
-10. **Admin levers.** Announcements are hero pins, polls are pins, a pinned message tops Open chat — all from the admin site.
+9. **Tags are collections.** Every #tag has a page (hero, filters, grid) with Follow and Notify me; following puts its posts in your Following tab, Notify sends a push + bell on every new post under it. Profile setup asks for 3 tags and follows them.
+10. **Post your cart.** Cart screen → "Post this cart" → snapshot pin with a collage and Add all. Other people's carts are bundles.
+11. **Admin levers.** Announcements are hero pins, polls are pins, a pinned message tops Open chat — all from the admin site.
 
 ## The three loops (each ends back in the grid)
 
@@ -43,6 +44,15 @@ product · review · cart · forum · chat · poll · announcement · shoutout �
 - chat moment: rolling 1-hour message count + last 2 messages from `chatroom`.
 - announcements: exist; polls: new `polls` collection with per-user vote docs.
 - per-user nudges: delivered-not-reviewed, carted-not-bought (3 days), followed maker posted.
+
+## Decisions locked on Sept 25
+
+- Welcome screen + GIF unchanged.
+- No points, levels or streaks anywhere.
+- You hub is quiet: identity, tags, four stats, one review banner, one sell row, tabs, grid. No shipping or orders.
+- Seller "Under review" links out to Shipturtle; there is no Orders screen.
+- Product detail cross-sell is "Also sold by this seller", not "also in carts".
+- Full plan: `Planning/redesign-plan.md`.
 
 ## Build order for Claude Code
 
