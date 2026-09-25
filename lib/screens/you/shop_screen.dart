@@ -119,6 +119,9 @@ class _ShopStats extends ConsumerWidget {
     final c = context.c;
     final products = ref.watch(sellerProductsProvider(person.id)).value;
     final carted = products?.fold<int>(0, (sum, p) => sum + p.saveCount);
+    // Counted rather than measured off the grid below it: products arrive
+    // thirty at a time (Grace, 2026-09-24).
+    final listings = ref.watch(sellerProductCountProvider(person.id)).value;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
@@ -139,7 +142,7 @@ class _ShopStats extends ConsumerWidget {
             ),
             Expanded(
               child: _Stat(
-                value: products == null ? '—' : '${products.length}',
+                value: listings == null ? '—' : Fmt.count(listings),
                 label: 'Listings',
               ),
             ),

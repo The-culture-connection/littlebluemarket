@@ -16,42 +16,45 @@ class TourPage {
 /// What a new member is shown once, right after their profile is created.
 const kTourPages = <TourPage>[
   TourPage(
-    icon: Icons.storefront_outlined,
+    icon: Icons.grid_view_rounded,
     title: 'Welcome to Little Blue Market',
     body:
-        'The Market tab is the feed: products and posts from small makers '
-        'and local businesses. Tap a product to see more, or the cart to '
-        'add it. Checkout happens right here in the app.',
+        'The Market is a grid of photographs from small makers and local '
+        'businesses. Tap the pink cart on any picture to put it in yours. '
+        'There are no likes here; carting something is how you say you '
+        'love it, and the maker sees the number.',
   ),
   TourPage(
-    icon: Icons.search_rounded,
-    title: 'Find what is near you',
+    icon: Icons.tag_rounded,
+    title: 'Tags are places',
     body:
-        'Search by name or hashtag, or use Near me to see makers around '
-        'your city. Tap any hashtag to see everything under it.',
+        'Tap any hashtag to see its collection. Follow one and new posts '
+        'under it turn up in your Market; turn on Notify me and we will '
+        'tell you. Near me shows the makers around your city.',
   ),
   TourPage(
     icon: Icons.forum_outlined,
-    title: 'Join the community',
+    title: 'The community is in the Market',
     body:
-        'Forums for sellers and shoppers, shoutouts for the makers you love, '
-        'and messages. Tag someone with @ and they hear about it.',
+        'Forum questions and the open chat turn up in the same grid as the '
+        'products, and you can join in from there. Shoutouts name the makers '
+        'you love. Tag someone with @ and they hear about it.',
   ),
   TourPage(
     icon: Icons.person_outline_rounded,
-    title: 'Your profile',
+    title: 'The You tab',
     body:
-        'Your profile, what you have Bought, and your reviews. Edit profile '
-        'is where you sell with us, join the Little Blue Cart directory, '
-        'and choose which notifications you get.',
+        'What you bought, what you posted, and your reviews. The settings '
+        'button is where you sell with us, join the Little Blue Cart '
+        'directory, and choose what you are told about.',
   ),
   TourPage(
     icon: Icons.bug_report_outlined,
     title: 'Tell us what you think',
     body:
-        'The small button at the bottom right is always there. Tap it to '
-        'report a bug or share a critique, and a picture of the screen '
-        'goes with it. This is a young app; your notes shape it.',
+        'Diagnostics in Edit profile has a button for it. Report a bug or '
+        'share a critique and a picture of the screen goes with it. This is '
+        'a young app; your notes shape it.',
   ),
 ];
 

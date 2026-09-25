@@ -245,6 +245,22 @@ Future<void> showCheckoutHandoff(
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 13.5, height: 1.55, color: c.ink2),
         ),
+        const SizedBox(height: 10),
+        // Said plainly, because a checkout that opens somewhere else is the
+        // moment people wonder whether they have left the app.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline_rounded, size: 14, color: c.ink3),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'Secured by Shopify. You are still in the app.',
+                style: LbmText.xtiny.copyWith(color: c.ink3),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 18),
         PillButton(
           'Open checkout',

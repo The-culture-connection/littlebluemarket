@@ -9,10 +9,10 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../app_assets.dart';
 import '../../legal_links.dart';
-import '../../data/providers.dart';
 import '../../data/repositories/repositories.dart';
 import '../../models/onboarding.dart';
 import '../../widgets/async.dart';
+import '../../state/providers.dart';
 import '../../state/session.dart';
 import '../../state/tips.dart';
 import '../../state/tour.dart';
@@ -787,6 +787,25 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   Uint8List? _photo;
   String _photoType = 'image/jpeg';
 
+  /// What this person says they care about, picked at setup.
+  ///
+  /// Seeds the feed and the tag pages from the first minute: an account that
+  /// follows nothing has nothing to come back to.
+  final _tags = <String>{};
+
+  /// Shown when the backend has no popular tags to offer yet, so the step is
+  /// never an empty box.
+  static const _fallbackTags = [
+    '#WomanOwned',
+    '#BIPOCOwned',
+    '#LGBTQOwned',
+    '#VeteranOwned',
+    '#DisabledOwned',
+    '#PlasticFree',
+    '#MadeInDetroit',
+    '#Handmade',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -872,8 +891,21 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               name: name,
               handle: _handle.text.trim().isEmpty ? null : _handle.text.trim(),
               bio: _bio.text.trim().isEmpty ? null : _bio.text.trim(),
+              tags: _tags.toList(),
             ),
           );
+      // Following them as well as wearing them, so the feed and the tag
+      // pages have something in them from the first minute. Best effort: a
+      // failure here must not hold up an account that already exists.
+      for (final tag in _tags) {
+        try {
+          await ref
+              .read(socialRepositoryProvider)
+              .setFollowingTag(tag, on: true);
+        } on Object {
+          // Left unfollowed; the tag page still offers the button.
+        }
+      }
       final photo = _photo;
       if (photo != null) {
         // The upload writes the URL onto the profile itself.
@@ -967,6 +999,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           hintText: 'What you make, and where you make it.',
           maxLines: 3,
           onDark: true,
+        ),
+        const SizedBox(height: 16),
+        _TagPicker(
+          selected: _tags,
+          options: ref.watch(popularTagsProvider).value
+                  ?.map((t) => t.tag)
+                  .toList() ??
+              _fallbackTags,
+          onToggle: (tag) => setState(() {
+            if (!_tags.remove(tag)) _tags.add(tag);
+          }),
         ),
         if (_error != null) ...[
           const SizedBox(height: 12),
@@ -1228,6 +1271,124 @@ class _DeletedNote extends StatelessWidget {
           height: 1.5,
           fontWeight: FontWeight.w700,
           color: LbmConst.onWelcome,
+        ),
+      ),
+    );
+  }
+}
+
+/// "Pick a few things you care about", at the end of profile setup.
+///
+/// The chips are hashtags, and picking one both puts it on the profile and
+/// follows it. It is the difference between an account that opens onto a
+/// stranger's market and one that opens onto something recognisable.
+///
+/// Optional on purpose: a required step here is a wall in front of an
+/// account that already exists.
+class _TagPicker extends StatelessWidget {
+  const _TagPicker({
+    required this.selected,
+    required this.options,
+    required this.onToggle,
+  });
+
+  final Set<String> selected;
+  final List<String> options;
+  final ValueChanged<String> onToggle;
+
+  /// How many the copy suggests. Nothing enforces it.
+  static const _suggested = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    if (options.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Pick $_suggested things you care about',
+          style: const TextStyle(
+            fontFamily: kBodyFont,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.36,
+            color: LbmConst.onWelcome,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Your market starts here. You can change them later.',
+          style: TextStyle(
+            fontFamily: kBodyFont,
+            fontSize: 12,
+            height: 1.4,
+            fontWeight: FontWeight.w600,
+            color: LbmConst.onWelcome.withValues(alpha: 0.75),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 7,
+          runSpacing: 7,
+          children: [
+            for (final tag in options)
+              _TagChip(
+                label: tag,
+                on: selected.contains(tag),
+                onTap: () => onToggle(tag),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// A chip on the welcome blue, which is not a themed surface: the palette's
+/// chip colours are drawn for paper and disappear here.
+class _TagChip extends StatelessWidget {
+  const _TagChip({
+    required this.label,
+    required this.on,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: on,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: on
+                ? LbmConst.onWelcome
+                : LbmConst.onWelcome.withValues(alpha: 0.14),
+            borderRadius: LbmRadius.pillR,
+            border: Border.all(
+              color: LbmConst.onWelcome.withValues(alpha: on ? 1 : 0.45),
+              width: 1.2,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: kBodyFont,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              color: on ? LbmConst.welcomeBlue : LbmConst.onWelcome,
+            ),
+          ),
         ),
       ),
     );

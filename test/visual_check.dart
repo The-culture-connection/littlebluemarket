@@ -85,7 +85,8 @@ Future<void> _loadFonts() async {
 
 const _shots = <String, String>{
   'feed': '/market',
-  'post': '/market/post/p3',
+  'post': '/market/post/post_review_1',
+  'cartpost': '/market/post/post_cart_1',
   'product': '/market/product/p1',
   'search': '/market/search',
   'results': '/market/results?q=%23PlasticFree',

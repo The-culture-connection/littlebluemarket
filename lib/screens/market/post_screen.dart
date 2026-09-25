@@ -34,30 +34,36 @@ class PostScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final post = ref.watch(postProvider(postId));
+    // A review opens on a full-bleed photograph with its own floating Back
+    // and "…", the way a product does. An app bar over it would be a band of
+    // colour across the top of the picture, and a second Back button.
+    final fullBleed = post.value is ReviewPost;
 
     return LbmScreen(
-      appBar: LbmAppBar(
-        title: 'Post',
-        actions: [
-          CircleIconButton(
-            icon: Icons.more_horiz_rounded,
-            tooltip: 'More',
-            onPressed: () {
-              final p = post.value;
-              if (p == null) return;
-              final author = ref.read(personProvider(p.authorId)).value;
-              showMoreSheet(
-                context,
-                ref,
-                subjectUid: p.authorId,
-                subjectName: author?.name ?? '',
-                subjectHandle: author?.handle ?? '@${p.authorId}',
-                postId: p.id,
-              );
-            },
-          ),
-        ],
-      ),
+      appBar: fullBleed
+          ? null
+          : LbmAppBar(
+              title: 'Post',
+              actions: [
+                CircleIconButton(
+                  icon: Icons.more_horiz_rounded,
+                  tooltip: 'More',
+                  onPressed: () {
+                    final p = post.value;
+                    if (p == null) return;
+                    final author = ref.read(personProvider(p.authorId)).value;
+                    showMoreSheet(
+                      context,
+                      ref,
+                      subjectUid: p.authorId,
+                      subjectName: author?.name ?? '',
+                      subjectHandle: author?.handle ?? '@${p.authorId}',
+                      postId: p.id,
+                    );
+                  },
+                ),
+              ],
+            ),
       bottom: LbmAsync<Post>(
         post,
         skeleton: const SizedBox.shrink(),
@@ -143,6 +149,7 @@ class _ReviewDetail extends ConsumerWidget {
       padding: EdgeInsets.zero,
       children: [
         DetailGallery(
+          actions: [_MoreButton(post: post)],
           child: SizedBox(
             height: 300,
             child: ColoredBox(
@@ -243,6 +250,30 @@ class _ReviewDetail extends ConsumerWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Report or block, floating on a full-bleed picture.
+class _MoreButton extends ConsumerWidget {
+  const _MoreButton({required this.post});
+
+  final Post post;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final author = ref.watch(personProvider(post.authorId)).value;
+    return FloatingCircleButton(
+      icon: Icons.more_horiz_rounded,
+      label: 'More',
+      onTap: () => showMoreSheet(
+        context,
+        ref,
+        subjectUid: post.authorId,
+        subjectName: author?.name ?? '',
+        subjectHandle: author?.handle ?? '@${post.authorId}',
+        postId: post.id,
+      ),
     );
   }
 }

@@ -13,6 +13,9 @@ enum NotificationKind {
 
   /// Someone you follow posted.
   newPost,
+
+  /// Somebody posted under a hashtag this person asked to be told about.
+  tagPost,
   announcement,
   other,
 }
@@ -63,6 +66,7 @@ class AppNotification {
     NotificationKind.forumReply => 'replied in a thread you are in',
     NotificationKind.newProduct => 'added something new',
     NotificationKind.newPost => 'posted something new',
+    NotificationKind.tagPost => 'posted under a tag you follow',
     NotificationKind.announcement => '',
     NotificationKind.other => 'sent you a note',
   };
@@ -79,6 +83,7 @@ class NotificationPrefs {
     this.reviews = true,
     this.newProducts = true,
     this.newPosts = true,
+    this.tagPosts = true,
     this.announcements = true,
     this.mutedForums = const [],
     this.announcementsSeenAt,
@@ -92,6 +97,12 @@ class NotificationPrefs {
 
   /// A post from someone you follow (the Notify me button on a profile).
   final bool newPosts;
+
+  /// A post under a hashtag you asked to be told about (Notify me on a tag
+  /// page). Separate from [newPosts]: following a maker and following a
+  /// subject are different appetites, and one being too noisy should not
+  /// silence the other.
+  final bool tagPosts;
   final bool announcements;
   final List<String> mutedForums;
 
@@ -106,6 +117,7 @@ class NotificationPrefs {
     bool? reviews,
     bool? newProducts,
     bool? newPosts,
+    bool? tagPosts,
     bool? announcements,
     List<String>? mutedForums,
     DateTime? announcementsSeenAt,
@@ -116,6 +128,7 @@ class NotificationPrefs {
     reviews: reviews ?? this.reviews,
     newProducts: newProducts ?? this.newProducts,
     newPosts: newPosts ?? this.newPosts,
+    tagPosts: tagPosts ?? this.tagPosts,
     announcements: announcements ?? this.announcements,
     mutedForums: mutedForums ?? this.mutedForums,
     announcementsSeenAt: announcementsSeenAt ?? this.announcementsSeenAt,
@@ -128,6 +141,7 @@ class NotificationPrefs {
     'reviews': reviews,
     'newProducts': newProducts,
     'newPosts': newPosts,
+    'tagPosts': tagPosts,
     'announcements': announcements,
     'mutedForums': mutedForums,
   };

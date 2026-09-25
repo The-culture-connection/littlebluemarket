@@ -8,6 +8,7 @@ import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/hero_banner.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import 'admin_deletion_section.dart';
@@ -201,6 +202,26 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                   onChanged: (i) => setState(() => _opens = i),
                   padding: const EdgeInsets.fromLTRB(0, 6, 0, 12),
                 ),
+                // What it will look like across the top of everyone's feed,
+                // live as it is typed. An announcement goes to every member
+                // at once and cannot be edited afterwards, so seeing it
+                // before sending is worth the space.
+                if (_title.text.trim().isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'How it will look',
+                    style: LbmText.xtiny.copyWith(color: c.ink3),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: HeroBanner.height,
+                    child: HeroCardPreview(
+                      title: _title.text.trim(),
+                      body: _body.text.trim(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 PillButton(
                   _busy ? 'Sending…' : 'Send',
                   onPressed: draft.isValid && !_busy ? _send : null,

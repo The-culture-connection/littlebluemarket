@@ -215,6 +215,14 @@ class _NotificationSettingsScreenState
                     onChanged: (v) => _save(p.copyWith(newPosts: v)),
                   ),
                   _Switch(
+                    title: 'New posts under tags you follow',
+                    subtitle:
+                        'Anything posted under a hashtag you tapped '
+                        'Notify me on',
+                    value: p.tagPosts,
+                    onChanged: (v) => _save(p.copyWith(tagPosts: v)),
+                  ),
+                  _Switch(
                     title: 'Announcements',
                     subtitle: 'News from Little Blue Market',
                     value: p.announcements,

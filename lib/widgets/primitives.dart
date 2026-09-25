@@ -1,7 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-import '../app_assets.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
@@ -1207,37 +1206,3 @@ class GuestJoinBar extends StatelessWidget {
   }
 }
 
-class GuestBanner extends StatelessWidget {
-  const GuestBanner({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(14, 4, 14, 12),
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
-      decoration: BoxDecoration(
-        color: c.accentMist,
-        borderRadius: const BorderRadius.all(Radius.circular(18)),
-      ),
-      child: Row(
-        children: [
-          Image.asset(LbmAssets.cartMark, width: 32),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              'Looking around as a guest — sign up to buy, post, or join the '
-              'community.',
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                height: 1.45,
-                color: c.accentText,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

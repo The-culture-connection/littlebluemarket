@@ -8,6 +8,7 @@ import '../../state/providers.dart';
 import '../../widgets/async.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/masonry.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
@@ -59,13 +60,10 @@ class ForumsScreen extends ConsumerWidget {
               title: 'No forums yet',
               body: 'Start the first one.',
             ),
-            data: (forums) => Column(
+            data: (forums) => LbmMasonry.fixed(
               children: [
                 for (final forum in forums)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                    child: _ForumCard(forum: forum),
-                  ),
+                  _ForumCard(key: ValueKey(forum.id), forum: forum),
               ],
             ),
           ),
@@ -84,71 +82,108 @@ class ForumsScreen extends ConsumerWidget {
   }
 }
 
-class _ForumCard extends StatelessWidget {
-  const _ForumCard({required this.forum});
+/// One forum, as a tile in the same grid the Market uses.
+///
+/// A gradient rather than a photograph, because a forum has no picture: its
+/// own tint at two depths, so the wall of tiles is varied without anybody
+/// having to choose a colour when they start one.
+class _ForumCard extends ConsumerWidget {
+  const _ForumCard({super.key, required this.forum});
 
   final Forum forum;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
-    return LbmCard(
+    const white = LbmConst.onGradient;
+    final joined = ref.watch(forumMembershipProvider(forum.id)).value ?? false;
+    final tint = Color(forum.tint);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () => context.push('/community/forums/${forum.id}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        child: Row(
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 160),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: LbmRadius.imageR,
+          gradient: LinearGradient(
+            begin: const Alignment(-0.6, -0.8),
+            end: const Alignment(0.6, 0.8),
+            colors: [tint, Color.lerp(tint, c.ink, 0.45)!],
+          ),
+          boxShadow: c.shadowSoft,
+        ),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Color(forum.tint),
-                borderRadius: const BorderRadius.all(Radius.circular(16)),
-              ),
-              child: Text(
-                forum.title.characters.first,
-                style: const TextStyle(
-                  fontFamily: kDisplayFont,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
+            Text(
+              'FORUM',
+              style: LbmText.pinMeta.copyWith(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.3,
+                color: white.withValues(alpha: 0.8),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    forum.title,
-                    style: LbmText.display.copyWith(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w600,
-                      color: c.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    forum.description,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      height: 1.5,
-                      color: c.ink2,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    '${forum.membersLabel} · ${forum.threadCount} threads',
-                    style: LbmText.xtiny.copyWith(
-                      color: c.ink2,
-                      fontFeatures: kTabularFigures,
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 5),
+            Text(
+              forum.title,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: LbmText.display.copyWith(
+                fontSize: 17,
+                height: 1.15,
+                color: white,
               ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              forum.description,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: LbmText.pinMeta.copyWith(
+                color: white.withValues(alpha: 0.9),
+              ),
+            ),
+            const SizedBox(height: 9),
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                Text(
+                  '${forum.membersLabel} · ${forum.threadCount} threads',
+                  style: LbmText.pinMeta.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: white.withValues(alpha: 0.85),
+                  ),
+                ),
+                if (joined)
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: white.withValues(alpha: 0.22),
+                      borderRadius: LbmRadius.pillR,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 4,
+                      ),
+                      child: Text(
+                        'Joined',
+                        style: LbmText.pinMeta.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: white,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ],
         ),

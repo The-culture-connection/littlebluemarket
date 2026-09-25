@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../data/repositories/repositories.dart';
+import '../../models/feed_item.dart';
 import '../../models/models.dart';
 import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/masonry.dart';
+import '../../widgets/pins/thread_pin.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/sheets.dart';
@@ -68,12 +70,22 @@ class ForumScreen extends ConsumerWidget {
                 title: 'No threads yet',
                 body: 'Start the conversation.',
               ),
-              data: (threads) => Column(
+              // The same grid the Market uses, so a thread looks the same
+              // wherever it turns up.
+              data: (threads) => LbmMasonry.fixed(
                 children: [
                   for (final thread in threads)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                      child: _ThreadCard(thread: thread),
+                    ThreadPin(
+                      key: ValueKey(thread.id),
+                      item: ThreadItem(
+                        thread,
+                        forumName: forum.title,
+                        joined:
+                            ref
+                                .watch(forumMembershipProvider(forum.id))
+                                .value ??
+                            false,
+                      ),
                     ),
                 ],
               ),
@@ -202,57 +214,6 @@ class _NewThreadComposerState extends ConsumerState<NewThreadComposer> {
           onPressed: _saving ? null : _submit,
         ),
       ],
-    );
-  }
-}
-
-class _ThreadCard extends ConsumerWidget {
-  const _ThreadCard({required this.thread});
-
-  final ForumThread thread;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.c;
-    final author = ref.watch(personProvider(thread.authorId));
-
-    return LbmCard(
-      onTap: () => context.push('/community/thread/${thread.id}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    thread.title,
-                    style: LbmText.display.copyWith(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w600,
-                      height: 1.32,
-                      color: c.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  LbmAsync<Person>(
-                    author,
-                    skeleton: const LbmSkeleton(width: 160, height: 11),
-                    errorBuilder: (_, _) => const SizedBox.shrink(),
-                    data: (person) => Text(
-                      '${person.handle} · ${thread.age} · '
-                      '${Fmt.count(thread.commentCount)} comments',
-                      style: LbmText.xtiny.copyWith(color: c.ink2),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

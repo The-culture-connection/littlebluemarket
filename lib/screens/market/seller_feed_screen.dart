@@ -145,9 +145,16 @@ class _MakerHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
     final products = ref.watch(sellerProductsProvider(person.id)).value;
-    // Every cart their shelf is sitting in. The affinity number on this
-    // market, added up across everything they make.
+    // Every cart their shelf is sitting in, added up across the page that
+    // has loaded. The affinity number on this market.
     final carted = products?.fold<int>(0, (sum, p) => sum + p.saveCount);
+    // Counted, not measured off the grid: a shop's products arrive thirty
+    // at a time, so a number taken from the first page says 30 for a shop
+    // with 214, and a header that disagrees with the tiles under it is the
+    // complaint that started this (Grace, 2026-09-24).
+    final listings = person.isSeller
+        ? ref.watch(sellerProductCountProvider(person.id)).value
+        : null;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
@@ -216,7 +223,7 @@ class _MakerHeader extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _MakerStats(person: person, carted: carted, products: products),
+          _MakerStats(person: person, carted: carted, listings: listings),
         ],
       ),
     );
@@ -231,12 +238,15 @@ class _MakerStats extends StatelessWidget {
   const _MakerStats({
     required this.person,
     required this.carted,
-    required this.products,
+    required this.listings,
   });
 
   final Person person;
   final int? carted;
-  final List<Product>? products;
+
+  /// Null while it is still being counted: a shop with two hundred products
+  /// flashing "0" for a moment is worse than one that admits it is counting.
+  final int? listings;
 
   @override
   Widget build(BuildContext context) {
@@ -263,7 +273,7 @@ class _MakerStats extends StatelessWidget {
           if (person.isSeller)
             Expanded(
               child: _Stat(
-                value: products == null ? '—' : '${products!.length}',
+                value: listings == null ? '—' : Fmt.count(listings!),
                 label: 'Listings',
               ),
             ),

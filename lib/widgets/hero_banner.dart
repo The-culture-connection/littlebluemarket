@@ -219,6 +219,32 @@ class _HeroBannerState extends ConsumerState<HeroBanner> {
   }
 }
 
+/// One banner card, drawn from typed words rather than from a stream.
+///
+/// For the admin screen, where an announcement is written: it goes to every
+/// member at once and cannot be taken back, so what it will look like is
+/// worth seeing before Send.
+class HeroCardPreview extends StatelessWidget {
+  const HeroCardPreview({super.key, required this.title, this.body = ''});
+
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return _HeroCardView(
+      card: HeroCard(
+        id: 'preview',
+        kicker: 'From Little Blue Market',
+        title: title,
+        body: body,
+        cta: 'Take a look',
+        onTap: (_, _) {},
+      ),
+    );
+  }
+}
+
 class _HeroCardView extends ConsumerWidget {
   const _HeroCardView({required this.card});
 

@@ -155,7 +155,7 @@ void main() {
       tester,
     ) async {
       await _pumpFeed(tester, guest: false);
-      expect(find.text('Post'), findsNothing);
+      expect(find.byType(Composer), findsNothing);
 
       // The whole pin is the tap target, as the whole card was: the original
       // bug here was a feed card with no tap at all, where the only way to a
@@ -168,8 +168,10 @@ void main() {
       await tester.tap(pin);
       await tester.pumpAndSettle();
 
-      // The post screen, which is where the comments are.
-      expect(find.text('Post'), findsOneWidget);
+      // The post's own page, which is where the comments are. It has no app
+      // bar any more: the photograph runs to the top and Back floats on it.
+      expect(find.byType(Composer), findsOneWidget);
+      expect(find.text('Add a comment'), findsWidgets);
     });
 
     testWidgets('the cart never lands on a Send button', (tester) async {

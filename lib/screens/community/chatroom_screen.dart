@@ -9,6 +9,7 @@ import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/message_product_card.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
@@ -93,6 +94,7 @@ class _ChatroomScreenState extends ConsumerState<ChatroomScreen> {
               ],
             ),
           ),
+          const _PinnedAnnouncement(),
           Expanded(
             child: NotificationListener<ScrollNotification>(
               onNotification: _onOverscroll,
@@ -200,14 +202,27 @@ class _ChatBubble extends ConsumerWidget {
         ),
         boxShadow: mine ? null : c.shadowSoft,
       ),
-      child: HashtagText(
-        message.text,
-        style: TextStyle(
-          fontSize: 13.5,
-          height: 1.5,
-          color: mine ? c.accentInk : c.ink,
-        ),
-        onTagTap: (tag) => context.goToTag(tag),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // A maker dropping something into the room: it draws here and it
+          // carts from here, which is the point of the room being next to
+          // the market rather than behind it.
+          if (message.attachedProductId case final productId?) ...[
+            MessageProductCard(productId: productId, onDark: mine),
+            const SizedBox(height: 8),
+          ],
+          HashtagText(
+            message.text,
+            style: TextStyle(
+              fontSize: 13.5,
+              height: 1.5,
+              color: mine ? c.accentInk : c.ink,
+            ),
+            onTagTap: (tag) => context.goToTag(tag),
+          ),
+        ],
       ),
     );
 
@@ -264,6 +279,60 @@ class _ChatBubble extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The newest announcement, pinned above the room.
+///
+/// The room scrolls away; a pinned row does not. Anything the market needs
+/// everybody to have read belongs where it stays put, and this is the one
+/// place in the app where everybody is at once.
+class _PinnedAnnouncement extends ConsumerWidget {
+  const _PinnedAnnouncement();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final announcements = ref.watch(announcementsProvider).value ?? const [];
+    if (announcements.isEmpty) return const SizedBox.shrink();
+    final latest = announcements.first;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+      child: LbmCard(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        onTap: latest.route.isEmpty ? null : () => context.go(latest.route),
+        child: Row(
+          children: [
+            Icon(Icons.push_pin_outlined, size: 17, color: c.accentText),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    latest.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: LbmText.pinTitle.copyWith(
+                      fontSize: 13,
+                      color: c.ink,
+                    ),
+                  ),
+                  Text(
+                    latest.body,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: LbmText.pinMeta.copyWith(color: c.ink2),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
