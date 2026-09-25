@@ -11,6 +11,7 @@ import '../state/session.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
+import 'lbm_toast.dart';
 import 'photo_source.dart';
 import 'primitives.dart';
 import 'product_art.dart';
@@ -148,9 +149,12 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
     super.dispose();
   }
 
+  /// Words are optional: the rules ask for a rating between one and five and
+  /// nothing else, and a star on its own is a real answer to "how was it".
+  /// Making people write a paragraph is how a review count stays at zero.
   Future<void> _submit() async {
     final picked = _picked;
-    if (picked == null || _text.text.trim().isEmpty || _saving) return;
+    if (picked == null || _saving) return;
     setState(() => _saving = true);
 
     final messenger = ScaffoldMessenger.of(context);
@@ -169,8 +173,18 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
               mentionedUids: mentioned,
             ),
           );
+      // Raised before the sheet closes, so there is still a context to hang
+      // it on. The overlay it goes into belongs to the root navigator and
+      // outlives the sheet.
+      if (mounted) {
+        LbmToast.show(
+          context,
+          title: 'Review posted',
+          subtitle: 'The maker will see it',
+          thumbnailUrl: picked.imageUrl,
+        );
+      }
       navigator.pop();
-      messenger.showSnackBar(const SnackBar(content: Text('Review posted')));
     } on RepositoryException catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -180,6 +194,23 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
     }
   }
 
+  /// Ready-made words, for the people who have an opinion but not a sentence.
+  static const _quickReplies = [
+    'Would buy again',
+    'Great gift',
+    'Better than the photos',
+    'Arrived quickly',
+    'Beautifully packaged',
+  ];
+
+  void _appendQuickReply(String phrase) {
+    final existing = _text.text.trim();
+    setState(() {
+      _text.text = existing.isEmpty ? phrase : '$existing. $phrase';
+      _text.selection = TextSelection.collapsed(offset: _text.text.length);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
@@ -187,11 +218,6 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
 
     return LbmSheet(
       children: [
-        Text(
-          'Review something you bought',
-          style: LbmText.display.copyWith(fontSize: 21, color: c.ink),
-        ),
-        const SizedBox(height: 14),
         LbmAsync<List<Purchase>>(
           purchases,
           skeleton: const ListRowSkeleton(rows: 2, withAvatar: false),
@@ -209,27 +235,110 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
                 if (p.id == widget.initialPurchaseId) _picked = p;
               }
             }
+            // Exactly one thing waiting: there is nothing to choose, so the
+            // sheet opens on the stars rather than on a list of one.
+            _picked ??= reviewable.length == 1 ? reviewable.first : null;
+            final picked = _picked;
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final purchase in reviewable)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _PurchaseRow(
-                      purchase: purchase,
-                      selected: _picked?.id == purchase.id,
-                      onTap: () => setState(() => _picked = purchase),
+                if (picked == null) ...[
+                  Text(
+                    'Which one?',
+                    style: LbmText.display.copyWith(
+                      fontSize: 21,
+                      color: c.ink,
                     ),
                   ),
-                if (_picked != null) ...[
+                  const SizedBox(height: 14),
+                  for (final purchase in reviewable)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _PurchaseRow(
+                        purchase: purchase,
+                        selected: false,
+                        onTap: () => setState(() => _picked = purchase),
+                      ),
+                    ),
+                ] else ...[
+                  Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(12),
+                        ),
+                        child: SizedBox(
+                          width: 46,
+                          height: 46,
+                          child: ColoredBox(
+                            color: c.skyWash,
+                            child:
+                                picked.imageUrl == null ||
+                                    picked.imageUrl!.isEmpty
+                                ? Icon(Icons.image_outlined, color: c.ink3)
+                                : ProductPhoto(
+                                    url: picked.imageUrl!,
+                                    cacheWidth: 140,
+                                    fallback: ColoredBox(color: c.skyMist),
+                                  ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Text(
+                          'How was the ${picked.title}?',
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: LbmText.display.copyWith(
+                            fontSize: 20,
+                            height: 1.15,
+                            color: c.ink,
+                          ),
+                        ),
+                      ),
+                      if (reviewable.length > 1)
+                        TextButton(
+                          onPressed: () => setState(() => _picked = null),
+                          child: const Text('Change'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // The stars first, and big: this is the whole review for
+                  // most people, and everything under it is optional.
+                  Center(
+                    child: _StarPicker(
+                      rating: _rating,
+                      size: 40,
+                      onChanged: (rating) => setState(() => _rating = rating),
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  _StarPicker(
-                    rating: _rating,
-                    onChanged: (rating) => setState(() => _rating = rating),
+                  Center(
+                    child: Text(
+                      'Tap a star. That on its own counts.',
+                      style: LbmText.pinMeta.copyWith(color: c.ink2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 7,
+                    runSpacing: 7,
+                    children: [
+                      for (final phrase in _quickReplies)
+                        LbmChip(
+                          phrase,
+                          style: ChipStyle.quiet,
+                          fontSize: 12.5,
+                          onTap: () => _appendQuickReply(phrase),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   LbmField(
-                    label: 'What should other people know?',
+                    label: 'Anything else? (optional)',
                     controller: _text,
                     maxLines: 4,
                   ),
@@ -304,22 +413,30 @@ class _PurchaseRow extends ConsumerWidget {
 }
 
 class _StarPicker extends StatelessWidget {
-  const _StarPicker({required this.rating, required this.onChanged});
+  const _StarPicker({
+    required this.rating,
+    required this.onChanged,
+    this.size = 30,
+  });
 
   final int rating;
   final ValueChanged<int> onChanged;
+
+  /// Big on the review sheet, where the stars are the review.
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     final c = context.c;
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         for (var star = 1; star <= 5; star++)
           Semantics(
             button: true,
             label: '$star star${star == 1 ? '' : 's'}',
             child: InkResponse(
-              radius: 22,
+              radius: size * 0.75,
               onTap: () => onChanged(star),
               child: Padding(
                 padding: const EdgeInsets.all(3),
@@ -327,7 +444,7 @@ class _StarPicker extends StatelessWidget {
                   star <= rating
                       ? Icons.star_rounded
                       : Icons.star_outline_rounded,
-                  size: 30,
+                  size: size,
                   color: star <= rating ? c.accent : c.ink3,
                 ),
               ),

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../router/nav.dart';
-import '../state/providers.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 
@@ -101,20 +99,10 @@ class FloatingCircleButton extends StatelessWidget {
       _FloatingCircle(icon: icon, label: label, onTap: onTap, badge: badge);
 }
 
-/// The cart, floating over a detail page's picture, with its count.
-class FloatingCartButton extends ConsumerWidget {
-  const FloatingCartButton({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return FloatingCircleButton(
-      icon: Icons.shopping_bag_outlined,
-      label: 'Your cart',
-      badge: ref.watch(cartCountProvider),
-      onTap: context.goToCart,
-    );
-  }
-}
+// There is deliberately no floating cart here. The mockup draws one over a
+// detail page's picture, because the mockup's detail pages have no tab bar
+// under them; this app keeps the tab bar on a pushed route, and its Cart tab
+// already carries the count. Two carts on one screen is one too many.
 
 class _FloatingCircle extends StatelessWidget {
   const _FloatingCircle({

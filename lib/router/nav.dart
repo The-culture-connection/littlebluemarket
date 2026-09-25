@@ -54,6 +54,14 @@ extension LbmNavigation on BuildContext {
   /// rather than to the Market.
   void goToTag(String tag) => _pushInBranch('/tag/${tagKey(tag)}');
 
+  /// The product page, in place of whatever is on top.
+  ///
+  /// A listing post has no detail of its own, so opening one lands on the
+  /// product; replacing rather than pushing means Back goes where the person
+  /// came from rather than to a page that redirects them again.
+  void replaceWithProduct(String productId) =>
+      pushReplacement('${branchPrefix(this)}/product/$productId');
+
   /// Every published business in one littlebluecart.com category, by slug.
   void goToDirectoryCategory(String slug) =>
       _pushInBranch('/directory-category/$slug');

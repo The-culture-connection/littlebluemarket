@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/feed_item.dart';
 import '../../models/models.dart';
 import '../../router/nav.dart';
 import '../../state/providers.dart';
 import '../../state/session.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/directory_storefront.dart';
+import '../../widgets/filter_chips.dart';
+import '../../widgets/masonry.dart';
+import '../../widgets/pins/product_pin.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/report_sheet.dart';
-import '../../widgets/profile_identity.dart';
 import '../../widgets/screen.dart';
-import '../../widgets/seller_products_grid.dart';
 import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
 
@@ -31,6 +35,10 @@ class SellerFeedScreen extends ConsumerStatefulWidget {
 
 class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
   int _tab = 0;
+
+  static const _tabKeys = ['shop', 'reviews', 'about'];
+  String get _tabKey => _tabKeys[_tab];
+  static int _indexOf(String key) => _tabKeys.indexOf(key).clamp(0, 2);
 
   @override
   Widget build(BuildContext context) {
@@ -72,21 +80,11 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
         data: (person) => ListView(
           padding: EdgeInsets.zero,
           children: [
-            ProfileIdentity(
+            _MakerHeader(
               person: person,
-              actions: [
-                PillButton(
-                  'Message',
-                  onPressed: () => requireProfile(
-                    context,
-                    ref,
-                    () => context.goToDm(person.id),
-                  ),
-                ),
-                if (!person.unclaimed &&
-                    ref.watch(currentUidProvider) != person.id)
-                  _NotifyMeButton(personId: person.id),
-              ],
+              canNotify:
+                  !person.unclaimed &&
+                  ref.watch(currentUidProvider) != person.id,
             ),
             // A buyer has no shop, so they get one tab rather than an empty
             // one. The first tab is the shop's **products**, and used to be
@@ -95,14 +93,19 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
             // that disagreed with it: a shop showing "1 Posts" above twelve
             // product tiles looked plainly broken (Grace, 2026-09-24).
             if (person.isSeller || hasDirectory)
-              SegmentedTabs(
-                labels: const ['Products', 'Reviews written'],
-                selected: _tab,
-                onChanged: (i) => setState(() => _tab = i),
+              FilterChips(
+                items: const [
+                  ('shop', 'Shop'),
+                  ('reviews', 'Reviews'),
+                  ('about', 'About'),
+                ],
+                selected: _tabKey,
+                onSelect: (key) => setState(() => _tab = _indexOf(key)),
               ),
+            const SizedBox(height: 12),
             if ((person.isSeller || hasDirectory) && _tab == 0) ...[
               if (hasDirectory) DirectoryPhotoStrip(ownerUid: person.id),
-              if (person.isSeller) SellerProductsGrid(sellerId: person.id),
+              if (person.isSeller) _ShopGrid(sellerId: person.id),
               if (hasDirectory)
                 DirectoryProductsGrid(
                   ownerUid: person.id,
@@ -114,11 +117,324 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
               // the profile header (Grace, 2026-09-24: a products tab
               // "which will also list directory listings").
               DirectoryListings(ownerUid: person.id),
-            ] else
+            ] else if (_tab == 2)
+              _About(person: person)
+            else
               _ReviewsWritten(personId: person.id),
             const SizedBox(height: 26),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The top of a maker's board: who they are, then what they are worth
+/// knowing, then the two things you can do about it.
+///
+/// Centred rather than the left-aligned identity block the You hub uses. A
+/// shop is a place you arrive at, and the maker is the subject of the screen
+/// rather than a row at the top of your own.
+class _MakerHeader extends ConsumerWidget {
+  const _MakerHeader({required this.person, required this.canNotify});
+
+  final Person person;
+  final bool canNotify;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final products = ref.watch(sellerProductsProvider(person.id)).value;
+    // Every cart their shelf is sitting in. The affinity number on this
+    // market, added up across everything they make.
+    final carted = products?.fold<int>(0, (sum, p) => sum + p.saveCount);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(child: Avatar(person, size: AvatarSize.lg)),
+          const SizedBox(height: 10),
+          Text(
+            person.name,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: LbmText.display.copyWith(fontSize: 24, color: c.ink),
+          ),
+          if (person.cityState.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              // Where they are, and nothing about when they joined: a
+              // profile carries no creation date, and the mockup's
+              // "joined March 2024" would be a number we invented.
+              person.cityState,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: LbmText.pinMeta.copyWith(fontSize: 12.5, color: c.ink2),
+            ),
+          ],
+          if (person.bio.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              person.bio,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: LbmText.tiny.copyWith(height: 1.45, color: c.ink2),
+            ),
+          ],
+          if (person.tags.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Center(
+              child: TagChips(
+                person.tags,
+                onTap: (tag) => context.goToTag(tag),
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: PillButton(
+                  'Message',
+                  style: PillStyle.ghost,
+                  onPressed: () => requireProfile(
+                    context,
+                    ref,
+                    () => context.goToDm(person.id),
+                  ),
+                ),
+              ),
+              if (canNotify) ...[
+                const SizedBox(width: 8),
+                Expanded(child: _NotifyMeButton(personId: person.id)),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          _MakerStats(person: person, carted: carted, products: products),
+        ],
+      ),
+    );
+  }
+}
+
+/// What a shop is worth knowing at a glance.
+///
+/// Only numbers this system actually holds. The mockup shows a reply time
+/// and a star rating for the shop; neither exists, so neither is drawn.
+class _MakerStats extends StatelessWidget {
+  const _MakerStats({
+    required this.person,
+    required this.carted,
+    required this.products,
+  });
+
+  final Person person;
+  final int? carted;
+  final List<Product>? products;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: LbmRadius.cardR,
+        boxShadow: c.shadowSoft,
+      ),
+      child: Row(
+        children: [
+          if (person.isSeller)
+            Expanded(
+              child: _Stat(
+                // Gross, and the label says so: this is what buyers paid,
+                // not what the maker took home.
+                value: person.grossSalesLabel,
+                label: 'Total sales',
+              ),
+            ),
+          if (person.isSeller)
+            Expanded(
+              child: _Stat(
+                value: products == null ? '—' : '${products!.length}',
+                label: 'Listings',
+              ),
+            ),
+          if (person.isSeller)
+            Expanded(
+              child: _Stat(
+                value: carted == null ? '—' : Fmt.count(carted!),
+                label: 'Carted',
+              ),
+            ),
+          if (!person.isSeller) ...[
+            Expanded(
+              child: _Stat(value: '${person.purchases}', label: 'Bought'),
+            ),
+            Expanded(child: _Stat(value: '${person.posts}', label: 'Posts')),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          child: Text(
+            value,
+            maxLines: 1,
+            style: LbmText.display.copyWith(
+              fontSize: 19,
+              color: c.ink,
+              fontFeatures: kTabularFigures,
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: LbmText.pinMeta.copyWith(fontSize: 11, color: c.ink2),
+        ),
+      ],
+    );
+  }
+}
+
+/// The shop's shelf, in the same grid as everywhere else.
+class _ShopGrid extends ConsumerWidget {
+  const _ShopGrid({required this.sellerId});
+
+  final String sellerId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final products = ref.watch(sellerProductsProvider(sellerId));
+
+    return LbmAsync<List<Product>>(
+      products,
+      skeleton: const GridSkeleton(count: 4),
+      isEmpty: (all) => all.isEmpty,
+      empty: const LbmEmpty(
+        title: 'Nothing listed yet',
+        body: 'When they list something it shows up here.',
+        compact: true,
+      ),
+      data: (all) => LbmMasonry.fixed(
+        children: [
+          for (final product in all)
+            ProductPin(
+              key: ValueKey('shop_${product.id}'),
+              item: ProductItem(
+                ListingPost(
+                  id: 'shop_${product.id}',
+                  authorId: product.sellerId,
+                  createdAt: DateTime.now(),
+                  tags: product.tags,
+                  likeCount: 0,
+                  commentCount: 0,
+                  likedByMe: false,
+                  product: product,
+                ),
+                proof: product.saveCount >= ProductItem.proofThreshold,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Everything the profile says in words.
+class _About extends StatelessWidget {
+  const _About({required this.person});
+
+  final Person person;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: LbmCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              person.bio.isEmpty
+                  ? 'They have not written anything about themselves yet.'
+                  : person.bio,
+              style: LbmText.body.copyWith(color: c.ink2),
+            ),
+            const SizedBox(height: 12),
+            _AboutRow(label: 'Handle', value: person.handle),
+            if (person.cityState.isNotEmpty)
+              _AboutRow(label: 'Where', value: person.cityState),
+            _AboutRow(
+              label: 'On the market',
+              value: person.isSeller ? 'A maker with a shop' : 'A buyer',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AboutRow extends StatelessWidget {
+  const _AboutRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 104,
+            child: Text(
+              label,
+              style: LbmText.pinMeta.copyWith(
+                fontWeight: FontWeight.w800,
+                color: c.ink2,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: LbmText.pinMeta.copyWith(fontSize: 12.5, color: c.ink),
+            ),
+          ),
+        ],
       ),
     );
   }

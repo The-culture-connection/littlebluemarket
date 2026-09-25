@@ -83,7 +83,6 @@ class _Body extends ConsumerWidget {
       padding: EdgeInsets.zero,
       children: [
         DetailGallery(
-          actions: const [FloatingCartButton()],
           child: ProductGallery(
             product: product,
             // Edge to edge, no corners: the sheet below covers its bottom.

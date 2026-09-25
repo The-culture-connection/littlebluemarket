@@ -111,7 +111,6 @@ class _Body extends ConsumerWidget {
       padding: EdgeInsets.zero,
       children: [
         DetailGallery(
-          actions: const [FloatingCartButton()],
           child: SizedBox(
             height: 240,
             child: hero == null
