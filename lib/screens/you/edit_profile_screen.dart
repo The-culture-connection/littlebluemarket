@@ -521,6 +521,7 @@ class _BuyerRowsState extends ConsumerState<_BuyerRows> {
     return LbmCard(
       child: RowStack(
         children: [
+          const _PurchasesRow(),
           const _DirectoryRow(),
           ListRow(
             title: const Text('Sell with us'),
@@ -536,6 +537,32 @@ class _BuyerRowsState extends ConsumerState<_BuyerRows> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Everything this person has bought, and how many still want a review.
+///
+/// The review prompt in the feed lands on the same list. It sits here rather
+/// than only in the feed because a prompt goes past and a list does not.
+class _PurchasesRow extends ConsumerWidget {
+  const _PurchasesRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final purchases = ref.watch(purchasesProvider).value ?? const <Purchase>[];
+    final waiting = purchases.where((p) => p.canReview).length;
+
+    return ListRow(
+      title: const Text('Things you bought'),
+      subtitle: Text(
+        waiting == 0
+            ? '${purchases.length} so far'
+            : '$waiting waiting for a review',
+      ),
+      trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
+      onTap: () => context.push('/you/purchases'),
     );
   }
 }

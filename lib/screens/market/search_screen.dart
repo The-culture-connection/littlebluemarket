@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../models/models.dart';
 import '../../router/nav.dart';
+import '../../state/location.dart';
 import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
@@ -97,6 +99,49 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         .setScope(option),
                   ),
               ],
+            ),
+          ),
+          // Near me lives here as well as on the feed's own tab: this is the
+          // screen people come to when they are looking for something, and
+          // "what is close" is one of the ways they look (Grace, 2026-09-25).
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
+            child: LbmCard(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              onTap: () {
+                final filters = ref.read(searchFiltersProvider);
+                if (!filters.nearMe) toggleNearMe(context, ref);
+                context.go('/market');
+              },
+              child: Row(
+                children: [
+                  Icon(Icons.near_me_rounded, size: 20, color: c.skyDeep),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Near me',
+                          style: LbmText.pinTitle.copyWith(
+                            fontSize: 14,
+                            color: c.ink,
+                          ),
+                        ),
+                        Text(
+                          'Makers and listings close to you',
+                          style: LbmText.pinMeta.copyWith(color: c.ink2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: c.ink3),
+                ],
+              ),
             ),
           ),
           // The store's real taxonomy, and littlebluecart.com's beside it.

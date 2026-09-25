@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/feed_item.dart';
 import '../../models/models.dart';
-import '../../router/nav.dart';
 import '../../state/feed_items.dart';
 import '../../state/providers.dart';
 import '../../state/location.dart';
@@ -13,6 +12,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/filter_chips.dart';
+import '../../widgets/hero_banner.dart';
 import '../../widgets/masonry.dart';
 import '../../widgets/pins/announcement_pin.dart';
 import '../../widgets/pins/cart_pin.dart';
@@ -30,7 +30,6 @@ import '../../widgets/product_art.dart' show Puff;
 import '../../widgets/screen.dart';
 import '../../widgets/sheets.dart' show showGateSheet;
 import '../../widgets/skeleton.dart';
-import '../../widgets/tips.dart';
 import '../../widgets/unverified_banner.dart';
 
 /// The marketplace feed.
@@ -47,8 +46,12 @@ class FeedScreen extends ConsumerStatefulWidget {
   ConsumerState<FeedScreen> createState() => _FeedScreenState();
 }
 
-/// Which of the three ways into the feed is showing.
-enum _Tab { forYou, nearMe, following }
+/// Which way into the feed is showing.
+///
+/// Following was here too and is gone (Grace, 2026-09-25): with tags not yet
+/// followable it could only ever filter by people, which on a young market
+/// is an empty screen most of the time.
+enum _Tab { forYou, nearMe }
 
 class _FeedScreenState extends ConsumerState<FeedScreen> {
   final _controller = ScrollController();
@@ -120,7 +123,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
             ),
             const SizedBox(height: 4),
             TopTabs(
-              labels: const ['For you', 'Near me', 'Following'],
+              labels: const ['For you', 'Near me'],
               selected: _tab.index,
               onChanged: _selectTab,
               padding: EdgeInsets.zero,
@@ -135,35 +138,24 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         onRefresh: _refresh,
         child: switch (_tab) {
           _Tab.nearMe => _NearMeGrid(controller: _controller),
-          _Tab.forYou || _Tab.following => _Grid(
-            controller: _controller,
-            isGuest: isGuest,
-            following: _tab == _Tab.following,
-          ),
+          _Tab.forYou => _Grid(controller: _controller, isGuest: isGuest),
         },
       ),
     );
   }
 }
 
-/// The grid itself: For you, and Following, which is the same grid with the
-/// posts narrowed to people this person follows.
+/// The grid.
 class _Grid extends ConsumerWidget {
-  const _Grid({
-    required this.controller,
-    required this.isGuest,
-    required this.following,
-  });
+  const _Grid({required this.controller, required this.isGuest});
 
   final ScrollController controller;
   final bool isGuest;
-  final bool following;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(feedItemsProvider);
     final filter = ref.watch(feedFilterProvider);
-    final followed = ref.watch(followedPeopleProvider).value ?? const <String>{};
 
     final header = <Widget>[
       SliverToBoxAdapter(
@@ -174,6 +166,10 @@ class _Grid extends ConsumerWidget {
         ),
       ),
       const SliverToBoxAdapter(child: SizedBox(height: 10)),
+      // The day's news: one banner, always the same size, scrolling with the
+      // grid rather than pinned above it.
+      const SliverToBoxAdapter(child: HeroBanner()),
+      const SliverToBoxAdapter(child: SizedBox(height: 12)),
       // A member whose address is not confirmed: the two buttons that fix it,
       // before anything refuses them for it.
       const SliverToBoxAdapter(
@@ -188,29 +184,18 @@ class _Grid extends ConsumerWidget {
       items,
       skeleton: const PostCardSkeleton(),
       onRetry: () => ref.invalidate(feedProvider),
-      data: (all) {
-        final shown = following ? _onlyFollowed(all, followed) : all;
-
+      data: (shown) {
         if (shown.isEmpty) {
           return CustomScrollView(
             controller: controller,
             slivers: [
               ...header,
-              SliverFillRemaining(
+              const SliverFillRemaining(
                 hasScrollBody: false,
-                child: following
-                    ? const LbmEmpty(
-                        title: 'Nobody yet',
-                        body:
-                            'Follow a maker and their posts land here. '
-                            'Tap any avatar to start.',
-                      )
-                    : const LbmEmpty(
-                        title: 'Nothing posted yet',
-                        body:
-                            'When sellers list something nearby, it shows up '
-                            'here.',
-                      ),
+                child: LbmEmpty(
+                  title: 'Nothing posted yet',
+                  body: 'When sellers list something nearby, it shows up here.',
+                ),
               ),
             ],
           );
@@ -235,23 +220,6 @@ class _Grid extends ConsumerWidget {
     );
   }
 
-  /// Posts by people this person follows, keeping everything that is not a
-  /// post: the announcement, the chat, the rail.
-  ///
-  /// Tags are the other half of Following and land with the tag pages; until
-  /// then this is people only, which is the half that has a source today.
-  List<FeedItem> _onlyFollowed(List<FeedItem> items, Set<String> followed) => [
-    for (final item in items)
-      if (switch (item) {
-        ProductItem i => followed.contains(i.post.authorId),
-        ReviewItem i => followed.contains(i.post.authorId),
-        CartItem i => followed.contains(i.post.authorId),
-        ShoutoutItem i => followed.contains(i.post.authorId),
-        DirectoryItem i => followed.contains(i.post.authorId),
-        _ => false,
-      })
-        item,
-  ];
 }
 
 /// One pin per kind. Exhaustive on purpose: a new [FeedItem] is a compile
@@ -273,11 +241,8 @@ Widget _pinFor(BuildContext context, WidgetRef ref, FeedItem item) =>
       DirectoryItem i => DirectoryPin(key: ValueKey(i.key), item: i),
       ThreadItem i => ThreadPin(key: ValueKey(i.key), item: i),
       ChatItem i => ChatPin(key: ValueKey(i.key), item: i),
-      AnnouncementItem i => AnnouncementPin(
-        key: ValueKey(i.key),
-        item: i,
-        onTap: () => _openAnnouncement(context, ref, i),
-      ),
+      // Announcements are the banner above the grid, never a pin in it.
+      AnnouncementItem i => AnnouncementPin(key: ValueKey(i.key), item: i),
       NudgeItem i => NudgePin(
         key: ValueKey(i.key),
         item: i,
@@ -288,26 +253,13 @@ Widget _pinFor(BuildContext context, WidgetRef ref, FeedItem item) =>
       MakersRailItem i => MakersRail(key: ValueKey(i.key), item: i),
     };
 
-void _openAnnouncement(
-  BuildContext context,
-  WidgetRef ref,
-  AnnouncementItem item,
-) {
-  // The guest hero is the cart tip wearing an announcement's clothes, and
-  // there is no announcement route behind it.
-  if (item.announcement.id == cartTipId) {
-    showCartTipOnce(context, ref);
-    return;
-  }
-  final route = item.announcement.route;
-  if (route.isNotEmpty) context.go(route);
-}
-
 void _openNudge(BuildContext context, WidgetRef ref, NudgeItem item) {
   switch (item.nudge) {
     case NudgeKind.reviewDelivered:
-      final purchase = item.payload;
-      if (purchase is Purchase) context.goToProduct(purchase.productId);
+      // The list of what they bought, not the one product: somebody being
+      // prompted to review usually has more than one thing waiting, and the
+      // product page is about buying it again.
+      context.go('/you/purchases');
     case NudgeKind.sayHi:
       context.go('/community');
     case NudgeKind.forumActivity:

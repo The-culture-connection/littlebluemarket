@@ -54,31 +54,14 @@ class CartPin extends ConsumerWidget {
             children: [
               ClipRRect(
                 borderRadius: LbmRadius.imageR,
-                child: ColoredBox(
-                  color: c.skyMist,
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 3,
-                    crossAxisSpacing: 3,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    children: [
-                      for (final line in shown)
-                        _CollageTile(url: line.imageUrl, title: line.title),
-                      if (hidden > 0)
-                        ColoredBox(
-                          color: c.ink,
-                          child: Center(
-                            child: Text(
-                              '+$hidden',
-                              style: LbmText.display.copyWith(
-                                fontSize: 16,
-                                color: c.surface,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: ColoredBox(
+                    color: c.skyMist,
+                    child: _Collage(
+                      items: shown,
+                      hidden: hidden,
+                    ),
                   ),
                 ),
               ),
@@ -105,6 +88,114 @@ class CartPin extends ConsumerWidget {
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The photographs of a posted cart, laid out so there is never a hole.
+///
+/// A fixed two-by-two grid left empty cells whenever somebody posted a cart
+/// with one, two or three things in it, which is most of them: the pin came
+/// out as one photo and a pale blue block (Grace, with a screenshot). Each
+/// count gets its own arrangement instead, and every one of them fills the
+/// square completely.
+class _Collage extends StatelessWidget {
+  const _Collage({required this.items, required this.hidden});
+
+  final List<CartPostItem> items;
+
+  /// How many more the post holds than are shown, drawn as "+N" in the last
+  /// cell. Zero means every item is a photograph.
+  final int hidden;
+
+  static const _gap = 3.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final cells = <Widget>[
+      for (final line in items)
+        _CollageTile(url: line.imageUrl, title: line.title),
+      if (hidden > 0) _MoreTile(hidden: hidden),
+    ];
+
+    // Stretched, every one of them: a Row centres its children by default,
+    // so each cell sized itself to its photograph and left pale bands above
+    // and below rather than filling the square.
+    return switch (cells.length) {
+      0 => const SizedBox.expand(),
+      1 => SizedBox.expand(child: cells.first),
+      2 => Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: cells[0]),
+          const SizedBox(width: _gap),
+          Expanded(child: cells[1]),
+        ],
+      ),
+      // One tall on the left, two stacked on the right.
+      3 => Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: cells[0]),
+          const SizedBox(width: _gap),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: cells[1]),
+                const SizedBox(height: _gap),
+                Expanded(child: cells[2]),
+              ],
+            ),
+          ),
+        ],
+      ),
+      _ => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: cells[0]),
+                const SizedBox(width: _gap),
+                Expanded(child: cells[1]),
+              ],
+            ),
+          ),
+          const SizedBox(height: _gap),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: cells[2]),
+                const SizedBox(width: _gap),
+                Expanded(child: cells[3]),
+              ],
+            ),
+          ),
+        ],
+      ),
+    };
+  }
+}
+
+class _MoreTile extends StatelessWidget {
+  const _MoreTile({required this.hidden});
+
+  final int hidden;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return ColoredBox(
+      color: c.ink,
+      child: Center(
+        child: Text(
+          '+$hidden',
+          style: LbmText.display.copyWith(fontSize: 16, color: c.surface),
+        ),
       ),
     );
   }
@@ -140,6 +231,9 @@ class _CollageTile extends StatelessWidget {
       color: c.skyWash,
       child: ProductPhoto(
         url: url!,
+        // Fills its cell rather than letterboxing inside it, which is what
+        // left pale bands down the side of a one-item collage.
+        fit: BoxFit.cover,
         cacheWidth: 300,
         fallback: ColoredBox(color: c.skyWash),
       ),

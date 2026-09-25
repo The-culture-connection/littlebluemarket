@@ -6,8 +6,8 @@ import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 import 'package:little_blue_market/widgets/cart_pill.dart';
 import 'package:little_blue_market/widgets/filter_chips.dart';
+import 'package:little_blue_market/widgets/hero_banner.dart';
 import 'package:little_blue_market/widgets/masonry.dart';
-import 'package:little_blue_market/widgets/pins/announcement_pin.dart';
 import 'package:little_blue_market/widgets/pins/cart_pin.dart';
 import 'package:little_blue_market/widgets/pins/chat_pin.dart';
 import 'package:little_blue_market/widgets/pins/product_pin.dart';
@@ -117,8 +117,9 @@ void main() {
   testWidgets('community and commerce are in the same grid', (tester) async {
     await _pumpFeed(tester);
 
-    // The market's own news, first.
-    expect(find.byType(AnnouncementPin), findsOneWidget);
+    // The market's own news, in the banner above the grid rather than as a
+    // pin in it.
+    expect(find.byType(HeroBanner), findsOneWidget);
     expect(find.byType(ProductPin), findsWidgets);
 
     // And, further down, the things that used to live in the other tab.
@@ -151,8 +152,9 @@ void main() {
     expect(find.byType(ReviewPin), findsNothing);
     expect(find.byType(CartPin), findsNothing);
     expect(find.byType(ChatPin), findsNothing);
-    // The market talking to everyone stays whatever is selected.
-    expect(find.byType(AnnouncementPin), findsOneWidget);
+    // The banner is above the grid, so narrowing the grid never takes the
+    // market's own news away.
+    expect(find.byType(HeroBanner), findsOneWidget);
     expect(await _scrollTo(tester, find.byType(ThreadPin)), isTrue);
   });
 
@@ -176,7 +178,7 @@ void main() {
     expect(find.byIcon(Icons.favorite), findsNothing);
   });
 
-  testWidgets('the three ways in are tabs, and Following starts empty', (
+  testWidgets('there are two ways in, and Following is not one', (
     tester,
   ) async {
     await _pumpFeed(tester);
@@ -184,15 +186,42 @@ void main() {
     expect(find.byType(TopTabs), findsOneWidget);
     expect(find.text('For you'), findsOneWidget);
     expect(find.text('Near me'), findsOneWidget);
-    expect(find.text('Following'), findsOneWidget);
+    // Removed 2026-09-25: with tags not yet followable it could only filter
+    // by people, which on a young market is an empty screen most of the time.
+    expect(find.text('Following'), findsNothing);
+  });
 
-    await tester.tap(find.text('Following'));
+  testWidgets('the banner is one size and scrolls with the grid', (
+    tester,
+  ) async {
+    await _pumpFeed(tester);
+
+    final banner = find.byType(HeroBanner);
+    expect(banner, findsOneWidget);
+    expect(tester.getSize(banner).height, HeroBanner.height);
+
+    final before = tester.getTopLeft(banner).dy;
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -160));
     await tester.pumpAndSettle();
 
-    // Nobody is followed on the demo backend, so it says so rather than
-    // showing the same grid again.
-    expect(find.text('Nobody yet'), findsOneWidget);
-    expect(find.byType(ProductPin), findsNothing);
+    // It moved with everything else rather than staying pinned at the top.
+    expect(tester.getTopLeft(banner).dy, lessThan(before));
+  });
+
+  testWidgets('a CTA that is not a route in this app opens nothing', (
+    tester,
+  ) async {
+    // Admins type these by hand on the website, so they arrive as anything.
+    expect(HeroBanner.normaliseRoute('/community'), '/community');
+    expect(HeroBanner.normaliseRoute(''), isNull);
+    expect(HeroBanner.normaliseRoute('   '), isNull);
+    expect(HeroBanner.normaliseRoute('not a url'), isNull);
+    expect(HeroBanner.normaliseRoute('https://example.com/sale'), isNull);
+    expect(
+      HeroBanner.normaliseRoute('https://littlebluecart.com/market/search'),
+      '/market/search',
+    );
+    expect(HeroBanner.normaliseRoute('https://littlebluecart.com'), '/market');
   });
 
   testWidgets('a guest gets no community pins and a join bar', (tester) async {

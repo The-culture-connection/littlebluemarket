@@ -104,24 +104,6 @@ const _postsBetweenBreaks = 3;
 /// page and the Market stops being the Market.
 const _maxThreadsPerPage = 3;
 
-/// The cart tip, given an announcement's shape so it can take the hero slot.
-///
-/// Not a real announcement and never written anywhere: it is the app's own
-/// copy, shown to a guest who has not yet been told that the cart is what the
-/// heart used to be. The feed checks for [cartTipId] before routing a tap.
-const cartTipId = 'tip:cartIsTheLike';
-
-Announcement _cartTipHero() => Announcement(
-  id: cartTipId,
-  title: 'No likes here. Just carts.',
-  body:
-      'Adding something to your cart is how you say you like it. '
-      'The maker sees the number, and you can take it back out.',
-  audience: AnnouncementAudience.all,
-  route: '/market',
-  createdAt: DateTime(2026),
-);
-
 /// Turns the sources into the order the grid is drawn in.
 ///
 /// Pure, and deliberately so: the rules that keep a feed from reading as
@@ -130,9 +112,10 @@ Announcement _cartTipHero() => Announcement(
 List<FeedItem> assembleFeed(FeedInputs input) {
   final out = <FeedItem>[];
 
-  final hero = _hero(input);
-  if (hero != null) out.add(hero);
-
+  // The market's own news is not in the grid any more: it is the rotating
+  // banner above it, the same size every time. As a pin it took a column's
+  // width, came out square, and changed shape depending on whether it had
+  // been read. See `widgets/hero_banner.dart`.
   final postItems = [for (final post in input.posts) _itemFor(post)];
   final queue = _interleaved(input);
 
@@ -153,25 +136,6 @@ List<FeedItem> assembleFeed(FeedInputs input) {
   }
 
   return _onlyKind(_spacedOut(out), input.filter);
-}
-
-/// The one thing at the top of the feed, if there is one.
-FeedItem? _hero(FeedInputs input) {
-  if (input.isGuest) {
-    // A guest has no announcements and no bell. What they need explaining is
-    // why there is nowhere to press "like".
-    return input.cartTipSeen
-        ? null
-        : AnnouncementItem(_cartTipHero(), hero: true);
-  }
-  final announcement = input.announcement;
-  if (announcement == null) return null;
-  return AnnouncementItem(
-    announcement,
-    promo: input.promo,
-    // Seen once, it stops being the headline and becomes another pin.
-    hero: !input.announcementSeen,
-  );
 }
 
 FeedItem _itemFor(Post post) => switch (post) {
@@ -274,9 +238,7 @@ List<FeedItem> _onlyKind(List<FeedItem> items, String filter) {
   if (filter == FeedFilter.all) return items;
   return [
     for (final item in items)
-      // The announcement is the market talking to everyone, so it stays
-      // whatever the grid has been narrowed to.
-      if (item is AnnouncementItem || _passes(item, filter)) item,
+      if (_passes(item, filter)) item,
   ];
 }
 

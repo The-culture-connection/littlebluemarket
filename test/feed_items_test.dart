@@ -146,34 +146,30 @@ FeedInputs _member({
 );
 
 void main() {
-  group('the hero', () {
-    test('a member who has not seen the announcement gets it first', () {
-      final items = assembleFeed(_member());
-
-      expect(items.first, isA<AnnouncementItem>());
-      expect((items.first as AnnouncementItem).hero, isTrue);
-      expect(items.first.isWide, isTrue, reason: 'the hero spans the grid');
-    });
-
-    test('once seen it stays, but stops being the headline', () {
-      final items = assembleFeed(_member(announcementSeen: true));
-
-      final announcements = items.whereType<AnnouncementItem>();
-      expect(announcements, hasLength(1));
-      expect(announcements.first.hero, isFalse);
-    });
-
-    test('no announcement means no hero, not an empty one', () {
-      final items = assembleFeed(
-        const FeedInputs(posts: []).copyPosts([_listing(0)]),
+  group('announcements', () {
+    test('are not pins in the grid', () {
+      // They are the rotating banner above it (`widgets/hero_banner.dart`).
+      // As a pin the announcement took a column's width, came out square, and
+      // changed shape once it had been read (Grace, with a screenshot).
+      expect(
+        assembleFeed(_member()).whereType<AnnouncementItem>(),
+        isEmpty,
       );
-      expect(items.whereType<AnnouncementItem>(), isEmpty);
-      expect(items, isNotEmpty);
+      expect(
+        assembleFeed(_member(announcementSeen: true))
+            .whereType<AnnouncementItem>(),
+        isEmpty,
+      );
+    });
+
+    test('the grid starts with something to look at', () {
+      final items = assembleFeed(_member());
+      expect(items.first, isA<ProductItem>());
     });
   });
 
   group('guests', () {
-    test('get the cart tip as the hero, and nothing to join', () {
+    test('get photographs, and nothing to join', () {
       final items = assembleFeed(
         FeedInputs(
           posts: [for (var i = 0; i < 6; i++) _listing(i)],
@@ -183,27 +179,13 @@ void main() {
         ),
       );
 
-      expect(items.first, isA<AnnouncementItem>());
-      expect((items.first as AnnouncementItem).announcement.id, cartTipId);
-      expect((items.first as AnnouncementItem).hero, isTrue);
+      expect(items.whereType<ProductItem>(), isNotEmpty);
 
       // Every community route bounces a guest, so a pin inviting them in
       // would be an invitation to a locked door.
       expect(items.whereType<ThreadItem>(), isEmpty);
       expect(items.whereType<ChatItem>(), isEmpty);
       expect(items.whereType<NudgeItem>(), isEmpty);
-    });
-
-    test('a guest who has read the tip is not told again', () {
-      final items = assembleFeed(
-        FeedInputs(
-          posts: [for (var i = 0; i < 4; i++) _listing(i)],
-          isGuest: true,
-          cartTipSeen: true,
-        ),
-      );
-      expect(items.whereType<AnnouncementItem>(), isEmpty);
-      expect(items.whereType<ProductItem>(), isNotEmpty);
     });
   });
 
@@ -390,13 +372,18 @@ void main() {
       expect(items.whereType<ChatItem>(), isEmpty);
     });
 
-    test('the announcement survives every filter', () {
+    test('every filter leaves something, and never an announcement', () {
       for (final (filter, _) in FeedFilter.chips) {
         final items = assembleFeed(_member(filter: filter));
         expect(
           items.whereType<AnnouncementItem>(),
-          hasLength(1),
-          reason: 'the market talking to everyone stays under "$filter"',
+          isEmpty,
+          reason: 'the market\'s own news is the banner, not a pin',
+        );
+        expect(
+          items,
+          isNotEmpty,
+          reason: 'the chip "$filter" should leave the grid with something',
         );
       }
     });
@@ -422,36 +409,16 @@ void main() {
       expect(assembleFeed(const FeedInputs()), isEmpty);
     });
 
-    test('a member with no posts still gets the announcement', () {
-      final items = assembleFeed(
-        FeedInputs(announcement: _announcement()),
-      );
-      expect(items, hasLength(1));
-      expect(items.single, isA<AnnouncementItem>());
+    test('a market with only news in it has an empty grid', () {
+      // And the banner above it still has something to say, which is the
+      // point of it not being a pin.
+      expect(assembleFeed(FeedInputs(announcement: _announcement())), isEmpty);
     });
   });
 }
 
 /// Small helpers so a case can vary one input without restating the rest.
 extension on FeedInputs {
-  FeedInputs copyPosts(List<Post> posts) => FeedInputs(
-    posts: posts,
-    hotThreads: hotThreads,
-    forumNames: forumNames,
-    joinedForums: joinedForums,
-    chatMoment: chatMoment,
-    announcement: announcement,
-    promo: promo,
-    announcementSeen: announcementSeen,
-    nearbySellers: nearbySellers,
-    purchases: purchases,
-    isGuest: isGuest,
-    cartTipSeen: cartTipSeen,
-    isNewMember: isNewMember,
-    dismissedNudges: dismissedNudges,
-    filter: filter,
-  );
-
   FeedInputs copyThreads(List<ForumThread> threads) => FeedInputs(
     posts: posts,
     hotThreads: threads,
