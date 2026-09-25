@@ -31,29 +31,43 @@ Rules: this file is the queue. Do the first unticked box only. A box is ticked w
       against 5603a3e and untouched.
 
 ## Phase 3 — Details (frontend)
-- [ ] T3.1 product detail (gallery, sheet, variants, proof count, facts, reviews block, **Also sold by this seller**)
-- [ ] T3.2 review detail + cart-post detail (`PostScreen` by kind; listing → product)
-- [ ] T3.3 maker board
-- [ ] T3.4 star-first review composer
-- [ ] Phase 3 verify green · `light-post.png` regenerated · commit · push
+- [x] T3.1 product detail (gallery, sheet, variants, proof count, facts, reviews block, **Also sold by this seller**)
+- [x] T3.2 review detail + cart-post detail (`PostScreen` by kind; listing → product)
+- [x] T3.3 maker board
+- [x] T3.4 star-first review composer
+- [x] Phase 3 verify green · `light-post.png` regenerated · commit · push
+      `product_detail_test.dart` did not exist and could not: the product
+      page never left its skeleton under a widget test, because
+      `productDetailProvider` ends on `watchRating(id).first` and the fixture
+      store's `Watchable` handed `Stream.first` a cancellation to await.
+      Fixed in `fixture_store.dart`; the test is 11 cases now. The script's
+      "Also in carts with this" grep matched a doc comment that explained the
+      removal, so the comment was reworded. Welcome gate as Phase 1.
 
 ## Phase 4 — Tags as collections (frontend)
-- [ ] T4.1 `tag/:key` route, `goToTag`, all hashtag taps rerouted; results default query removed
-- [ ] T4.2 `TagScreen` with Follow / Notify
-- [ ] T4.3 repository + fixture for tag follows; `followedTagsProvider`
-- [ ] T4.4 onboarding "pick 3 tags"
-- [ ] T4.5 search screen as browse hub; collection screen follow when mapped
-- [ ] Phase 4 verify green · commit · push
+- [x] T4.1 `tag/:key` route, `goToTag`, all hashtag taps rerouted; results default query removed
+- [x] T4.2 `TagScreen` with Follow / Notify
+- [x] T4.3 repository + fixture for tag follows; `followedTagsProvider`
+- [x] T4.4 onboarding "pick 3 tags"
+- [x] T4.5 search screen as browse hub; collection screen follow when mapped
+- [x] Phase 4 verify green · commit · push
+      Clean, including "no hashtag goes to results". Welcome gate as Phase 1.
 
 ## Phase 5 — Community, You, Seller, polish (frontend)
-- [ ] T5.1 `Composer` quick replies + product cards in messages; product "Ask" prefill
-- [ ] T5.2 forums grid, forum threads as pins, chat header + pinned announcement
-- [ ] T5.3 You hub, quiet (no points/level/streak/shipping/orders)
-- [ ] T5.4 notifications, settings (tag switch), messages, edit profile restyle
-- [ ] T5.5 seller "Your shop"; Under review → Shipturtle; no Orders screen
-- [ ] T5.6 onboarding restyle (welcome untouched), tour copy, cart, checkout copy, admin preview
-- [ ] T5.7 goldens + dead code sweep; analyze reports zero
-- [ ] Phase 5 verify green · commit · push · **report to Grace with all shots · STOP until she replies**
+- [x] T5.1 `Composer` quick replies + product cards in messages; product "Ask" prefill
+- [x] T5.2 forums grid, forum threads as pins, chat header + pinned announcement
+- [x] T5.3 You hub, quiet (no points/level/streak/shipping/orders)
+- [x] T5.4 notifications, settings (tag switch), messages, edit profile restyle
+- [x] T5.5 seller "Your shop"; Under review → Shipturtle; no Orders screen
+- [x] T5.6 onboarding restyle (welcome untouched), tour copy, cart, checkout copy, admin preview
+- [x] T5.7 goldens + dead code sweep; analyze reports zero
+- [x] Phase 5 verify green · commit · push · **report to Grace with all shots · STOP until she replies**
+      `composer_quick_replies_test.dart` did not exist either; writing it
+      found the DM and chatroom threads opening on the oldest message, with
+      a message you had just sent below the fold. Both lists are `reverse:
+      true` now and the chatroom's pull-for-Forums gesture flipped sign with
+      them. 736 green, analyze clean, goldens regenerated. Welcome gate as
+      Phase 1. **Stopped here: Phase 6 is backend and needs Grace's go.**
 
 ## Phase 6 — Backend: tag follow → notify (backend) — needs Grace's go (hard gate 2)
 - [ ] T6.1 rules + rules tests
