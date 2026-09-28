@@ -913,9 +913,11 @@ async function releaseDirectory(dryRun, undo = false) {
         : dryRun
         ? `${data.listings} listings and ${data.posts} directory posts are attributed to that account. Nothing was changed.`
         : `Released ${data.listings} listings and deleted ${data.posts} directory posts, and marked the account so a later pull cannot undo it. ` +
-          (data.restored
+          (data.profile === 'restored'
             ? 'Their profile is back to what it was before.'
-            : 'Their name, bio and hashtags came from one of those listings and there was no record of their own, so those are now blank for them to fill in.'),
+            : data.profile === 'cleared'
+            ? 'Their profile was wearing one of those listings and there was no record of their own, so their name, bio and hashtags are now blank for them to fill in.'
+            : 'Their profile was their own, so it has been left exactly as it was.'),
       true,
     );
   } catch (error) {

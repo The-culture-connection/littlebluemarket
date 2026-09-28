@@ -811,6 +811,67 @@ export function browseFields(
  * leaping on production.
  */
 /**
+ * What a released account's profile should become. Pure.
+ *
+ * Three outcomes, and the third is the one this was missing.
+ *
+ *  * There is a snapshot from before a listing filled the profile in: put
+ *    it back. This is the good case and needs no judgement.
+ *  * There is no snapshot, and the profile still wears a released listing's
+ *    name: clear it. Somebody else's business on your profile is worse than
+ *    a blank one you can fill in.
+ *  * There is no snapshot and the name is not a released listing's: **leave
+ *    it alone.** It is theirs.
+ *
+ * The third case is not hypothetical. Snapshots only started being kept on
+ * 2026-09-23, so the account this was all written for had none, and had
+ * long since been renamed back to her own name by hand. Releasing wiped it:
+ * her name, her handle and her city, none of which came from a listing
+ * (Grace, 2026-09-28, "now she has no username or name"). Clearing a
+ * profile is the right answer to wearing a stranger's name and the wrong
+ * answer to wearing your own.
+ */
+export function profileAfterRelease(input: {
+  current: Record<string, unknown>;
+  before?: Record<string, unknown>;
+  borrowedTitles: string[];
+}): { profile: Record<string, unknown> | null; outcome: 'restored' | 'cleared' | 'kept' } {
+  const { current, before, borrowedTitles } = input;
+  if (before) {
+    return {
+      outcome: 'restored',
+      profile: {
+        name: String(before.name ?? ''),
+        handle: String(before.handle ?? ''),
+        handleLower: String(before.handleLower ?? ''),
+        bio: String(before.bio ?? ''),
+        tags: Array.isArray(before.tags) ? before.tags : [],
+        tagsLower: [],
+        cityState: String(before.cityState ?? ''),
+      },
+    };
+  }
+
+  const normalise = (s: string) => s.trim().toLowerCase();
+  const name = normalise(String(current.name ?? ''));
+  const borrowed = name !== '' && borrowedTitles.some((t) => normalise(t) === name);
+  if (!borrowed) return { outcome: 'kept', profile: null };
+
+  return {
+    outcome: 'cleared',
+    profile: {
+      name: '',
+      handle: '',
+      handleLower: '',
+      bio: '',
+      tags: [],
+      tagsLower: [],
+      cityState: '',
+    },
+  };
+}
+
+/**
  * Undoes a release, for the case where a real business was locked out by
  * mistake. Admin only, and separate from the release on purpose: giving
  * somebody the directory should never be a side effect of anything.
@@ -839,6 +900,8 @@ export async function releaseDirectoryFrom(
   dryRun: boolean;
   /** Whether the profile went back to what it was, or had to be cleared. */
   restored: boolean;
+  /** What actually happened to the profile. See `profileAfterRelease`. */
+  profile: 'restored' | 'cleared' | 'kept';
 }> {
   const db = getFirestore();
   const dryRun = options.dryRun ?? false;
@@ -846,6 +909,7 @@ export async function releaseDirectoryFrom(
 
   let posts = 0;
   let restored = false;
+  let outcome: 'restored' | 'cleared' | 'kept' = 'kept';
   if (!dryRun) {
     for (let i = 0; i < mine.docs.length; i += 200) {
       const batch = db.batch();
@@ -875,26 +939,25 @@ export async function releaseDirectoryFrom(
       { merge: true },
     );
 
-    // The profile was filled in from one of those listings, so it is
-    // wearing another business's name, words and hashtags. Put back what
-    // was there if we kept it, and otherwise clear it: somebody else's copy
-    // on your profile is worse than a blank one you can fill in.
+    // If a listing filled the profile in, it is wearing another business's
+    // name and words, and that has to go. If it is not, it is theirs and
+    // must be left alone: this used to blank it either way, which cost a
+    // real person her name, her handle and her city on 2026-09-28.
     const link = (await db.collection('directory').doc(uid).get()).data() ?? {};
-    const before = (link as { profileBefore?: Record<string, unknown> }).profileBefore;
-    restored = Boolean(before);
-    await db.collection('users').doc(uid).set(
-      {
-        name: String(before?.name ?? ''),
-        handle: String(before?.handle ?? ''),
-        handleLower: String(before?.handleLower ?? ''),
-        bio: String(before?.bio ?? ''),
-        tags: Array.isArray(before?.tags) ? before.tags : [],
-        tagsLower: [],
-        cityState: String(before?.cityState ?? ''),
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
+    const current = (await db.collection('users').doc(uid).get()).data() ?? {};
+    const decided = profileAfterRelease({
+      current,
+      before: (link as { profileBefore?: Record<string, unknown> }).profileBefore,
+      borrowedTitles: mine.docs.map((d) => String(d.data().title ?? '')),
+    });
+    outcome = decided.outcome;
+    restored = decided.outcome === 'restored';
+    if (decided.profile) {
+      await db.collection('users').doc(uid).set(
+        { ...decided.profile, updatedAt: FieldValue.serverTimestamp() },
+        { merge: true },
+      );
+    }
 
     // Those posts were written before `postCount` existed, so deleting them
     // drove the count below zero (it read -263 on a real profile). Counted
@@ -915,8 +978,9 @@ export async function releaseDirectoryFrom(
     posts,
     dryRun,
     restored,
+    profile: outcome,
   });
-  return { listings: mine.size, posts, dryRun, restored };
+  return { listings: mine.size, posts, dryRun, restored, profile: outcome };
 }
 
 /** wpUserId -> uid, for the accounts that have linked. */

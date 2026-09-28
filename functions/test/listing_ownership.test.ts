@@ -6,6 +6,7 @@ import {
   SITE_ROLES,
   indexReplacementIsSafe,
   listingOwnershipRefusal,
+  profileAfterRelease,
 } from '../src/directory.ts';
 
 /**
@@ -142,4 +143,58 @@ void test('the first crawl of an empty project is allowed to be any size', () =>
   assert.equal(indexReplacementIsSafe(0, 0), true);
   assert.equal(indexReplacementIsSafe(0, 1783), true);
   assert.equal(indexReplacementIsSafe(10, 1), true);
+});
+
+/**
+ * What releasing does to the released account's own profile.
+ *
+ * Grace, 2026-09-28, minutes after the release ran: "now she has no
+ * username or name". It blanked the profile whether or not the profile had
+ * anything to do with a listing. Snapshots only started being kept on
+ * 2026-09-23, so the account this was all written for had none, and had
+ * long since been renamed back to her own name by hand. All of it went.
+ */
+void test('a snapshot is put back exactly', () => {
+  const { profile, outcome } = profileAfterRelease({
+    current: { name: 'Liberal Lawn', handle: '@liberallawn' },
+    before: { name: 'Erin', handle: '@erin', handleLower: 'erin', bio: 'Hi', tags: ['#Local'], cityState: 'Springfield, VA' },
+    borrowedTitles: ['Liberal Lawn'],
+  });
+  assert.equal(outcome, 'restored');
+  assert.equal(profile!.name, 'Erin');
+  assert.equal(profile!.handle, '@erin');
+  assert.equal(profile!.cityState, 'Springfield, VA');
+});
+
+void test('no snapshot, and the profile is wearing a released listing: cleared', () => {
+  const { profile, outcome } = profileAfterRelease({
+    current: { name: 'Liberal Lawn', handle: '@liberallawn', cityState: 'Detroit, MI' },
+    borrowedTitles: ['Wild Sage Tea Co', 'Liberal Lawn', 'Organized Q'],
+  });
+  assert.equal(outcome, 'cleared');
+  assert.equal(profile!.name, '');
+  assert.equal(profile!.handle, '');
+  // Capitalisation and stray spacing are not what decides this.
+  assert.equal(
+    profileAfterRelease({ current: { name: '  liberal lawn ' }, borrowedTitles: ['Liberal Lawn'] }).outcome,
+    'cleared',
+  );
+});
+
+void test('no snapshot, and the name is the person\'s own: left alone', () => {
+  // The case that cost somebody their name. She had put "Erin" back
+  // herself; no listing released here is called that.
+  const { profile, outcome } = profileAfterRelease({
+    current: { name: 'Erin', handle: 'Erin (she/her)', cityState: 'Springfield, VA' },
+    borrowedTitles: ['Wild Sage Tea Co', 'Liberal Lawn', 'Organized Q'],
+  });
+  assert.equal(outcome, 'kept');
+  assert.equal(profile, null, 'nothing is written, so nothing can be lost');
+});
+
+void test('an empty name is not a match for anything', () => {
+  // Otherwise a listing with a blank title would clear every profile it
+  // touched, and releasing twice would wipe what the first release kept.
+  assert.equal(profileAfterRelease({ current: { name: '' }, borrowedTitles: [''] }).outcome, 'kept');
+  assert.equal(profileAfterRelease({ current: {}, borrowedTitles: ['Liberal Lawn'] }).outcome, 'kept');
 });
