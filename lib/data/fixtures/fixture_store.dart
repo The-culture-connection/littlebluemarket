@@ -182,6 +182,19 @@ class FixtureStore {
         text: 'Go see @maya for the good soap.',
         createdAt: DateTime.now().subtract(const Duration(hours: 2)),
       ),
+      // A tag you asked to be told about. Its route is the tag's own page
+      // rather than the post: you followed a collection, and the news is
+      // that the collection moved.
+      AppNotification(
+        id: 'n2',
+        kind: NotificationKind.tagPost,
+        postId: 'post_p1',
+        fromUid: 'kali',
+        title: 'New under #plasticfree',
+        route: '/market/tag/plasticfree',
+        text: 'Four new tubes, all in paper.',
+        createdAt: DateTime.now().subtract(const Duration(hours: 4)),
+      ),
     ];
     comments.value = _seedComments();
     threadComments.value = {

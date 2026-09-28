@@ -26,6 +26,7 @@ export type PushType =
   | 'forumReply'
   | 'newProduct'
   | 'newPost'
+  | 'tagPost'
   | 'announcement'
   | 'test';
 
@@ -38,6 +39,8 @@ export interface NotificationPrefs {
   newProducts?: boolean;
   /** A post from someone you follow. */
   newPosts?: boolean;
+  /** A post under a tag you asked to be told about ("Notify me" on a tag). */
+  tagPosts?: boolean;
   announcements?: boolean;
   mutedForums?: string[];
 }
@@ -65,6 +68,8 @@ export function shouldPush(prefs: NotificationPrefs | undefined, event: PushEven
       return on(prefs?.newProducts);
     case 'newPost':
       return on(prefs?.newPosts);
+    case 'tagPost':
+      return on(prefs?.tagPosts);
     case 'announcement':
       return on(prefs?.announcements);
     case 'test':
@@ -104,6 +109,11 @@ export function titleFor(type: PushType, fromName: string, fallbackTitle?: strin
       return `New from ${who}`;
     case 'newPost':
       return `${who} posted`;
+    // The tag is the news here, not who wrote it: you asked to hear about
+    // #Handmade, not about this person. The caller passes "New under
+    // #handmade" as the fallback title, and the body names the person.
+    case 'tagPost':
+      return fallbackTitle || `${who} posted under a tag you follow`;
     case 'announcement':
       return fallbackTitle || 'Little Blue Market';
     case 'test':
@@ -335,4 +345,64 @@ export async function postSubscribers(authorUid: string, cap = 500): Promise<str
     .limit(cap)
     .get();
   return snapshot.docs.map((d) => d.id).filter((id) => id && id !== authorUid);
+}
+
+/**
+ * Whether a `followedTags` document should have a subscriber row. Pure.
+ *
+ * Following a tag and asking to be told about it are two things: the tag
+ * page offers Follow and Notify me separately, and plenty of people want a
+ * collection in their feed without a buzz every time somebody posts to it.
+ * Only "notify" gets a row, so the quiet half of the pair costs nothing at
+ * post time.
+ */
+export function wantsTagTelling(
+  after: Record<string, unknown> | undefined,
+  exists: boolean,
+): boolean {
+  return exists && after?.notify === true;
+}
+
+/**
+ * The tags of a new post that are worth fanning out, in order. Pure.
+ *
+ * Capped, and the cap is on the post's tags rather than on the people who
+ * follow them: a post carrying thirty hashtags is reach-seeking, and the
+ * people who follow those tags are the ones who would pay for it in buzzes.
+ * Blanks and repeats drop out, so `#Handmade #handmade` is one tag.
+ */
+export function tagsToFanOut(keys: Iterable<string>, cap = 5): string[] {
+  const seen = new Set<string>();
+  for (const key of keys) {
+    if (!key) continue;
+    seen.add(key);
+    if (seen.size >= cap) break;
+  }
+  return [...seen];
+}
+
+/**
+ * Who asked to be told about this tag (the reverse of
+ * users/{me}/followedTags where `notify` is true, kept by
+ * onTagFollowWritten). Capped the same way: a tag everybody follows still
+ * gets a bounded fan-out per post.
+ *
+ * [exclude] is everyone already being notified about this post for another
+ * reason — the author, the people it mentions, the seller of a shoutout,
+ * the author's own followers — so somebody who follows both the person and
+ * the tag hears about it once rather than twice.
+ */
+export async function tagSubscribers(
+  key: string,
+  exclude: ReadonlySet<string> = new Set(),
+  cap = 500,
+): Promise<string[]> {
+  if (!key) return [];
+  const snapshot = await getFirestore()
+    .collection('hashtags')
+    .doc(key)
+    .collection('subscribers')
+    .limit(cap)
+    .get();
+  return snapshot.docs.map((d) => d.id).filter((id) => id && !exclude.has(id));
 }

@@ -222,4 +222,33 @@ void main() {
       expect(prefs.copyWith(tagPosts: false).toMap()['tagPosts'], isFalse);
     });
   });
+
+  group('the bell, when a tag you follow moves', () {
+    testWidgets('names the tag, and opens the tag rather than the post', (
+      tester,
+    ) async {
+      // The end of the chain Phase 6 builds: follow #plasticfree with
+      // Notify, somebody posts under it, the fan-out writes this row.
+      final container = await _pump(tester, at: '/you/notifications');
+
+      // The tag is the reason the row exists, so it is what the row leads
+      // with; the person who posted comes after it.
+      expect(find.textContaining('New under #plasticfree'), findsOneWidget);
+      expect(find.textContaining('Four new tubes'), findsOneWidget);
+
+      await tester.tap(find.textContaining('New under #plasticfree'));
+      await tester.pumpAndSettle();
+
+      // The tag's own page, not the post: you followed a collection, and
+      // the news is that the collection moved.
+      final location = container
+          .read(routerProvider)
+          .routerDelegate
+          .currentConfiguration
+          .uri
+          .toString();
+      expect(location, '/market/tag/plasticfree');
+      expect(find.text('COLLECTION'), findsOneWidget);
+    });
+  });
 }

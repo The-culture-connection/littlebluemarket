@@ -53,8 +53,29 @@ class AppNotification {
   /// Where a tap goes. Older entries have none and open their post.
   final String? route;
 
-  /// An announcement's own title. Everything else is named after a person.
+  /// An announcement's own title, and a tag post's "New under #handmade".
+  /// Everything else is named after a person.
   final String? title;
+
+  /// The same notification, read.
+  ///
+  /// Exists because marking the bell read used to rebuild each row field by
+  /// field, and quietly left [route], [title] and [mentions] off: opening
+  /// the bell destroyed the destination of every row in it, so a tag
+  /// notification tapped after a glance went to the post instead of the tag.
+  /// Copy, never rebuild.
+  AppNotification asRead() => AppNotification(
+    id: id,
+    kind: kind,
+    postId: postId,
+    fromUid: fromUid,
+    text: text,
+    createdAt: createdAt,
+    read: true,
+    route: route,
+    title: title,
+    mentions: mentions,
+  );
 
   String get age => Fmt.relative(createdAt);
 

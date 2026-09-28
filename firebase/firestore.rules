@@ -312,6 +312,33 @@ service cloud.firestore {
         allow read, write: if isSelf(uid) && member() && personId != uid;
       }
 
+      // Tags you follow, and whether you want telling about them. Same shape
+      // and same privacy as `following` above: yours alone to read and write,
+      // and the functions mirror the "notify" ones into the tag's subscribers.
+      //
+      // The document id is the tag key — no hash, lower case — because that
+      // is what `index.ts` keys `hashtags/{key}` by, and a second casing here
+      // would quietly make `#Handmade` and `#handmade` two different follows.
+      // The rule insists on it rather than trusting four call sites to agree.
+      //
+      // The pattern is the alphabet a key can actually have: hashtags are
+      // parsed as `#(\w+)` (`notification.dart:177`) and the key is that
+      // with the hash off and lowercased, so `[a-z0-9_]`. Spelling it as a
+      // pattern rather than as `tag == tag.lower()` is deliberate — a lower
+      // case test passes `#handmade` unchanged, since a hash has no case,
+      // and that is a second document for a tag already followed.
+      match /followedTags/{tag} {
+        allow read: if isSelf(uid) && member();
+        allow delete: if isSelf(uid) && member();
+        allow create, update: if isSelf(uid)
+          && member()
+          && tag.matches('^[a-z0-9_]+$')
+          && tag.size() <= 40
+          && incoming().keys().hasOnly(['tag', 'notify', 'createdAt'])
+          && incoming().tag == tag
+          && incoming().notify is bool;
+      }
+
       // Who follows this person: the fan-out list the functions send to.
       // Nobody reads it from a phone, so nobody can list someone's followers.
       match /subscribers/{subscriberUid} {
@@ -568,6 +595,14 @@ service cloud.firestore {
     match /hashtags/{tag} {
       allow read: if true;
       allow write: if false;
+
+      // Who asked to be told about this tag: the fan-out list the functions
+      // send to, written only by `onTagFollowWritten`. Closed in both
+      // directions, exactly as a person's `subscribers` is, so nobody can
+      // list who follows a tag from a phone.
+      match /subscribers/{subscriberUid} {
+        allow read, write: if false;
+      }
     }
 
     // ------------------------------------------------------------- listings

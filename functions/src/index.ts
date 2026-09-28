@@ -39,6 +39,9 @@ import {
   sendAnnouncement,
   sendPushToUid,
   shoutoutSellerToNotify,
+  tagSubscribers,
+  tagsToFanOut,
+  wantsTagTelling,
 } from './push.ts';
 import {
   backfillSellerForVendor,
@@ -91,7 +94,7 @@ import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
 import { noteVendorFromCatalog, syncVendorRoster } from './roster_grant.ts';
 import { geocodeProfileIfNeeded } from './geocode.ts';
 import { backfillProfileTagsLower, syncProfileTagsLower } from './profile_tags.ts';
-import { mentionsToNotify, notify } from './notifications.ts';
+import { displayName, mentionsToNotify, notify } from './notifications.ts';
 import { syncShipturtleOrders } from './shipturtle_orders.ts';
 import { publishListing, searchCategories } from './listings.ts';
 import { pruneSellerCatalog, refreshListings, updateListing } from './listing_updates.ts';
@@ -1203,24 +1206,65 @@ export const onPostWritten = onDocumentWritten(
     if (!beforeAll && afterAll) {
       const authorId = String(afterAll.authorId ?? '');
       const text = String(afterAll.text ?? afterAll.caption ?? afterAll.title ?? '').slice(0, 140);
-      // Chunks in parallel, not one await per follower: 500 sequential
-      // sends can outlive the trigger and silently drop the tail. One
-      // follower's failure does not stop the rest.
+
+      /** Sends in parallel chunks and never lets one failure stop the rest. */
+      const fanOut = async (
+        uids: string[],
+        build: (uid: string) => Promise<void>,
+        what: string,
+      ) => {
+        // Chunks in parallel, not one await per recipient: 500 sequential
+        // sends can outlive the trigger and silently drop the tail.
+        for (let i = 0; i < uids.length; i += 25) {
+          const results = await Promise.allSettled(uids.slice(i, i + 25).map(build));
+          for (const r of results) {
+            if (r.status === 'rejected') logger.warn(what, { error: String(r.reason) });
+          }
+        }
+      };
+
       const subscribers = await postSubscribers(authorId);
-      for (let i = 0; i < subscribers.length; i += 25) {
-        const results = await Promise.allSettled(
-          subscribers.slice(i, i + 25).map((uid) =>
+      await fanOut(
+        subscribers,
+        (uid) =>
+          notify(uid, {
+            type: 'newPost',
+            postId: event.params.postId,
+            fromUid: authorId,
+            text: text || 'posted something new',
+          }),
+        'A follower push failed',
+      );
+
+      // And the people who asked to be told about a tag this post carries.
+      // Everyone already notified above is excluded, so following both the
+      // maker and the tag is one buzz rather than two.
+      const notified = new Set<string>([authorId, ...subscribers]);
+      for (const uid of mentionsToNotify(afterAll, beforeAll)) notified.add(uid);
+      if (seller) notified.add(seller);
+
+      const authorName = await displayName(authorId);
+      for (const key of tagsToFanOut(nextKeys)) {
+        const followers = await tagSubscribers(key, notified);
+        await fanOut(
+          followers,
+          (uid) =>
             notify(uid, {
-              type: 'newPost',
+              type: 'tagPost',
               postId: event.params.postId,
               fromUid: authorId,
-              text: text || 'posted something new',
+              title: `New under #${key}`,
+              // The route is the tag's own page, not the post: somebody who
+              // followed a collection is being told the collection moved.
+              route: `/market/tag/${key}`,
+              // The post's own words, and only those. The push puts the tag
+              // in the title and the bell puts the person in the headline,
+              // so naming either here would say it twice.
+              text: (text || `${authorName || 'Someone'} posted something new`).slice(0, 140),
             }),
-          ),
+          'A tag push failed',
         );
-        for (const r of results) {
-          if (r.status === 'rejected') logger.warn('A follower push failed', { error: String(r.reason) });
-        }
+        for (const uid of followers) notified.add(uid);
       }
     }
   },
@@ -1242,6 +1286,37 @@ export const onFollowWritten = onDocumentWritten(
     } else {
       await ref.delete().catch(() => undefined);
     }
+  },
+);
+
+/**
+ * The same mirror for a followed tag, with one difference that matters.
+ *
+ * Following a tag and asking to be told about it are two things: the tag
+ * page offers Follow and Notify me separately, and plenty of people want a
+ * collection in their feed without a buzz every time somebody posts to it.
+ * So the subscriber row — the list the fan-out sends to — is written only
+ * when `notify` is true, and removed the moment it goes false. Following
+ * quietly leaves nothing here at all.
+ *
+ * `hashtags/{tag}` is created alongside it, merged, so the subscriber is not
+ * hanging under a document that does not exist. The tag page reads that
+ * document for its post count.
+ */
+export const onTagFollowWritten = onDocumentWritten(
+  'users/{uid}/followedTags/{tag}',
+  async (event) => {
+    const { uid, tag } = event.params;
+    if (!uid || !tag) return;
+    const db = getFirestore();
+    const ref = db.collection('hashtags').doc(tag).collection('subscribers').doc(uid);
+
+    if (!wantsTagTelling(event.data?.after?.data(), event.data?.after?.exists === true)) {
+      await ref.delete().catch(() => undefined);
+      return;
+    }
+    await db.collection('hashtags').doc(tag).set({ tag }, { merge: true });
+    await ref.set({ createdAt: FieldValue.serverTimestamp() }, { merge: true });
   },
 );
 

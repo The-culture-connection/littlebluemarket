@@ -168,6 +168,21 @@
       ]
     },
     {
+      "_comment": "Hot threads for the feed: most talked about, newest to break a tie. The feed's thread pins read this.",
+      "collectionGroup": "threads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "commentCount",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "_comment": "The inbox: your conversations, most recent first.",
       "collectionGroup": "conversations",
       "queryScope": "COLLECTION",

@@ -127,6 +127,12 @@ class _NotificationRow extends ConsumerWidget {
 
     final from = ref.watch(personProvider(notification.fromUid));
     final name = from.value?.name ?? 'Someone';
+    // A tag post carries "New under #handmade", and the tag is the reason
+    // this row exists at all: it is what was asked for and it is where the
+    // row leads. The person is still named, after it.
+    final tagged =
+        notification.kind == NotificationKind.tagPost &&
+        (notification.title ?? '').isNotEmpty;
     return ListRow(
       background: notification.read
           ? null
@@ -134,7 +140,9 @@ class _NotificationRow extends ConsumerWidget {
       leading: from.value == null
           ? const LbmSkeleton(width: 36, height: 36, radius: 18)
           : Avatar(from.value!, size: AvatarSize.sm),
-      title: Text('$name ${notification.headline}'),
+      title: Text(
+        tagged ? '${notification.title} · $name' : '$name ${notification.headline}',
+      ),
       subtitle: Text(
         notification.text.isEmpty
             ? notification.age

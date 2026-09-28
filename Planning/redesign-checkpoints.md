@@ -70,15 +70,31 @@ Rules: this file is the queue. Do the first unticked box only. A box is ticked w
       Phase 1. **Stopped here: Phase 6 is backend and needs Grace's go.**
 
 ## Phase 6 — Backend: tag follow → notify (backend) — needs Grace's go (hard gate 2)
-- [ ] T6.1 rules + rules tests
-- [ ] T6.2 `onTagFollowWritten` + test
-- [ ] T6.3 `tagPost` push type, prefs, fan-out in `onPostWritten` + tests
-- [ ] T6.4 client `NotificationKind.tagPost`
-- [ ] T6.5 hot-threads index (or N/A with reason)
-- [ ] T6.6 deploy to **dev** · `scripts\deploy-check-redesign.ps1` PASS · commit · push
+- [x] T6.1 rules + rules tests
+- [x] T6.2 `onTagFollowWritten` + test
+- [x] T6.3 `tagPost` push type, prefs, fan-out in `onPostWritten` + tests
+- [x] T6.4 client `NotificationKind.tagPost`
+- [x] T6.5 hot-threads index (or N/A with reason)
+- [x] T6.6 deploy to **dev** · `scripts\deploy-check-redesign.ps1` PASS · commit · push
+      Grace's go, 2026-09-28. Deployed narrowly and to dev only
+      (`--project little-blue-610e5`): rules, indexes, `onTagFollowWritten`,
+      `onPostWritten`. Deliberately **not** `deploy-dev.ps1`, which also
+      re-registers the Shopify webhooks, and Shopify is hard gate 3.
+      Deploy check PASS on every line. 744 Flutter, 230 functions, 57 rules,
+      tsc clean.
+
+      The plan's own rule for T6.1 had a hole: `tag == tag.lower()` passes
+      `#handmade` unchanged, since a hash has no case, so a second document
+      for an already-followed tag was writable. The rule is the key's real
+      alphabet instead, `^[a-z0-9_]+$`, which is what `#(\w+)` lowercased
+      can produce. The rules test caught it.
+
+      Also found on the way: marking the bell read rebuilt each row field by
+      field and dropped `route`, `title` and `mentions`, so opening the bell
+      destroyed where every row led. `AppNotification.asRead()` now.
 
 ## Phase 7 — Integration pairs
-- [ ] all five pair checks in plan §7 green (they live inside the phase tests; run `verify-redesign.ps1 -Phase all`)
+- [x] all five pair checks in plan §7 green (they live inside the phase tests; run `verify-redesign.ps1 -Phase all`)
 
 ## Phase 8 — reserved for findings from the adversarial review and Grace's manual pass
 - [ ] (add tasks here as symptom → cause → file:line → fix, never as "tweak X")

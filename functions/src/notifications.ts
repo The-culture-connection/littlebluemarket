@@ -49,7 +49,8 @@ export interface NotifyInput {
   title?: string;
 }
 
-async function displayName(uid: string): Promise<string> {
+/** Someone's name for a notification line. Empty rather than throwing. */
+export async function displayName(uid: string): Promise<string> {
   if (!uid) return '';
   try {
     const doc = await getFirestore().collection('users').doc(uid).get();

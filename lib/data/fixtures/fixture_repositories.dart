@@ -976,16 +976,7 @@ class FixtureSocialRepository implements SocialRepository {
   @override
   Future<void> markNotificationsRead() async {
     _store.notifications.value = [
-      for (final n in _store.notifications.value)
-        AppNotification(
-          id: n.id,
-          kind: n.kind,
-          postId: n.postId,
-          fromUid: n.fromUid,
-          text: n.text,
-          createdAt: n.createdAt,
-          read: true,
-        ),
+      for (final n in _store.notifications.value) n.asRead(),
     ];
   }
 

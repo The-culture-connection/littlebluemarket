@@ -462,6 +462,43 @@ describe('selling is a grant, not a client write', () => {
     await assertFails(member('maya').doc('users/kali/subscribers/maya').set({ since: 1 }));
   });
 
+  test('followed tags: yours alone, keyed by the tag key, fan-out server-only', async () => {
+    // The redesign's "follow a collection, get notified when there is a new
+    // post about a tag". Same privacy as `following` above.
+    const tag = (uid, key) => member(uid).doc(`users/${uid}/followedTags/${key}`);
+
+    await assertSucceeds(tag('maya', 'handmade').set({ tag: 'handmade', notify: true, createdAt: new Date() }));
+    await assertSucceeds(tag('maya', 'handmade').get());
+    // Following without asking to be told is the quiet half of the pair.
+    await assertSucceeds(tag('maya', 'handmade').set({ tag: 'handmade', notify: false, createdAt: new Date() }));
+    await assertSucceeds(tag('maya', 'handmade').delete());
+
+    // The id is the key: no hash, lower case. Anything else would make
+    // `#Handmade` and `#handmade` two different follows, and the fan-out
+    // keys `hashtags/{key}` by the lower-case form.
+    await assertFails(tag('maya', 'Handmade').set({ tag: 'Handmade', notify: true }));
+    await assertFails(tag('maya', '#handmade').set({ tag: '#handmade', notify: true }));
+    // And the document has to agree with its own id.
+    await assertFails(tag('maya', 'handmade').set({ tag: 'jewelry', notify: true }));
+
+    // Shape: nothing but the three fields, and notify really is a boolean.
+    await assertFails(tag('maya', 'handmade').set({ tag: 'handmade', notify: 'yes' }));
+    await assertFails(tag('maya', 'handmade').set({ tag: 'handmade', notify: true, pushEveryone: true }));
+
+    // Somebody else's list is nobody's business, in either direction.
+    await assertFails(member('kali').doc('users/maya/followedTags/handmade').get());
+    await assertFails(member('kali').doc('users/maya/followedTags/handmade').set({ tag: 'handmade', notify: true }));
+    await assertFails(member('kali').collection('users/maya/followedTags').get());
+    // A guest has no account to hang a list on.
+    await assertFails(guest().doc('users/anon/followedTags/handmade').set({ tag: 'handmade', notify: true }));
+
+    // Who follows a tag is the functions' list, exactly as a person's
+    // subscribers are: unreadable and unwritable from a phone.
+    await assertFails(member('maya').doc('hashtags/handmade/subscribers/maya').get());
+    await assertFails(member('maya').doc('hashtags/handmade/subscribers/maya').set({ createdAt: new Date() }));
+    await assertFails(member('maya').collection('hashtags/handmade/subscribers').get());
+  });
+
   test('reports: a member reports someone else; only admins read, resolve, never delete', async () => {
     await assertSucceeds(member('maya').doc('reports/r1').set({ reporterUid: 'maya', subjectUid: 'kali', kind: 'user', reason: 'spam', text: 'Sends the same link everywhere' }));
     await assertFails(member('maya').doc('reports/r2').set({ reporterUid: 'kali', subjectUid: 'dee', kind: 'user', reason: 'spam', text: 'as someone else' }));
