@@ -8,6 +8,7 @@ import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/filter_chips.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
@@ -62,7 +63,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final scope = ref.watch(searchFiltersProvider).scope;
+    final filters = ref.watch(searchFiltersProvider);
+    final scope = filters.scope;
     final tags = ref.watch(popularTagsProvider);
     final recents = ref.watch(recentSearchesProvider);
 
@@ -83,74 +85,80 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
+          // Scope, and beside it Near me — the same button, in the same
+          // place, as on the results screen this leads to.
+          //
+          // It is a *toggle on the search*, not a way into the feed's Near me
+          // tab. It was the latter, which was wrong twice over: it left the
+          // screen you were searching on, and it never narrowed a search at
+          // all, so typing a word afterwards searched the whole market again
+          // (Grace, 2026-09-28: "there should be a near me toggle for the
+          // search"). Turned on here, the next search is constrained to the
+          // radius, which is what `SearchFilters.isGeoConstrained` has always
+          // meant and what both repositories already honour.
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 2, 14, 4),
-            child: Wrap(
-              spacing: 7,
-              runSpacing: 7,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final option in SearchScope.values)
-                  LbmChip(
-                    option.label,
-                    style: option == scope ? ChipStyle.on : ChipStyle.quiet,
-                    onTap: () => ref
-                        .read(searchFiltersProvider.notifier)
-                        .setScope(option),
+                Expanded(
+                  child: Wrap(
+                    spacing: 7,
+                    runSpacing: 7,
+                    children: [
+                      for (final option in SearchScope.values)
+                        LbmChip(
+                          option.label,
+                          style: option == scope
+                              ? ChipStyle.on
+                              : ChipStyle.quiet,
+                          onTap: () => ref
+                              .read(searchFiltersProvider.notifier)
+                              .setScope(option),
+                        ),
+                    ],
                   ),
+                ),
+                const SizedBox(width: 10),
+                NearMeButton(
+                  active: filters.nearMe,
+                  onTap: () => toggleNearMe(context, ref),
+                ),
               ],
             ),
           ),
-          // Near me lives here as well as on the feed's own tab: this is the
-          // screen people come to when they are looking for something, and
-          // "what is close" is one of the ways they look (Grace, 2026-09-25).
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
-            child: LbmCard(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-              // Awaited, and only then does it leave. Turning Near me on has
-              // to find somewhere to measure from, which can end in "add
-              // your city" rather than in a location: navigating first threw
-              // that message away with the screen it was raised on, and left
-              // the Market showing For you with nothing changed.
-              onTap: () async {
-                if (!ref.read(searchFiltersProvider).nearMe) {
-                  await toggleNearMe(context, ref);
-                  if (!context.mounted) return;
-                  if (!ref.read(searchFiltersProvider).nearMe) return;
-                }
-                context.leaveSearch();
-              },
+          // What "near" currently means, said only while it is on. A search
+          // silently narrowed to twenty miles, with nothing on screen saying
+          // so, is the sort of thing somebody reports as "search is broken".
+          if (filters.nearMe)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
               child: Row(
                 children: [
-                  Icon(Icons.near_me_rounded, size: 20, color: c.skyDeep),
-                  const SizedBox(width: 10),
+                  Icon(Icons.place_outlined, size: 14, color: c.ink2),
+                  const SizedBox(width: 6),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Near me',
-                          style: LbmText.pinTitle.copyWith(
-                            fontSize: 14,
-                            color: c.ink,
-                          ),
-                        ),
-                        Text(
-                          'Makers and listings close to you',
-                          style: LbmText.pinMeta.copyWith(color: c.ink2),
-                        ),
-                      ],
+                    child: Text(
+                      'Searching within '
+                      '${Fmt.distanceMiles(filters.radiusMiles)} of '
+                      '${filters.origin?.label ?? 'you'}',
+                      style: LbmText.pinMeta.copyWith(color: c.ink2),
                     ),
                   ),
-                  Icon(Icons.chevron_right_rounded, color: c.ink3),
                 ],
               ),
             ),
-          ),
+          if (filters.nearMe)
+            FilterChips(
+              items: [
+                for (final miles in const [5.0, 10.0, 25.0, 50.0])
+                  (miles.toString(), Fmt.distanceMiles(miles)),
+              ],
+              selected: filters.radiusMiles.toString(),
+              onSelect: (value) => ref
+                  .read(searchFiltersProvider.notifier)
+                  .setRadius(double.parse(value)),
+            ),
           // The store's real taxonomy, and littlebluecart.com's beside it.
           // Both used to sit on top of the Market feed, where they pushed the
           // first photograph below the fold and answered a question nobody
