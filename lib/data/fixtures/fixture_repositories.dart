@@ -112,6 +112,22 @@ class FixtureCatalogRepository implements CatalogRepository {
       _backend._delayed(Fx.tags.take(limit).toList());
 
   @override
+  Future<String?> tagSpelling(String key) {
+    if (key.isEmpty) return _backend._delayed(null);
+    // Whatever spelling the demo data uses for it: the popular list first,
+    // then any product carrying it. Matching is by key either way.
+    for (final tag in Fx.tags) {
+      if (tagKey(tag.tag) == key) return _backend._delayed(tag.tag);
+    }
+    for (final product in Fx.products.values) {
+      for (final tag in product.tags) {
+        if (tagKey(tag) == key) return _backend._delayed(tag);
+      }
+    }
+    return _backend._delayed(null);
+  }
+
+  @override
   Future<List<Product>> nearby({
     required double lat,
     required double lng,

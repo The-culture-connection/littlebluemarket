@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/models/market_taxonomy.dart';
-import 'package:little_blue_market/models/models.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 
@@ -253,7 +252,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('COLLECTION'), findsOneWidget);
-      expect(find.text(tagLabel(tags.first.tag)), findsWidgets);
+      // Shown as it is spelled, matched by its key.
+      expect(find.text(tags.first.tag), findsWidgets);
       expect(find.text('Follow'), findsOneWidget);
     });
   });

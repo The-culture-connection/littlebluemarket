@@ -101,6 +101,8 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
+    // The spelling somebody wrote, not the key the page is routed by.
+    final label = ref.watch(tagSpellingProvider(tag)).value ?? tagLabel(tag);
     final followed = ref.watch(followedTagsProvider).value ?? const <String>{};
     final notified = ref.watch(notifiedTagsProvider).value ?? const <String>{};
     final isFollowing = followed.contains(tag);
@@ -163,7 +165,7 @@ class _Body extends ConsumerWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  tagLabel(tag),
+                  label,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: LbmText.headline.copyWith(color: c.ink),
@@ -230,12 +232,12 @@ class _Body extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: MakersRail(
                     item: MakersRailItem(people),
-                    title: 'Posting under ${tagLabel(tag)}',
+                    title: 'Posting under $label',
                   ),
                 )
             else if (shown.isEmpty && shownProducts.isEmpty)
               LbmEmpty(
-                title: 'Nothing under ${tagLabel(tag)} yet',
+                title: 'Nothing under $label yet',
                 body: 'Follow it and it will fill up as people post.',
               )
             else

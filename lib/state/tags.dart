@@ -47,3 +47,16 @@ final notifiedTagsProvider = StreamProvider<Set<String>>((ref) {
   if (ref.watch(isGuestProvider)) return Stream.value(const {});
   return ref.watch(socialRepositoryProvider).watchNotifiedTags();
 });
+
+/// How this hashtag is spelled, for showing. Falls back to the key.
+///
+/// Matching is case agnostic — `#This` and `#this` are one tag, keyed by
+/// the lower-case form — but a page headed "#cantedithistory" is that key
+/// leaking into the design. This is the spelling somebody actually wrote.
+final tagSpellingProvider = FutureProvider.family<String, String>((
+  ref,
+  key,
+) async {
+  final stored = await ref.watch(catalogRepositoryProvider).tagSpelling(key);
+  return stored ?? tagLabel(key);
+});

@@ -55,13 +55,28 @@ void main() {
       expect(tagKey(''), '');
       expect(tagLabel('PlasticFree'), '#plasticfree');
     });
+
+    test('#This and #this are one tag, and one page', () {
+      // Grace, 2026-09-28: "Is there a way to make hashtags case agnostic so
+      // #This is the same as #this?" This is what makes it so. Every place
+      // that stores, matches, routes or follows a hashtag goes through this
+      // one function, so capitals decide nothing anywhere.
+      expect(tagKey('#This'), tagKey('#this'));
+      expect(tagKey('#CanTEditHistory'), tagKey('#cantedithistory'));
+      expect(tagKey('#CanTEditHistory'), tagKey('#CANTEDITHISTORY'));
+      // Including the two ways a person might type the same one.
+      expect(tagKey('#WomanOwned'), tagKey('womanowned'));
+      expect(tagKey('  #WomanOwned  '), tagKey('#womanowned'));
+    });
   });
 
   testWidgets('a tag page shows what was posted under it', (tester) async {
     await _pump(tester);
 
     expect(find.text('COLLECTION'), findsOneWidget);
-    expect(find.text('#plasticfree'), findsOneWidget);
+    // The spelling the market uses, not the key the route carries: a tag
+    // is matched case agnostically and shown as somebody wrote it.
+    expect(find.text('#PlasticFree'), findsOneWidget);
     expect(find.byType(ProductPin), findsWidgets);
     // Counted from what is on the page, and the copy says so. "Things"
     // rather than "posts" since 2026-09-28: a tag page counts the listings
@@ -166,7 +181,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('COLLECTION'), findsOneWidget);
-    expect(find.text(tagLabel(label)), findsWidgets);
+    // The page shows the spelling, and the chip that opened it was that
+    // spelling, so they read the same. What made them one page is the key:
+    // `tagKey` of both is equal whatever the capitals did.
+    expect(find.text(label), findsWidgets);
+    expect(tagKey(label), tagKey(label.toUpperCase()));
   });
 
   group('the thing production actually had', () {
@@ -218,7 +237,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Nobody yet'), findsNothing);
-      expect(find.textContaining('Posting under #plasticfree'), findsOneWidget);
+      expect(find.textContaining('Posting under #PlasticFree'), findsOneWidget);
     });
   });
 }

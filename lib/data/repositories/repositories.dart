@@ -65,6 +65,14 @@ abstract interface class CatalogRepository {
 
   Future<List<TagCount>> popularTags({int limit = 8});
 
+  /// How a hashtag is spelled, for a key. Null when nothing has recorded one.
+  ///
+  /// Matching a hashtag is case agnostic and always will be: `#This` and
+  /// `#this` are one tag, and everything is keyed by the lower-case form.
+  /// Showing one is not. A page headed "#cantedithistory" is the key
+  /// leaking out; "#CanTEditHistory" is what the shop wrote.
+  Future<String?> tagSpelling(String key);
+
   /// Listings whose seller is within [radiusMiles] of a point, nearest
   /// first.
   ///

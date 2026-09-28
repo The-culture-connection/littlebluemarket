@@ -97,6 +97,7 @@ import { geocodeProfileIfNeeded } from './geocode.ts';
 import {
   backfillProfileTagsLower,
   backfillTagKeyMirror,
+  tagKeys,
   syncProfileTagsLower,
   syncTagKeyMirror,
 } from './profile_tags.ts';
@@ -490,6 +491,38 @@ export const onCatalogWritten = onDocumentWritten(
     // sees a document that already existed and the vendor has not changed,
     // so the pass costs nothing.
     await syncTagKeyMirror('catalog', event.params.productId, after);
+
+    // Every hashtag a product carries gets a `hashtags/{key}` document
+    // holding how it was spelled. Two things needed that and neither had
+    // it: a tag page had no nicer name than the key, so #CanTEditHistory
+    // read as "#cantedithistory", and `_canonicalTag` — which still bridges
+    // the case gap for reviews — had nothing to look up, because that
+    // collection was written only by the post trigger and on this market
+    // the hashtags are on the things for sale.
+    //
+    // No `postCount`: that number counts posts, and a product is not one.
+    // Leaving it off also keeps these out of "popular right now", which
+    // orders by it, since Firestore omits documents missing the field.
+    const addedTags = tagKeys(after?.tags).filter(
+      (key) => !tagKeys(before?.tags).includes(key),
+    );
+    if (addedTags.length) {
+      const db = getFirestore();
+      const spellings = new Map<string, string>();
+      for (const raw of (after?.tags ?? []) as unknown[]) {
+        if (typeof raw !== 'string') continue;
+        const key = tagKeys([raw])[0];
+        if (key && !spellings.has(key)) spellings.set(key, raw.trim());
+      }
+      const batch = db.batch();
+      for (const key of addedTags) {
+        // Merged, so the first spelling seen wins and a shop renaming its
+        // capitalisation does not rewrite everybody else's page.
+        batch.set(db.collection('hashtags').doc(key), { tag: spellings.get(key) ?? `#${key}` }, { merge: true });
+      }
+      await batch.commit();
+    }
+
     await announceIfNew(event.params.productId, before, after);
     // A vendor name the directory has not seen: resolve it against Shipturtle
     // (one lookup, the first time only) and grant any waiting account.

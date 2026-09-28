@@ -250,4 +250,12 @@ class FirestoreCatalogRepository implements CatalogRepository {
             )
             .toList();
       }, operation: 'firestore catalog popularTags');
+
+  @override
+  Future<String?> tagSpelling(String key) => guardFirestore(() async {
+    if (key.isEmpty) return null;
+    final doc = await _db.collection('hashtags').doc(key).get();
+    final tag = doc.data()?['tag'];
+    return tag is String && tag.isNotEmpty ? tag : null;
+  }, operation: 'firestore catalog tagSpelling');
 }
