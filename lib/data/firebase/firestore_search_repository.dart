@@ -132,7 +132,15 @@ class FirestoreSearchRepository implements SearchRepository {
     Query<Map<String, dynamic>> base = _catalog;
     switch (filters.scope) {
       case SearchScope.hashtags:
-        base = base.where('tags', arrayContains: tag ?? query);
+        // By key, not by spelling. A product stores its tags as the shop
+        // typed them — `#CanTEditHistory` — and `array-contains` is exact,
+        // so looking for `#cantedithistory` found nothing. `_canonicalTag`
+        // was meant to bridge that by reading `hashtags/{key}`, but that
+        // collection is built from posts, and on this market the hashtags
+        // are on products, so there was nothing to read (Grace,
+        // 2026-09-28). `tagsLower` is the key mirror the catalogue trigger
+        // keeps, and it needs no spelling to be guessed at all.
+        base = base.where('tagsLower', arrayContains: tagKey(query));
       case SearchScope.productType:
         base = base.where('typeSlug', isEqualTo: _slug(query));
       case SearchScope.sellers:
@@ -143,7 +151,7 @@ class FirestoreSearchRepository implements SearchRepository {
       case SearchScope.keywords:
       case SearchScope.all:
         if (tag != null) {
-          base = base.where('tags', arrayContains: tag);
+          base = base.where('tagsLower', arrayContains: tagKey(query));
         } else {
           // Every word of the title, the description and the type, against
           // every spelling of the query worth trying. This used to read
@@ -244,16 +252,21 @@ class FirestoreSearchRepository implements SearchRepository {
   bool _matches(Product product, SearchFilters filters) {
     final query = filters.query.trim();
     final lower = query.toLowerCase();
+    // By key, for the same reason the query above is: `#CanTEditHistory` and
+    // `#cantedithistory` are one hashtag, and this used to compare the two
+    // strings and throw the product away again after the query had found it.
+    final key = tagKey(query);
+    bool tagged() => product.tags.any((t) => tagKey(t) == key);
 
     return switch (filters.scope) {
-      SearchScope.hashtags => product.tags.contains(query),
+      SearchScope.hashtags => tagged(),
       SearchScope.productType => product.type.toLowerCase().contains(lower),
       SearchScope.sellers => product.sellerId.toLowerCase().contains(lower),
       // Any word of the query, in any spelling, anywhere in the listing.
       SearchScope.keywords =>
         wordsMatched('${product.title} ${product.description}', lower) > 0,
       SearchScope.all =>
-        product.tags.contains(query) ||
+        tagged() ||
             wordsMatched(
                   '${product.title} ${product.type} ${product.description}',
                   lower,

@@ -95,10 +95,10 @@ import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
 import { noteVendorFromCatalog, syncVendorRoster } from './roster_grant.ts';
 import { geocodeProfileIfNeeded } from './geocode.ts';
 import {
-  backfillPostTagsLower,
   backfillProfileTagsLower,
-  syncPostTagsLower,
+  backfillTagKeyMirror,
   syncProfileTagsLower,
+  syncTagKeyMirror,
 } from './profile_tags.ts';
 import { displayName, mentionsToNotify, notify } from './notifications.ts';
 import { syncShipturtleOrders } from './shipturtle_orders.ts';
@@ -484,6 +484,12 @@ export const onCatalogWritten = onDocumentWritten(
   async (event) => {
     const before = event.data?.before?.data() as Record<string, unknown> | undefined;
     const after = event.data?.after?.data() as Record<string, unknown> | undefined;
+    // The lowercase key mirror a hashtag page searches by. Products carry
+    // nearly every hashtag on this market, and a page for one found nothing
+    // without this. Writing it re-enters this trigger once: `announceIfNew`
+    // sees a document that already existed and the vendor has not changed,
+    // so the pass costs nothing.
+    await syncTagKeyMirror('catalog', event.params.productId, after);
     await announceIfNew(event.params.productId, before, after);
     // A vendor name the directory has not seen: resolve it against Shipturtle
     // (one lookup, the first time only) and grant any waiting account.
@@ -589,8 +595,16 @@ export const adminBackfillPostTags = onCall(
   withLoudErrors('adminBackfillPostTags', async (request) => {
     requireUid(request.auth);
     requireAdmin(request.auth?.token);
-    const { after, limit } = (request.data ?? {}) as { after?: unknown; limit?: unknown };
-    return backfillPostTagsLower({
+    const { after, limit, collection } = (request.data ?? {}) as {
+      after?: unknown;
+      limit?: unknown;
+      collection?: unknown;
+    };
+    // Two collections carry hashtags people search by. Named explicitly and
+    // checked against a list, so this can never be pointed at `users` or
+    // anything else by a typo in a console.
+    const target = collection === 'catalog' ? 'catalog' : 'posts';
+    return backfillTagKeyMirror(target, {
       after: typeof after === 'string' && after ? after : undefined,
       limit: typeof limit === 'number' ? limit : undefined,
     });
@@ -1173,7 +1187,7 @@ export const onPostWritten = onDocumentWritten(
 
     // The lowercase key mirror the tag pages read. First, because it is the
     // cheapest thing here and the one everything under a tag depends on.
-    await syncPostTagsLower(event.params.postId, after as Record<string, unknown> | undefined);
+    await syncTagKeyMirror('posts', event.params.postId, after as Record<string, unknown> | undefined);
 
     const batch = db.batch();
 

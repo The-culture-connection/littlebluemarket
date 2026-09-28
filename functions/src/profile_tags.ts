@@ -175,7 +175,7 @@ export async function backfillProfileTagsLower(): Promise<{
  * is keyed by and what the tag route carries. That way one query answers
  * "everything under this tag" however each post spelled it.
  */
-export function postTagKeys(tags: unknown): string[] {
+export function tagKeys(tags: unknown): string[] {
   if (!Array.isArray(tags)) return [];
   const seen = new Set<string>();
   for (const raw of tags) {
@@ -187,10 +187,10 @@ export function postTagKeys(tags: unknown): string[] {
 }
 
 /** `{ tagsLower }` when a post's mirror has drifted, else null. Pure. */
-export function postMirrorPatch(
+export function tagKeyMirrorPatch(
   after: Record<string, unknown>,
 ): Record<string, unknown> | null {
-  const wanted = postTagKeys(after.tags);
+  const wanted = tagKeys(after.tags);
   const current = Array.isArray(after.tagsLower)
     ? after.tagsLower.filter((t): t is string => typeof t === 'string')
     : [];
@@ -198,34 +198,44 @@ export function postMirrorPatch(
 }
 
 /**
- * Writes a post's `tagsLower` when it has drifted. Returns whether it wrote.
- * The write re-enters the trigger once, finds the two in step, and stops.
+ * Writes a document's `tagsLower` when it has drifted. Returns whether it
+ * wrote. The write re-enters the trigger once, finds the two in step, and
+ * stops.
+ *
+ * Two collections need this, for the same reason: a post and a catalogue
+ * product both store their hashtags as typed, and both are reached by the
+ * key. Products are much the bigger half — on the live market nothing had
+ * ever tagged a post, and every hashtag on it belongs to something for sale
+ * (Grace, 2026-09-28: #CanTEditHistory on a shirt, and an empty page).
  */
-export async function syncPostTagsLower(
-  postId: string,
+export async function syncTagKeyMirror(
+  collection: string,
+  id: string,
   after: Record<string, unknown> | undefined,
 ): Promise<boolean> {
-  if (!postId || !after) return false;
-  const patch = postMirrorPatch(after);
+  if (!collection || !id || !after) return false;
+  const patch = tagKeyMirrorPatch(after);
   if (!patch) return false;
-  await getFirestore().collection('posts').doc(postId).set(patch, { merge: true });
+  await getFirestore().collection(collection).doc(id).set(patch, { merge: true });
   return true;
 }
 
 /**
- * Fills `tagsLower` in on posts written before it existed, a page at a time.
+ * Fills `tagsLower` in on documents written before it existed, a page at a
+ * time. Used for both `posts` and `catalog`.
  *
  * Resumable, and it returns its cursor, because a callable's client gives up
  * at 70 seconds while the function runs to 540: a backfill that only reports
  * at the end reports to nobody. Call it again with the cursor it hands back
  * until `done` is true.
  */
-export async function backfillPostTagsLower(
+export async function backfillTagKeyMirror(
+  collection: string,
   options: { after?: string; limit?: number } = {},
 ): Promise<{ checked: number; updated: number; cursor: string | null; done: boolean }> {
   const db = getFirestore();
   const limit = Math.min(Math.max(options.limit ?? 400, 1), 2000);
-  let query = db.collection('posts').orderBy('__name__').limit(limit);
+  let query = db.collection(collection).orderBy('__name__').limit(limit);
   if (options.after) query = query.startAfter(options.after);
 
   const snapshot = await query.get();
@@ -233,7 +243,7 @@ export async function backfillPostTagsLower(
   let pending = 0;
   let updated = 0;
   for (const doc of snapshot.docs) {
-    const patch = postMirrorPatch(doc.data());
+    const patch = tagKeyMirrorPatch(doc.data());
     if (!patch) continue;
     batch.set(doc.ref, patch, { merge: true });
     updated += 1;
@@ -248,6 +258,6 @@ export async function backfillPostTagsLower(
 
   const done = snapshot.size < limit;
   const cursor = snapshot.empty ? null : snapshot.docs[snapshot.docs.length - 1]!.id;
-  logger.info('Post tag mirror backfilled', { checked: snapshot.size, updated, done });
+  logger.info('Tag key mirror backfilled', { collection, checked: snapshot.size, updated, done });
   return { checked: snapshot.size, updated, cursor: done ? null : cursor, done };
 }
