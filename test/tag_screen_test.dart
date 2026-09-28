@@ -7,6 +7,7 @@ import 'package:little_blue_market/router/app_router.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 import 'package:little_blue_market/state/tags.dart';
+import 'package:little_blue_market/widgets/filter_chips.dart';
 import 'package:little_blue_market/widgets/pins/product_pin.dart';
 
 /// A hashtag is a place you can follow, not a search you have to run again.
@@ -62,8 +63,12 @@ void main() {
     expect(find.text('COLLECTION'), findsOneWidget);
     expect(find.text('#plasticfree'), findsOneWidget);
     expect(find.byType(ProductPin), findsWidgets);
-    // Counted from what is on the page, and the copy says so.
-    expect(find.textContaining('posts here'), findsOneWidget);
+    // Counted from what is on the page, and the copy says so. "Things"
+    // rather than "posts" since 2026-09-28: a tag page counts the listings
+    // under the tag as well, and on the live market those are nearly all of
+    // it — a product's hashtags live on the product, and nothing in
+    // production had ever tagged a post.
+    expect(find.textContaining('things here'), findsOneWidget);
   });
 
   testWidgets('a tag nobody has used says so rather than breaking', (
@@ -162,5 +167,58 @@ void main() {
 
     expect(find.text('COLLECTION'), findsOneWidget);
     expect(find.text(tagLabel(label)), findsWidgets);
+  });
+
+  group('the thing production actually had', () {
+    testWidgets('a listing with the tag shows even when no post carries it', (
+      tester,
+    ) async {
+      // Grace, 2026-09-28: "Items or people that have tags are not showing
+      // up in that tag's detail page on prod."
+      //
+      // A product's hashtags live on the product. In production nothing had
+      // ever tagged a *post*, so a page that asked only the post stream was
+      // empty of everything, and no test saw it because in fixtures every
+      // product also has a listing post carrying the same tags.
+      //
+      // p4 is the exception: it carries #PlasticFree and is not in
+      // `feedOrder`, so it has no post anywhere. If it is on the page, the
+      // page asked the catalogue.
+      await _pump(tester);
+
+      expect(
+        find.textContaining('Lip Balm Flight'),
+        findsWidgets,
+        reason: 'a tagged listing with no post of its own never appeared',
+      );
+    });
+
+    testWidgets('its maker counts as somebody posting under the tag', (
+      tester,
+    ) async {
+      // The makers rail was built from post authors alone, so a tag whose
+      // only presence is listings said "Nobody yet" under a market full of
+      // people selling under it.
+      await _pump(tester);
+      // Makers is the fifth chip in a row that scrolls sideways, so on a
+      // 390-wide phone it starts off the right-hand edge.
+      final makers = find.text('Makers');
+      await tester.scrollUntilVisible(
+        makers,
+        90,
+        scrollable: find
+            .descendant(
+              of: find.byType(FilterChips),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(makers);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nobody yet'), findsNothing);
+      expect(find.textContaining('Posting under #plasticfree'), findsOneWidget);
+    });
   });
 }

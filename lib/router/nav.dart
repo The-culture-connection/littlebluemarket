@@ -62,7 +62,13 @@ extension LbmNavigation on BuildContext {
   /// Pushed, once, rather than replacing the way a search does. A tag is a
   /// place you arrive at from a post, and Back should return to that post
   /// rather than to the Market.
-  void goToTag(String tag) => _pushInBranch('/tag/${tagKey(tag)}');
+  /// Encoded, because a tag is not always a tidy word. The directory's are
+  /// phrases with spaces and slashes in them — "Veteran / Military Spouse
+  /// Owned" is a real one — and a raw slash in a path is extra segments, so
+  /// the route matched nothing and the tap landed on an error. Every other
+  /// helper here already encodes; this one did not.
+  void goToTag(String tag) =>
+      _pushInBranch('/tag/${Uri.encodeComponent(tagKey(tag))}');
 
   /// The product page, in place of whatever is on top.
   ///

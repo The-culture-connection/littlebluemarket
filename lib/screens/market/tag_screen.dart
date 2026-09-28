@@ -61,9 +61,14 @@ class _TagScreenState extends ConsumerState<TagScreen> {
         posts,
         skeleton: const SafeArea(child: GridSkeleton(count: 6)),
         onRetry: () => ref.invalidate(tagFeedProvider(key)),
+        // The products are not part of the async gate on purpose: a tag page
+        // that cannot reach the catalogue should still show what was posted
+        // under it, and the other way round. One slow half must not hold up
+        // the other, and neither must be able to blank the page.
         data: (all) => _Body(
           tag: key,
           posts: all,
+          products: ref.watch(tagProductsProvider(key)).value ?? const [],
           filter: _filter,
           filters: _filters,
           onFilter: (next) => setState(() => _filter = next),
@@ -77,6 +82,7 @@ class _Body extends ConsumerWidget {
   const _Body({
     required this.tag,
     required this.posts,
+    required this.products,
     required this.filter,
     required this.filters,
     required this.onFilter,
@@ -84,6 +90,10 @@ class _Body extends ConsumerWidget {
 
   final String tag;
   final List<Post> posts;
+
+  /// Things for sale carrying this hashtag. Drawn as listing pins beside the
+  /// posts, which is what somebody opening #Handmade came to see.
+  final List<Product> products;
   final String filter;
   final List<(String, String)> filters;
   final ValueChanged<String> onFilter;
@@ -98,14 +108,20 @@ class _Body extends ConsumerWidget {
 
     // The first photograph anybody posted under it, as the hero. A tag with
     // nothing to show gets the sky gradient instead of an empty grey box.
-    final hero = _heroPhoto(posts);
+    final hero = _heroPhoto(posts, products);
 
-    final makers = <String>{for (final post in posts) post.authorId};
+    // The people behind a tag are whoever posted under it *and* whoever
+    // sells under it. On the live market the second is almost all of them.
+    final makers = <String>{
+      for (final post in posts) post.authorId,
+      for (final product in products) product.sellerId,
+    }..remove('');
     final people = [
       for (final id in makers) ref.watch(personProvider(id)).value,
     ].nonNulls.toList();
 
     final shown = _shown(posts);
+    final shownProducts = _shownProducts(products);
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -154,11 +170,14 @@ class _Body extends ConsumerWidget {
                 ),
                 const SizedBox(height: 7),
                 Text(
-                  // "On this page", not "in the world": these are the posts
+                  // "On this page", not "in the world": these are the things
                   // loaded so far, and saying otherwise would be a number we
                   // have not counted.
-                  '${posts.length} ${posts.length == 1 ? 'post' : 'posts'} '
-                  'here · ${people.length} '
+                  // "Things", because these are listings and posts together
+                  // and it used to say "posts" while counting neither.
+                  '${posts.length + products.length} '
+                  '${posts.length + products.length == 1 ? 'thing' : 'things'}'
+                  ' here · ${people.length} '
                   '${people.length == 1 ? 'maker' : 'makers'}',
                   style: LbmText.pinMeta.copyWith(fontSize: 12.5, color: c.ink2),
                 ),
@@ -214,7 +233,7 @@ class _Body extends ConsumerWidget {
                     title: 'Posting under ${tagLabel(tag)}',
                   ),
                 )
-            else if (shown.isEmpty)
+            else if (shown.isEmpty && shownProducts.isEmpty)
               LbmEmpty(
                 title: 'Nothing under ${tagLabel(tag)} yet',
                 body: 'Follow it and it will fill up as people post.',
@@ -222,6 +241,26 @@ class _Body extends ConsumerWidget {
             else
               LbmMasonry.fixed(
                 children: [
+                  // Things for sale first: a hashtag on this market is
+                  // mostly a way of shopping, and the posts under it are
+                  // the conversation around that.
+                  for (final product in shownProducts)
+                    ProductPin(
+                      key: ValueKey('tag_${product.id}'),
+                      item: ProductItem(
+                        ListingPost(
+                          id: 'tag_${product.id}',
+                          authorId: product.sellerId,
+                          createdAt: DateTime.now(),
+                          tags: product.tags,
+                          likeCount: 0,
+                          commentCount: 0,
+                          likedByMe: false,
+                          product: product,
+                        ),
+                        proof: product.saveCount >= ProductItem.proofThreshold,
+                      ),
+                    ),
                   for (final post in shown) _pinFor(post),
                 ],
               ),
@@ -231,6 +270,11 @@ class _Body extends ConsumerWidget {
       ],
     );
   }
+
+  /// Products narrowed to the chip that is on. They are listings, so they
+  /// belong under All and Products and nowhere else.
+  List<Product> _shownProducts(List<Product> all) =>
+      filter == 'all' || filter == 'product' ? all : const [];
 
   /// Posts narrowed to the chip that is on.
   List<Post> _shown(List<Post> all) => switch (filter) {
@@ -258,7 +302,11 @@ class _Body extends ConsumerWidget {
     ),
   };
 
-  static String? _heroPhoto(List<Post> posts) {
+  static String? _heroPhoto(List<Post> posts, List<Product> products) {
+    for (final product in products) {
+      final url = product.imageUrls.firstOrNull;
+      if (url != null && url.isNotEmpty) return url;
+    }
     for (final post in posts) {
       final url = switch (post) {
         ListingPost p => p.product.imageUrls.firstOrNull,
