@@ -177,11 +177,13 @@
 
     <h3 style="margin:22px 0 4px">Take the directory back off an account</h3>
     <p class="hint">For when one account was wrongly given other people's listings, which happens when the website account it matched is the one that <em>enters</em> listings rather than owning them. This releases every listing currently attributed to that account back to unclaimed and deletes the directory posts that went with them. Their own posts are left alone. <strong>Check first</strong> counts without changing anything.</p>
+    <p class="hint">Releasing now <strong>stays</strong> released. It used to be worked out again from the website every time the person opened the app, so it could undo itself; the account is now marked, and only <strong>Allow it again</strong> lifts that mark.</p>
     <label for="relUid">The app account's id</label>
     <input id="relUid" placeholder="d1GMG6NPhUQplgS8p1nWT1ZedQ92">
     <div class="row" style="margin-top:8px">
       <div><button id="relCheckBtn" class="quiet">Check first</button></div>
       <div><button id="relRunBtn" class="primary">Release it</button></div>
+      <div><button id="relUndoBtn" class="quiet">Allow it again</button></div>
     </div>
     <div id="relNotice" class="notice" hidden></div>
     <pre id="dirLog" class="log" aria-live="polite"></pre>

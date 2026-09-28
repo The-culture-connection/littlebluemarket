@@ -875,32 +875,44 @@ $('venApproveBtn').addEventListener('click', async () => {
 // Taking a directory back off an account that was wrongly given it. Two
 // buttons on purpose: the first counts and writes nothing, so the number is
 // seen before anything is deleted.
-async function releaseDirectory(dryRun) {
+async function releaseDirectory(dryRun, undo = false) {
   const uid = $('relUid').value.trim();
   if (!uid) {
     notice('relNotice', 'Paste the app account id first.', false);
     return;
   }
-  if (!dryRun) {
+  if (undo) {
+    const ok = window.confirm(
+      `Let ${uid} be given directory listings again?\n\n` +
+      'Only do this if the account really is the business that owns them. ' +
+      'Its listings come back on the next pull if the website still says it ' +
+      'authored them.',
+    );
+    if (!ok) return;
+  } else if (!dryRun) {
     const ok = window.confirm(
       `Release every directory listing attributed to ${uid}?\n\n` +
       'The listings go back to unclaimed and the directory posts made for ' +
-      'them are deleted. Their own posts are left alone. This cannot be ' +
-      'undone, though the next directory pull re-mirrors the listings.',
+      'them are deleted. Their own posts are left alone.\n\n' +
+      'This stays released: the account is marked, and a later pull cannot ' +
+      'undo it. Use "Allow it again" if that turns out to be wrong.',
     );
     if (!ok) return;
   }
   $('relCheckBtn').disabled = true;
   $('relRunBtn').disabled = true;
-  notice('relNotice', dryRun ? 'Counting…' : 'Releasing…', true);
+  $('relUndoBtn').disabled = true;
+  notice('relNotice', undo ? 'Lifting…' : dryRun ? 'Counting…' : 'Releasing…', true);
   try {
     const call = httpsCallable(functions, 'adminReleaseDirectory', { timeout: DIR_CALL_TIMEOUT_MS });
-    const { data } = await call({ uid, dryRun });
+    const { data } = await call({ uid, dryRun, undo });
     notice(
       'relNotice',
-      dryRun
+      undo
+        ? 'That account can be given directory listings again. Its own listings come back on the next pull if the website says it authored them.'
+        : dryRun
         ? `${data.listings} listings and ${data.posts} directory posts are attributed to that account. Nothing was changed.`
-        : `Released ${data.listings} listings and deleted ${data.posts} directory posts. ` +
+        : `Released ${data.listings} listings and deleted ${data.posts} directory posts, and marked the account so a later pull cannot undo it. ` +
           (data.restored
             ? 'Their profile is back to what it was before.'
             : 'Their name, bio and hashtags came from one of those listings and there was no record of their own, so those are now blank for them to fill in.'),
@@ -911,10 +923,12 @@ async function releaseDirectory(dryRun) {
   } finally {
     $('relCheckBtn').disabled = false;
     $('relRunBtn').disabled = false;
+    $('relUndoBtn').disabled = false;
   }
 }
 $('relCheckBtn').addEventListener('click', () => releaseDirectory(true));
 $('relRunBtn').addEventListener('click', () => releaseDirectory(false));
+$('relUndoBtn').addEventListener('click', () => releaseDirectory(false, true));
 
 $('dirSyncBtn').addEventListener('click', async () => {
   if (!window.confirm('Pull every published listing from littlebluecart.com now?\n\nThis can take several minutes the first time. Leave this page open; the log below shows what it is doing.')) return;

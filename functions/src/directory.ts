@@ -89,6 +89,20 @@ export interface DirectoryDoc {
   refreshedAt?: Timestamp;
   /** Set once the listing has filled the profile (Stage 13). */
   profileAppliedAt?: Timestamp;
+  /** Whether this website account's listings are treated as this member's. */
+  ownsListings?: boolean;
+  /**
+   * An admin has taken the directory off this account, and that decision
+   * stands until an admin undoes it.
+   *
+   * `ownsListings` alone was not enough. It is recomputed from the website
+   * on every refresh, and the app asks for a refresh on launch, so a
+   * release lasted only until the next time the person opened the app and
+   * the recomputation happened to come out differently. It did: that is why
+   * the same account was handed the directory twice (Grace, 2026-09-28,
+   * "will this fix stay because it came back").
+   */
+  ownershipLocked?: boolean;
 }
 
 function millis(stamp: Timestamp | undefined): number {
@@ -276,7 +290,17 @@ export const MAX_OWNED_LISTINGS = 25;
 export function listingOwnershipRefusal(input: {
   roles: string[];
   listingCount: number;
+  /**
+   * An admin has already taken the directory off this account. Beats both
+   * checks below, and nothing recomputes it away.
+   */
+  released?: boolean;
 }): string | null {
+  // First, because it is the only input that is not derived from a website
+  // that can answer differently tomorrow. See `ownershipLocked`.
+  if (input.released) {
+    return 'an admin released these listings from this account';
+  }
   const role = input.roles
     .map((r) => r.trim().toLowerCase())
     .find((r) => SITE_ROLES.includes(r));
@@ -287,6 +311,30 @@ export function listingOwnershipRefusal(input: {
     return `the website account authored ${input.listingCount} listings, more than the ${MAX_OWNED_LISTINGS} one business plausibly has`;
   }
   return null;
+}
+
+/**
+ * Whether a freshly crawled index may replace the one already stored. Pure.
+ *
+ * A full rebuild overwrites the index wholesale, and the index is what the
+ * listing-count check reads. So a crawl that comes back short does not just
+ * lose rows: it silently disarms the guard that keeps one account from being
+ * handed the whole directory, because an account that authored 260 listings
+ * reads as having authored nine.
+ *
+ * A short crawl is not hypothetical. `crawlIndex` stops when it has seen
+ * `totalPages` pages, and reads that as `result.totalPages ?? page` — so a
+ * response without the page-count header ends the crawl after one page of
+ * 100. That is one caching layer away at any time.
+ *
+ * Refusing the replacement keeps yesterday's index, which is stale but
+ * true, over today's, which is fresh and wrong.
+ */
+export function indexReplacementIsSafe(storedCount: number, freshCount: number): boolean {
+  // Nothing to protect yet: the first crawl of a new project is allowed to
+  // be any size, including empty.
+  if (storedCount < MAX_OWNED_LISTINGS) return true;
+  return freshCount >= storedCount / 2;
 }
 
 /** The listing ids one member owns, per the index. Pure. */
@@ -398,9 +446,19 @@ export function defaultLookups(): Lookups {
           if (/WP 400 /.test((error as Error).message) && page > 1) break;
           throw error;
         }
-        rows.push(...indexEntriesFromWp(result.data));
-        const totalPages = result.totalPages ?? page;
-        if (page >= totalPages) break;
+        const got = indexEntriesFromWp(result.data);
+        rows.push(...got);
+        // When the site says how many pages there are, believe it. When it
+        // does not — a caching layer in front of WordPress can drop the
+        // header — keep going while pages come back full, rather than
+        // treating "I do not know" as "you are done". Reading it as
+        // `totalPages ?? page` ended the crawl after one page of a hundred
+        // and quietly shrank the index the ownership guard reads.
+        if (result.totalPages) {
+          if (page >= result.totalPages) break;
+        } else if (got.length < 100) {
+          break;
+        }
       }
       return rows;
     },
@@ -543,6 +601,17 @@ export async function ownerIndex(lookups: Lookups, { now = Date.now(), force = f
   if (kind === 'full') {
     const rows = await lookups.crawlIndex();
     const entries = mergeIndex({}, rows);
+    const storedCount = Object.keys(stored?.entries ?? {}).length;
+    if (!indexReplacementIsSafe(storedCount, Object.keys(entries).length)) {
+      // Kept, and `fullAt` deliberately not moved, so the next run tries
+      // again rather than settling for this. Loud, because a site that
+      // suddenly reports a tenth of its listings is worth somebody looking.
+      logger.error('Refused to replace the listing owner index with a short crawl', {
+        storedCount,
+        freshCount: Object.keys(entries).length,
+      });
+      return stored?.entries ?? {};
+    }
     await ref.set({ entries, fullAt: Timestamp.fromMillis(now), updatedAt: Timestamp.fromMillis(now), count: rows.length });
     logger.info('Listing owner index rebuilt', { count: rows.length });
     return entries;
@@ -741,6 +810,26 @@ export function browseFields(
  * alone. `dryRun` counts without writing, which is how to look before
  * leaping on production.
  */
+/**
+ * Undoes a release, for the case where a real business was locked out by
+ * mistake. Admin only, and separate from the release on purpose: giving
+ * somebody the directory should never be a side effect of anything.
+ *
+ * The listings come back on the next sync, through the ordinary path, if
+ * and only if the website still says they authored them.
+ */
+export async function allowDirectoryFor(uid: string): Promise<void> {
+  await getFirestore().collection('directory').doc(uid).set(
+    {
+      ownershipLocked: false,
+      ownershipRefusedReason: '',
+      refreshedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+  logger.warn('Directory lock lifted from an account', { uid });
+}
+
 export async function releaseDirectoryFrom(
   uid: string,
   options: { dryRun?: boolean } = {},
@@ -773,6 +862,11 @@ export async function releaseDirectoryFrom(
     await db.collection('directory').doc(uid).set(
       {
         ownsListings: false,
+        // The part that survives. `ownsListings` is recomputed from the
+        // website every refresh and the app asks for one on launch, so
+        // without this the release lasted until the person next opened the
+        // app and the recomputation came out differently.
+        ownershipLocked: true,
         ownershipRefusedReason: 'released by an admin',
         listingCount: 0,
         profileAppliedAt: null,
@@ -833,7 +927,11 @@ async function linkedOwners(): Promise<Map<number, string>> {
     const data = doc.data() as DirectoryDoc & { ownsListings?: unknown };
     // The account that manages the directory authored everybody's listings.
     // Linking it is right; handing it the directory is not.
-    if (data.ownsListings === false) continue;
+    //
+    // Both flags, not one: `ownsListings` is the live answer and
+    // `ownershipLocked` is the admin's standing decision, and the whole
+    // point of the second is that it holds when the first is wrong.
+    if (data.ownsListings === false || data.ownershipLocked === true) continue;
     const wpUserId = Number(data.wpUserId);
     if (Number.isFinite(wpUserId) && wpUserId > 0) map.set(wpUserId, doc.id);
   }
@@ -1324,7 +1422,13 @@ export async function syncDirectory(
   // the staff account that typed everybody's in. See
   // `listingOwnershipRefusal` for the day that distinction was learned.
   let refusal: string | null = null;
-  if (user) {
+  // An admin's release is checked before the website is asked anything, and
+  // it is not derived from the answer, so no reply from WordPress can undo
+  // it. Everything else here is recomputed on every refresh.
+  const released = existing?.ownershipLocked === true;
+  if (released) {
+    refusal = listingOwnershipRefusal({ roles: [], listingCount: 0, released: true });
+  } else if (user) {
     const index = await ownerIndex(lookups, { force: !auto });
     refusal = listingOwnershipRefusal({
       roles: user.roles,
@@ -1376,6 +1480,9 @@ export async function syncDirectory(
       // Whether this website account's listings are theirs. False for the
       // account that manages the directory; read by `linkedOwners` so the
       // whole-directory sync cannot re-attach what the link refused.
+      //
+      // Recomputed every refresh, which is exactly why it is not the whole
+      // story: `ownershipLocked` above it is the part that stays put.
       ownsListings: user !== null && !refusal,
       ...(refusal ? { ownershipRefusedReason: refusal } : {}),
       wpLogin: user?.slug ?? '',

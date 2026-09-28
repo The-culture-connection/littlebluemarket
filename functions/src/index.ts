@@ -22,6 +22,7 @@ import {
 import { sendVerificationEmailFor } from './verify_email.ts';
 import {
   applyListingProfile,
+  allowDirectoryFor,
   releaseDirectoryFrom,
   syncAllDirectoryListings,
   syncDirectory,
@@ -585,9 +586,19 @@ export const adminReleaseDirectory = onCall(
   withLoudErrors('adminReleaseDirectory', async (request) => {
     requireUid(request.auth);
     requireAdmin(request.auth?.token);
-    const { uid, dryRun } = (request.data ?? {}) as { uid?: unknown; dryRun?: unknown };
+    const { uid, dryRun, undo } = (request.data ?? {}) as {
+      uid?: unknown;
+      dryRun?: unknown;
+      undo?: unknown;
+    };
     if (typeof uid !== 'string' || !uid) {
       throw new HttpsError('invalid-argument', 'Which account?');
+    }
+    // Lifting a release is its own act, never a side effect of asking for
+    // one: giving an account the directory back should take saying so.
+    if (undo === true) {
+      await allowDirectoryFor(uid);
+      return { listings: 0, posts: 0, dryRun: false, restored: false, unlocked: true };
     }
     return releaseDirectoryFrom(uid, { dryRun: dryRun === true });
   }),
