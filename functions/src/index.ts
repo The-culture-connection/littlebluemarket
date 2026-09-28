@@ -628,19 +628,35 @@ export const adminBackfillPostTags = onCall(
   withLoudErrors('adminBackfillPostTags', async (request) => {
     requireUid(request.auth);
     requireAdmin(request.auth?.token);
-    const { after, limit, collection } = (request.data ?? {}) as {
+    const { after, limit } = (request.data ?? {}) as {
       after?: unknown;
       limit?: unknown;
-      collection?: unknown;
     };
-    // Two collections carry hashtags people search by. Named explicitly and
-    // checked against a list, so this can never be pointed at `users` or
-    // anything else by a typo in a console.
-    const target = collection === 'catalog' ? 'catalog' : 'posts';
-    return backfillTagKeyMirror(target, {
-      after: typeof after === 'string' && after ? after : undefined,
+
+    // Both collections, driven from the cursor, so a caller need not know
+    // there are two. It used to take a `collection` and default to `posts`,
+    // which meant an admin page built before that argument existed repaired
+    // only the posts — and on this market the hashtags are on the products,
+    // so the button reported success and changed nothing (Grace,
+    // 2026-09-28). The catalogue goes first for the same reason.
+    const order = ['catalog', 'posts'];
+    const raw = typeof after === 'string' ? after : '';
+    const [named, ...rest] = raw.split(':');
+    const collection = order.includes(named ?? '') ? named! : order[0]!;
+    const cursor = rest.join(':');
+
+    const page = await backfillTagKeyMirror(collection, {
+      after: cursor || undefined,
       limit: typeof limit === 'number' ? limit : undefined,
     });
+
+    if (!page.done) {
+      return { ...page, collection, cursor: `${collection}:${page.cursor}`, done: false };
+    }
+    const next = order[order.indexOf(collection) + 1];
+    return next
+      ? { ...page, collection, cursor: `${next}:`, done: false }
+      : { ...page, collection, cursor: null, done: true };
   }),
 );
 
@@ -1405,7 +1421,16 @@ export const onTagFollowWritten = onDocumentWritten(
       await ref.delete().catch(() => undefined);
       return;
     }
-    await db.collection('hashtags').doc(tag).set({ tag }, { merge: true });
+    // Deliberately not `{ tag }`. `tag` here is the *key* off the path, and
+    // that field holds how a hashtag is spelled: writing the key into it
+    // meant following #DepartmentOfDefense renamed the tag, everywhere, to
+    // "departmentofdefense" (Grace, 2026-09-28). `followedAt` is enough to
+    // make the parent document exist so the subscriber is not orphaned, and
+    // the spelling is left to whoever knows one.
+    await db
+      .collection('hashtags')
+      .doc(tag)
+      .set({ followedAt: FieldValue.serverTimestamp() }, { merge: true });
     await ref.set({ createdAt: FieldValue.serverTimestamp() }, { merge: true });
   },
 );

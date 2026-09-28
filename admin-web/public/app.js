@@ -1001,24 +1001,27 @@ $('tagFixBtn').addEventListener('click', async () => {
   const call = httpsCallable(functions, 'adminBackfillPostTags', { timeout: DIR_CALL_TIMEOUT_MS });
   let checked = 0;
   let updated = 0;
+  let renamed = 0;
+  let cursor = null;
   try {
-    // Both collections that carry hashtags. The catalogue is the one that
-    // matters most here: on this market the hashtags are on the things for
-    // sale, and almost never on a post.
-    for (const collection of ['catalog', 'posts']) {
-      let cursor = null;
-      for (let page = 1; ; page++) {
-        notice('tagFixNotice', `Working through ${collection}. ${checked} read, ${updated} repaired so far…`, true);
-        const { data } = await call({ collection, after: cursor, limit: 400 });
-        checked += data.checked;
-        updated += data.updated;
-        if (data.done) break;
-        cursor = data.cursor;
-        // A cursor that does not move would loop for ever; stop instead.
-        if (!cursor) break;
-      }
+    // The server walks both collections that carry hashtags and says where
+    // it is up to; this only follows the cursor. Deliberately: the last
+    // version of this page chose the collection itself, and an out-of-date
+    // page then repaired the wrong one and reported success.
+    const seen = new Set();
+    for (let page = 1; page <= 500; page++) {
+      notice('tagFixNotice', `Working. ${checked} read, ${updated} repaired so far…`, true);
+      const { data } = await call({ after: cursor, limit: 400 });
+      checked += data.checked;
+      updated += data.updated;
+      renamed += data.renamed ?? 0;
+      if (data.done) break;
+      // A cursor that repeats would loop for ever; stop instead.
+      if (!data.cursor || seen.has(data.cursor)) break;
+      seen.add(data.cursor);
+      cursor = data.cursor;
     }
-    notice('tagFixNotice', `Done. ${checked} read, ${updated} repaired. The tag pages should fill in within a minute.`, true);
+    notice('tagFixNotice', `Done. ${checked} read, ${updated} given their hashtag keys, ${renamed} tag names put right. The tag pages should fill in within a minute.`, true);
   } catch (error) {
     notice('tagFixNotice', `${describe(error)} (${checked} read, ${updated} repaired before it stopped; running it again carries on).`, false);
   } finally {

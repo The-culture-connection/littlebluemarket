@@ -232,7 +232,13 @@ export async function syncTagKeyMirror(
 export async function backfillTagKeyMirror(
   collection: string,
   options: { after?: string; limit?: number } = {},
-): Promise<{ checked: number; updated: number; cursor: string | null; done: boolean }> {
+): Promise<{
+  checked: number;
+  updated: number;
+  renamed: number;
+  cursor: string | null;
+  done: boolean;
+}> {
   const db = getFirestore();
   const limit = Math.min(Math.max(options.limit ?? 400, 1), 2000);
   let query = db.collection(collection).orderBy('__name__').limit(limit);
@@ -256,8 +262,44 @@ export async function backfillTagKeyMirror(
   }
   if (pending) await batch.commit();
 
+  // While we are here, put right how each tag is spelled. `hashtags/{key}`
+  // holds that, and two things had written the key into it instead of a
+  // spelling, so pages came out headed "departmentofdefense". A stored
+  // value that does not begin with '#' is one of those; a real one is left
+  // exactly as it is, so the first spelling seen still wins.
+  const spellings = new Map<string, string>();
+  for (const doc of snapshot.docs) {
+    for (const raw of (doc.data().tags ?? []) as unknown[]) {
+      if (typeof raw !== 'string') continue;
+      const trimmed = raw.trim();
+      if (!trimmed.startsWith('#')) continue;
+      const key = tagKeys([trimmed])[0];
+      if (key && !spellings.has(key)) spellings.set(key, trimmed);
+    }
+  }
+  let renamed = 0;
+  const keys = [...spellings.keys()];
+  for (let i = 0; i < keys.length; i += 200) {
+    const slice = keys.slice(i, i + 200);
+    const existing = await db.getAll(
+      ...slice.map((key) => db.collection('hashtags').doc(key)),
+    );
+    const fix = db.batch();
+    let queued = 0;
+    for (const [at, key] of slice.entries()) {
+      const stored = existing[at]?.data()?.tag;
+      if (typeof stored === 'string' && stored.startsWith('#')) continue;
+      fix.set(db.collection('hashtags').doc(key), { tag: spellings.get(key)! }, { merge: true });
+      queued += 1;
+    }
+    if (queued) {
+      await fix.commit();
+      renamed += queued;
+    }
+  }
+
   const done = snapshot.size < limit;
   const cursor = snapshot.empty ? null : snapshot.docs[snapshot.docs.length - 1]!.id;
-  logger.info('Tag key mirror backfilled', { collection, checked: snapshot.size, updated, done });
-  return { checked: snapshot.size, updated, cursor: done ? null : cursor, done };
+  logger.info('Tag key mirror backfilled', { collection, checked: snapshot.size, updated, renamed, done });
+  return { checked: snapshot.size, updated, renamed, cursor: done ? null : cursor, done };
 }

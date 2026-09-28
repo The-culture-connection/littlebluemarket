@@ -83,3 +83,35 @@ test('following both the maker and the tag is one notification', () => {
   for (const uid of subscribers) notified.add(uid);
   assert.deepEqual(fakeTagSubscribers(['rae', 'ama'])('detroit', notified), ['ama']);
 });
+
+/**
+ * Following a tag must not rename it.
+ *
+ * `hashtags/{key}` carries two unrelated things: the key, which is the
+ * document id, and `tag`, which is how the hashtag is spelled for showing.
+ * `onTagFollowWritten` wrote `{ tag }` from its own path parameter to make
+ * the parent document exist — and that parameter is the key. So following
+ * #DepartmentOfDefense set its name to "departmentofdefense", everywhere,
+ * for everybody (Grace, 2026-09-28, with the page to prove it).
+ *
+ * The rule, in one line: the key is not a spelling. Anything writing that
+ * field must have seen a real one, and a real one starts with a '#'.
+ */
+void test('the key is never mistaken for a spelling', () => {
+  const looksLikeASpelling = (value: string) => value.startsWith('#');
+
+  // What the follow trigger used to write, and what it must never write.
+  assert.equal(looksLikeASpelling('departmentofdefense'), false);
+  // What a product carries, which is the only kind of value worth storing.
+  assert.equal(looksLikeASpelling('#DepartmentOfDefense'), true);
+
+  // And the repair's test for a name worth keeping agrees with it: a stored
+  // value without a hash is one of the damaged ones and gets replaced, a
+  // stored spelling is left alone so the first one seen still wins.
+  for (const stored of ['departmentofdefense', 'cantedithistory', '']) {
+    assert.equal(looksLikeASpelling(stored), false, `${stored} should be repaired`);
+  }
+  for (const stored of ['#DepartmentOfDefense', '#womanowned']) {
+    assert.equal(looksLikeASpelling(stored), true, `${stored} should be kept`);
+  }
+});
