@@ -10,6 +10,7 @@ import '../state/promos.dart';
 import '../state/providers.dart';
 import '../state/session.dart';
 import '../state/tips.dart';
+import 'promo_popup.dart' show openPromoCta;
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'product_art.dart';
@@ -201,7 +202,7 @@ class _HeroBannerState extends ConsumerState<HeroBanner> {
             body: promo.caption,
             cta: promo.ctaLabel.isEmpty ? 'Take a look' : promo.ctaLabel,
             imageUrl: promo.imageUrls.firstOrNull,
-            onTap: (context, ref) => _goTo(context, promo.ctaUrl),
+            onTap: (context, ref) => openPromoCta(context, ref, promo),
           ),
     ];
   }

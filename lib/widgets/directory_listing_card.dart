@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/models.dart';
+import '../router/nav.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'primitives.dart';
@@ -128,7 +129,17 @@ class DirectoryListingCard extends StatelessWidget {
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: [for (final chip in chips) LbmChip(chip)],
+                    // Tappable: a chip that says "Woman Owned" and does
+                    // nothing reads as a broken button, and the word is the
+                    // most obvious thing on the card to want more of
+                    // (Grace, 2026-09-28). A search rather than a category
+                    // page, because these are three different kinds of word
+                    // — a category, a state, a directory tag — and search is
+                    // the one place that takes all three.
+                    children: [
+                      for (final chip in chips)
+                        LbmChip(chip, onTap: () => context.goToResults(chip)),
+                    ],
                   ),
                 ],
                 if (l.address.isNotEmpty) ...[

@@ -147,9 +147,10 @@ class _PromoLayerState extends ConsumerState<PromoLayer> {
 
   void _openTag(String tag) {
     _dismiss();
-    widget.router.push(
-      '${branchPrefixOf(_path)}/results?q=${Uri.encodeComponent(tag)}',
-    );
+    // The tag's own page, not a search for it. A hashtag became a place in
+    // the redesign and this was left behind pointing at the old results
+    // screen.
+    widget.router.push('${branchPrefixOf(_path)}/tag/${tagKey(tag)}');
   }
 
   String get _path =>
@@ -665,4 +666,51 @@ class _PhotoFrameState extends State<_PhotoFrame> {
       return SizedBox(width: width, height: height, child: widget.child);
     },
   );
+}
+
+/// Sends a promo's button where the promo says it goes.
+///
+/// Three destinations, and the model already works out which: a shop on this
+/// market (`@handle`), a hashtag (`#tag`), or a page on the web. The tap is
+/// counted for all three, because an advert that sends somebody to a shop
+/// has earned the click as much as one that sends them to a website
+/// (Grace, 2026-09-24).
+///
+/// The banner on the feed used to decide this for itself, and got all three
+/// wrong: it read the destination as a route, so `@handle` and `#tag` parsed
+/// as nothing and did nothing, a link to another website did nothing, and a
+/// littlebluecart.com address became an app route that does not exist
+/// (Grace, 2026-09-28, "CTA button not working"). There is one answer to
+/// "where does this button go", and this is it.
+///
+/// [PromoPopup] keeps its own copy of this dispatch on purpose: it is
+/// mounted above the router, so it has no `GoRouterState` to read a branch
+/// from and must push through the router it was handed.
+Future<void> openPromoCta(
+  BuildContext context,
+  WidgetRef ref,
+  Promo promo,
+) async {
+  final uid = promo.ctaProfileUid;
+  if (uid != null) {
+    ref.read(promoRepositoryProvider).recordTap(promo.id);
+    context.goToSeller(uid);
+    return;
+  }
+
+  final tag = promo.ctaTag;
+  if (tag != null) {
+    ref.read(promoRepositoryProvider).recordTap(promo.id);
+    context.goToTag(tag);
+    return;
+  }
+
+  final uri = promo.ctaUri;
+  if (uri == null) return;
+  ref.read(promoRepositoryProvider).recordTap(promo.id);
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (!ok) {
+    messenger?.showSnackBar(SnackBar(content: Text('Could not open $uri')));
+  }
 }

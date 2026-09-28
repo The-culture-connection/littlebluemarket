@@ -94,7 +94,12 @@ import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
 import { noteVendorFromCatalog, syncVendorRoster } from './roster_grant.ts';
 import { geocodeProfileIfNeeded } from './geocode.ts';
-import { backfillProfileTagsLower, syncProfileTagsLower } from './profile_tags.ts';
+import {
+  backfillPostTagsLower,
+  backfillProfileTagsLower,
+  syncPostTagsLower,
+  syncProfileTagsLower,
+} from './profile_tags.ts';
 import { displayName, mentionsToNotify, notify } from './notifications.ts';
 import { syncShipturtleOrders } from './shipturtle_orders.ts';
 import { publishListing, searchCategories } from './listings.ts';
@@ -567,6 +572,28 @@ export const adminBackfillProfileTags = onCall(
     requireUid(request.auth);
     requireAdmin(request.auth?.token);
     return backfillProfileTagsLower();
+  }),
+);
+
+/**
+ * Fills `tagsLower` in on posts written before it existed, so the tag pages
+ * can see them. Admin only, idempotent, and resumable: it returns a cursor,
+ * and calling it again with that cursor carries on from there.
+ *
+ * Paged rather than all at once because a callable's client gives up at 70
+ * seconds while the function itself runs to 540 — a backfill that only
+ * reports at the end reports to nobody.
+ */
+export const adminBackfillPostTags = onCall(
+  { timeoutSeconds: 540, memory: '512MiB' },
+  withLoudErrors('adminBackfillPostTags', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const { after, limit } = (request.data ?? {}) as { after?: unknown; limit?: unknown };
+    return backfillPostTagsLower({
+      after: typeof after === 'string' && after ? after : undefined,
+      limit: typeof limit === 'number' ? limit : undefined,
+    });
   }),
 );
 
@@ -1143,6 +1170,11 @@ export const onPostWritten = onDocumentWritten(
     const next = new Set(after?.tags ?? []);
 
     const db = getFirestore();
+
+    // The lowercase key mirror the tag pages read. First, because it is the
+    // cheapest thing here and the one everything under a tag depends on.
+    await syncPostTagsLower(event.params.postId, after as Record<string, unknown> | undefined);
+
     const batch = db.batch();
 
     // Keyed by the lowercase tag so #PlasticFree and #plasticfree are one

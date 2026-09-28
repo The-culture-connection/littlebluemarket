@@ -729,32 +729,26 @@ class FirestoreSocialRepository implements SocialRepository {
     return _db.collection('users').doc(me).collection('followedTags');
   }
 
-  /// Everything under one hashtag.
+  /// Everything posted under one hashtag, newest first.
   ///
-  /// A post stores its tags as they were typed, so `#PlasticFree` and
-  /// `#plasticfree` are two different strings in the `tags` array, while the
-  /// page is reached by its lowercase key. `arrayContainsAny` has no
-  /// case-insensitive form, so the query asks for the handful of spellings
-  /// people actually use and the client checks the rest by key.
-  ///
-  /// The honest fix is a lowercased `tagKeys` array written beside `tags`
-  /// when a post is created, which is a backend change and belongs with the
-  /// rest of the tag fan-out.
+  /// Reads `tagsLower`, the lowercase key mirror the post trigger keeps,
+  /// rather than the `tags` array as typed. `array-contains` is exact, and
+  /// this used to guess at the spelling: `#womanowned`, `#WOMANOWNED`,
+  /// `#Womanowned`. The real one is `#WomanOwned`, and no list of guesses
+  /// could have caught it — nearly every hashtag on this market is two
+  /// words with an inner capital, so every tag page was empty (Grace,
+  /// 2026-09-28). One key, one query, however each post spelled it.
   @override
   Stream<List<Post>> watchTagFeed(String tag, {int limit = 30}) {
     final key = tagKey(tag);
-    final spellings = <String>{
-      '#$key',
-      '#${key.toUpperCase()}',
-      if (key.isNotEmpty) '#${key[0].toUpperCase()}${key.substring(1)}',
-    }.toList();
-
-    return watchFeed(tags: spellings, limit: limit).map(
-      (posts) => [
-        for (final post in posts)
-          if (post.tags.any((t) => tagKey(t) == key)) post,
-      ],
-    );
+    if (key.isEmpty) return Stream.value(const []);
+    return _posts
+        .where('tagsLower', arrayContains: key)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .asyncMap(_hydrate)
+        .guarded();
   }
 
   @override

@@ -990,3 +990,33 @@ $('dirSyncBtn').addEventListener('click', async () => {
     $('dirSyncBtn').textContent = 'Pull the directory now';
   }
 });
+
+// Filling the lowercase hashtag key in on posts written before it existed.
+// Paged and resumable on the server, so this keeps calling with the cursor
+// it is handed until it says done: a callable's client gives up at 70
+// seconds, and one call for every post on the market would never return.
+$('tagFixBtn').addEventListener('click', async () => {
+  if (!window.confirm('Fill in the hashtag keys on older posts?\n\nIt only writes to posts that are missing one, and running it twice is harmless.')) return;
+  $('tagFixBtn').disabled = true;
+  const call = httpsCallable(functions, 'adminBackfillPostTags', { timeout: DIR_CALL_TIMEOUT_MS });
+  let cursor = null;
+  let checked = 0;
+  let updated = 0;
+  try {
+    for (let page = 1; ; page++) {
+      notice('tagFixNotice', `Working. ${checked} posts read, ${updated} repaired so far…`, true);
+      const { data } = await call({ after: cursor, limit: 400 });
+      checked += data.checked;
+      updated += data.updated;
+      if (data.done) break;
+      cursor = data.cursor;
+      // A cursor that does not move would loop for ever; stop instead.
+      if (!cursor) break;
+    }
+    notice('tagFixNotice', `Done. ${checked} posts read, ${updated} repaired. The tag pages should fill in within a minute.`, true);
+  } catch (error) {
+    notice('tagFixNotice', `${describe(error)} (${checked} read, ${updated} repaired before it stopped; running it again carries on).`, false);
+  } finally {
+    $('tagFixBtn').disabled = false;
+  }
+});

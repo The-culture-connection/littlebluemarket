@@ -168,6 +168,21 @@
       ]
     },
     {
+      "_comment": "Everything under one hashtag, newest first. Keyed by the lowercase key, not the typed spelling, so #WomanOwned and #womanowned are one page.",
+      "collectionGroup": "posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tagsLower",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "_comment": "Hot threads for the feed: most talked about, newest to break a tie. The feed's thread pins read this.",
       "collectionGroup": "threads",
       "queryScope": "COLLECTION",
