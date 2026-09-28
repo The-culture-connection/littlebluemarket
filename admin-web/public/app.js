@@ -449,8 +449,70 @@ function renderPromoPreview() {
   const ctaUrl = $('pCtaUrl').value.trim();
   const buttonHalfDone = Boolean(ctaLabel) !== Boolean(ctaUrl);
   $('pPostBtn').disabled = !(title && caption) || buttonHalfDone || promoUploading > 0;
-  $('pPostBtn').textContent = promoUploading > 0 ? 'Waiting for the photo…' : 'Post it';
+  $('pPostBtn').textContent = promoUploading > 0
+    ? 'Waiting for the photo…'
+    : promoEditingId
+    ? 'Save changes'
+    : 'Post it';
 }
+
+// --------------------------------------------------- editing one, after the fact
+//
+// The id of the advert the form is currently editing, or null when it is
+// writing a new one. `adminPromoSave` has always taken an id and updated in
+// place, leaving Pause, the counts and the posting date alone; there was
+// simply no way to hand it one from here, so a typo meant deleting the
+// advert and writing it again, losing how many people had seen it
+// (Grace, 2026-09-28).
+let promoEditingId = null;
+
+/** Puts the form back to writing a new one. */
+function stopEditingPromo() {
+  promoEditingId = null;
+  $('pEditing').hidden = true;
+  $('pCancelEditBtn').hidden = true;
+  $('pTitle').value = ''; $('pCaption').value = '';
+  $('pCtaLabel').value = ''; $('pCtaUrl').value = '';
+  $('pStarts').value = ''; $('pEnds').value = '';
+  promoPhotos = [];
+  renderPromoThumbs();
+  renderPromoPreview();
+}
+
+/** A Firestore timestamp as the value a `datetime-local` input wants. */
+function promoLocalValue(stamp) {
+  const date = stamp?.toDate ? stamp.toDate() : null;
+  if (!date) return '';
+  // Local time, no zone, trimmed to minutes: what the input round-trips.
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** Loads an existing advert into the form to be changed and saved again. */
+function editPromo(id, p) {
+  promoEditingId = id;
+  $('pKind').value = p.kind === 'announcement' ? 'announcement' : 'ad';
+  $('pAudience').value = p.audience || 'all';
+  $('pTitle').value = p.title || '';
+  $('pCaption').value = p.caption || '';
+  $('pCtaLabel').value = p.ctaLabel || '';
+  $('pCtaUrl').value = p.ctaUrl || '';
+  $('pStarts').value = promoLocalValue(p.startsAt);
+  $('pEnds').value = promoLocalValue(p.endsAt);
+  promoPhotos = (Array.isArray(p.imageUrls) ? p.imageUrls : []).map((url) => ({ url, pending: false }));
+  renderPromoThumbs();
+  $('pEditing').hidden = false;
+  $('pEditing').className = 'notice ok';
+  $('pEditing').textContent =
+    `Editing “${p.title || 'this one'}”. Saving keeps how many people have seen it, and whether it is paused. ` +
+    'Use "Stop editing" to write a new one instead.';
+  $('pCancelEditBtn').hidden = false;
+  renderPromoPreview();
+  $('pTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+$('pCancelEditBtn').addEventListener('click', stopEditingPromo);
 
 /** A `datetime-local` value is local time with no zone; send it as one. */
 function promoWhen(id) {
@@ -574,7 +636,14 @@ $('pPostBtn').addEventListener('click', async () => {
   const ctaLabel = $('pCtaLabel').value.trim();
   const ctaUrl = $('pCtaUrl').value.trim();
   const imageUrls = promoPhotos.filter((p) => !p.pending).map((p) => p.url);
-  const what = kind === 'announcement'
+  const what = promoEditingId
+    // Editing never re-announces: a push already went out when it was
+    // posted, and sending it again because a typo was fixed would buzz
+    // everybody twice for the same news.
+    ? `Save changes to this ${kind === 'announcement' ? 'announcement' : 'advert'}?\n\n` +
+      'It updates everywhere at once. Nobody is pushed again, and how many ' +
+      'have seen it is kept.'
+    : kind === 'announcement'
     ? `Announce to ${who}?\n\nThis pushes to their phones, shows under their bell, and fades in as a popup.`
     : `Post this advert to ${who}?\n\nIt fades in as a popup. No push, no bell.`;
   if (!window.confirm(`${what}\n\n${title}\n${caption}`)) return;
@@ -582,23 +651,29 @@ $('pPostBtn').addEventListener('click', async () => {
   $('pPostBtn').disabled = true;
   notice('pNotice', 'Posting…', true);
   try {
-    if (kind === 'announcement') {
-      // The announcement path: push, bell, and the popup in one call.
+    if (kind === 'announcement' && !promoEditingId) {
+      // The announcement path: push, bell, and the popup in one call. Only
+      // when it is new — editing one must not push it again.
       await httpsCallable(functions, 'adminSendAnnouncement')({
         title, body: caption, audience, route: '/you/notifications', imageUrls, ctaLabel, ctaUrl,
       });
     } else {
       await httpsCallable(functions, 'adminPromoSave')({
+        id: promoEditingId ?? undefined,
         kind, title, caption, audience, imageUrls, ctaLabel, ctaUrl,
         startsAt: promoWhen('pStarts'), endsAt: promoWhen('pEnds'),
       });
     }
-    notice('pNotice', kind === 'announcement' ? `Announced to ${who}.` : `Advert is live for ${who}.`, true);
-    $('pTitle').value = ''; $('pCaption').value = '';
-    $('pCtaLabel').value = ''; $('pCtaUrl').value = '';
-    $('pStarts').value = ''; $('pEnds').value = '';
-    promoPhotos = [];
-    renderPromoThumbs();
+    notice(
+      'pNotice',
+      promoEditingId
+        ? 'Saved. Every phone has the new wording.'
+        : kind === 'announcement'
+        ? `Announced to ${who}.`
+        : `Advert is live for ${who}.`,
+      true,
+    );
+    stopEditingPromo();
   } catch (error) {
     notice('pNotice', describe(error), false);
   } finally {
@@ -669,6 +744,14 @@ function watchPromos() {
         });
         return b;
       };
+      // Edit first: it is the one you reach for most and the only one that
+      // is not destructive.
+      const edit = document.createElement('button');
+      edit.className = 'quiet tiny';
+      edit.textContent = 'Edit';
+      edit.style.marginRight = '6px';
+      edit.addEventListener('click', () => editPromo(d.id, p));
+      actions.appendChild(edit);
       actions.appendChild(mk(active ? 'Pause' : 'Resume', 'quiet', () =>
         httpsCallable(functions, 'adminPromoSetActive')({ id: d.id, active: !active })));
       actions.appendChild(mk('Delete', 'quiet', async () => {

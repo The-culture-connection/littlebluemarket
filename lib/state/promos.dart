@@ -114,8 +114,10 @@ final promoOverrideProvider = NotifierProvider<PromoOverride, Promo?>(
 /// Every promo this phone is allowed to read, newest first, whoever it is
 /// aimed at. The Diagnostics list; the normal flow uses
 /// [promoForThisLaunchProvider], which filters.
-final allPromosProvider = FutureProvider<List<Promo>>((ref) {
-  return ref.watch(promoRepositoryProvider).live(limit: 50);
+/// A stream, not a read: pausing an advert on the admin website has to take
+/// it off the feed of a phone that is already looking at it.
+final allPromosProvider = StreamProvider<List<Promo>>((ref) {
+  return ref.watch(promoRepositoryProvider).watchLive(limit: 50);
 });
 
 /// The one promo to fade in this app opening, or null when there is nothing

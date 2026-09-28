@@ -192,7 +192,13 @@ class _HeroBannerState extends ConsumerState<HeroBanner> {
           onTap: (context, ref) => _goTo(context, a.route),
         ),
       for (final promo in promos)
-        if (promo.showsTo(isSeller: isSeller, directoryLinked: linked))
+        // Both halves, every time this is drawn. The stream says what is
+        // switched on; the clock says what is inside its window, and only
+        // the clock can tell you that an advert ended a minute ago. Leaving
+        // it to whoever fetched the list meant a finished advert stayed up
+        // until the app was closed (Grace, 2026-09-28).
+        if (promo.isLiveAt(DateTime.now()) &&
+            promo.showsTo(isSeller: isSeller, directoryLinked: linked))
           HeroCard(
             id: 'p:${promo.id}',
             kicker: promo.kind == PromoKind.announcement

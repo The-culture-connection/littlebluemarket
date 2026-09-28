@@ -66,6 +66,7 @@ Future<void> _pumpCard(
 }
 
 void main() {
+  _bannerGroup();
   _photoFillsTheWidth();
 
   group('the model decides what is live and who sees it', () {
@@ -269,6 +270,11 @@ void main() {
 
     test('every live promo is listed, whoever it is aimed at', () async {
       final c = container();
+      // Listened to first: this is a stream now, so that pausing an advert
+      // on the admin website takes it off a feed somebody is already
+      // looking at. Awaiting `.future` on a provider nothing is listening
+      // to disposes it mid-flight.
+      c.listen(allPromosProvider, (_, _) {}, fireImmediately: true);
       final all = await c.read(allPromosProvider.future);
       // The demo data has one advert and one announcement.
       expect(all.length, greaterThanOrEqualTo(2));
@@ -417,6 +423,56 @@ void _photoFillsTheWidth() {
       // Nothing reserved where a picture would be: an advert without one is
       // a title, a caption and a button, and no gap above them.
       expect(find.byType(Image), findsNothing);
+    });
+  });
+}
+
+/// What reaches the banner on the feed.
+///
+/// Grace, 2026-09-28: "ones that are no longer live or not listed in the
+/// admin portal as being live are showing up in the banner". Two separate
+/// reasons, and the fix for each is in a different place.
+void _bannerGroup() {
+  group('the banner only carries what is live', () {
+    test('pausing one takes it off a phone that is already looking', () async {
+      // It was read once and kept, and the feed's pull-to-refresh did not
+      // fetch it again either, so the only way out was to close the app.
+      final c = ProviderContainer(retry: lbmRetry);
+      addTearDown(c.dispose);
+      c.listen(allPromosProvider, (_, _) {}, fireImmediately: true);
+      await c.read(allPromosProvider.future);
+      expect(c.read(allPromosProvider).value, isNotEmpty);
+
+      // Paused on the admin website, which is a write to the same document.
+      // Paused is a field on the document, so the simplest honest stand-in
+      // for the admin website pressing Pause is an empty live list.
+      final store = c.read(fixtureStoreProvider);
+      store.promos.value = const [];
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        c.read(allPromosProvider).value,
+        isEmpty,
+        reason: 'a paused advert stayed on the feed until the app restarted',
+      );
+    });
+
+    test('a window that has closed is the clock, not the data', () {
+      // Nothing is written when an advert ends, so no stream can tell you.
+      // Whoever draws one has to ask the clock as it draws, which is what
+      // the banner and the feed now do.
+      final over = _promo(
+        endsAt: DateTime.now().subtract(const Duration(hours: 1)),
+      );
+      final toCome = _promo(
+        startsAt: DateTime.now().add(const Duration(days: 1)),
+      );
+      final now = _promo();
+
+      expect(over.active, isTrue, reason: 'still switched on, so still in the stream');
+      expect(over.isLiveAt(DateTime.now()), isFalse);
+      expect(toCome.isLiveAt(DateTime.now()), isFalse);
+      expect(now.isLiveAt(DateTime.now()), isTrue);
     });
   });
 }

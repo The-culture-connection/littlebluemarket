@@ -511,6 +511,16 @@ abstract interface class PromoRepository {
   /// Everything switched on and inside its window right now, newest first.
   Future<List<Promo>> live({int limit = 20});
 
+  /// The same, as a stream, for the banner that sits on the feed all day.
+  ///
+  /// A one-off read was wrong there: pausing an advert on the admin website
+  /// left it on the feed of every phone that had already loaded it, and
+  /// pull-to-refresh did not fetch it again either, so the only way out was
+  /// to close the app (Grace, 2026-09-28). Whether something is *switched
+  /// on* is data and belongs in a stream; whether it is *inside its window*
+  /// is the clock, and the banner re-checks that itself as it draws.
+  Stream<List<Promo>> watchLive({int limit = 20});
+
   /// One phone saw it, or tapped its button. Counted with
   /// `FieldValue.increment` inside a callable, because `promos` is
   /// `allow write: if false` like every other function-owned collection.

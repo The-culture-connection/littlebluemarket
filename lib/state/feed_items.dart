@@ -396,7 +396,12 @@ final feedItemsProvider = Provider<AsyncValue<List<FeedItem>>>((ref) {
         joinedForums: const {},
         chatMoment: ref.watch(chatMomentProvider).value,
         announcement: announcement,
-        promo: ref.watch(allPromosProvider).value?.firstOrNull,
+        // The first one inside its window, not simply the first: the stream
+        // carries everything switched on, and whether an advert has started
+        // or finished is the clock's business rather than the data's.
+        promo: (ref.watch(allPromosProvider).value ?? const [])
+            .where((p) => p.isLiveAt(DateTime.now()))
+            .firstOrNull,
         announcementSeen:
             announcement != null &&
             seenAt != null &&

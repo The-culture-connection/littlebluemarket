@@ -2655,6 +2655,16 @@ class FixturePromoRepository implements PromoRepository {
   }
 
   @override
+  Stream<List<Promo>> watchLive({int limit = 20}) =>
+      // Switched on only, as the live one does: the window is the clock, and
+      // whoever draws these re-checks it as it draws.
+      _backend.store.promos.stream.map(
+        (all) => [for (final promo in all) if (promo.active) promo]
+            .take(limit)
+            .toList(),
+      );
+
+  @override
   Future<void> recordSeen(String id) => _bump(id, seen: true);
 
   @override

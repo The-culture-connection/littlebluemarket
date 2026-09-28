@@ -45,6 +45,26 @@ class FirestorePromoRepository implements PromoRepository {
   }, operation: 'firestore promos');
 
   @override
+  Stream<List<Promo>> watchLive({int limit = 20}) => _db
+      .collection('promos')
+      .where('active', isEqualTo: true)
+      .orderBy('createdAt', descending: true)
+      .limit(limit)
+      .snapshots()
+      .map(
+        // Switched on only. The window is two inequalities on two different
+        // fields, which Firestore cannot index together, and it is the clock
+        // rather than the data anyway: whoever draws these re-checks
+        // `isLiveAt` as it does, so an advert that ends at five o'clock
+        // leaves the screen at five o'clock rather than at the next write.
+        (snapshot) => [
+          for (final doc in snapshot.docs)
+            FirestoreMappers.promo(doc.id, doc.data()),
+        ],
+      )
+      .guarded(operation: 'firestore promos live');
+
+  @override
   Future<void> recordSeen(String id) => _record(id, 'seen');
 
   @override
