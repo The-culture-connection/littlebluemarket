@@ -21,6 +21,24 @@ class MakersRail extends StatelessWidget {
   /// Tall enough for the ring, the name and the place line.
   static const _height = 124.0;
 
+  /// The same, with room for the two text lines to grow.
+  ///
+  /// The ring is a fixed 64 whatever the text does; only the name and the
+  /// place scale, so the rail grows by what those two lines gain rather than
+  /// by the whole card. Clamped, because past 1.6 the cards are taller than
+  /// anything they sit next to and the rail stops being a glance.
+  ///
+  /// It was a flat 124, which fitted a maker with no place line and nothing
+  /// else: every maker on the live market has a city, and at 2.0 the card
+  /// overflowed by 5 pixels, which throws.
+  static double heightFor(BuildContext context) {
+    final scale = MediaQuery.textScalerOf(
+      context,
+    ).scale(1.0).clamp(1.0, 1.6);
+    const textLines = 22.0;
+    return _height + textLines * (scale - 1.0);
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
@@ -39,7 +57,7 @@ class MakersRail extends StatelessWidget {
           ),
         ),
         SizedBox(
-          height: _height,
+          height: heightFor(context),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 2),

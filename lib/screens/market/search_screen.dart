@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../models/models.dart';
 import '../../router/nav.dart';
@@ -12,7 +11,7 @@ import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
-import 'collection_screen.dart' show CollectionRail;
+import 'collection_screen.dart' show CollectionTiles;
 import 'directory_browse_screen.dart' show DirectoryRail;
 
 /// The search entry point: scope, the initiative hashtags, and recent searches.
@@ -111,10 +110,18 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 horizontal: 14,
                 vertical: 12,
               ),
-              onTap: () {
-                final filters = ref.read(searchFiltersProvider);
-                if (!filters.nearMe) toggleNearMe(context, ref);
-                context.go('/market');
+              // Awaited, and only then does it leave. Turning Near me on has
+              // to find somewhere to measure from, which can end in "add
+              // your city" rather than in a location: navigating first threw
+              // that message away with the screen it was raised on, and left
+              // the Market showing For you with nothing changed.
+              onTap: () async {
+                if (!ref.read(searchFiltersProvider).nearMe) {
+                  await toggleNearMe(context, ref);
+                  if (!context.mounted) return;
+                  if (!ref.read(searchFiltersProvider).nearMe) return;
+                }
+                context.leaveSearch();
               },
               child: Row(
                 children: [
@@ -149,7 +156,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           // first photograph below the fold and answered a question nobody
           // had asked yet. Browsing by category is a thing you come looking
           // for, so it lives on the screen you come looking on.
-          const CollectionRail(),
+          //
+          // Tiles rather than a rail for the Market's seven: this is the
+          // browse hub, and a hub whose main act is hidden behind a sideways
+          // drag is not one (Grace, 2026-09-28). The directory stays a rail;
+          // it is the second question, and it has far more than seven.
+          const SectionHead('Browse the Market'),
+          const CollectionTiles(),
           const DirectoryRail(),
           const SectionHead('Popular right now — initiatives'),
           LbmAsync<List<TagCount>>(

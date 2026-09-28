@@ -6,7 +6,7 @@ import 'package:little_blue_market/models/market_taxonomy.dart';
 import 'package:little_blue_market/models/models.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
-import 'package:little_blue_market/screens/market/collection_screen.dart';
+
 import 'package:little_blue_market/router/app_router.dart';
 import 'package:little_blue_market/widgets/pins/review_pin.dart';
 import 'package:little_blue_market/widgets/primitives.dart';
@@ -110,26 +110,18 @@ void main() {
       tester,
     ) async {
       await _pumpSearch(tester);
-      // The demo store carries three of the seven, plus initiatives and
-      // subcategories that must not be on the rail. The rail is a lazy
-      // horizontal list, so the third chip is only built once scrolled to.
-      final railScroll = find.descendant(
-        of: find.byType(CollectionRail),
-        matching: find.byType(Scrollable),
-      );
+      // Tiles now, not a sideways chip rail (Grace, 2026-09-28: "Browse the
+      // market in search"). The assertion that used to matter most here is
+      // the one that changed: every heading the store carries is on screen
+      // at once, rather than four of the seven waiting behind a horizontal
+      // drag on a screen that scrolls downwards. So no scrolling the rail.
       expect(find.text('Apparel & Accessories'), findsOneWidget);
       expect(find.text('Art & Creative Goods'), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('Bath, Beauty & Wellness'),
-        80,
-        scrollable: railScroll,
-      );
-      await tester.pumpAndSettle();
       expect(find.text('Bath, Beauty & Wellness'), findsOneWidget);
       // Initiatives are collections too, and used to fill the rail.
       expect(find.text('Woman Owned'), findsNothing);
       expect(find.text('BIPOC Owned'), findsNothing);
-      // A subcategory belongs inside its heading, not on the rail.
+      // A subcategory belongs inside its heading, not on the front door.
       expect(find.text('Jewelry'), findsNothing);
     });
 

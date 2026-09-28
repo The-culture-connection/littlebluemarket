@@ -12,6 +12,7 @@ import '../../theme/tokens.dart';
 import '../../data/repositories/repositories.dart';
 import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
+import '../../widgets/product_art.dart' show ProductPhoto;
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
 import '../../widgets/sort_bar.dart';
@@ -197,6 +198,127 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Browse the Market" as the mockup draws it: the seven headings as square
+/// photo tiles, three across, the name over a dark gradient at the foot.
+///
+/// The chip rail this replaces on the search screen said the same words in a
+/// row that ran off the right of the phone, so four of the seven were behind
+/// a sideways drag nobody makes on a screen that scrolls downwards (Grace,
+/// 2026-09-28). Seven tiles is three rows you can see at once.
+///
+/// A heading with no picture on it is a tinted tile with the name in ink
+/// rather than a white name on nothing: the store fills collection images in
+/// slowly, and an unreadable tile is worse than a plain one.
+class CollectionTiles extends ConsumerWidget {
+  const CollectionTiles({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final collections = ref.watch(collectionsProvider);
+
+    return LbmAsync<List<Collection>>(
+      collections,
+      skeleton: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 14),
+        child: GridSkeleton(count: 6),
+      ),
+      errorBuilder: (_, _) => const SizedBox.shrink(),
+      isEmpty: (items) => items.isEmpty,
+      empty: const SizedBox.shrink(),
+      data: (all) {
+        final byHandle = {for (final c in all) c.handle: c};
+        final items = [
+          for (final handle in kMarketCategoryHandles) ?byHandle[handle],
+        ];
+        if (items.isEmpty) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          child: GridView.count(
+            crossAxisCount: 3,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              for (final collection in items)
+                _CategoryTile(collection: collection),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CategoryTile extends StatelessWidget {
+  const _CategoryTile({required this.collection});
+
+  final Collection collection;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final url = collection.imageUrl;
+    final hasPhoto = url != null && url.isNotEmpty;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => context.goToCollection(collection.handle),
+      child: Semantics(
+        button: true,
+        label: collection.title,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.all(Radius.circular(16)),
+          child: ColoredBox(
+            color: c.skyMist,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (hasPhoto)
+                  ProductPhoto(
+                    url: url,
+                    cacheWidth: 300,
+                    fallback: ColoredBox(color: c.skyMist),
+                  ),
+                if (hasPhoto)
+                  // Bottom up, so the name has something to sit on without
+                  // dimming the picture it is naming.
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [c.scrim, c.scrim.withValues(alpha: 0)],
+                        stops: const [0, 0.55],
+                      ),
+                    ),
+                  ),
+                Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 6, 8, 7),
+                    child: Text(
+                      collection.title,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: LbmText.pinTitle.copyWith(
+                        fontSize: 12,
+                        height: 1.15,
+                        color: hasPhoto ? LbmConst.onGradient : c.ink,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

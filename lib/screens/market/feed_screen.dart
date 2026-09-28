@@ -55,7 +55,17 @@ enum _Tab { forYou, nearMe }
 
 class _FeedScreenState extends ConsumerState<FeedScreen> {
   final _controller = ScrollController();
-  var _tab = _Tab.forYou;
+
+  /// Which tab is showing is *derived*, not held here.
+  ///
+  /// Near me is one question asked from three places: this tab, the row on
+  /// the search screen, and the chip on the results screen. While the tab
+  /// was a `setState` field, the search screen could turn the filter on and
+  /// send you to the Market, where the tab was still on For you and nothing
+  /// looked as though it had happened (Grace, 2026-09-28). One flag, read by
+  /// everything, is the only arrangement where they cannot disagree.
+  _Tab get _tab =>
+      ref.read(searchFiltersProvider).nearMe ? _Tab.nearMe : _Tab.forYou;
 
   @override
   void initState() {
@@ -90,17 +100,17 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       ..invalidate(nearbySellersProvider);
   }
 
+  /// Near me is a different question ("what is close"), asked of the
+  /// catalogue rather than of the post stream, so the tab only ever moves by
+  /// moving the flag. Turning it on can fail — there has to be somewhere to
+  /// measure from — and when it does the flag stays off and so does the tab,
+  /// which is the right outcome: an empty Near me grid explains nothing.
   void _selectTab(int index) {
     final next = _Tab.values[index];
     if (next == _tab) return;
-    setState(() => _tab = next);
-    // Near me is a different question ("what is close"), asked of the
-    // catalogue rather than of the post stream, so the toggle the search
-    // screen shares has to agree with the tab.
-    final filters = ref.read(searchFiltersProvider);
-    if (next == _Tab.nearMe && !filters.nearMe) {
+    if (next == _Tab.nearMe) {
       toggleNearMe(context, ref);
-    } else if (next != _Tab.nearMe && filters.nearMe) {
+    } else {
       ref.read(searchFiltersProvider.notifier).toggleNearMe();
     }
   }
@@ -109,6 +119,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   Widget build(BuildContext context) {
     final c = context.c;
     final isGuest = ref.watch(isGuestProvider);
+    // Watched, not read: the search screen can turn Near me on from another
+    // route, and this screen has to redraw on the way back to it.
+    final tab = ref.watch(searchFiltersProvider).nearMe
+        ? _Tab.nearMe
+        : _Tab.forYou;
 
     return LbmScreen(
       appBar: Container(
@@ -124,7 +139,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
             const SizedBox(height: 4),
             TopTabs(
               labels: const ['For you', 'Near me'],
-              selected: _tab.index,
+              selected: tab.index,
               onChanged: _selectTab,
               padding: EdgeInsets.zero,
             ),
@@ -136,7 +151,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           : null,
       child: RefreshIndicator(
         onRefresh: _refresh,
-        child: switch (_tab) {
+        child: switch (tab) {
           _Tab.nearMe => _NearMeGrid(controller: _controller),
           _Tab.forYou => _Grid(controller: _controller, isGuest: isGuest),
         },

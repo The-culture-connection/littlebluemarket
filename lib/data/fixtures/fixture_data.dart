@@ -63,6 +63,13 @@ abstract final class Fx {
       grossSalesCents: 482000,
       purchases: 37,
       posts: 24,
+      // The demo's own profile had no city and no point, so Near me could
+      // never turn on in `run-fixtures` or in a test: it fell through to
+      // "add your city in Edit profile" every time, and the grid behind it
+      // had never once been drawn.
+      cityState: 'Detroit, MI',
+      lat: 42.3314,
+      lng: -83.0458,
     ),
     'kali': Person(
       id: 'kali',
