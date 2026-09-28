@@ -192,12 +192,13 @@ function watchRecent() {
 async function refreshGate(user) {
   if (!user) {
     show('signin', true); show('notadmin', false); show('send', false); show('recentCard', false); show('feedbackCard', false); show('reportsCard', false); show('signout', false);
-    show('promoCard', false); show('promoListCard', false); show('dirCard', false); show('vendorCard', false);
+    show('promoCard', false); show('promoListCard', false); show('announceListCard', false); show('dirCard', false); show('vendorCard', false);
     $('who').textContent = '';
     unsubscribeRecent?.(); unsubscribeRecent = null;
     unsubscribeFeedback?.(); unsubscribeFeedback = null;
     unsubscribeReports?.(); unsubscribeReports = null;
     unsubscribePromos?.(); unsubscribePromos = null;
+    unsubscribeAnnouncements?.(); unsubscribeAnnouncements = null;
     return;
   }
   const token = await user.getIdTokenResult(true);
@@ -212,9 +213,10 @@ async function refreshGate(user) {
   show('reportsCard', isAdmin);
   show('promoCard', isAdmin);
   show('promoListCard', isAdmin);
+  show('announceListCard', isAdmin);
   show('dirCard', isAdmin);
   show('vendorCard', isAdmin);
-  if (isAdmin) { watchRecent(); watchFeedback(); watchReports(); watchPromos(); }
+  if (isAdmin) { watchRecent(); watchFeedback(); watchReports(); watchPromos(); watchAnnouncements(); }
 }
 $('showDone').addEventListener('change', renderFeedback);
 $('showClosedReports').addEventListener('change', renderReports);
@@ -290,6 +292,7 @@ const PROMO_PHOTOS_MAX = 4;
 let promoPhotos = [];
 let promoUploading = 0;
 let unsubscribePromos = null;
+let unsubscribeAnnouncements = null;
 
 function renderPromoThumbs() {
   const list = $('pThumbs');
@@ -1111,3 +1114,54 @@ $('tagFixBtn').addEventListener('click', async () => {
     $('tagFixBtn').disabled = false;
   }
 });
+
+// Every announcement ever sent, newest first.
+//
+// It had no list at all, which is how an old one could sit on the feed
+// banner with nowhere to go and see it (Grace, 2026-09-28). It is a record
+// rather than something running: an announcement is a push that has already
+// gone and a line under a bell, so there is nothing here to pause. The
+// advert it may have made alongside itself is in the list above, and that
+// one is pausable and editable.
+function watchAnnouncements() {
+  unsubscribeAnnouncements?.();
+  const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(50));
+  unsubscribeAnnouncements = onSnapshot(q, (snap) => {
+    const list = $('announcements');
+    list.innerHTML = '';
+    if (snap.empty) { list.innerHTML = '<li class="meta">Nothing announced yet.</li>'; return; }
+    for (const d of snap.docs) {
+      const a = d.data();
+      const when = a.createdAt?.toDate ? a.createdAt.toDate().toLocaleString() : '';
+      const li = document.createElement('li');
+      li.className = 'fb';
+
+      const body = document.createElement('div');
+      body.className = 'body';
+
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = 'Announcement';
+      const head = document.createElement('div');
+      const strong = document.createElement('strong');
+      strong.textContent = a.title || '';
+      head.append(tag, strong);
+
+      const text = document.createElement('div');
+      text.className = 'text';
+      text.textContent = a.body || '';
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = [
+        a.audience || 'all',
+        when,
+        'pushed and under the bell',
+      ].filter(Boolean).join(' · ');
+
+      body.append(head, text, meta);
+      li.appendChild(body);
+      list.appendChild(li);
+    }
+  }, (error) => { $('announcements').innerHTML = `<li class="meta">${describe(error)}</li>`; });
+}

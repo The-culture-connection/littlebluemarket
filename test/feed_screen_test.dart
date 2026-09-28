@@ -90,6 +90,7 @@ Future<void> _tapChip(WidgetTester tester, String label) async {
 }
 
 void main() {
+  _bannerSourceGroup();
   testWidgets('the feed is a two-column grid, not a list of cards', (
     tester,
   ) async {
@@ -208,21 +209,12 @@ void main() {
     expect(tester.getTopLeft(banner).dy, lessThan(before));
   });
 
-  testWidgets('a CTA that is not a route in this app opens nothing', (
-    tester,
-  ) async {
-    // Admins type these by hand on the website, so they arrive as anything.
-    expect(HeroBanner.normaliseRoute('/community'), '/community');
-    expect(HeroBanner.normaliseRoute(''), isNull);
-    expect(HeroBanner.normaliseRoute('   '), isNull);
-    expect(HeroBanner.normaliseRoute('not a url'), isNull);
-    expect(HeroBanner.normaliseRoute('https://example.com/sale'), isNull);
-    expect(
-      HeroBanner.normaliseRoute('https://littlebluecart.com/market/search'),
-      '/market/search',
-    );
-    expect(HeroBanner.normaliseRoute('https://littlebluecart.com'), '/market');
-  });
+  // The banner's CTA no longer guesses at routes, and the case that drove
+  // that guessing has gone with the code it drove. `normaliseRoute` read a
+  // button's destination as an app path, so an `@handle`, a `#tag` and every
+  // link to another website all parsed as nothing and the button did nothing
+  // at all. `openPromoCta` resolves those three from the promo itself, and
+  // `promo_test.dart` drives it.
 
   testWidgets('a guest gets no community pins and a join bar', (tester) async {
     await _pumpFeed(tester, guest: true);
@@ -246,5 +238,38 @@ void main() {
     expect(find.bySemanticsLabel('Post something'), findsOneWidget);
     expect(find.byIcon(Icons.shopping_bag_outlined), findsOneWidget);
     expect(find.text('You'), findsOneWidget);
+  });
+}
+
+/// What the banner is allowed to carry.
+void _bannerSourceGroup() {
+  testWidgets('the banner carries only what the admin list can pause', (
+    tester,
+  ) async {
+    // Grace, 2026-09-28: "the old announcements are still being shown", and
+    // before that "ones ... not listed in the admin portal as being live are
+    // showing up in the banner".
+    //
+    // The banner drew the `announcements` collection as well as the adverts,
+    // and an announcement is the bell: a permanent record with no switch, no
+    // window and no audience test. So every announcement ever sent sat there
+    // for ever, and nothing in the admin website could take one down, because
+    // that website lists adverts.
+    //
+    // The demo data has exactly one announcement, "Six new makers joined this
+    // week", and it must not be on the banner. It is still under the bell,
+    // which `you_hub_test` covers.
+    await _pumpFeed(tester);
+
+    final banner = find.byType(HeroBanner);
+    expect(banner, findsOneWidget);
+    expect(
+      find.descendant(
+        of: banner,
+        matching: find.textContaining('Six new makers'),
+      ),
+      findsNothing,
+      reason: 'an announcement nobody can pause is back on the banner',
+    );
   });
 }

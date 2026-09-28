@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../data/repositories/dev_error_sink.dart' show kUnderFlutterTest;
 import '../models/models.dart';
@@ -68,26 +67,6 @@ class HeroBanner extends ConsumerStatefulWidget {
 
   /// Long enough to read a headline and look at the picture.
   static const rotation = Duration(seconds: 7);
-
-  /// The in-app path a CTA means, or null when there is nothing to open.
-  ///
-  /// An admin types these by hand on the website, so they arrive as anything:
-  /// an in-app path, a full URL to the app's own site, somebody else's
-  /// website, or nothing at all. Only the first two open, and the rest do
-  /// nothing rather than landing on a blank screen.
-  static String? normaliseRoute(String target) {
-    final trimmed = target.trim();
-    if (trimmed.isEmpty) return null;
-    if (trimmed.startsWith('/')) return trimmed;
-
-    final uri = Uri.tryParse(trimmed);
-    if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
-    // A link to the app's own site is a route in disguise; anything else is
-    // somebody else's website, which a banner does not open.
-    if (!uri.host.contains('littleblue')) return null;
-    final path = uri.path;
-    return path.isEmpty || path == '/' ? '/market' : path;
-  }
 
   @override
   ConsumerState<HeroBanner> createState() => _HeroBannerState();
@@ -176,21 +155,27 @@ class _HeroBannerState extends ConsumerState<HeroBanner> {
       ];
     }
 
-    final announcements = ref.watch(announcementsProvider).value ?? const [];
     final promos = ref.watch(allPromosProvider).value ?? const [];
     final isSeller = ref.watch(isSellerProvider);
     final linked = ref.watch(directoryLinkProvider).value?.linked ?? false;
 
+    // Adverts only, and deliberately.
+    //
+    // This used to draw the `announcements` collection here as well, and
+    // that collection is the bell: a permanent record with no switch, no
+    // window and no audience test. So every announcement ever sent sat on
+    // the banner for ever, and there was no way to take one down, because
+    // the admin website does not list them — it lists adverts (Grace,
+    // 2026-09-28, "the old announcements are still being shown", and "not
+    // listed in the admin portal as being live are showing up").
+    //
+    // Nothing is lost. An announcement meant to be seen as a card already
+    // writes an advert for itself, which is the thing with a switch, a
+    // window and an Edit button. One meant only to be told once still
+    // pushes and still sits under the bell, which is its home. The rule
+    // this now keeps: if it is on the banner, it is in that list and can be
+    // paused.
     return [
-      for (final a in announcements)
-        HeroCard(
-          id: 'a:${a.id}',
-          kicker: 'From Little Blue Market',
-          title: a.title,
-          body: a.body,
-          cta: 'Take a look',
-          onTap: (context, ref) => _goTo(context, a.route),
-        ),
       for (final promo in promos)
         // Both halves, every time this is drawn. The stream says what is
         // switched on; the clock says what is inside its window, and only
@@ -211,18 +196,6 @@ class _HeroBannerState extends ConsumerState<HeroBanner> {
             onTap: (context, ref) => openPromoCta(context, ref, promo),
           ),
     ];
-  }
-
-  /// Sends a tap where the card says it goes.
-  ///
-  /// An admin types these by hand on the website, so they arrive as anything:
-  /// an in-app path, a full URL to the app's own domain, or nothing at all.
-  /// Anything that is not a route this app has lands on the Market rather
-  /// than on a blank screen.
-  static void _goTo(BuildContext context, String target) {
-    final route = HeroBanner.normaliseRoute(target);
-    if (route == null) return;
-    context.go(route);
   }
 }
 
