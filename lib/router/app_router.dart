@@ -38,6 +38,7 @@ import '../screens/you/directory_screen.dart';
 import '../screens/you/edit_profile_screen.dart';
 import '../screens/you/messages_screen.dart';
 import '../screens/you/profile_screen.dart';
+import '../screens/you/chip_in_screen.dart';
 import '../screens/you/purchases_screen.dart';
 import '../models/onboarding.dart';
 import '../state/session.dart';
@@ -321,6 +322,10 @@ GoRouter buildRouter(Ref ref) {
                   GoRoute(
                     path: 'edit',
                     builder: (context, state) => const EditProfileScreen(),
+                  ),
+                  GoRoute(
+                    path: 'chip-in',
+                    builder: (context, state) => const ChipInScreen(),
                   ),
                   GoRoute(
                     path: 'purchases',

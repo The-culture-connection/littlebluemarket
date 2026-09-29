@@ -53,6 +53,10 @@ extension LbmNavigation on BuildContext {
 
   void goToCart() => _pushInBranch('/cart');
 
+  /// Chipping in to Little Blue Market. Members only: it ends at the store
+  /// checkout, which a guest has no way through.
+  void goToChipIn() => _pushInBranch('/chip-in');
+
   /// Everything filed under one store collection, by handle.
   void goToCollection(String handle) => _pushInBranch('/collection/$handle');
 
