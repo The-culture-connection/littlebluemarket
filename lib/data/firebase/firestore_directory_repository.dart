@@ -4,6 +4,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import '../../models/models.dart';
 import '../repositories/repositories.dart';
 import 'firestore_errors.dart';
+import 'geohash.dart';
 import 'mappers.dart';
 
 /// The directory link, live: the server-only `directory/{uid}` document,
@@ -111,6 +112,49 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
             ],
           )
           .guarded(operation: 'firestore directoryListings (published)');
+
+  @override
+  Future<List<DirectoryListing>> nearbyListings({
+    required double lat,
+    required double lng,
+    required double radiusMiles,
+    int limit = 40,
+  }) => guardFirestore(() async {
+    // The geohash prefix scan, then the exact distance over what comes back,
+    // as the catalogue does: a box that overlaps the circle is not a circle,
+    // so without the second pass a business 25 miles away turns up in a
+    // 20-mile search.
+    //
+    // `status` is in the query because it has to be: the read rule allows a
+    // published listing or your own, so a scan that did not say `publish`
+    // would be refused outright rather than filtered.
+    final ranges = Geohash.coverRanges(lat, lng, radiusMiles);
+    final snapshots = await Future.wait([
+      for (final (start, end) in ranges)
+        _db
+            .collection('directoryListings')
+            .where('status', isEqualTo: 'publish')
+            .where('geohash', isGreaterThanOrEqualTo: start)
+            .where('geohash', isLessThan: end)
+            .limit(limit ~/ ranges.length + 1)
+            .get(),
+    ]);
+
+    final seen = <String>{};
+    final found = <(double, DirectoryListing)>[];
+    for (final snapshot in snapshots) {
+      for (final doc in snapshot.docs) {
+        if (!seen.add(doc.id)) continue;
+        final listing = FirestoreMappers.directoryListing(doc.id, doc.data());
+        if (listing.lat == null || listing.lng == null) continue;
+        final miles = Geo.milesBetween(lat, lng, listing.lat!, listing.lng!);
+        if (miles > radiusMiles) continue;
+        found.add((miles, listing));
+      }
+    }
+    found.sort((a, b) => a.$1.compareTo(b.$1));
+    return [for (final (_, listing) in found.take(limit)) listing];
+  }, operation: 'firestore directoryListings nearby');
 
 
   CollectionReference<Map<String, dynamic>> get _listings =>

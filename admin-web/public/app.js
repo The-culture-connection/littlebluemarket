@@ -1165,3 +1165,44 @@ function watchAnnouncements() {
     }
   }, (error) => { $('announcements').innerHTML = `<li class="meta">${describe(error)}</li>`; });
 }
+
+// Looking up the town each directory business is in, so Near me can find
+// them. Paged and resumable on the server, and paced to one geocoder
+// request a second for a town never seen before, so this follows the cursor
+// and reports as it goes rather than sitting silent for several minutes.
+$('geoBtn').addEventListener('click', async () => {
+  if (!window.confirm('Look up where the directory businesses are?\n\nIt only looks up a town it has not seen before, about one a second, so the first run over 1,800 listings takes a few minutes. Leave this page open.')) return;
+  $('geoBtn').disabled = true;
+  const call = httpsCallable(functions, 'adminGeocodeDirectory', { timeout: DIR_CALL_TIMEOUT_MS });
+  let cursor = null;
+  let checked = 0;
+  let located = 0;
+  let noPlace = 0;
+  let notFound = 0;
+  try {
+    const seen = new Set();
+    for (let page = 1; page <= 200; page++) {
+      notice('geoNotice', `Working. ${checked} read, ${located} placed on the map so far…`, true);
+      const { data } = await call({ after: cursor, limit: 150 });
+      checked += data.checked;
+      located += data.located;
+      noPlace += data.noPlace;
+      notFound += data.notFound;
+      if (data.done) break;
+      if (!data.cursor || seen.has(data.cursor)) break;
+      seen.add(data.cursor);
+      cursor = data.cursor;
+    }
+    notice(
+      'geoNotice',
+      `Done. ${checked} read, ${located} placed on the map. ` +
+      `${noPlace} have no town to place them by (online-only, or a whole state), and ` +
+      `${notFound} had a town the map could not find. Near me can see the placed ones now.`,
+      true,
+    );
+  } catch (error) {
+    notice('geoNotice', `${describe(error)} (${checked} read, ${located} placed before it stopped; running it again carries on from there).`, false);
+  } finally {
+    $('geoBtn').disabled = false;
+  }
+});

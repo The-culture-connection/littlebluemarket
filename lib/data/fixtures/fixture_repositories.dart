@@ -1921,6 +1921,8 @@ class FixtureDirectoryRepository implements DirectoryRepository {
       street: '1851 Massachusetts Ave NE',
       city: 'St. Petersburg',
       state: 'FL',
+      lat: 27.7676,
+      lng: -82.6403,
       zip: '33703',
       address: '1851 Massachusetts Ave NE, St. Petersburg, FL 33703',
       categories: ['Travel'],
@@ -1943,6 +1945,8 @@ class FixtureDirectoryRepository implements DirectoryRepository {
       locationLabel: 'Detroit, MI',
       city: 'Detroit',
       state: 'MI',
+      lat: 42.3314,
+      lng: -83.0458,
       address: '4120 Cass Ave, Detroit, MI 48201',
       categories: ['Home & Garden', 'Art & Collectibles'],
       tags: ['Woman-Owned', 'BIPOC-Owned'],
@@ -2138,6 +2142,30 @@ class FixtureDirectoryRepository implements DirectoryRepository {
         .toList();
     yield find();
     yield* _listingChanges.stream.map((_) => find());
+  }
+
+  @override
+  Future<List<DirectoryListing>> nearbyListings({
+    required double lat,
+    required double lng,
+    required double radiusMiles,
+    int limit = 40,
+  }) {
+    final found = <(double, DirectoryListing)>[];
+    for (final listing in _listings) {
+      if (!listing.isPublished) continue;
+      // No point, no place. A listing whose only location is
+      // "Online/Virtual Business" is not near anybody, and putting it
+      // somewhere would be a wrong answer rather than a rough one.
+      if (listing.lat == null || listing.lng == null) continue;
+      final miles = Geo.milesBetween(lat, lng, listing.lat!, listing.lng!);
+      if (miles > radiusMiles) continue;
+      found.add((miles, listing));
+    }
+    found.sort((a, b) => a.$1.compareTo(b.$1));
+    return _backend._delayed([
+      for (final (_, listing) in found.take(limit)) listing,
+    ]);
   }
 
   Watchable<Map<String, Product>> get _products =>

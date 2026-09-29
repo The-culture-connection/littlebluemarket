@@ -229,7 +229,17 @@ class DirectoryListing {
     this.description = '',
     this.imageUrl = '',
     this.updatedAt,
+    this.lat,
+    this.lng,
   });
+
+  /// Where the business is, once its town has been looked up. Null for a
+  /// listing with no town on file, and for the ones whose only location is
+  /// "Online/Virtual Business": those are genuinely not near anybody, and
+  /// putting them at a state's centre would be a wrong answer rather than a
+  /// rough one.
+  final double? lat;
+  final double? lng;
 
   /// The WordPress post id.
   final String id;

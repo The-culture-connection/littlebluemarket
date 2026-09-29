@@ -11,6 +11,7 @@ import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/directory_listing_card.dart';
 import '../../widgets/filter_chips.dart';
 import '../../widgets/hero_banner.dart';
 import '../../widgets/masonry.dart';
@@ -337,6 +338,13 @@ class _NearMeGrid extends ConsumerWidget {
     final c = context.c;
     final filters = ref.watch(searchFiltersProvider);
     final nearby = ref.watch(nearbyProductsProvider(filters));
+    // Directory businesses too, and they are most of the answer: a product
+    // takes its point from its seller's profile city and almost no vendor
+    // has typed one, while a directory listing carries the town the website
+    // holds for it (Grace, 2026-09-28). Watched beside the products rather
+    // than gated with them, so a slow or empty catalogue cannot hide them.
+    final businesses =
+        ref.watch(nearbyBusinessesProvider(filters)).value ?? const [];
     final where = filters.origin?.label ?? 'you';
 
     final header = <Widget>[
@@ -372,7 +380,7 @@ class _NearMeGrid extends ConsumerWidget {
       skeleton: const GridSkeleton(count: 6),
       onRetry: () => ref.invalidate(nearbyProductsProvider(filters)),
       data: (products) {
-        if (products.isEmpty) {
+        if (products.isEmpty && businesses.isEmpty) {
           return CustomScrollView(
             controller: controller,
             slivers: [
@@ -385,8 +393,8 @@ class _NearMeGrid extends ConsumerWidget {
                       '${Fmt.distanceMiles(filters.radiusMiles)}',
                   body:
                       'Try a wider circle, or switch back to For you to see '
-                      'the whole Market. A listing only counts as nearby once '
-                      'its shop has filled in a city.',
+                      'the whole Market. Something counts as nearby once its '
+                      'shop or its directory listing says what town it is in.',
                 ),
               ),
             ],
@@ -397,13 +405,30 @@ class _NearMeGrid extends ConsumerWidget {
           controller: controller,
           slivers: [
             ...header,
-            ...LbmMasonry.slivers(
-              children: [
-                for (final product in products)
-                  _NearbyPin(key: ValueKey(product.id), product: product),
-              ],
-              bottom: 24,
-            ),
+            if (products.isNotEmpty)
+              ...LbmMasonry.slivers(
+                children: [
+                  for (final product in products)
+                    _NearbyPin(key: ValueKey(product.id), product: product),
+                ],
+                bottom: businesses.isEmpty ? 24 : 8,
+              ),
+            if (businesses.isNotEmpty) ...[
+              const SliverToBoxAdapter(
+                child: SectionHead('Businesses near you'),
+              ),
+              SliverList.builder(
+                itemCount: businesses.length,
+                itemBuilder: (context, i) => Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                  child: DirectoryListingCard(
+                    key: ValueKey('near_${businesses[i].id}'),
+                    listing: businesses[i],
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
           ],
         );
       },

@@ -33,6 +33,14 @@ abstract final class FirestoreMappers {
         _ => fallback,
       };
 
+  /// A number, or null when there is not one. Distinct from [decimal]: a
+  /// missing coordinate is not zero, which is a real place in the Atlantic.
+  static double? numberOrNull(Object? value) => switch (value) {
+    final num v => v.toDouble(),
+    final String v => double.tryParse(v),
+    _ => null,
+  };
+
   static bool boolean(Object? value, [bool fallback = false]) =>
       value is bool ? value : fallback;
 
@@ -639,6 +647,8 @@ abstract final class FirestoreMappers {
     description: str(data['description']),
     imageUrl: str(data['imageUrl']),
     updatedAt: timeOrNull(data['updatedAt']),
+    lat: numberOrNull(data['lat']),
+    lng: numberOrNull(data['lng']),
   );
 
   static Shipment shipment(Map<String, dynamic> data, {String? payoutNote}) =>

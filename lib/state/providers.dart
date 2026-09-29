@@ -521,6 +521,30 @@ final nearbyProductsProvider =
           );
     });
 
+/// Directory businesses near the person, nearest first.
+///
+/// The half of Near me that can answer. A product takes its point from its
+/// seller's profile city and almost no vendor has typed one, so the Market
+/// finds a handful; a directory listing carries the town littlebluecart.com
+/// holds for it (Grace, 2026-09-28).
+final nearbyBusinessesProvider =
+    FutureProvider.family<List<DirectoryListing>, SearchFilters>((
+      ref,
+      filters,
+    ) {
+      final origin = filters.origin;
+      if (!filters.isGeoConstrained || origin == null) {
+        return Future.value(const <DirectoryListing>[]);
+      }
+      return ref
+          .watch(directoryRepositoryProvider)
+          .nearbyListings(
+            lat: origin.lat,
+            lng: origin.lng,
+            radiusMiles: filters.radiusMiles,
+          );
+    });
+
 final recentSearchesProvider = FutureProvider<List<String>>((ref) {
   return ref.watch(searchRepositoryProvider).recentSearches();
 });

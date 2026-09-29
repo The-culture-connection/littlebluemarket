@@ -550,6 +550,20 @@ abstract interface class DirectoryRepository {
   /// Someone's published listings, for their public profile.
   Stream<List<DirectoryListing>> watchPublishedListingsOf(String ownerUid);
 
+  /// Published directory businesses within [radiusMiles], nearest first.
+  ///
+  /// The half of Near me that can actually answer. A product takes its point
+  /// from its seller's profile city and almost no vendor has typed one, so
+  /// the Market finds three things; a directory listing carries the town
+  /// littlebluecart.com holds for it. Only listings with a real town are
+  /// here: "Online/Virtual Business" is not near anyone.
+  Future<List<DirectoryListing>> nearbyListings({
+    required double lat,
+    required double lng,
+    required double radiusMiles,
+    int limit = 40,
+  });
+
 
   /// Every directory category with at least one published listing, biggest
   /// first. Drives the "Browse the directory" rail on the feed; empty until

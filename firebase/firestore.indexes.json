@@ -168,6 +168,21 @@
       ]
     },
     {
+      "_comment": "Directory businesses near a point. The status filter is not optional: the read rule only allows a published listing, so a geohash scan without it is refused.",
+      "collectionGroup": "directoryListings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "geohash",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "_comment": "Everything under one hashtag, newest first. Keyed by the lowercase key, not the typed spelling, so #WomanOwned and #womanowned are one page.",
       "collectionGroup": "posts",
       "queryScope": "COLLECTION",

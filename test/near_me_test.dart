@@ -189,4 +189,64 @@ void main() {
     expect(_nearMeHeading, findsNothing);
     expect(find.textContaining('Near me needs a place'), findsOneWidget);
   });
+
+  testWidgets('it answers with directory businesses, not only listings', (
+    tester,
+  ) async {
+    // Grace, 2026-09-28: "let's just add it to the directory".
+    //
+    // Measured against production that day: 3 of 16,567 catalogue products
+    // are findable by distance, because a product takes its point from its
+    // seller's profile city and almost no vendor has typed one. The
+    // directory is the half that knows where its businesses are, and
+    // nothing had ever used it.
+    //
+    // Maya is in Detroit. Found House Ceramics is in Detroit; Field Trips
+    // Travel is in St. Petersburg, Florida; Brightside Bookkeeping is
+    // "*Online/Virtual Business" and has no point at all.
+    final container = await _pumpApp(tester);
+    await tester.tap(find.text('Near me'));
+    await tester.pumpAndSettle();
+
+    final filters = container.read(searchFiltersProvider);
+    final near = await container
+        .read(directoryRepositoryProvider)
+        .nearbyListings(
+          lat: filters.origin!.lat,
+          lng: filters.origin!.lng,
+          radiusMiles: 25,
+        );
+
+    final names = near.map((l) => l.title).toList();
+    expect(names, contains('Found House Ceramics'));
+    expect(
+      names,
+      isNot(contains('Field Trips Travel & Vacations')),
+      reason: 'Florida is not within 25 miles of Detroit',
+    );
+    expect(
+      names,
+      isNot(contains('Brightside Bookkeeping')),
+      reason: 'an online-only business is not near anybody',
+    );
+  });
+
+  testWidgets('the businesses are on the Near me tab, under the listings', (
+    tester,
+  ) async {
+    await _pumpApp(tester);
+    await tester.tap(find.text('Near me'));
+    await tester.pumpAndSettle();
+
+    final heading = find.text('Businesses near you');
+    await tester.scrollUntilVisible(
+      heading,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(heading, findsOneWidget);
+    expect(find.textContaining('Found House Ceramics'), findsWidgets);
+  });
 }

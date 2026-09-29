@@ -94,6 +94,7 @@ import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
 import { noteVendorFromCatalog, syncVendorRoster } from './roster_grant.ts';
 import { geocodeProfileIfNeeded } from './geocode.ts';
+import { geocodeDirectoryPage } from './directory_geo.ts';
 import {
   backfillProfileTagsLower,
   backfillTagKeyMirror,
@@ -657,6 +658,26 @@ export const adminBackfillPostTags = onCall(
     return next
       ? { ...page, collection, cursor: `${next}:`, done: false }
       : { ...page, collection, cursor: null, done: true };
+  }),
+);
+
+/**
+ * Puts directory businesses on the map so Near me can find them, a page at
+ * a time. Admin only, idempotent, resumable.
+ *
+ * Paced to one geocoder request a second for places never seen before, and
+ * nothing at all for places already cached, so a second run is instant.
+ */
+export const adminGeocodeDirectory = onCall(
+  { timeoutSeconds: 540, memory: '512MiB' },
+  withLoudErrors('adminGeocodeDirectory', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const { after, limit } = (request.data ?? {}) as { after?: unknown; limit?: unknown };
+    return geocodeDirectoryPage({
+      after: typeof after === 'string' && after ? after : undefined,
+      limit: typeof limit === 'number' ? limit : undefined,
+    });
   }),
 );
 

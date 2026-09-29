@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Little Blue Market — directory pins + notification choreography</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#9CBFE3;--paperDeep:#84AEDC;--surface:#fff;--ink:#152E52;--ink2:#31507B;--ink3:#5F7BA3;--sky:#70A0D0;--skyDeep:#2A5992;--skyMist:#DCE9F7;--skyWash:#F0F5FC;--accent:#D56ED1;--accentDeep:#A93BA5;--accentInk:#fff;--accentMist:#F7E2F6;--accentText:#7E2A7A;--sage:#4E8A69;--sageMist:#DDEDE4;--clay:#C4796B;--clayMist:#F6E4E0;--scrim:rgba(34,40,49,.72);--shadow:0 3px 14px -5px rgba(13,35,66,.38);--lift:0 14px 34px -12px rgba(13,35,66,.5);--display:'Fraunces',Georgia,serif;--body:'Nunito',system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:#EEF3F9;color:#152E52;font-family:var(--body);font-size:14px}
+.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 18px;border-bottom:1px solid #DCE4EE;background:#fff;position:sticky;top:0;z-index:5}
+.top h1{font-family:var(--display);font-size:20px;margin:0 14px 0 0;font-weight:700}
+.seg{display:inline-flex;background:#E7EEF7;border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;padding:6px 13px;border-radius:999px;font:800 12.5px var(--body);color:#31507B;cursor:pointer}
+.seg button.on{background:#152E52;color:#fff}
+.wrap{display:flex;gap:26px;padding:16px 18px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.phonewrap{flex:none;position:sticky;top:70px;width:calc(410px * var(--s,1));height:calc(864px * var(--s,1))}
+.phone{width:390px;height:844px;border-radius:44px;background:#0d1626;padding:10px;box-shadow:0 30px 60px -20px rgba(13,35,66,.5);transform:scale(var(--s,1));transform-origin:top left;position:relative}
+.screen{width:100%;height:100%;border-radius:36px;overflow:hidden;background:linear-gradient(180deg,var(--paperDeep) 0,var(--paper) 220px);color:var(--ink);position:relative}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:30px;background:#0d1626;border-radius:0 0 18px 18px;z-index:9}
+.view{position:absolute;inset:0;display:flex;flex-direction:column}
+.scroll{flex:1;overflow-y:auto;padding:0 10px 110px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.hdr{padding:50px 12px 8px;display:flex;align-items:center;gap:8px}
+.hdr h2{font-family:var(--display);font-size:24px;margin:0;font-weight:700;flex:1}
+.search{flex:1;height:42px;border-radius:999px;background:rgba(255,255,255,.92);display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--ink3);font-weight:700;box-shadow:var(--shadow)}
+.circ{width:42px;height:42px;border-radius:999px;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);position:relative;flex:none;cursor:pointer;font-size:18px}
+.circ .n{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:99px;background:var(--accentDeep);color:#fff;font-size:10.5px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 5px;animation:wobble .55s cubic-bezier(.2,1.4,.4,1)}
+.tabsrow{display:flex;gap:2px;padding:0 12px 10px}
+.tabsrow div{padding:7px 11px;font-weight:900;font-size:14px;color:var(--ink2);position:relative}
+.tabsrow div.on{color:var(--ink)}.tabsrow div.on:after{content:'';position:absolute;left:11px;right:11px;bottom:1px;height:3px;border-radius:9px;background:var(--ink)}
+.tabsrow .newdot{position:absolute;top:6px;right:2px;width:7px;height:7px;border-radius:99px;background:var(--accent);animation:wobble .55s cubic-bezier(.2,1.4,.4,1)}
+.masonry{columns:2;column-gap:10px}
+.pin{break-inside:avoid;margin-bottom:12px;position:relative;cursor:pointer}
+.pin.wide{column-span:all}
+.ph{position:relative;border-radius:18px;overflow:hidden;background:var(--skyMist)}
+.ph .fb{aspect-ratio:4/5;display:flex;align-items:flex-end;padding:10px;font:800 12px var(--body);color:#173257}
+.cartbtn{position:absolute;right:8px;bottom:8px;height:32px;padding:0 11px 0 9px;border-radius:999px;background:var(--accentDeep);color:#fff;display:flex;align-items:center;gap:5px;font:900 12px var(--body);cursor:pointer}
+.cartbtn.hop{animation:hop .7s ease-out;background:var(--ink)}
+.cap{padding:7px 4px 0}.cap .t{font-weight:800;font-size:13px;line-height:1.3}.cap .m{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:11.5px;color:var(--ink2);font-weight:700}
+.cap .m .price{font-family:var(--display);font-size:14px;color:var(--ink);font-weight:700;margin-left:auto}
+.av{border-radius:99px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;flex:none;font-size:10px;width:22px;height:22px}
+.av.md{width:36px;height:36px;font-size:13px}.av.lg{width:52px;height:52px;font-size:18px}
+/* ---- directory pin variants ---- */
+.dirOld{background:var(--surface);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
+.dirOld .logo{width:100%;aspect-ratio:1;border-radius:14px;background:var(--skyWash);display:flex;align-items:center;justify-content:center;font-size:44px;margin-bottom:10px}
+.dirOld h3{font-family:var(--display);font-size:18px;margin:0 0 2px;font-weight:700}
+.dirOld .m{font-size:12px;color:var(--ink2);font-weight:700}
+.dirOld p{font-size:13px;line-height:1.45;color:var(--ink);margin:8px 0}
+.dirOld .chips span{display:inline-block;background:var(--skyMist);color:var(--skyDeep);font-size:11.5px;font-weight:800;padding:5px 10px;border-radius:99px;margin:0 6px 6px 0}
+.dirOld .addr{font-size:12px;color:var(--ink2);font-weight:700;margin-top:6px}
+.dirA{border-radius:18px;overflow:hidden;position:relative;aspect-ratio:4/5;background:var(--skyMist)}
+.dirA .cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;background:linear-gradient(135deg,#F9DDE9,#DCE9F7)}
+.dirA .grad{position:absolute;inset:0;background:linear-gradient(0deg,rgba(21,46,82,.85) 0%,rgba(21,46,82,.35) 45%,transparent 70%)}
+.dirA .tx{position:absolute;left:12px;right:12px;bottom:12px;color:#fff}
+.dirA .k{font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
+.dirA h3{font-family:var(--display);font-size:18px;line-height:1.1;margin:3px 0 4px;font-weight:700}
+.dirA .m{font-size:11.5px;font-weight:800;opacity:.9}
+.dirA .badges{position:absolute;top:10px;left:10px;display:flex;gap:4px;flex-wrap:wrap;max-width:80%}
+.dirA .badges span{background:rgba(255,255,255,.92);color:var(--ink);font-size:10px;font-weight:900;padding:3px 7px;border-radius:99px}
+.dirA .visit{position:absolute;right:8px;bottom:8px;height:32px;padding:0 12px;border-radius:999px;background:#fff;color:var(--ink);display:flex;align-items:center;font:900 12px var(--body)}
+.dirB{background:var(--surface);border-radius:18px;padding:12px;box-shadow:var(--shadow)}
+.dirB .row{display:flex;gap:10px;align-items:center}
+.dirB .lg{width:48px;height:48px;border-radius:14px;background:var(--skyWash);display:flex;align-items:center;justify-content:center;font-size:24px;flex:none}
+.dirB h3{font-family:var(--display);font-size:16px;line-height:1.1;margin:0;font-weight:700}
+.dirB .m{font-size:11.5px;color:var(--ink2);font-weight:800;margin-top:2px}
+.dirB p{font-size:12.5px;line-height:1.4;color:var(--ink2);font-weight:600;margin:8px 0 8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dirB .chips{display:flex;gap:5px;overflow:hidden}
+.dirB .chips span{flex:none;background:var(--skyMist);color:var(--skyDeep);font-size:10.5px;font-weight:900;padding:4px 8px;border-radius:99px;white-space:nowrap}
+.dirB .chips span.more{background:var(--skyWash);color:var(--ink3)}
+.dirRail{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding:2px}
+.dirRail .c{flex:none;width:150px;background:var(--surface);border-radius:16px;padding:10px;box-shadow:var(--shadow)}
+.dirRail .c .lg{width:40px;height:40px;border-radius:12px;background:var(--skyWash);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:6px}
+.dirRail .c b{display:block;font-size:12.5px;line-height:1.15}
+.dirRail .c span{font-size:10.5px;color:var(--ink2);font-weight:800}
+.sect{font-family:var(--display);font-size:18px;font-weight:700;margin:6px 2px 10px;display:flex;align-items:center}
+.sect .see{margin-left:auto;font:900 12px var(--body);color:var(--skyDeep)}
+.lbl{font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin:6px 4px 6px}
+
+/* business card v2 — flip card */
+.bc{perspective:900px;cursor:pointer}
+.bc .inner{position:relative;transition:transform .7s cubic-bezier(.34,1.4,.64,1);transform-style:preserve-3d}
+.bc.flipped .inner{transform:rotateY(180deg)}
+.bc .face{background:var(--surface);border-radius:18px;box-shadow:var(--shadow);overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.bc .back{position:absolute;inset:0;transform:rotateY(180deg);display:flex;flex-direction:column}
+.bc .band{height:54px;position:relative}
+.bc .band .stamp{position:absolute;right:10px;top:10px;width:28px;height:28px;border-radius:99px;border:2px dashed rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;transform:rotate(-12deg)}
+.bc .perf{height:6px;background-image:radial-gradient(circle,var(--skyMist) 1.6px,transparent 1.7px);background-size:8px 6px;background-position:0 0;margin:0 10px}
+.bc .logo{position:absolute;left:12px;bottom:-22px;width:50px;height:50px;border-radius:14px;background:var(--surface);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;font-size:24px;border:3px solid var(--surface);transition:transform .3s}
+.bc:hover .logo{transform:rotate(-6deg) scale(1.06)}
+.bc .body{padding:28px 12px 10px}
+.bc h3{font-family:var(--display);font-size:16px;line-height:1.1;margin:0;font-weight:700}
+.bc .m{font-size:11.5px;color:var(--ink2);font-weight:800;margin-top:2px}
+.bc p{font-size:12.5px;line-height:1.4;color:var(--ink2);font-weight:600;margin:8px 0 8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.bc .chips{display:flex;gap:5px;overflow:hidden}
+.bc .chips span{flex:none;background:var(--skyWash);color:var(--skyDeep);font-size:10.5px;font-weight:900;padding:4px 8px;border-radius:99px;white-space:nowrap;border:1.5px dashed var(--skyMist)}
+.bc .chips span.more{border-style:solid;color:var(--ink3)}
+.bc .foot{display:flex;align-items:center;margin-top:8px;padding-top:8px;border-top:1.5px dashed var(--skyMist);font-size:11.5px;font-weight:800;color:var(--ink2)}
+.bc .foot .go{margin-left:auto;color:var(--accentDeep);font-weight:900}
+.bc .back .body{flex:1;padding:14px 12px 10px}
+.bc .back .k{font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:3px}
+.bc .back .addr{font-size:12.5px;font-weight:800;line-height:1.35;margin-bottom:8px}
+.bc .back .hrs{font-size:11.5px;color:var(--ink2);font-weight:700;line-height:1.5}
+.bc .back .btns{display:flex;gap:6px;margin-top:10px}
+.bc .back .btns span{flex:1;text-align:center;font:900 11.5px var(--body);padding:8px 0;border-radius:99px;background:var(--skyWash);color:var(--skyDeep)}
+.bc .back .btns span.acc{background:var(--accentDeep);color:#fff}
+.bc .back .flipnote{text-align:center;font-size:10px;font-weight:800;color:var(--ink3);padding:0 0 8px}
+
+/* ---- notification surfaces ---- */
+.tabs{position:absolute;left:12px;right:12px;bottom:12px;height:66px;background:var(--surface);border-radius:999px;box-shadow:var(--lift);display:flex;align-items:center;padding:6px;z-index:4}
+.tab{flex:1;height:54px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:900;color:var(--ink3);position:relative}
+.tab.on{color:var(--ink)}.tab i{font-style:normal;font-size:20px}
+.tab .dot{position:absolute;top:10px;right:22px;width:8px;height:8px;border-radius:99px;background:var(--accent);animation:wobble .55s cubic-bezier(.2,1.4,.4,1)}
+.tab .bdg{position:absolute;top:6px;right:16px;min-width:17px;height:17px;border-radius:99px;background:var(--accentDeep);color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 4px;animation:wobble .55s cubic-bezier(.2,1.4,.4,1)}
+.fabc{width:54px;height:54px;border-radius:99px;background:var(--accentDeep);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;flex:none;margin:0 4px}
+.toast{position:absolute;left:14px;right:14px;top:56px;background:var(--surface);border-radius:20px;padding:11px 14px;box-shadow:var(--lift);display:flex;gap:10px;align-items:center;z-index:30;animation:down .6s cubic-bezier(.34,1.56,.64,1)}
+.toast.out{animation:upout .3s ease-in forwards}
+.toast .ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none;background:var(--accentMist);animation:jiggle .6s .25s ease-in-out}
+.toast b{display:block;font-size:13.5px}.toast span{font-size:12px;color:var(--ink2);font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast .go{margin-left:auto;font:900 12px var(--body);color:var(--accentDeep);flex:none}
+.toast .kick{font-size:9.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.pop{position:absolute;inset:0;background:var(--scrim);z-index:20;display:flex;align-items:center;justify-content:center;padding:24px;animation:fade .25s}
+.pop .card{background:var(--surface);border-radius:28px;overflow:hidden;width:100%;box-shadow:var(--lift);animation:cardin .65s cubic-bezier(.34,1.56,.64,1)}
+.pop .pi span{display:inline-block;animation:iconbounce 1.4s ease-in-out infinite}
+.pop .pi{height:180px;background:linear-gradient(135deg,var(--sky),var(--accent));display:flex;align-items:center;justify-content:center;font-size:64px}
+.pop .pb{padding:16px 18px 18px}.pop h3{font-family:var(--display);font-size:26px;line-height:1.05;margin:0 0 8px}.pop p{margin:0 0 14px;color:var(--ink2);font-size:14px;line-height:1.5;font-weight:600}
+.bigbtn{border:0;width:100%;height:50px;border-radius:999px;font:900 15px var(--body);background:var(--accentDeep);color:#fff;cursor:pointer}
+.hero{border-radius:20px;overflow:hidden;position:relative;min-height:150px;background:linear-gradient(160deg,#A93BA5,#5E2A8F 70%,#2A5992);color:#fff;padding:16px;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:var(--lift)}
+.hero .k{font-size:10.5px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;opacity:.85}
+.hero h3{font-family:var(--display);font-size:24px;line-height:1.02;margin:4px 0 6px;font-weight:800}
+.hero p{margin:0;font-size:13px;opacity:.92}
+.hero .cta{margin-top:10px;align-self:flex-start;background:#fff;color:#7E2A7A;padding:8px 14px;border-radius:99px;font-weight:900;font-size:12.5px}
+.hero .promo{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.2);font-size:9.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:99px}
+.insert{animation:grow .7s cubic-bezier(.34,1.56,.64,1);transform-origin:top}
+.insert .cartbtn,.insert .cta{animation:hop .7s .5s ease-out}
+.thr{border-radius:18px;padding:14px;background:var(--surface);box-shadow:var(--shadow);position:relative}
+.thr .k{font-size:10.5px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--sage)}
+.thr .q{font-family:var(--display);font-size:17px;line-height:1.18;font-weight:700;margin:4px 0 6px}
+.thr .foot{font-size:11.5px;font-weight:800;color:var(--ink2)}
+.newpill{position:absolute;top:10px;right:10px;background:var(--accentDeep);color:#fff;font-size:10px;font-weight:900;padding:3px 8px;border-radius:99px;animation:wobble .6s cubic-bezier(.2,1.4,.4,1)}
+.chatpin{border-radius:18px;padding:14px;background:var(--ink);color:#fff;display:flex;flex-direction:column;gap:8px}
+.chatpin .k{font-size:10.5px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:6px}
+.chatpin .live{width:7px;height:7px;border-radius:99px;background:#8CC3A2;animation:pulse 1.6s infinite}
+.chatpin .b{background:rgba(255,255,255,.12);border-radius:14px 14px 14px 4px;padding:8px 10px;font-size:12.5px;line-height:1.35;font-weight:600}
+.chatpin .b.new{animation:slidein .55s cubic-bezier(.34,1.56,.64,1)}
+.chatpin .b b{display:block;font-size:10.5px;opacity:.7;margin-bottom:2px}
+.newmsgs{position:absolute;left:50%;transform:translateX(-50%);bottom:150px;background:var(--ink);color:#fff;font:900 12px var(--body);padding:8px 14px;border-radius:99px;box-shadow:var(--lift);z-index:6;animation:up .6s cubic-bezier(.34,1.56,.64,1)}
+.dmbanner{position:absolute;left:14px;right:14px;top:56px;background:var(--surface);border-radius:20px;padding:10px 12px;box-shadow:var(--lift);display:flex;gap:10px;align-items:center;z-index:30;animation:down .6s cubic-bezier(.34,1.56,.64,1)}
+.dmbanner .bub{flex:1;min-width:0}.dmbanner .bub b{display:block;font-size:13px}.dmbanner .bub span{display:block;font-size:12.5px;color:var(--ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dmbanner .reply{flex:none;background:var(--accentMist);color:var(--accentText);font:900 12px var(--body);padding:7px 11px;border-radius:99px;animation:hop .7s .4s ease-out}
+.dmbanner .av{animation:jiggle .6s .3s ease-in-out}
+.bellwrap{position:relative}
+.bellwrap.ring{animation:ring .8s ease-in-out}
+.quiet{position:absolute;left:14px;right:14px;top:56px;background:rgba(21,46,82,.85);backdrop-filter:blur(6px);color:#fff;border-radius:14px;padding:8px 12px;font:800 12px var(--body);z-index:30;text-align:center;animation:down .4s}
+@keyframes down{0%{transform:translateY(-70px) scale(.9);opacity:0}60%{transform:translateY(8px) scale(1.03);opacity:1}80%{transform:translateY(-3px) scale(.99)}100%{transform:none;opacity:1}}
+@keyframes upout{0%{transform:none;opacity:1}30%{transform:translateY(6px) scale(1.02)}100%{transform:translateY(-70px) scale(.9);opacity:0}}
+@keyframes up{0%{transform:translate(-50%,40px) scale(.8);opacity:0}60%{transform:translate(-50%,-6px) scale(1.06);opacity:1}100%{transform:translate(-50%,0) scale(1)}}
+@keyframes pop{0%{transform:scale(.4);opacity:0}55%{transform:scale(1.18);opacity:1}75%{transform:scale(.94)}100%{transform:scale(1)}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes grow{0%{transform:scaleY(0) rotate(-2deg);opacity:0;margin-bottom:-60px}60%{transform:scaleY(1.06) rotate(.6deg);opacity:1;margin-bottom:12px}80%{transform:scaleY(.98) rotate(-.3deg)}100%{transform:none;margin-bottom:12px}}
+@keyframes slidein{0%{transform:translateY(16px) scale(.9);opacity:0}60%{transform:translateY(-3px) scale(1.04);opacity:1}100%{transform:none}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(140,195,162,.3)}50%{box-shadow:0 0 0 7px rgba(140,195,162,.05)}}
+@keyframes ring{0%,100%{transform:rotate(0)}15%{transform:rotate(-22deg) scale(1.15)}30%{transform:rotate(18deg) scale(1.15)}45%{transform:rotate(-12deg) scale(1.08)}60%{transform:rotate(8deg)}75%{transform:rotate(-4deg)}}
+@keyframes wobble{0%{transform:scale(.3) rotate(-20deg)}50%{transform:scale(1.3) rotate(10deg)}70%{transform:scale(.9) rotate(-5deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes hop{0%{transform:translateY(0)}30%{transform:translateY(-8px) scale(1.12,.9)}50%{transform:translateY(0) scale(.94,1.08)}70%{transform:translateY(-3px) scale(1.04,.97)}100%{transform:none}}
+@keyframes jiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg) scale(1.1)}50%{transform:rotate(8deg) scale(1.1)}75%{transform:rotate(-4deg)}}
+@keyframes cardin{0%{transform:scale(.7) translateY(30px);opacity:0}55%{transform:scale(1.05) translateY(-6px);opacity:1}75%{transform:scale(.98) translateY(2px)}100%{transform:none}}
+@keyframes iconbounce{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-10px) rotate(6deg)}}
+/* panel */
+.panel{width:470px;max-width:100%;background:#fff;border-radius:22px;box-shadow:0 10px 28px -14px rgba(13,35,66,.35);overflow:hidden}
+.pbody{padding:18px 20px;max-height:800px;overflow-y:auto;font-size:13.5px;line-height:1.55}
+.pbody h4{font-family:var(--display);font-size:17px;margin:16px 0 6px}.pbody h4:first-child{margin-top:0}
+.pbody p{margin:0 0 10px}.pbody .small{font-size:12px;color:#5B7290}
+.trig{display:flex;gap:10px;align-items:flex-start;border:1px solid #E5ECF4;border-radius:14px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.trig:hover{border-color:#D56ED1}
+.trig .ic{width:36px;height:36px;border-radius:12px;background:#F4F7FB;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+.trig b{display:block;font-size:13.5px}.trig span{color:#5B7290;font-size:12.5px}
+.trig .where{display:block;margin-top:4px;font-size:11px;font-weight:900;color:#2A5992}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px}
+th,td{text-align:left;padding:6px 6px;border-bottom:1px solid #E5ECF4;vertical-align:top}
+th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#5B7290}
+td b{font-weight:900}
+.yes{color:#4E8A69;font-weight:900}.no{color:#C4796B;font-weight:900}.cond{color:#2A5992;font-weight:900}
+.choice{border:1px solid #E5ECF4;border-radius:14px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.choice:hover,.choice.on{border-color:#D56ED1;background:#FDF6FD}
+.choice b{display:block;font-size:13.5px}.choice span{font-size:12.5px;color:#5B7290}
+</style>
+</head>
+<body>
+<div class="top"><h1>Little Blue Market · directory pins &amp; notifications</h1>
+  <div class="seg" id="mode"><button class="on" data-m="dir">Directory pins</button><button data-m="notif">Notification choreography</button></div>
+  <div class="seg"><button id="notesBtn">Hide notes</button></div></div>
+<div class="wrap">
+  <div class="phonewrap"><div class="phone"><div class="notch"></div><div class="screen" id="screen"></div></div></div>
+  <div class="panel"><div class="pbody" id="pbody"></div></div>
+</div>
+<script>
+const S={mode:'dir',dirVariant:'C',overlays:[],feedInserts:[],bell:0,commTab:0,youMail:0,chatNew:[],follow:0,quiet:false,tabDot:false};
+const $=id=>document.getElementById(id);
+const av=(t,c,cls='')=>`<div class="av ${cls}" style="background:${c}">${t}</div>`;
+const prod=(t,by,price,c1,c2,proof)=>`<div class="pin"><div class="ph"><div class="fb" style="background:linear-gradient(135deg,${c1},${c2})">${t}</div>${proof?`<div style="position:absolute;left:8px;top:8px;background:rgba(21,46,82,.72);color:#fff;font:800 11px var(--body);padding:4px 8px;border-radius:99px">🛒 ${proof}</div>`:''}<div class="cartbtn" onclick="event.stopPropagation();this.classList.add('hop');this.textContent='✓ Carted';T.cart()">🛒 Cart</div></div><div class="cap"><div class="t">${t}</div><div class="m">${av(by[0],by[1])}<span>${by[2]}</span><span class="price">${price}</span></div></div></div>`;
+
+/* ---- directory pin variants ---- */
+const DIR=[{n:'Sticker Punks Print Shop',cat:'Print shop',loc:'Ellington, CT',logo:'💀',tags:['BIPOC Owned','LGBTQ+ Owned','Woman Owned','Stickers','Books','Connecticut'],d:'Small, queer, interracial owned printshop specializing in custom stickers, posters, bookmarks, keychains, notepads and more. We focus on producing high-quality custom products with top-notch customer service and fast turnaround.',addr:'7 Brittanis Way, Ellington, CT 06029'},
+ {n:'Chocolate Dispensary',cat:'Café & shop',loc:'Echo Park, CA',logo:'🍫',tags:['Woman Owned','Food','California'],d:'Retail shop, tasting room and café curating sustainably sourced chocolate from small makers.',addr:'1735 Sunset Blvd, Los Angeles'}];
+function dirOld(x){return `<div class="pin"><div class="dirOld"><div class="logo">${x.logo}</div><h3>${x.n}</h3><div class="m">Express lane · ${x.loc.split(',')[1]}</div><p>${x.d}</p><div class="chips">${x.tags.map(t=>`<span>${t}</span>`).join('')}</div><div class="addr">${x.addr}</div></div></div>`;}
+function dirA(x){return `<div class="pin"><div class="dirA"><div class="cover">${x.logo}</div><div class="grad"></div><div class="badges">${x.tags.slice(0,2).map(t=>`<span>${t}</span>`).join('')}${x.tags.length>2?`<span>+${x.tags.length-2}</span>`:''}</div><div class="tx"><div class="k">Directory · ${x.cat}</div><h3>${x.n}</h3><div class="m">📍 ${x.loc}</div></div><div class="visit">Visit →</div></div></div>`;}
+function dirB(x){return `<div class="pin"><div class="dirB"><div class="row"><div class="lg">${x.logo}</div><div style="flex:1;min-width:0"><h3>${x.n}</h3><div class="m">${x.cat} · ${x.loc}</div></div></div><p>${x.d}</p><div class="chips">${x.tags.slice(0,2).map(t=>`<span>${t}</span>`).join('')}${x.tags.length>2?`<span class="more">+${x.tags.length-2}</span>`:''}</div></div></div>`;}
+
+const BANDS=['linear-gradient(135deg,#D56ED1,#A93BA5)','linear-gradient(135deg,#70A0D0,#2A5992)','linear-gradient(135deg,#8CC3A2,#4E8A69)','linear-gradient(135deg,#F4C48A,#D9A05B)'];
+function dirC(x,i=0){const band=BANDS[(x.n.length+i)%BANDS.length];return `<div class="pin bc" onclick="this.classList.toggle('flipped')"><div class="inner">
+  <div class="face front"><div class="band" style="background:${band}"><div class="stamp">${x.tags.some(t=>/Woman/.test(t))?'♀':x.tags.some(t=>/BIPOC/.test(t))?'✦':'★'}</div><div class="logo">${x.logo}</div></div><div class="perf"></div>
+    <div class="body"><h3>${x.n}</h3><div class="m">${x.cat} · ${x.loc}</div><p>${x.d}</p><div class="chips">${x.tags.slice(0,2).map(t=>`<span>${t}</span>`).join('')}${x.tags.length>2?`<span class="more">+${x.tags.length-2}</span>`:''}</div><div class="foot">📍 ${x.loc.split(',')[0]}<span class="go">Visit →</span></div></div></div>
+  <div class="face back"><div class="band" style="background:${band};height:34px"></div><div class="perf"></div><div class="body"><div class="k">Find us</div><div class="addr">${x.addr||'Online only'}</div><div class="k">Hours</div><div class="hrs">${x.hrs||'Tue–Sat 10–6<br>Sun 12–4'}</div><div class="btns"><span>Directions</span><span class="acc">Message</span></div></div><div class="flipnote">tap to flip back ↻</div></div>
+</div></div>`;}
+function dirRail(){return `<div class="pin wide"><div class="sect">Little Blue Cart directory <span class="see">Near you →</span></div><div class="dirRail">${DIR.concat([{n:'North Studio',cat:'Candles',loc:'Ferndale, MI',logo:'🕯️'},{n:'Daybreak Digitals',cat:'Print shop',loc:'Detroit, MI',logo:'🖨️'}]).map(x=>`<div class="c"><div class="lg">${x.logo}</div><b>${x.n}</b><span>${x.cat} · ${x.loc.split(',')[0]}</span></div>`).join('')}</div></div>`;}
+
+function feedDir(){
+  const v=S.dirVariant;const d=v==='old'?dirOld:v==='A'?dirA:v==='B'?dirB:v==='C'?dirC:null;
+  let m='';
+  if(v==='rail'){m+=prod('6-pack jam sampler',['BF','#C4796B','Berries'],'$25','#FBEBD3','#F4D8B0',340)+prod('Sunflower arch earrings',['MW','#D9A05B','Madi'],'$25','#EAE4F6','#D6CBEE')+dirRail()+prod('Magical raccoon sticker',['SG','#D56ED1','Sim'],'$3','#F9DDE9','#F3C3D7',512)+prod('Summer Song face cream',['UA','#4E8A69','Untamed'],'$32','#E7EFE9','#CFE2D5');}
+  else{m+=prod('6-pack jam sampler',['BF','#C4796B','Berries'],'$25','#FBEBD3','#F4D8B0',340)+d(DIR[0])+prod('Sunflower arch earrings',['MW','#D9A05B','Madi'],'$25','#EAE4F6','#D6CBEE')+prod('Magical raccoon sticker',['SG','#D56ED1','Sim'],'$3','#F9DDE9','#F3C3D7',512)+d(DIR[1])+prod('Summer Song face cream',['UA','#4E8A69','Untamed'],'$32','#E7EFE9','#CFE2D5')+prod('"Have courage" necklace',['SS','#5F6A82','Silver'],'$40','#DCE9F7','#BFD6EF');}
+  return `<div class="view"><div class="hdr"><div class="search">🔍 Search goods, makers, #tags</div><div class="circ">👜</div></div><div class="tabsrow"><div class="on">For you</div><div>Near me</div><div>Following</div></div><div class="scroll"><div class="lbl">${v==='old'?'Today: the listing as a pin':v==='A'?'Option A · cover tile':v==='B'?'Option B · business card (plain)':v==='C'?'Option B+ · business card, cute · tap to flip':'Option C · directory rail, not a pin'}</div><div class="masonry">${m}</div></div>${tabs()}</div>`;
+}
+
+/* ---- notifications ---- */
+function tabs(){return `<div class="tabs"><div class="tab on"><i>🏠</i>Market</div><div class="tab"><i>💬</i>Community${S.commTab?`<span class="bdg">${S.commTab}</span>`:S.tabDot?'<span class="dot"></span>':''}</div><div class="fabc">+</div><div class="tab"><i>👜</i>Cart</div><div class="tab"><i>👤</i>You${S.youMail?`<span class="bdg">${S.youMail}</span>`:''}</div></div>`;}
+function feedNotif(){
+  const inserts=S.feedInserts.map(x=>x).join('');
+  return `<div class="view"><div class="hdr"><div class="search">🔍 Search goods, makers, #tags</div><div class="bellwrap circ ${S._ring?'ring':''}">🔔${S.bell?`<span class="n">${S.bell}</span>`:''}</div></div><div class="tabsrow"><div class="on">For you</div><div>Near me</div><div style="position:relative">Following${S.follow?'<span class="newdot"></span>':''}</div></div>
+  <div class="scroll"><div class="masonry">${inserts}${prod('6-pack jam sampler',['BF','#C4796B','Berries'],'$25','#FBEBD3','#F4D8B0',340)}${prod('Sunflower arch earrings',['MW','#D9A05B','Madi'],'$25','#EAE4F6','#D6CBEE')}
+  <div class="pin"><div class="chatpin"><div class="k"><span class="live"></span>Open chat</div><div class="b"><b>Rae Ortiz</b>Anyone tabling Sunday?</div>${S.chatNew.map(t=>`<div class="b new"><b>Kali Brooks</b>${t}</div>`).join('')}<div style="font-size:11.5px;font-weight:800;opacity:.8">${14+S.chatNew.length} messages in the last hour</div></div></div>
+  ${prod('Magical raccoon sticker',['SG','#D56ED1','Sim'],'$3','#F9DDE9','#F3C3D7',512)}
+  <div class="pin"><div class="thr">${S._threadNew?'<span class="newpill">2 new</span>':''}<div class="k">Forum · #VoteCollection</div><div class="q">Does a cutting board count if proceeds go to the drive?</div><div class="foot">${6+(S._threadNew?2:0)} replies · Join in</div></div></div>
+  ${prod('Summer Song face cream',['UA','#4E8A69','Untamed'],'$32','#E7EFE9','#CFE2D5')}</div></div>
+  ${S.overlays.join('')}${tabs()}</div>`;
+}
+function render(){$('screen').innerHTML=S.mode==='dir'?feedDir():feedNotif();renderPanel();}
+function overlay(html,ms){S.overlays.push(html);render();if(ms)setTimeout(()=>{S.overlays=S.overlays.filter(h=>h!==html);render();},ms);}
+function ringBell(){S._ring=true;render();setTimeout(()=>{S._ring=false;render();},700);}
+const T={
+  announce(){overlay(`<div class="pop" onclick="S.overlays=[];render()"><div class="card" onclick="event.stopPropagation()"><div class="pi"><span>🛒</span></div><div class="pb"><h3>town hall · tonight 7pm</h3><p>Come tell us what to build next. Live in the app.</p><button class="bigbtn" onclick="S.overlays=[];S.feedInserts.unshift(heroPin('Town hall · tonight 7pm','What should we build next?','Remind me',''));S.bell++;render()">Remind me</button></div></div></div>`);},
+  promo(){S.feedInserts.unshift(heroPin('Daybreak Digitals · this week','20% off everything in the shop','Shop the drop','Promo'));render();},
+  dm(){if(S.quiet){overlay(`<div class="quiet">🌙 Quiet hours · 1 message waiting from Berries &amp; Flour</div>`,2500);S.youMail++;return;}S.youMail++;overlay(`<div class="dmbanner">${av('BF','#C4796B','md')}<div class="bub"><b>Berries &amp; Flour</b><span>Pawpaw's in through mid-October 🍂 want me to hold two?</span></div><span class="reply">Reply</span></div>`,4000);},
+  mention(){S.bell++;ringBell();overlay(`<div class="toast"><div class="ic">@</div><div><div class="kick">Mention · Open chat</div><b>Ama Mensah mentioned you</b><span>"@morgan Kali's in Ypsi too 💙"</span></div><span class="go">Open</span></div>`,3200);},
+  comment(){S.bell++;ringBell();overlay(`<div class="toast"><div class="ic">💬</div><div><div class="kick">Your post</div><b>Holler Goods replied</b><span>"not so far — it's a thread embroidery"</span></div><span class="go">See</span></div>`,3200);},
+  forum(){S._threadNew=true;S.tabDot=true;S.bell++;render();},
+  chat(){S.chatNew.push('Restock is live — first 20 have the stamped label 🫙');S.tabDot=true;render();overlay(`<div class="newmsgs">3 new in Open chat ↓</div>`,2800);},
+  tag(){S.follow=1;S.bell++;ringBell();overlay(`<div class="toast"><div class="ic">🏷️</div><div><div class="kick">New under #Handmade</div><b>Madi Winger Art posted</b><span>Checkered sunflower arches, back in stock</span></div><span class="go">See</span></div>`,3200);},
+  drop(){S.feedInserts.unshift(`<div class="pin wide insert"><div class="thr" style="display:flex;gap:12px;align-items:center;padding:12px 14px"><div class="ph" style="width:64px;height:64px;flex:none"><div class="fb" style="aspect-ratio:1;background:linear-gradient(135deg,#E7EFE9,#CFE2D5);font-size:9px">jam</div></div><div style="flex:1"><div class="k" style="color:var(--accentText)">Drop · you follow Berries &amp; Flour</div><div class="q" style="font-size:16px;margin:2px 0 2px">Pawpaw jam is back</div><div class="foot">20 jars · $12 · 5 min ago</div></div><div class="cartbtn" style="position:static">🛒 Cart</div></div></div>`);S.bell++;render();},
+  delivered(){S.feedInserts.unshift(`<div class="pin insert"><div style="border-radius:18px;padding:14px;background:var(--accentMist);display:flex;flex-direction:column;justify-content:space-between;min-height:140px"><div><div style="font-size:26px">📦</div><b style="font-family:var(--display);font-size:16px;line-height:1.15;display:block;margin:8px 0 4px">Your jam landed Tuesday</b><span style="font-size:12px;color:var(--accentText);font-weight:700">One tap to rate it →</span></div></div></div>`);S.bell++;S.youMail++;render();},
+  cart(){overlay(`<div class="toast"><div class="ic">🛒</div><div><b>In your little blue cart</b><span>6-pack jam sampler · tap to view</span></div><span class="go">View</span></div>`,2400);},
+  quiet(){S.quiet=!S.quiet;render();},
+  reset(){Object.assign(S,{overlays:[],feedInserts:[],bell:0,commTab:0,youMail:0,chatNew:[],follow:0,tabDot:false,_threadNew:false});render();}
+};
+function heroPin(k,h,cta,promo){return `<div class="pin wide insert"><div class="hero">${promo?`<span class="promo">${promo}</span>`:''}<div class="k">${k}</div><h3>${h}</h3><span class="cta">${cta}</span></div></div>`;}
+
+/* ---- panel ---- */
+function renderPanel(){const b=$('pbody');
+  if(S.mode==='dir'){b.innerHTML=`<h4>Why it reads long</h4><p>Today a directory listing is rendered as the <em>whole listing</em> inside a pin: logo at full width, name, city, the entire description, every tag as a chip, then the street address. It's a profile page in a slot meant for a photo. Everything else in the grid is a picture with two lines under it.</p>
+  <h4>Pick a treatment (tap to preview)</h4>
+  ${[['C','Business card, cute (your pick — recommended)','A real card: a coloured brand band with a dashed identity stamp, the logo hanging over the band edge, a perforation line, the two-line clamp, dashed-border badges, and a dashed footer with the city and Visit →. Tap it and it flips to the back: address, hours, Directions / Message. Same short height as option B.'],['A','Cover tile','Logo or storefront photo fills a 4:5 tile; name and category overlaid on a gradient; two identity badges top-left with "+N"; a white Visit pill. Same footprint as a product photo, so the grid keeps its rhythm. Description and address live on the listing page.'],['B','Business card','White card: 48px logo, name, category · city, a 2-line clamped description, two chips + "+N". Shorter than today, but still a text card in a photo grid — it will always look like an ad.'],['rail','Directory rail (not a pin)','Directory doesn\'t compete with products at all: one wide "Little Blue Cart directory · Near you" rail of 150px mini cards, once per feed page. Best when there are many listings and few have photos.'],['old','Today (for comparison','What\'s in the app now.']].map(([v,t,d])=>`<div class="choice ${S.dirVariant===v?'on':''}" onclick="S.dirVariant='${v}';render()"><b>${t}</b><span>${d}</span></div>`).join('')}
+  <h4>Rules for the directory pin</h4><p>Name max 2 lines. Category + city on one line. Max 2 badges shown (identity ones first: Woman/BIPOC/LGBTQ+ Owned), "+N" for the rest. No description, no address, no hours on the pin — those are what the listing page is for. If the listing has no logo or photo, use a gradient tile from the maker palette with the initials. Cap directory pins at 1 in 8 items, or use the rail.</p>
+  <h4>Where it goes in the feed recipe</h4><p>Directory listings are "moments", not human posts: slot them like the makers rail — once per page — and pull the ones <em>near you</em> first. In the tag page, a directory pin appears only when the listing carries that tag.</p>`;}
+  else{b.innerHTML=`<p class="small">Tap a trigger and watch the phone. Each one uses the surface the matrix says it should — and nothing else.</p>
+  ${[['📣','Announcement (from you)','Popup once on open → hero pin at the top of the feed → bell. Never a toast, never mid-scroll.','announce'],['🏷️','Promo / ad (seller)','Hero pin labelled PROMO, one per feed page. No popup, no push, no bell.','promo'],['✉️','Direct message','Foreground: banner from the top with the text and a Reply pill, 4s. Background: push. Badge on You (mail).','dm'],['@','Mention','Toast + bell ring + push. The one community event that always interrupts.','mention'],['💬','Reply to your post/comment','Toast + bell. Push only if you\'re away.','comment'],['🧵','Forum reply (thread you\'re in)','No toast. "2 new" pill on the thread pin, dot on Community, bell row. Digest push at most every 30 min.','forum'],['🟢','Open chat message','Never push, never toast. The chat pin gains the message live; "3 new ↓" pill if you\'re in the room; dot on Community after 5+.','chat'],['🔔','New post under a tag you follow','Toast + bell + push (if the tag\'s Notify is on) and a dot on the Following tab.','tag'],['🫙','Drop from a maker you follow','A drop pin slides into the top of the feed + bell + push. No toast — the pin is the notification.','drop'],['📦','Delivered → review','Nudge pin in the feed + quiet banner on You. Push at delivery only.','delivered'],['🛒','Your own action (cart)','Toast only. Never a bell entry for something you did yourself.','cart'],['🌙','Toggle quiet hours','10pm–8am: no pushes, no banners; a one-line "waiting" strip instead. Badges still count.','quiet'],['↺','Reset','Clear everything.','reset']].map(([i,t,d,f])=>`<div class="trig" onclick="T.${f}()"><div class="ic">${i}</div><div><b>${t}</b><span>${d}</span></div></div>`).join('')}
+  <h4>The matrix</h4>
+  <table><tr><th>Event</th><th>Push</th><th>Toast / banner</th><th>Bell</th><th>Feed pin</th><th>Badge</th></tr>
+  ${[['Announcement','<span class=yes>yes</span>','<span class=no>popup once</span>','<span class=yes>yes</span>','<span class=yes>hero</span>','—'],['Promo / ad','<span class=no>no</span>','<span class=no>no</span>','<span class=no>no</span>','<span class=yes>hero · PROMO</span>','—'],['DM','<span class=cond>bg only</span>','<span class=yes>banner 4s</span>','<span class=no>no</span>','<span class=no>no</span>','You ✉'],['Mention','<span class=yes>yes</span>','<span class=yes>toast</span>','<span class=yes>yes</span>','—','—'],['Reply to you','<span class=cond>bg only</span>','<span class=yes>toast</span>','<span class=yes>yes</span>','—','—'],['Forum reply','<span class=cond>digest 30m</span>','<span class=no>no</span>','<span class=yes>yes</span>','<span class=yes>"N new" pill</span>','Community •'],['Open chat','<span class=no>never</span>','<span class=no>no</span>','<span class=no>no</span>','<span class=yes>live pin</span>','Community • (5+)'],['Tag post','<span class=cond>if Notify</span>','<span class=yes>toast</span>','<span class=yes>yes</span>','<span class=yes>in Following</span>','Following •'],['Drop (followed maker)','<span class=yes>yes</span>','<span class=no>no</span>','<span class=yes>yes</span>','<span class=yes>drop pin</span>','—'],['Shipped / delivered','<span class=yes>yes</span>','<span class=no>no</span>','<span class=yes>yes</span>','<span class=yes>review nudge</span>','You •'],['Your own actions','<span class=no>no</span>','<span class=yes>toast</span>','<span class=no>no</span>','—','—']].map(r=>`<tr>${r.map((c,i)=>i?`<td>${c}</td>`:`<td><b>${c}</b></td>`).join('')}</tr>`).join('')}</table>
+  <h4>Motion language</h4><p>Everything enters with an overshoot (<code>cubic-bezier(.34,1.56,.64,1)</code>): toasts drop in, squash 3% and settle; badges wobble in with a little rotation; the cart pill hops (squash-and-stretch) and turns ink; new feed pins grow from the top with a half-degree tilt; the popup card springs up while its cart icon bobs. Durations 550–700ms so it reads as playful, never slow. In Flutter: <code>Curves.elasticOut</code> / <code>Curves.easeOutBack</code> with <code>AnimatedScale</code>, <code>AnimatedSlide</code>, and <code>flutter_animate</code>'s <code>.shake()</code> for the wobble.</p>
+  <h4>Timing rules</h4><p><b>One thing at a time.</b> A single toast slot; a new one replaces the old. A popup and a toast never overlap. <b>Interrupt only for people talking to <em>you</em>:</b> DMs, mentions, replies. Everything else lands in a place you'll look anyway (feed pin, badge, bell). <b>Announcements:</b> one popup per app-open, only if unseen, max 3 a week (every one is a push). <b>Promos:</b> feed only, one per page, labelled, never on the first open of the day. <b>Forum:</b> batch into a 30-minute digest push ("6 new replies in 2 threads"). <b>Open chat:</b> the room is ambient — it shows up as the live pin and a tab dot, never as a push. <b>Quiet hours</b> 10pm–8am by default, user-adjustable: nothing buzzes, badges still count, a "waiting" strip on next open. <b>Dedupe:</b> if you're already looking at the thread/DM, no toast. <b>Rate limit:</b> max one push per 20 minutes per user outside DMs.</p>
+  <h4>What this needs in code</h4><p class="small">Frontend: toast slot + banner + bell ring live in <code>LbmToast</code> (plan T1.6); pins for drop/nudge exist (T1.7); "N new" pill on <code>ThreadPin</code>; "3 new ↓" in chat; quiet-hours strip. Backend: <code>shouldPush</code> gets quiet hours + the 20-min rate limit + forum digest (a scheduled function that rolls up unsent forum notifications every 30 min); promos never call <code>notify()</code>.</p>`;}
+}
+document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{S.mode=b.dataset.m;document.querySelectorAll('#mode button').forEach(x=>x.classList.toggle('on',x===b));render();});
+let notes=true;$('notesBtn').onclick=function(){notes=!notes;document.querySelector('.panel').style.display=notes?'':'none';this.textContent=notes?'Hide notes':'Show notes';fit();};
+function fit(){const top=document.querySelector('.top').offsetHeight;const sc=Math.min(1,(window.innerHeight-top-32)/864);document.documentElement.style.setProperty('--s',sc.toFixed(3));}
+window.addEventListener('resize',fit);fit();render();
+</script>
+</body>
+</html>
