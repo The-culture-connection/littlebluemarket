@@ -379,6 +379,20 @@ class _NaturalFrame extends StatefulWidget {
   State<_NaturalFrame> createState() => _NaturalFrameState();
 }
 
+/// Every photograph shape measured so far, by url.
+///
+/// A pin is rebuilt every time a page of the feed arrives, and a rebuilt
+/// pin used to start again from the assumed shape and jump a second time
+/// once its image decoded. Decoding is free by then, the image being in
+/// Flutter's cache, but the frame does not know that until the listener
+/// fires a frame later. Remembering the number means a photograph moves
+/// the layout once in a session, the first time it is ever seen, and never
+/// again (Grace, 2026-09-29: "when I let go it puts content just lower").
+///
+/// Unbounded on purpose: it is two doubles per photograph, and the image
+/// cache holding the pixels is the thing with a real budget.
+final _measured = <String, double>{};
+
 class _NaturalFrameState extends State<_NaturalFrame> {
   /// The photograph's own ratio, once its pixels have been decoded. Kept raw
   /// rather than pre-clamped so that changing the clamp re-derives the shape
@@ -387,10 +401,24 @@ class _NaturalFrameState extends State<_NaturalFrame> {
   ImageStream? _stream;
   ImageStreamListener? _listener;
 
-  /// 4:3 until the pixels are known, but never outside the caller's clamp: a
-  /// pin that started at 4:3 and settled at 5:4 would visibly jump.
+  /// The measured shape, then a square, never outside the caller's clamp.
+  ///
+  /// A square rather than 4:3 because 4:3 clamps to the widest and
+  /// shortest frame the grid allows, so nearly every photograph got taller
+  /// when it arrived and shoved the column below it down. A square is in
+  /// the middle of the range and is what a product shot usually is, so most
+  /// pins now do not move at all and the rest move half as far.
+  ///
+  /// The real answer is for the catalogue to carry each photograph's shape,
+  /// so the frame is right on the first frame. Until then this is a guess,
+  /// and the honest thing is to guess in the middle.
   double get _aspect =>
-      (_raw ?? 4 / 3).clamp(widget.minAspect, widget.maxAspect);
+      (_raw ?? _remembered ?? 1).clamp(widget.minAspect, widget.maxAspect);
+
+  double? get _remembered {
+    final url = widget.url;
+    return url == null || url.isEmpty ? null : _measured[url];
+  }
 
   @override
   void didChangeDependencies() {
@@ -411,6 +439,9 @@ class _NaturalFrameState extends State<_NaturalFrame> {
     _detach();
     final url = widget.url;
     if (url == null || url.isEmpty) return;
+    // Seen before: take the shape now, so the first frame is already the
+    // right height and nothing moves when the listener confirms it.
+    _raw ??= _measured[url];
     final asset = ProductPhoto.bundlePath(url);
     final provider = asset != null
         ? AssetImage(asset) as ImageProvider
@@ -419,6 +450,7 @@ class _NaturalFrameState extends State<_NaturalFrame> {
       final w = info.image.width.toDouble();
       final h = info.image.height.toDouble();
       final raw = w <= 0 || h <= 0 ? 4 / 3 : w / h;
+      _measured[url] = raw;
       if (!mounted || raw == _raw) return;
       setState(() => _raw = raw);
     }, onError: (_, _) {});
@@ -486,7 +518,8 @@ class NaturalPhoto extends StatelessWidget {
     final c = context.c;
     final missing = url.isEmpty;
     final placeholder =
-        fallback ?? ColoredBox(color: c.skyWash, child: const SizedBox.expand());
+        fallback ??
+        ColoredBox(color: c.skyWash, child: const SizedBox.expand());
 
     return ClipRRect(
       borderRadius: radius,
@@ -511,11 +544,7 @@ class NaturalPhoto extends StatelessWidget {
 /// who never think to pinch, and the shade behind it is black so the
 /// photograph is the only thing on screen.
 class PhotoViewer extends StatefulWidget {
-  const PhotoViewer({
-    super.key,
-    required this.product,
-    this.initialIndex = 0,
-  });
+  const PhotoViewer({super.key, required this.product, this.initialIndex = 0});
 
   final Product product;
   final int initialIndex;
@@ -547,10 +576,8 @@ class _PhotoViewerState extends State<PhotoViewer> {
             controller: _pages,
             itemCount: images.length,
             onPageChanged: (page) => setState(() => _page = page),
-            itemBuilder: (context, i) => _ZoomablePhoto(
-              url: images[i],
-              product: widget.product,
-            ),
+            itemBuilder: (context, i) =>
+                _ZoomablePhoto(url: images[i], product: widget.product),
           ),
           Positioned(
             top: MediaQuery.viewPaddingOf(context).top + 6,
@@ -625,9 +652,10 @@ class _ZoomablePhotoState extends State<_ZoomablePhoto>
   }
 
   void _animateTo(Matrix4 target) {
-    _tween = Matrix4Tween(begin: _view.value, end: target).animate(
-      CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic),
-    );
+    _tween = Matrix4Tween(
+      begin: _view.value,
+      end: target,
+    ).animate(CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic));
     _anim
       ..removeListener(_follow)
       ..addListener(_follow)

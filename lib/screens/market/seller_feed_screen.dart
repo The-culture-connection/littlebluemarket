@@ -506,7 +506,9 @@ class _NotifyMeButtonState extends ConsumerState<_NotifyMeButton> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            on ? 'You will hear when they post.' : 'No more posts from them.',
+            on
+                ? 'Following. Their posts are in your Following feed.'
+                : 'Unfollowed.',
           ),
         ),
       );
@@ -522,7 +524,7 @@ class _NotifyMeButtonState extends ConsumerState<_NotifyMeButton> {
     final following =
         ref.watch(followingProvider(widget.personId)).value ?? false;
     return PillButton(
-      following ? 'Notifying you' : 'Notify me',
+      following ? 'Following' : 'Follow',
       icon: following
           ? Icons.notifications_active_rounded
           : Icons.notifications_none_rounded,

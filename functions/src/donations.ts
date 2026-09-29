@@ -1,3 +1,4 @@
+import { logger } from 'firebase-functions';
 import { HttpsError } from 'firebase-functions/v2/https';
 
 import { DONATION_CHIP_IN_HANDLE, DONATION_ROUND_UP_HANDLE } from './config.ts';
@@ -137,11 +138,82 @@ export function resetDonationProductIds(): void {
   productIds = null;
 }
 /** The configured handles, trimmed. Empty means the feature is off. */
+/// The handles we use unless an environment names different ones.
+///
+/// These are our own products and we choose what they are called, so
+/// there is nothing to configure in the normal case. The parameters stay
+/// for the abnormal one: a store that already has something at that
+/// handle, or a second store with its own naming.
+export const defaultChipInHandle = 'lbm-chip-in';
+export const defaultRoundUpHandle = 'lbm-round-up';
+
+/**
+ * The handles to look for. Never empty.
+ *
+ * It used to be that an empty parameter meant "this environment has no
+ * donations", so switching the feature on in a store also meant editing a
+ * file and redeploying. That is a deploy standing between Grace and a
+ * product she just created, and she should not need one
+ * (Grace, 2026-09-29: "when it is added in Shopify I do not have to do
+ * anything"). Whether the products exist in the store is now the only
+ * switch, and the store is the thing that knows.
+ */
 export function donationHandles(): { chipIn: string; roundUp: string } {
   return {
-    chipIn: DONATION_CHIP_IN_HANDLE.value().trim(),
-    roundUp: DONATION_ROUND_UP_HANDLE.value().trim(),
+    chipIn: DONATION_CHIP_IN_HANDLE.value().trim() || defaultChipInHandle,
+    roundUp: DONATION_ROUND_UP_HANDLE.value().trim() || defaultRoundUpHandle,
   };
+}
+
+/** Which donation products this store actually has, cached briefly. */
+let availability: { has: { chipIn: boolean; roundUp: boolean }; at: number } | null =
+  null;
+
+/**
+ * Short, because this is the delay between creating the product in
+ * Shopify and the app offering it. Long enough that app starts do not
+ * each cost two Storefront calls.
+ */
+const AVAILABILITY_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Whether the store has each donation product, asked of the store.
+ *
+ * A failure answers "no" rather than throwing: this is called from
+ * `appConfig`, which every app start depends on, and a Shopify hiccup
+ * must hide a donation button rather than stop the app from starting.
+ */
+export async function donationAvailability(): Promise<{
+  chipIn: boolean;
+  roundUp: boolean;
+}> {
+  if (availability && Date.now() - availability.at < AVAILABILITY_TTL_MS) {
+    return availability.has;
+  }
+  const { chipIn, roundUp } = donationHandles();
+  const has = { chipIn: false, roundUp: false };
+  try {
+    const [a, b] = await Promise.all([
+      donationVariants(chipIn),
+      donationVariants(roundUp),
+    ]);
+    // A product with no variants cannot be bought, so it does not count
+    // as present: a half-made product would otherwise show a button that
+    // fails at the till.
+    has.chipIn = a.length > 0;
+    has.roundUp = b.length > 0;
+  } catch (error) {
+    logger.warn('Could not ask the store about the donation products', {
+      error: String(error),
+    });
+  }
+  availability = { has, at: Date.now() };
+  return has;
+}
+
+/** Forgets the cached answer. Tests, and the admin portal. */
+export function resetDonationAvailability(): void {
+  availability = null;
 }
 
 /**

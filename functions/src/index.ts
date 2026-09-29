@@ -99,7 +99,12 @@ import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
 import { noteVendorFromCatalog, syncVendorRoster } from './roster_grant.ts';
 import { geocodeProfileIfNeeded } from './geocode.ts';
 import { geocodeDirectoryPage } from './directory_geo.ts';
-import { chipInCheckout, donationProductIds } from './donations.ts';
+import {
+  chipInCheckout,
+  donationAvailability,
+  donationHandles,
+  donationProductIds,
+} from './donations.ts';
 import {
   grantMembership,
   membershipProductIds,
@@ -460,21 +465,28 @@ export const sellerSearchCategories = onCall(
 
 /** Links that differ between the dev store and the real one. No account needed. */
 export const appConfig = onCall(
-  withLoudErrors('appConfig', async () => ({
-    registrationUrl: REGISTRATION_URL.value().trim(),
-    shipturtleUrl: 'https://app.shipturtle.com/',
-    directoryAddListingUrl: DIRECTORY_ADD_LISTING_URL.value().trim(),
-    // Empty until the donation products exist in that environment, and the
-    // app hides every donation surface while they are. That is the whole
-    // switch: the feature ships dark and is turned on by setting a value.
-    donationChipInHandle: DONATION_CHIP_IN_HANDLE.value().trim(),
-    donationRoundUpHandle: DONATION_ROUND_UP_HANDLE.value().trim(),
-    // Empty until the subscription exists in that store, and the Monthly
-    // card hides itself while it is. The two stores do not have to agree
-    // on an identifier, so the app is told both and uses the one it is on.
-    membershipAppleProductId: membershipProductIds().apple,
-    membershipPlayProductId: membershipProductIds().google,
-  })),
+  { secrets: [SHOPIFY_STOREFRONT_PRIVATE_TOKEN] },
+  withLoudErrors('appConfig', async () => {
+    // Asked of the store rather than of a config file, so the day Grace
+    // creates the products in Shopify is the day the app offers them,
+    // with nothing to edit and nothing to deploy.
+    const has = await donationAvailability();
+    const handles = donationHandles();
+    return {
+      registrationUrl: REGISTRATION_URL.value().trim(),
+      shipturtleUrl: 'https://app.shipturtle.com/',
+      directoryAddListingUrl: DIRECTORY_ADD_LISTING_URL.value().trim(),
+      // Empty until the product is really in the store, and the app hides
+      // every donation surface while it is. The store is the switch.
+      donationChipInHandle: has.chipIn ? handles.chipIn : '',
+      donationRoundUpHandle: has.roundUp ? handles.roundUp : '',
+      // Empty until the subscription exists in that store, and the Monthly
+      // card hides itself while it is. The two stores do not have to agree
+      // on an identifier, so the app is told both and uses the one it is on.
+      membershipAppleProductId: membershipProductIds().apple,
+      membershipPlayProductId: membershipProductIds().google,
+    };
+  }),
 );
 
 /**

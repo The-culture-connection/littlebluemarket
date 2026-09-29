@@ -218,7 +218,7 @@ class _NotificationSettingsScreenState
                   ),
                   _Switch(
                     title: 'Posts from people you follow',
-                    subtitle: 'Anyone you tapped Notify me on posts something',
+                    subtitle: 'Anyone you follow posts something',
                     value: p.newPosts,
                     onChanged: (v) => _save(p.copyWith(newPosts: v)),
                   ),
