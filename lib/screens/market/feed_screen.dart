@@ -83,6 +83,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     super.dispose();
   }
 
+  /// Whether the scroll is past the point where the next page is fetched, so
+  /// crossing it asks once rather than on every frame below it.
+  bool _pastThreshold = false;
+
   /// Fetches the next page once four fifths of the way down, so the grid is
   /// already longer by the time the bottom would have arrived.
   void _maybeLoadMore() {
@@ -90,8 +94,17 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     if (!_controller.hasClients) return;
     final position = _controller.position;
     if (position.maxScrollExtent <= 0) return;
-    if (position.pixels < position.maxScrollExtent * 0.8) return;
-    ref.read(feedPagingProvider.notifier).loadMore();
+    final past = position.pixels >= position.maxScrollExtent * 0.8;
+    // Once per crossing, not once per pixel. This listener runs on every
+    // frame of a scroll, and on a short feed the threshold is met on the
+    // first one, so an undebounced version asked the notifier to load on
+    // every frame of every fling.
+    if (past == _pastThreshold) return;
+    _pastThreshold = past;
+    if (!past) return;
+    ref
+        .read(feedPagingProvider.notifier)
+        .loadMore(liveTail: ref.read(feedProvider).value?.lastOrNull?.id);
   }
 
   Future<void> _refresh() async {
@@ -199,9 +212,20 @@ class _GridState extends ConsumerState<_Grid> {
 
   @override
   Widget build(BuildContext context) {
-    final items = ref
-        .watch(feedItemsProvider)
-        .whenData((next) => _shown = stableOrder(_shown, next));
+    final items = ref.watch(feedItemsProvider);
+    // Read off the value, never mapped through it.
+    //
+    // `whenData` looks like the obvious way to do this and is a trap:
+    // mapping an AsyncLoading *that is carrying the previous value* returns a
+    // bare AsyncLoading with no value at all. LbmAsync then sees `hasValue`
+    // false, drops the whole grid to the skeleton, and the CustomScrollView
+    // is unmounted. When the data lands again the controller attaches a new
+    // ScrollPosition, which restores the offset it saved — so a fling
+    // travels, snaps back to where it began, travels, snaps back, every time
+    // anything the feed reads refreshes (Grace, 2026-09-29, with a screen
+    // recording). The stale data was supposed to stay on screen; this is the
+    // one line that threw it away.
+    if (items.hasValue) _shown = stableOrder(_shown, items.requireValue);
     final ui = ref.watch(notificationsUiProvider);
     final filter = ref.watch(feedFilterProvider);
 
@@ -232,7 +256,11 @@ class _GridState extends ConsumerState<_Grid> {
       items,
       skeleton: const PostCardSkeleton(),
       onRetry: () => ref.invalidate(feedProvider),
-      data: (shown) {
+      // The order this grid has settled on, not the one the provider just
+      // produced: `_shown` is the same list with anything already on screen
+      // left where it was.
+      data: (_) {
+        final shown = _shown;
         if (shown.isEmpty) {
           return CustomScrollView(
             controller: controller,

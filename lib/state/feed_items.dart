@@ -453,13 +453,21 @@ class FeedPagingNotifier extends Notifier<FeedPaging> {
   /// The first page stays a live stream; only the tail is paged. That way a
   /// new post still appears at the top without re-fetching everything below
   /// it, and scrolling never resets what has been loaded.
-  Future<void> loadMore() async {
+  /// Fetches the next page after [liveTail], the last post the live stream
+  /// is showing.
+  ///
+  /// Without it the very first call asks for the newest twenty **again**: the
+  /// same posts the stream already has, fetched, deduplicated and thrown
+  /// away. That is a round trip and two rebuilds of the whole grid for
+  /// nothing, and on a short feed it happens on the first pixel of every
+  /// fling, because the 80% threshold is met immediately.
+  Future<void> loadMore({String? liveTail}) async {
     if (state.loading || state.done) return;
     state = state.copyWith(loading: true);
     try {
       final page = await ref
           .read(socialRepositoryProvider)
-          .feedPage(cursor: state.cursor);
+          .feedPage(cursor: state.cursor ?? liveTail);
       state = FeedPaging(
         extra: [...state.extra, ...page.items],
         cursor: page.cursor,

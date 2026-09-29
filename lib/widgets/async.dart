@@ -100,14 +100,23 @@ class LbmAsync<T> extends StatelessWidget {
           ? (empty ?? const LbmEmpty(title: 'Nothing here yet'))
           : data(loaded);
 
-      if (value.isLoading) {
-        return _RefreshingOverlay(child: body);
-      }
-      if (value.hasError) {
+      // Always the same shape, whether or not a refresh is happening.
+      //
+      // This used to return `body` on its own and wrap it in the overlay only
+      // while refreshing. Swapping between a bare child and a Stack changes
+      // the element tree, so everything inside is unmounted and built again —
+      // and a scroll view rebuilt that way gets a **new ScrollPosition**,
+      // which restores the offset it last saved. On the feed that is a fling
+      // snapping back to where it started, once per refresh (Grace,
+      // 2026-09-29, with a screen recording).
+      //
+      // The hairline is drawn or not; the tree around it does not move.
+      return _RefreshingOverlay(
+        refreshing: value.isLoading,
         // Stale data plus a failed refresh: keep the content, say so quietly.
-        return _RefreshingOverlay(failed: true, child: body);
-      }
-      return body;
+        failed: value.hasError,
+        child: body,
+      );
     }
 
     if (value.hasError) {
@@ -122,10 +131,20 @@ class LbmAsync<T> extends StatelessWidget {
 }
 
 /// A hairline that marks a refresh happening over content already on screen.
+///
+/// Always present, and drawn only when there is something to say. The slot
+/// has to exist either way: a widget that appears and disappears around the
+/// content rebuilds the content with it, and a rebuilt scroll view loses its
+/// place. See the note in [LbmAsync.build].
 class _RefreshingOverlay extends StatelessWidget {
-  const _RefreshingOverlay({required this.child, this.failed = false});
+  const _RefreshingOverlay({
+    required this.child,
+    this.refreshing = false,
+    this.failed = false,
+  });
 
   final Widget child;
+  final bool refreshing;
   final bool failed;
 
   @override
@@ -141,7 +160,9 @@ class _RefreshingOverlay extends StatelessWidget {
           child: IgnorePointer(
             child: SizedBox(
               height: 2,
-              child: failed
+              child: !refreshing && !failed
+                  ? const SizedBox.shrink()
+                  : failed
                   ? ColoredBox(color: c.clay.withValues(alpha: 0.7))
                   : LinearProgressIndicator(
                       minHeight: 2,
