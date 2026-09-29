@@ -251,4 +251,31 @@ void main() {
       expect(find.text('COLLECTION'), findsOneWidget);
     });
   });
+
+  group('chipping in, on the You tab', () {
+    testWidgets('the row asks, and thanks once they have given', (
+      tester,
+    ) async {
+      // Quiet on purpose: the ask that does the work is the one in the feed,
+      // and somebody who has already given should find gratitude here rather
+      // than the same request again (phase 9, A3).
+      final container = await _pump(tester);
+      expect(find.text('Chip in to Little Blue Market'), findsOneWidget);
+      expect(find.text(r'From $2'), findsOneWidget);
+
+      // A gift this month flips the row and the feed stops asking.
+      final me = container.read(meProvider)!;
+      container.read(fixtureStoreProvider).people.value = {
+        ...container.read(fixtureStoreProvider).people.value,
+        me.id: me.copyWith(chippedInAt: DateTime.now()),
+      };
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('You chipped in this month'),
+        findsOneWidget,
+      );
+      expect(find.text('Chip in to Little Blue Market'), findsNothing);
+    });
+  });
 }

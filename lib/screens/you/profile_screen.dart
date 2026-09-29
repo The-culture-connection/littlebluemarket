@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
 import '../../router/nav.dart';
+import '../../state/donation_nudge.dart';
 import '../../state/notifications_ui.dart';
 import '../../state/providers.dart';
 import '../../state/session.dart';
@@ -150,6 +151,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 subtitle: 'Apply to open a shop',
                 onTap: () => context.push('/you/sell'),
               ),
+            const _ChipInRow(),
             const SizedBox(height: 6),
             // A seller gets their shop first. The labels are shorter when there
             // are three, so the row survives large text.
@@ -683,4 +685,32 @@ Future<void> showPurchaseSheet(BuildContext context, Purchase purchase) {
       ],
     );
   });
+}
+
+/// Chipping in, or the thank-you once they have.
+///
+/// Quiet on purpose and never a banner: the ask that does the work is the
+/// one in the feed, and somebody who has already given should find gratitude
+/// here rather than the same request again.
+///
+/// Hidden entirely when the donation product is not configured for this
+/// environment, which is how the feature ships dark.
+class _ChipInRow extends ConsumerWidget {
+  const _ChipInRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canChipIn = ref.watch(appConfigProvider).value?.canChipIn ?? false;
+    if (!canChipIn) return const SizedBox.shrink();
+
+    final gave = ref.watch(chippedInThisMonthProvider);
+    return _QuietRow(
+      icon: gave ? Icons.favorite_rounded : Icons.eco_outlined,
+      title: gave
+          ? 'You chipped in this month — thank you'
+          : 'Chip in to Little Blue Market',
+      subtitle: gave ? 'See the bill' : r'From $2',
+      onTap: () => context.push('/you/chip-in'),
+    );
+  }
 }

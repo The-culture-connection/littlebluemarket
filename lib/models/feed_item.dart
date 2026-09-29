@@ -154,6 +154,10 @@ enum NudgeKind {
 
   /// A forum the person joined has moved on without them.
   forumActivity,
+
+  /// Little Blue Market is member-run and this month has a bill. Phase 9;
+  /// its cadence and its copy live in state/donation_nudge.dart.
+  chipIn,
 }
 
 /// A small prompt to do the one thing that would make the app better for

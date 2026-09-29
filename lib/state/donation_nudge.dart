@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/providers.dart';
+import 'providers.dart';
 import '../models/funding.dart';
 import 'session.dart';
 
@@ -158,4 +158,50 @@ final chippedInThisMonthProvider = Provider<bool>((ref) {
   final at = ref.watch(meProvider)?.chippedInAt;
   if (at == null) return false;
   return Funding.monthOf(at) == Funding.monthOf(DateTime.now());
+});
+
+/// Whether the nudge has already been shown this time the app was opened.
+///
+/// In memory, never written down: "this session" means a session. Reset by
+/// the app being killed, which is the only definition that does not need a
+/// clock to interpret.
+class NudgeShown extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void markShown() => state = true;
+}
+
+final nudgeShownProvider = NotifierProvider<NudgeShown, bool>(NudgeShown.new);
+
+/// Every dismissal this phone remembers, for the three-in-ninety-days rule.
+class NudgeDismissals extends Notifier<List<DateTime>> {
+  @override
+  List<DateTime> build() => const [];
+
+  void record(DateTime at) => state = [...state, at];
+}
+
+final nudgeDismissalsProvider =
+    NotifierProvider<NudgeDismissals, List<DateTime>>(NudgeDismissals.new);
+
+/// Where the chip-in nudge goes on this feed, or null.
+///
+/// One place the app asks, so the widget layer never re-derives it.
+final chipInSlotProvider = Provider.family<int?, int>((ref, itemCount) {
+  final canChipIn = ref.watch(appConfigProvider).value?.canChipIn ?? false;
+  if (!canChipIn) return null;
+
+  return donationNudgeSlot(
+    NudgeContext(
+      now: DateTime.now(),
+      itemCount: itemCount,
+      isGuest: ref.watch(isGuestProvider),
+      shownThisSession: ref.watch(nudgeShownProvider),
+      hasHero: ref.watch(announcementsProvider).value?.isNotEmpty ?? false,
+      dismissals: ref.watch(nudgeDismissalsProvider),
+      dismissedAt: ref.watch(nudgeDismissalsProvider).lastOrNull,
+      chippedInAt: ref.watch(meProvider)?.chippedInAt,
+    ),
+  );
 });

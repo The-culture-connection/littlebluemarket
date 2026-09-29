@@ -10,7 +10,9 @@ import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/cart_composer.dart';
 import '../../widgets/checkout_launcher.dart';
+import '../../state/round_up.dart';
 import '../../widgets/primitives.dart';
+import '../../widgets/round_up_card.dart';
 import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/sheets.dart';
@@ -84,6 +86,7 @@ class CartScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              RoundUpCard(subtotalCents: cart.subtotalCents),
               _Summary(cart: cart),
             ],
             _SavedShelf(saved: cart.saved),
@@ -125,9 +128,7 @@ class _SavedShelf extends ConsumerWidget {
         LbmCard(
           margin: const EdgeInsets.symmetric(horizontal: 14),
           child: RowStack(
-            children: [
-              for (final line in saved) _SavedLineRow(line: line),
-            ],
+            children: [for (final line in saved) _SavedLineRow(line: line)],
           ),
         ),
       ],
@@ -466,10 +467,14 @@ class _SummaryState extends ConsumerState<_Summary> {
     setState(() => _working = true);
 
     final messenger = ScaffoldMessenger.of(context);
+    // Read once, here, so what is charged is what the totals showed.
+    final roundUp = ref.read(roundUpProvider)
+        ? roundUpCentsFor(widget.cart.subtotalCents)
+        : null;
     try {
       final handoff = await ref
           .read(commerceRepositoryProvider)
-          .beginCheckout();
+          .beginCheckout(roundUpCents: roundUp);
       if (!mounted) return;
       setState(() => _working = false);
       // Nothing here claims the purchase succeeded. The app cannot observe a
@@ -497,6 +502,7 @@ class _SummaryState extends ConsumerState<_Summary> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _Line(label: 'Subtotal', value: cart.subtotal),
+            RoundUpLine(subtotalCents: cart.subtotalCents),
             const SizedBox(height: 10),
             _Line(
               label: 'Shipping & tax',

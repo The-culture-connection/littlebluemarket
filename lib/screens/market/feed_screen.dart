@@ -21,6 +21,7 @@ import '../../widgets/pins/cart_pin.dart';
 import '../../widgets/pins/chat_pin.dart';
 import '../../widgets/pins/directory_pin.dart';
 import '../../widgets/pins/makers_rail.dart';
+import '../../widgets/pins/donation_nudge_pin.dart';
 import '../../widgets/pins/nudge_pin.dart';
 import '../../widgets/pins/product_pin.dart';
 import '../../widgets/pins/review_pin.dart';
@@ -284,6 +285,15 @@ Widget _pinFor(
   ChatItem i => ChatPin(key: ValueKey(i.key), item: i),
   // Announcements are the banner above the grid, never a pin in it.
   AnnouncementItem i => AnnouncementPin(key: ValueKey(i.key), item: i),
+  // The chip-in nudge is its own pin: sage, and it carries a number read
+  // from funding/{month} rather than a fixed line. No hop: it arrives on
+  // its own cadence rather than because something just happened.
+  NudgeItem i when i.nudge == NudgeKind.chipIn => DonationNudgePin(
+    key: ValueKey(i.key),
+    onTap: () => _openNudge(context, ref, i),
+    onDismiss: () =>
+        ref.read(dismissedNudgesProvider.notifier).dismiss(i.dismissKey),
+  ),
   NudgeItem i => NudgePin(
     key: ValueKey(i.key),
     item: i,
@@ -294,7 +304,6 @@ Widget _pinFor(
   ),
   MakersRailItem i => MakersRail(key: ValueKey(i.key), item: i),
 };
-
 void _openNudge(BuildContext context, WidgetRef ref, NudgeItem item) {
   switch (item.nudge) {
     case NudgeKind.reviewDelivered:
@@ -306,6 +315,8 @@ void _openNudge(BuildContext context, WidgetRef ref, NudgeItem item) {
       context.go('/community');
     case NudgeKind.forumActivity:
       context.go('/community/forums');
+    case NudgeKind.chipIn:
+      context.go('/you/chip-in');
   }
 }
 

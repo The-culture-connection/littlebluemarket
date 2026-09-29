@@ -42,6 +42,14 @@ class NudgePin extends StatelessWidget {
       body: 'Something you bought arrived. A star on its own counts.',
       cta: 'Rate it',
     ),
+    // Drawn by DonationNudgePin, which is sage and carries a live number,
+    // so this is only here to keep the switch exhaustive.
+    NudgeKind.chipIn => (
+      icon: Icons.eco_rounded,
+      title: 'Member-run',
+      body: 'No ads, no investors.',
+      cta: 'Chip in',
+    ),
     NudgeKind.sayHi => (
       icon: Icons.waving_hand_rounded,
       title: 'Say hello',
@@ -66,6 +74,7 @@ class NudgePin extends StatelessWidget {
       NudgeKind.reviewDelivered => (c.surface, c.accentMist, c.accentText),
       NudgeKind.sayHi => (c.sageMist, c.sage, c.surface),
       NudgeKind.forumActivity => (c.skyMist, c.skyWash, c.skyDeep),
+      NudgeKind.chipIn => (c.sageMist, c.sageMist, c.ink),
     };
 
     return GestureDetector(

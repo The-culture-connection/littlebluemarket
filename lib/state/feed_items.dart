@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/feed_item.dart';
 import '../models/models.dart';
 import 'promos.dart';
+import 'donation_nudge.dart';
 import 'providers.dart';
 import 'session.dart';
 import 'tips.dart';
@@ -43,6 +44,7 @@ class FeedInputs {
     this.forumNames = const {},
     this.joinedForums = const {},
     this.chatMoment,
+    this.chipInSlot,
     this.announcement,
     this.promo,
     this.announcementSeen = false,
@@ -100,6 +102,11 @@ class FeedInputs {
   final Set<String> dismissedNudges;
 
   final String filter;
+
+  /// Where the chip-in nudge goes on this page, or null when it does not go
+  /// anywhere. Worked out by donationNudgeSlot in state/donation_nudge.dart;
+  /// assembly only places what it is handed.
+  final int? chipInSlot;
 }
 
 /// How many posts go by before something that is not a post is slotted in.
@@ -165,7 +172,10 @@ List<FeedItem> assembleFeed(FeedInputs input) {
     out.add(queue[next++]);
   }
 
-  return _onlyKind(_withCards(_spacedOut(out), cards), input.filter);
+  return _onlyKind(
+    _withChipIn(_withCards(_spacedOut(out), cards), input.chipInSlot),
+    input.filter,
+  );
 }
 
 /// The business cards, the person's own state first, otherwise newest first.
@@ -483,6 +493,9 @@ final feedItemsProvider = Provider<AsyncValue<List<FeedItem>>>((ref) {
             seenAt != null &&
             !announcement.createdAt.isAfter(seenAt),
         nearbySellers: ref.watch(nearbySellersProvider).value ?? const [],
+        // Phase 9. The whole decision is one tested function; this hands
+        // assembly the answer and nothing else.
+        chipInSlot: ref.watch(chipInSlotProvider(all.length)),
         purchases: ref.watch(purchasesProvider).value ?? const [],
         isGuest: isGuest,
         cartTipSeen: ref.watch(tipsProvider).contains(Tips.cartIsTheLike),
@@ -512,4 +525,18 @@ Set<String> _localListingIds(Ref ref, List<Post> posts, Person? me) {
     }
   }
   return local;
+}
+
+/// Drops the chip-in nudge in at the slot it was given.
+///
+/// The decision is not made here: state/donation_nudge.dart decides whether
+/// there is a slot at all and which one, so "frequent but not annoying" is
+/// one tested function rather than a rule spread through assembly.
+List<FeedItem> _withChipIn(List<FeedItem> items, int? slot) {
+  if (slot == null || slot > items.length) return items;
+  return [
+    ...items.take(slot),
+    const NudgeItem(NudgeKind.chipIn),
+    ...items.skip(slot),
+  ];
 }

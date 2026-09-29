@@ -133,6 +133,7 @@ class Person {
     String? avatarUrl,
     bool? isLinked,
     String? cityState,
+    DateTime? chippedInAt,
   }) => Person(
     id: id,
     name: name ?? this.name,
@@ -149,6 +150,7 @@ class Person {
     cityState: cityState ?? this.cityState,
     lat: lat,
     lng: lng,
+    chippedInAt: chippedInAt ?? this.chippedInAt,
   );
 }
 
