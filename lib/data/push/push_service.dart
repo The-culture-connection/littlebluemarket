@@ -37,4 +37,34 @@ abstract interface class PushService {
 
   /// "Send me a test notification": asks the backend to push to this phone.
   Future<void> sendTest();
+
+  /// Every push that reaches this phone while the app is open, as it
+  /// arrived. The Diagnostics delivery suite's only evidence that a push was
+  /// delivered: a backend that says it sent is not the same thing.
+  Stream<ReceivedPush> get received;
+
+  /// Joins or leaves one topic, for the delivery suite's private
+  /// announcement channel. Not available in a browser.
+  Future<void> subscribeToTopic(String topic);
+  Future<void> unsubscribeFromTopic(String topic);
+}
+
+/// One push, as this phone received it.
+class ReceivedPush {
+  const ReceivedPush({
+    required this.title,
+    required this.body,
+    required this.type,
+    required this.at,
+  });
+
+  final String title;
+  final String body;
+
+  /// The backend's push type: `mention`, `newMessage`, `announcement`…
+  final String type;
+  final DateTime at;
+
+  @override
+  String toString() => '[$type] $title · $body';
 }

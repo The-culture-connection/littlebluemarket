@@ -234,9 +234,10 @@ class FixtureSearchRepository implements SearchRepository {
                     // directory business is who a name search often wants.
                     person.tags.any((t) => t.toLowerCase() == q) ||
                     person.name.toLowerCase().startsWith(q) ||
-                    person.handle.toLowerCase().replaceFirst('@', '').startsWith(
-                      q.replaceFirst('@', ''),
-                    ),
+                    person.handle
+                        .toLowerCase()
+                        .replaceFirst('@', '')
+                        .startsWith(q.replaceFirst('@', '')),
               )
               .toList();
     final sellerIds = {for (final person in sellers) person.id};
@@ -300,7 +301,6 @@ class FixtureSearchRepository implements SearchRepository {
 
   List<Product> _sorted(List<Product> products, SearchFilters filters) =>
       sortProducts(products, filters.sort, origin: filters.origin);
-
 
   String _nameOf(Product p) => Fx.people[p.sellerId]?.name ?? '';
   String _handleOf(Product p) => Fx.people[p.sellerId]?.handle ?? '';
@@ -1084,9 +1084,7 @@ class FixtureSocialRepository implements SocialRepository {
         final sorted = [...threads]
           ..sort((a, b) {
             final byCount = b.commentCount.compareTo(a.commentCount);
-            return byCount != 0
-                ? byCount
-                : b.createdAt.compareTo(a.createdAt);
+            return byCount != 0 ? byCount : b.createdAt.compareTo(a.createdAt);
           });
         return sorted.take(limit).toList();
       });
@@ -1201,9 +1199,7 @@ class FixtureMessagingRepository implements MessagingRepository {
       latest: messages.length <= 2
           ? messages
           : messages.sublist(messages.length - 2),
-      lastHourCount: messages
-          .where((m) => m.createdAt.isAfter(hourAgo))
-          .length,
+      lastHourCount: messages.where((m) => m.createdAt.isAfter(hourAgo)).length,
     );
   });
 
@@ -1339,11 +1335,10 @@ class FixtureProfileRepository implements ProfileRepository {
   /// distance: see the interface.
   @override
   Future<List<Person>> nearbySellers({int limit = 8}) {
-    final sellers =
-        _store.people.value.values.where((p) => p.isSeller).toList()
-          ..sort(
-            (a, b) => a.handle.toLowerCase().compareTo(b.handle.toLowerCase()),
-          );
+    final sellers = _store.people.value.values.where((p) => p.isSeller).toList()
+      ..sort(
+        (a, b) => a.handle.toLowerCase().compareTo(b.handle.toLowerCase()),
+      );
     return _backend._delayed(sellers.take(limit).toList());
   }
 
@@ -1362,7 +1357,7 @@ class FixtureProfileRepository implements ProfileRepository {
     if (wanted != null && !await handleAvailable(wanted)) {
       throw ValidationException(
         '${wanted.startsWith('@') ? wanted : '@$wanted'} is already someone '
-            "else's handle. Try another.",
+        "else's handle. Try another.",
         field: 'handle',
       );
     }
@@ -1836,8 +1831,8 @@ class FixtureDiagnosticsRepository implements DiagnosticsRepository {
       (checked: Fx.people.length, updated: 0);
 
   @override
-  Future<({int vendors, int shells, int products, int posts})> backfillShopShells() async =>
-      (vendors: 0, shells: 0, products: 0, posts: 0);
+  Future<({int vendors, int shells, int products, int posts})>
+  backfillShopShells() async => (vendors: 0, shells: 0, products: 0, posts: 0);
 
   @override
   Future<String> setSellerVendor({
@@ -1847,6 +1842,15 @@ class FixtureDiagnosticsRepository implements DiagnosticsRepository {
     if (!_admin) throw const PermissionException('Admins only.');
     return 'Demo Vendor';
   }
+
+  /// No pushes exist on the demo backend, so there is nothing to deliver and
+  /// nothing honest to report. Said plainly rather than pretended.
+  @override
+  Future<Map<String, Object?>> notifyStep(String step, String nonce) async =>
+      throw const ValidationException(
+        'The delivery tests need the live dev backend and a phone. The demo '
+        'backend has no pushes to deliver.',
+      );
 
   @override
   Future<BackfillProgress> backfillCatalog({bool reset = false}) async =>
@@ -2017,13 +2021,13 @@ class FixtureDirectoryRepository implements DirectoryRepository {
       tags: ['Disabled-Owned'],
       locations: ['Michigan'],
       plan: 'DIRECTORY BASIC PLAN',
-      description: 'Clothing repairs and alterations, plus a free mending night.',
+      description:
+          'Clothing repairs and alterations, plus a free mending night.',
     ),
   ];
   final _links = StreamController<DirectoryLink?>.broadcast();
   final _orderChanges = StreamController<List<DirectoryOrder>>.broadcast();
   final _listingChanges = StreamController<List<DirectoryListing>>.broadcast();
-
 
   /// The demo directory's categories, counted from the listings in memory:
   /// live, this is a rollup the backend maintains.
@@ -2037,23 +2041,21 @@ class FixtureDirectoryRepository implements DirectoryRepository {
           final slug = _slugFor(name);
           if (slug.isEmpty) continue;
           final entry = counts[slug];
-          counts[slug] = (
-            name: name,
-            count: (entry?.count ?? 0) + 1,
-          );
+          counts[slug] = (name: name, count: (entry?.count ?? 0) + 1);
         }
       }
-      final out = [
-        for (final entry in counts.entries)
-          DirectoryCategory(
-            slug: entry.key,
-            name: entry.value.name,
-            count: entry.value.count,
-          ),
-      ]..sort((a, b) {
-        final byCount = b.count.compareTo(a.count);
-        return byCount != 0 ? byCount : a.name.compareTo(b.name);
-      });
+      final out =
+          [
+            for (final entry in counts.entries)
+              DirectoryCategory(
+                slug: entry.key,
+                name: entry.value.name,
+                count: entry.value.count,
+              ),
+          ]..sort((a, b) {
+            final byCount = b.count.compareTo(a.count);
+            return byCount != 0 ? byCount : a.name.compareTo(b.name);
+          });
       return out;
     }
 
@@ -2100,9 +2102,7 @@ class FixtureDirectoryRepository implements DirectoryRepository {
               (word) =>
                   listing.title.toLowerCase().contains(word) ||
                   listing.city.toLowerCase().contains(word) ||
-                  listing.categories.any(
-                    (c) => c.toLowerCase().contains(word),
-                  ),
+                  listing.categories.any((c) => c.toLowerCase().contains(word)),
             ))
           listing,
     ];
@@ -2533,9 +2533,7 @@ class FixtureAccountRepository implements AccountRepository {
     if (confirmation != kDeleteConfirmation) {
       throw const ValidationException('Type DELETE to confirm.');
     }
-    final posts = _store.posts.value
-        .where((p) => p.authorId == Fx.meId)
-        .length;
+    final posts = _store.posts.value.where((p) => p.authorId == Fx.meId).length;
     _store.posts.value = [
       for (final post in _store.posts.value)
         if (post.authorId != Fx.meId) post,
@@ -2693,9 +2691,10 @@ class FixturePromoRepository implements PromoRepository {
       // Switched on only, as the live one does: the window is the clock, and
       // whoever draws these re-checks it as it draws.
       _backend.store.promos.stream.map(
-        (all) => [for (final promo in all) if (promo.active) promo]
-            .take(limit)
-            .toList(),
+        (all) => [
+          for (final promo in all)
+            if (promo.active) promo,
+        ].take(limit).toList(),
       );
 
   @override

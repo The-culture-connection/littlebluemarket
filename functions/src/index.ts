@@ -91,6 +91,7 @@ import {
 } from './promos.ts';
 import { backfillCatalogPage } from './backfill.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
+import { isDiagStep, requireDevProject, runDiagStep } from './diagnostics_notify.ts';
 import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
 import { noteVendorFromCatalog, syncVendorRoster } from './roster_grant.ts';
 import { geocodeProfileIfNeeded } from './geocode.ts';
@@ -449,6 +450,25 @@ export const directoryLinkMe = onCall(
     }
     const auto = Boolean((request.data ?? {}).auto);
     return syncDirectory(uid, email.trim().toLowerCase(), { auto });
+  }),
+);
+
+/**
+ * One step of the notification delivery suite on the Diagnostics screen.
+ * Admins only, dev only; see `diagnostics_notify.ts`.
+ */
+export const diagNotifyTest = onCall(
+  withLoudErrors('diagNotifyTest', async (request) => {
+    const uid = requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    requireDevProject(projectId());
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    if (!isDiagStep(data.step)) {
+      throw new HttpsError('invalid-argument', `Unknown step ${String(data.step)}.`);
+    }
+    const nonce = String(data.nonce ?? '').replace(/[^A-Za-z0-9-]/g, '').slice(0, 40);
+    if (!nonce) throw new HttpsError('invalid-argument', 'Each step needs a nonce.');
+    return runDiagStep(uid, data.step, nonce);
   }),
 );
 

@@ -119,23 +119,21 @@ class FirestoreDiagnosticsRepository implements DiagnosticsRepository {
       }, operation: 'callable adminBackfillProfileTags');
 
   @override
-  Future<({int vendors, int shells, int products, int posts})> backfillShopShells() =>
-      guardFirestore(() async {
-        final result = await _functions
-            .httpsCallable(
-              'adminBackfillShopShells',
-              options: HttpsCallableOptions(
-                timeout: const Duration(seconds: 540),
-              ),
-            )
-            .call<Map<String, dynamic>>(const {});
-        return (
-          vendors: FirestoreMappers.integer(result.data['vendors']),
-          shells: FirestoreMappers.integer(result.data['shells']),
-          products: FirestoreMappers.integer(result.data['products']),
-          posts: FirestoreMappers.integer(result.data['posts']),
-        );
-      }, operation: 'callable adminBackfillShopShells');
+  Future<({int vendors, int shells, int products, int posts})>
+  backfillShopShells() => guardFirestore(() async {
+    final result = await _functions
+        .httpsCallable(
+          'adminBackfillShopShells',
+          options: HttpsCallableOptions(timeout: const Duration(seconds: 540)),
+        )
+        .call<Map<String, dynamic>>(const {});
+    return (
+      vendors: FirestoreMappers.integer(result.data['vendors']),
+      shells: FirestoreMappers.integer(result.data['shells']),
+      products: FirestoreMappers.integer(result.data['products']),
+      posts: FirestoreMappers.integer(result.data['posts']),
+    );
+  }, operation: 'callable adminBackfillShopShells');
 
   @override
   Future<String> setSellerVendor({
@@ -166,4 +164,18 @@ class FirestoreDiagnosticsRepository implements DiagnosticsRepository {
           done: FirestoreMappers.boolean(data['done']),
         );
       }, operation: 'callable adminBackfillCatalog');
+
+  @override
+  Future<Map<String, Object?>> notifyStep(String step, String nonce) =>
+      guardFirestore(() async {
+        final result = await _functions
+            .httpsCallable(
+              'diagNotifyTest',
+              options: HttpsCallableOptions(
+                timeout: const Duration(seconds: 70),
+              ),
+            )
+            .call<Map<String, dynamic>>({'step': step, 'nonce': nonce});
+        return Map<String, Object?>.from(result.data);
+      }, operation: 'callable diagNotifyTest');
 }

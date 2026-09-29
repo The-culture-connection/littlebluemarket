@@ -40,6 +40,7 @@ class FirebasePushService implements PushService {
   final FlutterLocalNotificationsPlugin _local;
 
   final _opened = StreamController<String>.broadcast();
+  final _received = StreamController<ReceivedPush>.broadcast();
   final _subs = <StreamSubscription<dynamic>>[];
   String? _uid;
   String? _token;
@@ -57,6 +58,38 @@ class FirebasePushService implements PushService {
 
   @override
   Stream<String> get openedRoutes => _opened.stream;
+
+  @override
+  Stream<ReceivedPush> get received => _received.stream;
+
+  @override
+  Future<void> subscribeToTopic(String topic) {
+    if (kIsWeb) {
+      throw UnsupportedError(
+        'Topics need the phone app; a browser cannot join one.',
+      );
+    }
+    return _messaging.subscribeToTopic(topic);
+  }
+
+  @override
+  Future<void> unsubscribeFromTopic(String topic) async {
+    if (kIsWeb) return;
+    await _messaging.unsubscribeFromTopic(topic);
+  }
+
+  /// Records a foreground push for [received], whatever its type and
+  /// whether or not a banner is drawn for it.
+  void _record(RemoteMessage message) {
+    _received.add(
+      ReceivedPush(
+        title: message.notification?.title ?? '',
+        body: message.notification?.body ?? '',
+        type: message.data['type']?.toString() ?? '',
+        at: DateTime.now(),
+      ),
+    );
+  }
 
   PushPermission _map(AuthorizationStatus status) => switch (status) {
     AuthorizationStatus.authorized ||
@@ -297,6 +330,7 @@ class FirebasePushService implements PushService {
       }),
     );
     _subs.add(FirebaseMessaging.onMessage.listen(_showForeground));
+    _subs.add(FirebaseMessaging.onMessage.listen(_record));
     _subs.add(FirebaseMessaging.onMessageOpenedApp.listen(_routeFrom));
     // A cold start from a tapped banner.
     unawaited(_messaging.getInitialMessage().then(_routeFrom));

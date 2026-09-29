@@ -29,8 +29,23 @@ class FixturePushService implements PushService {
   Future<void> stop(String uid) async {}
 
   @override
-  Future<void> setTopics({required bool seller, required bool directory}) async {}
+  Future<void> setTopics({
+    required bool seller,
+    required bool directory,
+  }) async {}
 
   @override
   Future<void> sendTest() async {}
+
+  final _received = StreamController<ReceivedPush>.broadcast();
+
+  /// Nothing arrives on the demo backend.
+  @override
+  Stream<ReceivedPush> get received => _received.stream;
+
+  @override
+  Future<void> subscribeToTopic(String topic) async {}
+
+  @override
+  Future<void> unsubscribeFromTopic(String topic) async {}
 }

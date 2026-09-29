@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import '../../data/repositories/dev_error_sink.dart';
 import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
 import '../../state/providers.dart';
+import '../../state/notification_delivery_suite.dart';
 import '../../state/promos.dart';
 import '../../state/session.dart';
 import '../../theme/app_theme.dart';
@@ -93,6 +95,9 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> {
           const SizedBox(height: 18),
           const SectionHead('Adverts and announcements'),
           const _PromosCard(),
+          const SizedBox(height: 18),
+          const SectionHead('Notification delivery'),
+          const _DeliveryCard(),
           const SizedBox(height: 18),
           const SectionHead('The backend'),
           LbmCard(
@@ -747,9 +752,8 @@ class _PromosCard extends ConsumerWidget {
                       small: true,
                       expand: false,
                       style: PillStyle.ghost,
-                      onPressed: () => ref
-                          .read(promoOverrideProvider.notifier)
-                          .show(promo),
+                      onPressed: () =>
+                          ref.read(promoOverrideProvider.notifier).show(promo),
                     ),
                   ),
               ],
@@ -790,6 +794,153 @@ class _PromosCard extends ConsumerWidget {
                   },
                 ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The notification delivery suite: this phone is the device under test.
+///
+/// Each check has the backend do one real thing to this account, as a bot,
+/// and passes only on what this phone actually receives. Admins only, dev
+/// backend only; the results are plain lines for pasting to Claude.
+class _DeliveryCard extends ConsumerStatefulWidget {
+  const _DeliveryCard();
+
+  @override
+  ConsumerState<_DeliveryCard> createState() => _DeliveryCardState();
+}
+
+class _DeliveryCardState extends ConsumerState<_DeliveryCard> {
+  final _results = <CheckResult>[];
+  bool _running = false;
+
+  Future<void> _run() async {
+    setState(() {
+      _running = true;
+      _results.clear();
+    });
+    final suite = ref.read(notificationDeliverySuiteProvider);
+    await suite.run(
+      onResult: (r) {
+        if (mounted) setState(() => _results.add(r));
+      },
+    );
+    if (mounted) setState(() => _running = false);
+  }
+
+  String get _text => [
+    'Notification delivery · ${DateTime.now().toIso8601String()}',
+    for (final r in _results) r.line,
+  ].join('\n');
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final passed = _results.where((r) => r.status == CheckStatus.pass).length;
+    final failed = _results.where((r) => r.status != CheckStatus.pass).length;
+
+    return LbmCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Proves pushes reach this phone: a comment, the 20 minute limit, '
+            'a mention, a direct message, quiet hours, an announcement (sent '
+            'only to this phone) and the forum digest. A check passes only on '
+            'what actually arrives here. Keep the app open on this screen; '
+            'it takes about four minutes. Admins only, dev backend only. Your '
+            'quiet hours are put back afterwards and the test posts removed.',
+            style: LbmText.tiny.copyWith(color: c.ink2, height: 1.5),
+          ),
+          const SizedBox(height: 12),
+          if (kIsWeb)
+            Text(
+              'Run this on a phone: a browser cannot receive these pushes.',
+              style: LbmText.tiny.copyWith(
+                fontWeight: FontWeight.w800,
+                color: c.clay,
+              ),
+            )
+          else
+            PillButton(
+              _running
+                  ? 'Running… ${_results.length} done'
+                  : _results.isEmpty
+                  ? 'Run the delivery tests'
+                  : 'Run again',
+              onPressed: _running ? null : _run,
+            ),
+          if (_results.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            for (final r in _results) _ResultRow(result: r),
+            if (!_running) ...[
+              const SizedBox(height: 8),
+              Text(
+                '$passed passed, $failed not',
+                style: LbmText.tiny.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: failed == 0 ? c.sage : c.clay,
+                ),
+              ),
+              const SizedBox(height: 8),
+              PillButton(
+                'Copy results',
+                small: true,
+                expand: false,
+                style: PillStyle.quiet,
+                onPressed: () => Clipboard.setData(ClipboardData(text: _text)),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ResultRow extends StatelessWidget {
+  const _ResultRow({required this.result});
+
+  final CheckResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final (IconData icon, Color colour) = switch (result.status) {
+      CheckStatus.pass => (Icons.check_circle_rounded, c.sage),
+      CheckStatus.fail => (Icons.cancel_rounded, c.clay),
+      CheckStatus.skip => (Icons.remove_circle_outline_rounded, c.ink3),
+      CheckStatus.inconclusive => (Icons.help_rounded, c.clay),
+    };
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: colour),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  result.name,
+                  style: LbmText.tiny.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: c.ink,
+                  ),
+                ),
+                if (result.detail.isNotEmpty)
+                  Text(
+                    result.detail,
+                    style: LbmText.xtiny.copyWith(color: c.ink2),
+                  ),
+              ],
+            ),
           ),
         ],
       ),

@@ -352,6 +352,7 @@ abstract interface class MessagingRepository {
   /// Derived from the same messages [watchChatroom] serves, so the pin and
   /// the room can never disagree about what was last said.
   Stream<ChatMoment> watchChatMoment();
+
   /// [attachedProductId] puts the listing in the bubble, so a maker can drop
   /// something into the room and have it carted from there.
   Future<void> sendToChatroom(String text, {String? attachedProductId});
@@ -564,7 +565,6 @@ abstract interface class DirectoryRepository {
     int limit = 40,
   });
 
-
   /// Every directory category with at least one published listing, biggest
   /// first. Drives the "Browse the directory" rail on the feed; empty until
   /// the public sync has run against this project, and the rail then hides
@@ -585,6 +585,7 @@ abstract interface class DirectoryRepository {
   /// own search (a word in an indexed array, plus a prefix scan for a
   /// phrase), so there is one search scheme in this app and not two.
   Future<List<DirectoryListing>> searchDirectory(String query);
+
   /// "Link my directory account", or, with [auto], the silent launch-time
   /// call that reuses a fresher answer and never nags. Idempotent.
   Future<DirectoryLinkResult> link({bool auto = false});
@@ -688,7 +689,8 @@ abstract interface class DiagnosticsRepository {
 
   /// Gives every vendor already in the catalogue a shop profile, and
   /// attaches the listings that have no shop to it. Idempotent.
-  Future<({int vendors, int shells, int products, int posts})> backfillShopShells();
+  Future<({int vendors, int shells, int products, int posts})>
+  backfillShopShells();
 
   /// One page of the catalog import. Call until [BackfillProgress.done].
   Future<BackfillProgress> backfillCatalog({bool reset = false});
@@ -699,6 +701,12 @@ abstract interface class DiagnosticsRepository {
     required String uid,
     required String vendorName,
   });
+
+  /// One step of the notification delivery suite (admins, dev only): the
+  /// backend makes one real thing happen to this account as a bot. What it
+  /// returns is information, never a verdict; the phone decides by what
+  /// arrives.
+  Future<Map<String, Object?>> notifyStep(String step, String nonce);
 }
 
 /// A profile edit. Only the fields a person may change themselves — notably

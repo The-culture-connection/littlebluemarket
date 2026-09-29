@@ -252,7 +252,7 @@ export async function sendDigest(
   return 'sent';
 }
 
-const firestoreDigestDeps: DigestDeps = {
+export const firestoreDigestDeps: DigestDeps = {
   prefs: readPrefs,
   push: (uid, payload) => sendPushToUid(uid, payload),
   clear: async (uid, threadIds) => {

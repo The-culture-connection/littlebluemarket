@@ -392,6 +392,27 @@ export interface AnnouncementInput {
  * to the topic. One send, however many phones: no fan-out, no per-user
  * bell documents.
  */
+/**
+ * What an announcement looks like on the wire. One place, so the
+ * Diagnostics delivery test sends exactly what a real announcement sends,
+ * only to a private topic. Pure.
+ */
+export function announcementMessage(
+  target: { topic: string } | { condition: string },
+  a: { title: string; body: string; route: string; announcementId: string },
+): Message {
+  return {
+    ...target,
+    notification: { title: a.title, body: a.body },
+    data: { route: a.route, type: 'announcement', announcementId: a.announcementId },
+    android: {
+      priority: 'high',
+      notification: { channelId: 'lbm_default', icon: 'ic_stat_lbm', color: '#70A0D0' },
+    },
+    apns: { payload: { aps: { sound: 'default' } } },
+  } as Message;
+}
+
 export async function sendAnnouncement(
   input: AnnouncementInput,
   messaging: Messaging = getMessaging(),
@@ -425,16 +446,7 @@ export async function sendAnnouncement(
     createdAt: FieldValue.serverTimestamp(),
   });
 
-  const message: Message = {
-    ...topicTarget(input.audience),
-    notification: { title, body },
-    data: { route, type: 'announcement', announcementId: ref.id },
-    android: {
-      priority: 'high',
-      notification: { channelId: 'lbm_default', icon: 'ic_stat_lbm', color: '#70A0D0' },
-    },
-    apns: { payload: { aps: { sound: 'default' } } },
-  } as Message;
+  const message = announcementMessage(topicTarget(input.audience), { title, body, route, announcementId: ref.id });
   const messageId = await messaging.send(message);
   await ref.set({ messageId, sentAt: FieldValue.serverTimestamp() }, { merge: true });
   logger.info('Announcement sent', { id: ref.id, audience: input.audience, messageId });
