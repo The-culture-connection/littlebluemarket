@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -85,10 +86,7 @@ void main() {
       expect(promo.isLiveAt(now), isTrue);
       expect(promo.isLiveAt(now.subtract(const Duration(minutes: 1))), isFalse);
       expect(promo.isLiveAt(DateTime(2026, 9, 20)), isFalse);
-      expect(
-        promo.isLiveAt(DateTime(2026, 9, 19, 23, 59)),
-        isTrue,
-      );
+      expect(promo.isLiveAt(DateTime(2026, 9, 19, 23, 59)), isTrue);
     });
 
     test('one-sided windows and no window at all', () {
@@ -104,7 +102,10 @@ void main() {
 
       final directory = _promo(audience: AnnouncementAudience.directory);
       expect(directory.showsTo(isSeller: false, directoryLinked: true), isTrue);
-      expect(directory.showsTo(isSeller: true, directoryLinked: false), isFalse);
+      expect(
+        directory.showsTo(isSeller: true, directoryLinked: false),
+        isFalse,
+      );
 
       final all = _promo();
       expect(all.showsTo(isSeller: false, directoryLinked: false), isTrue);
@@ -199,7 +200,10 @@ void main() {
       // scrolling is a better answer there than cutting the picture or
       // running off the bottom of the screen. What must not happen is the
       // ordinary advert needing a scroll, so that is what is asserted.
-      await _pumpCard(tester, _promo(imageUrls: const ['https://x.test/a.png']));
+      await _pumpCard(
+        tester,
+        _promo(imageUrls: const ['https://x.test/a.png']),
+      );
       final scroller = tester.widget<Scrollable>(find.byType(Scrollable));
       expect(
         scroller.controller?.position.maxScrollExtent ??
@@ -244,16 +248,19 @@ void main() {
       expect(c.read(promoOverrideProvider), isNull);
     });
 
-    test('forgetting what was seen lets the normal flow offer it again', () async {
-      final c = container();
-      final seen = c.read(promosSeenProvider.notifier);
-      await seen.markSeen('promo_demo_ad');
-      expect(seen.seen('promo_demo_ad'), isTrue);
+    test(
+      'forgetting what was seen lets the normal flow offer it again',
+      () async {
+        final c = container();
+        final seen = c.read(promosSeenProvider.notifier);
+        await seen.markSeen('promo_demo_ad');
+        expect(seen.seen('promo_demo_ad'), isTrue);
 
-      await seen.forget();
-      expect(c.read(promosSeenProvider), isEmpty);
-      expect(seen.seen('promo_demo_ad'), isFalse);
-    });
+        await seen.forget();
+        expect(c.read(promosSeenProvider), isEmpty);
+        expect(seen.seen('promo_demo_ad'), isFalse);
+      },
+    );
 
     test("releasing the turn undoes one-per-opening without a restart", () {
       final c = container();
@@ -367,10 +374,7 @@ void main() {
         _promo(caption: 'Forty makers, including @foundhouse.'),
       );
       expect(find.byType(NamedText), findsNothing);
-      expect(
-        find.text('Forty makers, including @foundhouse.'),
-        findsOneWidget,
-      );
+      expect(find.text('Forty makers, including @foundhouse.'), findsOneWidget);
     });
   });
 }
@@ -392,9 +396,7 @@ void _photoFillsTheWidth() {
   group('the picture fills the width', () {
     // A tall 4:5, the shape the admin website recommends, on a phone where
     // the old ceiling would have banded it.
-    testWidgets('the photo box is exactly as wide as the card', (
-      tester,
-    ) async {
+    testWidgets('the photo box is exactly as wide as the card', (tester) async {
       await _pumpCard(
         tester,
         _promo(imageUrls: const ['https://example.com/a.png']),
@@ -403,9 +405,7 @@ void _photoFillsTheWidth() {
       // The card is the decorated box the picture sits inside. Its width and
       // the picture's have to agree, or there is white space at the sides,
       // which is the thing being complained about.
-      final card = tester.getSize(
-        find.byType(Dismissible).first,
-      );
+      final card = tester.getSize(find.byType(Dismissible).first);
       final photo = tester.getSize(
         find
             .descendant(
@@ -469,10 +469,69 @@ void _bannerGroup() {
       );
       final now = _promo();
 
-      expect(over.active, isTrue, reason: 'still switched on, so still in the stream');
+      expect(
+        over.active,
+        isTrue,
+        reason: 'still switched on, so still in the stream',
+      );
       expect(over.isLiveAt(DateTime.now()), isFalse);
       expect(toCome.isLiveAt(DateTime.now()), isFalse);
       expect(now.isLiveAt(DateTime.now()), isTrue);
     });
+  });
+
+  // Staging, 2026-09-29: "No Overlay widget found" from the web app. The
+  // popup lives in the MaterialApp builder, above the navigator and so above
+  // any Overlay, and its close button carried a Tooltip, which needs one the
+  // moment a mouse hovers it. The tests above mount the card as `home`,
+  // inside the navigator, which is why none of them could see it.
+  group('mounted where the app mounts it, above the navigator', () {
+    Future<void> pumpAbove(WidgetTester tester, Promo promo) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: buildLbmTheme(Brightness.light),
+            home: const SizedBox.shrink(),
+            builder: (context, child) => Stack(
+              children: [
+                ?child,
+                PromoCard(
+                  promo: promo,
+                  onDismiss: () {},
+                  onCta: () {},
+                  onOpenProfile: (_) {},
+                  onOpenTag: (_) {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    for (final kind in PromoKind.values) {
+      testWidgets('${kind.name}: hovering and long-pressing Dismiss is fine', (
+        tester,
+      ) async {
+        await pumpAbove(tester, _promo(kind: kind));
+        final close = find.byIcon(Icons.close_rounded);
+        expect(close, findsOneWidget);
+
+        final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        addTearDown(mouse.removePointer);
+        await mouse.addPointer(location: Offset.zero);
+        await mouse.moveTo(tester.getCenter(close));
+        await tester.pumpAndSettle(const Duration(seconds: 2));
+        expect(tester.takeException(), isNull);
+
+        await tester.longPress(close);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 }

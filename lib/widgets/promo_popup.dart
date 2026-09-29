@@ -476,32 +476,34 @@ class _PromoCardState extends State<PromoCard> {
 
   /// The way out, on the dimmed app rather than inside the card, so the
   /// picture keeps the card's whole width.
+  ///
+  /// No Tooltip: the popup is mounted above the router, where there is no
+  /// Overlay for one to draw in, so hovering the button in a browser (or a
+  /// long press on a phone) threw "No Overlay widget found" (staging,
+  /// 2026-09-29). The Semantics label is what a screen reader reads anyway.
   Widget _closeButton(LbmColors c) => Semantics(
     button: true,
     label: 'Dismiss',
-    child: Tooltip(
-      message: 'Dismiss',
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: c.shadowSoft,
-          ),
-          // The circle is its own Material: it floats on the dimmed app
-          // with nothing above it, and an InkResponse with no Material
-          // ancestor throws.
-          child: Material(
-            color: c.surface,
-            shape: const CircleBorder(),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: widget.onDismiss,
-              child: SizedBox(
-                width: 38,
-                height: 38,
-                child: Icon(Icons.close_rounded, size: 21, color: c.ink),
-              ),
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: c.shadowSoft,
+        ),
+        // The circle is its own Material: it floats on the dimmed app
+        // with nothing above it, and an InkResponse with no Material
+        // ancestor throws.
+        child: Material(
+          color: c.surface,
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: widget.onDismiss,
+            child: SizedBox(
+              width: 38,
+              height: 38,
+              child: Icon(Icons.close_rounded, size: 21, color: c.ink),
             ),
           ),
         ),
