@@ -196,6 +196,22 @@ class CommerceProxyRepository implements CommerceRepository {
   }
 
   @override
+  Future<Membership> verifyMembership({
+    required String store,
+    required String receipt,
+  }) async {
+    final data = await _call('membershipVerify', {
+      'store': store,
+      'receipt': receipt,
+    });
+    return Membership(
+      active: data['active'] == true,
+      memberUntil: DateTime.tryParse(FirestoreMappers.str(data['memberUntil'])),
+      counted: data['counted'] == true,
+    );
+  }
+
+  @override
   Future<Page<Order>> orders({String? cursor}) => guardFirestore(() async {
     var query = _db
         .collection('orders')

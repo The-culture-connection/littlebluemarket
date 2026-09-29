@@ -56,6 +56,7 @@ class Person {
     this.unclaimed = false,
     this.chippedInAt,
     this.profileSections = const ProfileSections(),
+    this.memberUntil,
   });
 
   /// A shop on the market that nobody has signed up for yet.
@@ -71,6 +72,15 @@ class Person {
   /// is on until they say otherwise: this is a market where people are
   /// trying to be found.
   final ProfileSections profileSections;
+
+  /// When their membership lapses, written only by the server after a
+  /// store confirmed the receipt. Null for everybody who has never
+  /// subscribed, which is almost everybody.
+  final DateTime? memberUntil;
+
+  /// A member right now. The one question any screen asks.
+  bool get isMember =>
+      memberUntil != null && memberUntil!.isAfter(DateTime.now());
 
   /// When this person last chipped in to Little Blue Market.
   ///
@@ -142,6 +152,7 @@ class Person {
     String? cityState,
     DateTime? chippedInAt,
     ProfileSections? profileSections,
+    DateTime? memberUntil,
   }) => Person(
     id: id,
     name: name ?? this.name,
@@ -160,6 +171,7 @@ class Person {
     lng: lng,
     chippedInAt: chippedInAt ?? this.chippedInAt,
     profileSections: profileSections ?? this.profileSections,
+    memberUntil: memberUntil ?? this.memberUntil,
   );
 }
 

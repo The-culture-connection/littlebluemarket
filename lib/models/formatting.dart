@@ -76,6 +76,16 @@ abstract final class Fmt {
     return '${t.day} ${_months[t.month - 1]}';
   }
 
+  /// A date to come: `29 Oct`, `3 Jan 2027`.
+  ///
+  /// The year appears only when it is not this one. A renewal three weeks
+  /// away does not need 2026 on it, and a date that says a year you are
+  /// already in reads as though something is wrong with it.
+  static String day(DateTime t, {DateTime? now}) {
+    final year = (now ?? DateTime.now()).year;
+    final date = '${t.day} ${_months[t.month - 1]}';
+    return t.year == year ? date : '$date ${t.year}';
+  }
   /// `4 mi`, `0.5 mi`. Distances under ten miles keep one decimal, because the
   /// difference between 2 and 2.4 miles matters when you are deciding whether
   /// to walk.

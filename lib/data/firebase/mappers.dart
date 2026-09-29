@@ -101,6 +101,7 @@ abstract final class FirestoreMappers {
     lng: data['lng'] == null ? null : decimal(data['lng']),
     chippedInAt: timeOrNull(data['chippedInAt']),
     profileSections: ProfileSections.fromMap(data['profileSections']),
+    memberUntil: timeOrNull(data['memberUntil']),
   );
 
   static AppNotification notification(String id, Map<String, dynamic> data) =>

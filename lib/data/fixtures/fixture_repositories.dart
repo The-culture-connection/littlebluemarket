@@ -524,6 +524,26 @@ class FixtureCommerceRepository implements CommerceRepository {
   }
 
   @override
+  Future<Membership> verifyMembership({
+    required String store,
+    required String receipt,
+  }) async {
+    await _backend._settle();
+    if (receipt.isEmpty) return const Membership.none();
+    final until = DateTime.now().add(const Duration(days: 30));
+    final people = {..._store.people.value};
+    final me = people[_backend.uid];
+    if (me != null) {
+      // The live one writes this server-side off the back of the
+      // receipt; here it stands in for that write so the screens see
+      // the same thing they will see for real.
+      people[_backend.uid] = me.copyWith(memberUntil: until);
+      _store.people.value = people;
+    }
+    return Membership(active: true, memberUntil: until, counted: true);
+  }
+
+  @override
   Future<CheckoutHandoff> buyNow({
     required String productId,
     String? variantId,
@@ -1469,6 +1489,8 @@ class FixtureProfileRepository implements ProfileRepository {
       // with no backend. Production leaves these empty until the real ones
       // exist, and then every one of them hides itself.
       donationChipInHandle: 'lbm-chip-in',
+      membershipPlayProductId: 'lbm_member_monthly2',
+      membershipAppleProductId: 'lbm_member_monthly2',
       donationRoundUpHandle: 'lbm-round-up',
     ),
   );

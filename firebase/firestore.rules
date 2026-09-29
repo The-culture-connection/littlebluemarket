@@ -185,6 +185,21 @@ service cloud.firestore {
     // figure is written by the paid webhook or by Grace through the admin
     // portal, never by a phone: a page asking for money must not also be a
     // page anyone can write a total onto.
+    // Your membership, as the store told the server. Yours to read so the
+    // Chip in page can say when it renews; nobody's to write, because the
+    // whole point is that it came from Apple or Google rather than from a
+    // phone saying so.
+    match /memberships/{uid} {
+      allow read: if isSelf(uid);
+      allow write: if false;
+
+      // One document per period paid for, which is how the transparency
+      // tiles count a renewal once. Server-only in both directions.
+      match /periods/{periodId} {
+        allow read, write: if false;
+      }
+    }
+
     match /funding/{month} {
       allow read: if member();
       allow write: if false;
@@ -264,7 +279,11 @@ service cloud.firestore {
           'shopVendorName',
           // Stamped by the paid webhook when somebody chips in. It is what
           // stops the feed asking again, so a phone may not set it.
-          'chippedInAt'
+          'chippedInAt',
+          // The membership, granted only after the store confirms the
+          // receipt. A field a phone can write is a field anybody can
+          // claim, which is the same reason revenueCents is up there.
+          'memberUntil'
         ]);
 
       allow delete: if false;

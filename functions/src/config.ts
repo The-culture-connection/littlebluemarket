@@ -68,6 +68,25 @@ export const WP_APP_PASSWORD = defineSecret('WP_APP_PASSWORD');
 export const WC_CONSUMER_KEY = defineSecret('WC_CONSUMER_KEY');
 export const WC_CONSUMER_SECRET = defineSecret('WC_CONSUMER_SECRET');
 
+/**
+ * The App Store Connect private key (.p8), contents and all.
+ *
+ * Signs the short-lived token the App Store Server API wants. Apple hands
+ * it over exactly once at creation, which is why it lives in Secret
+ * Manager and never in a file here.
+ */
+export const APPLE_IAP_KEY = defineSecret('APPLE_IAP_KEY');
+
+/**
+ * The Google Play service account JSON, contents and all.
+ *
+ * Signs the token the Play Developer API wants. The functions cannot use
+ * their own identity for this: Play grants access to a service account
+ * invited in the Play Console, which is a different account from the one
+ * the functions run as.
+ */
+export const PLAY_SERVICE_ACCOUNT = defineSecret('PLAY_SERVICE_ACCOUNT');
+
 // ------------------------------------------------------------------- config
 
 export const SHOPIFY_STORE_DOMAIN = defineString('SHOPIFY_STORE_DOMAIN');
@@ -186,6 +205,58 @@ export const DONATION_ROUND_UP_HANDLE = defineString('DONATION_ROUND_UP_HANDLE',
   default: '',
 });
 
+/**
+ * The monthly membership, as each store calls it.
+ *
+ * A recurring digital membership is Apple and Google's business rather
+ * than the store's, so it is not a Shopify product and cannot be one. Both
+ * default to empty and the Monthly card hides itself when the store this
+ * phone is on has no id: the same dark ship as the donation handles.
+ *
+ * The two stores do not have to agree on an identifier and here they do
+ * not, so neither is derived from the other.
+ */
+export const MEMBERSHIP_APPLE_PRODUCT_ID = defineString(
+  'MEMBERSHIP_APPLE_PRODUCT_ID',
+  { default: '' },
+);
+
+export const MEMBERSHIP_PLAY_PRODUCT_ID = defineString(
+  'MEMBERSHIP_PLAY_PRODUCT_ID',
+  { default: '' },
+);
+
+/**
+ * What a month of membership costs, in cents, for the transparency tiles.
+ *
+ * The stores report a price in the buyer's own currency and take their cut
+ * before it reaches us. Neither number is what this is: this is what a
+ * member gave, which is the figure the page is honest about, and it is one
+ * value rather than a currency conversion the app would have to invent.
+ */
+export const MEMBERSHIP_PRICE_CENTS = defineInt('MEMBERSHIP_PRICE_CENTS', {
+  default: 300,
+});
+
+/**
+ * The App Store Connect API key's issuer and key id. Not secret: they
+ * identify the key rather than being it, and Apple prints them next to it.
+ */
+export const APPLE_ISSUER_ID = defineString('APPLE_ISSUER_ID', { default: '' });
+export const APPLE_KEY_ID = defineString('APPLE_KEY_ID', { default: '' });
+
+/**
+ * The bundle and package the stores know this app by. The same string on
+ * both today, and separate parameters because they are separate facts.
+ */
+export const APPLE_BUNDLE_ID = defineString('APPLE_BUNDLE_ID', {
+  default: 'com.littleblue.market',
+});
+
+export const ANDROID_PACKAGE_NAME = defineString('ANDROID_PACKAGE_NAME', {
+  default: 'com.littleblue.market',
+});
+
 /** Every secret a function might need, for the ones that touch everything. */
 export const ALL_SECRETS = [
   SHOPIFY_CLIENT_SECRET,
@@ -200,6 +271,9 @@ export const ALL_SECRETS = [
 
 /** The three the directory functions need; nothing else. */
 export const WP_SECRETS = [WP_APP_PASSWORD, WC_CONSUMER_KEY, WC_CONSUMER_SECRET];
+
+/** What a membership check needs: one store key each. */
+export const MEMBERSHIP_SECRETS = [APPLE_IAP_KEY, PLAY_SERVICE_ACCOUNT];
 
 // ------------------------------------------------------------------- mail
 

@@ -875,3 +875,50 @@ describe('what shows on your profile is yours; chipping in is not', () => {
     await assertFails(member('maya').doc('users/maya').update({ chippedInAt: new Date() }));
   });
 });
+
+describe('a membership is a grant, not a claim', () => {
+  before(async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('memberships/maya').set({
+        store: 'google',
+        active: true,
+      });
+      await admin.firestore().doc('memberships/maya/periods/GPA.1').set({
+        priceCents: 300,
+      });
+    });
+  });
+
+  test('you read your own membership and nobody else reads it', async () => {
+    await assertSucceeds(member('maya').doc('memberships/maya').get());
+    await assertFails(member('kali').doc('memberships/maya').get());
+    await assertFails(guest().doc('memberships/maya').get());
+    // Not even an admin from a client: it is written by the verification.
+    await assertFails(adminUser('grace').doc('memberships/maya').get());
+  });
+
+  test('nobody writes one, and the periods are closed both ways', async () => {
+    await assertFails(
+      member('maya').doc('memberships/maya').set({ active: true }),
+    );
+    await assertFails(
+      member('maya').doc('memberships/maya').update({ active: true }),
+    );
+    await assertFails(member('maya').doc('memberships/maya/periods/GPA.1').get());
+    await assertFails(
+      member('maya').doc('memberships/maya/periods/GPA.2').set({ priceCents: 1 }),
+    );
+    await assertFails(member('maya').doc('memberships/maya').delete());
+  });
+
+  test('you cannot make yourself a member on your own profile', async () => {
+    // The field the whole app reads. A phone that could write it is a phone
+    // that could award itself a membership nobody paid for.
+    await assertFails(
+      member('maya').doc('users/maya').update({ memberUntil: new Date() }),
+    );
+    await assertFails(
+      member('maya').doc('users/maya').update({ memberUntil: now() }),
+    );
+  });
+});

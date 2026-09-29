@@ -16,6 +16,7 @@ import {
   REGISTRATION_URL,
   DIRECTORY_ADD_LISTING_URL,
   DONATION_CHIP_IN_HANDLE,
+  MEMBERSHIP_SECRETS,
   DONATION_ROUND_UP_HANDLE,
   WP_SECRETS,
   SMTP_PASS,
@@ -99,6 +100,12 @@ import { noteVendorFromCatalog, syncVendorRoster } from './roster_grant.ts';
 import { geocodeProfileIfNeeded } from './geocode.ts';
 import { geocodeDirectoryPage } from './directory_geo.ts';
 import { chipInCheckout, donationProductIds } from './donations.ts';
+import {
+  grantMembership,
+  membershipProductIds,
+  verifyAppleTransaction,
+  verifyPlayPurchase,
+} from './membership.ts';
 import {
   backfillProfileTagsLower,
   backfillTagKeyMirror,
@@ -462,7 +469,51 @@ export const appConfig = onCall(
     // switch: the feature ships dark and is turned on by setting a value.
     donationChipInHandle: DONATION_CHIP_IN_HANDLE.value().trim(),
     donationRoundUpHandle: DONATION_ROUND_UP_HANDLE.value().trim(),
+    // Empty until the subscription exists in that store, and the Monthly
+    // card hides itself while it is. The two stores do not have to agree
+    // on an identifier, so the app is told both and uses the one it is on.
+    membershipAppleProductId: membershipProductIds().apple,
+    membershipPlayProductId: membershipProductIds().google,
   })),
+);
+
+/**
+ * "I bought the membership, here is the receipt."
+ *
+ * The phone never says whether it is a member; it says what it bought and
+ * the server asks the store. `users/{uid}.memberUntil` is server-only in
+ * the rules for the same reason `revenueCents` is: a field a phone can
+ * write is a field anybody can claim.
+ */
+export const membershipVerify = onCall(
+  { secrets: MEMBERSHIP_SECRETS, timeoutSeconds: 60 },
+  withLoudErrors('membershipVerify', async (request) => {
+    const uid = requireUid(request.auth);
+    const store = String(request.data?.store ?? '');
+    const receipt = String(request.data?.receipt ?? '').trim();
+    if (!receipt) {
+      throw new HttpsError('invalid-argument', 'That purchase carried no receipt.');
+    }
+
+    const entitlement =
+      store === 'apple'
+        ? await verifyAppleTransaction(receipt)
+        : store === 'google'
+          ? await verifyPlayPurchase(receipt)
+          : (() => {
+              throw new HttpsError(
+                'invalid-argument',
+                `Unknown store: ${store || 'nothing'}.`,
+              );
+            })();
+
+    const granted = await grantMembership(uid, entitlement);
+    return {
+      active: granted.active,
+      memberUntil: granted.expiresAt.toISOString(),
+      counted: granted.counted,
+    };
+  }),
 );
 
 /**

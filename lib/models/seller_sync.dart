@@ -23,6 +23,8 @@ class AppConfig {
     this.directoryAddListingUrl = '',
     this.donationChipInHandle = '',
     this.donationRoundUpHandle = '',
+    this.membershipAppleProductId = '',
+    this.membershipPlayProductId = '',
   });
 
   /// Where a new seller applies, on the website.
@@ -40,6 +42,12 @@ class AppConfig {
   /// feature ships dark and is turned on by setting a value.
   final String donationChipInHandle;
   final String donationRoundUpHandle;
+
+  /// The monthly membership, as each store calls it. Empty means that
+  /// store has no such product and the Monthly card hides itself: the
+  /// same dark ship as the donation handles above.
+  final String membershipAppleProductId;
+  final String membershipPlayProductId;
 
   bool get canChipIn => donationChipInHandle.isNotEmpty;
   bool get canRoundUp => donationRoundUpHandle.isNotEmpty;

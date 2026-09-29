@@ -172,6 +172,18 @@ abstract interface class CommerceRepository {
   /// would turn up in the app's own search and browse.
   Future<CheckoutHandoff> chipIn({required int amountCents});
 
+  /// Hands a store receipt to the server, which asks Apple or Google
+  /// whether it is real and writes the membership itself.
+  ///
+  /// The app never decides this. A phone that could say "I am a member"
+  /// is a phone that could say anything, which is the same reason it
+  /// cannot write its own revenue. Returns when the server's answer is
+  /// in, which is also when `memberUntil` on the person is true.
+  Future<Membership> verifyMembership({
+    required String store,
+    required String receipt,
+  });
+
   /// Buy now: a checkout for this one item, the cart left as it was.
   Future<CheckoutHandoff> buyNow({
     required String productId,
@@ -755,6 +767,28 @@ class ProfileEdit {
 
   /// "City, ST". The backend geocodes it; Near me measures from it.
   final String? cityState;
+}
+
+/// What the server said about somebody's membership.
+class Membership {
+  const Membership({
+    required this.active,
+    this.memberUntil,
+    this.counted = false,
+  });
+
+  const Membership.none() : this(active: false);
+
+  /// Good right now, as the store reported it.
+  final bool active;
+
+  /// When it lapses. Null when there is no membership at all.
+  final DateTime? memberUntil;
+
+  /// Whether this period moved the month's total, which is false for
+  /// every verification after the first of a period. The thank-you is
+  /// worth showing once and not at every launch.
+  final bool counted;
 }
 
 class NewForum {

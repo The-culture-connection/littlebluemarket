@@ -5,6 +5,8 @@ import '../../data/repositories/repositories.dart' show RepositoryException;
 import '../../models/formatting.dart';
 import '../../models/funding.dart';
 import '../../state/donation_nudge.dart';
+import '../../data/billing/billing_service.dart';
+import '../../state/membership.dart';
 import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
@@ -91,6 +93,8 @@ class _ChipInScreenState extends ConsumerState<ChipInScreen> {
 
           _BillCard(bill: bill),
 
+          const _MonthlyCard(),
+
           if (canChipIn) ...[
             const SizedBox(height: 14),
             LbmCard(
@@ -156,6 +160,161 @@ class _ChipInScreenState extends ConsumerState<ChipInScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The monthly membership, through the app store that sold it.
+///
+/// Hidden unless the store this phone is on actually has the product:
+/// there is no "coming soon" here, because a card that cannot be tapped
+/// is a card that should not be drawn (Grace, 2026-09-29).
+///
+/// It goes through Apple or Google rather than the shop checkout, and the
+/// copy says so, because a recurring digital membership is theirs to
+/// bill. The one-time amounts below are ordinary store goods and go
+/// through the ordinary checkout, and the two must not read as the same
+/// thing.
+class _MonthlyCard extends ConsumerStatefulWidget {
+  const _MonthlyCard();
+
+  @override
+  ConsumerState<_MonthlyCard> createState() => _MonthlyCardState();
+}
+
+class _MonthlyCardState extends ConsumerState<_MonthlyCard> {
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _buy({required bool restore}) async {
+    if (_busy) return;
+    final productId = ref.read(membershipProductIdProvider);
+    if (productId.isEmpty) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final billing = ref.read(billingServiceProvider);
+      final purchase = restore
+          ? await billing.restore(productId)
+          : await billing.buy(productId);
+
+      // Backing out is not a failure and gets no red strip.
+      if (purchase.outcome == PurchaseOutcome.cancelled) return;
+      if (!purchase.isWin) {
+        setState(() => _error = purchase.message);
+        return;
+      }
+
+      // The store said yes. That is not the same as being a member: the
+      // server asks the store itself and writes the answer, and this is
+      // where a receipt somebody made up stops.
+      final membership = await ref
+          .read(commerceRepositoryProvider)
+          .verifyMembership(store: purchase.store, receipt: purchase.receipt);
+      if (!mounted) return;
+      if (!membership.active) {
+        setState(
+          () => _error = restore
+              ? 'There is no membership on this account.'
+              : 'The store took that but could not confirm it. Nothing has'
+                    ' been charged twice; try Restore in a minute.',
+        );
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            restore
+                ? 'Welcome back. Your membership is on this phone now.'
+                : 'Thank you. You are a member.',
+          ),
+        ),
+      );
+    } on RepositoryException catch (error) {
+      if (mounted) setState(() => _error = describeError(error).body);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final offer = ref.watch(membershipOfferProvider).value;
+    final isMember = ref.watch(isMemberProvider);
+    final until = ref.watch(memberUntilProvider);
+
+    // No product on this store, no card. Not a placeholder.
+    if (offer == null && !isMember) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: LbmCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    isMember ? 'You are a member' : 'Every month',
+                    style: LbmText.display.copyWith(fontSize: 18, color: c.ink),
+                  ),
+                ),
+                Icon(Icons.eco_rounded, size: 18, color: c.sage),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isMember
+                  ? (until == null
+                        ? 'Thank you. It renews on its own.'
+                        : 'Thank you. It renews on ${Fmt.day(until)}.')
+                  : 'A standing chip-in that keeps the lights on, and the'
+                        ' sage leaf by your name. Cancel any time in the'
+                        ' app store.',
+              style: TextStyle(fontSize: 13.5, height: 1.5, color: c.ink2),
+            ),
+            if (!isMember) ...[
+              const SizedBox(height: 14),
+              _SagePill(
+                label: _busy
+                    ? 'One moment…'
+                    : 'Become a member · ${offer!.price} a month',
+                onPressed: _busy ? null : () => _buy(restore: false),
+              ),
+              const SizedBox(height: 6),
+              Align(
+                child: TextButton(
+                  onPressed: _busy ? null : () => _buy(restore: true),
+                  child: const Text('I already pay for this'),
+                ),
+              ),
+              Text(
+                'Billed by the app store, not by the shop. Not'
+                ' tax-deductible.',
+                style: LbmText.pinMeta.copyWith(color: c.ink2),
+              ),
+            ],
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _error!,
+                style: LbmText.tiny.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: c.clay,
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

@@ -13,6 +13,9 @@ import 'firebase/firestore_directory_repository.dart';
 import 'firebase/firestore_feedback_repository.dart';
 import 'firebase/firestore_report_repository.dart';
 import 'firebase/firebase_push_service.dart';
+import 'billing/billing_service.dart';
+import 'billing/store_billing_service.dart';
+import 'fixtures/fixture_billing_service.dart';
 import 'fixtures/fixture_push_service.dart';
 import 'push/push_service.dart';
 import 'fixtures/fixture_funding_repository.dart';
@@ -287,6 +290,19 @@ final reportRepositoryProvider = Provider<ReportRepository>((ref) {
       functions: ref.watch(firebaseFunctionsProvider),
       uid: ref.watch(_uidProvider),
     ),
+  };
+});
+
+/// The app stores' billing, for the monthly membership.
+///
+/// A browser has no store and an emulator without Play Services has no
+/// store either, but both answer honestly rather than throwing: the real
+/// service reports unavailable and the Monthly card hides itself.
+final billingServiceProvider = Provider<BillingService>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => FixtureBillingService(),
+    Backend.live when kIsWeb => FixtureBillingService(storeHasProduct: false),
+    Backend.live => StoreBillingService(),
   };
 });
 

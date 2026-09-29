@@ -68,6 +68,20 @@ Future<ProviderContainer> _pumpChipIn(
   return container;
 }
 
+/// Scrolls the page until [target] is on it.
+///
+/// The page is a ListView and a ListView does not build what is off the
+/// bottom, so `find.text` on the one-time card finds nothing at all until
+/// the Monthly card above it has been scrolled past. Not a failure worth
+/// asserting on: a phone scrolls too.
+Future<void> _scrollTo(WidgetTester tester, Finder target) async {
+  if (target.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(target, 140, maxScrolls: 20);
+  }
+  await tester.ensureVisible(target.first);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('the bill comes from the funding document', (tester) async {
     final funding = _StubFunding({
@@ -112,8 +126,10 @@ void main() {
     await _pumpChipIn(tester, funding: _StubFunding({}));
 
     // $5 is the one it opens on: the middle of the four, not the largest.
+    await _scrollTo(tester, find.text(r'Chip in $5'));
     expect(find.text(r'Chip in $5'), findsOneWidget);
 
+    await _scrollTo(tester, find.text(r'$20'));
     await tester.tap(find.text(r'$20').first);
     await tester.pumpAndSettle();
     expect(find.text(r'Chip in $20'), findsOneWidget);
@@ -124,6 +140,7 @@ void main() {
   ) async {
     final container = await _pumpChipIn(tester, funding: _StubFunding({}));
 
+    await _scrollTo(tester, find.text(r'$10'));
     await tester.tap(find.text(r'$10').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text(r'Chip in $10'));
@@ -139,14 +156,19 @@ void main() {
   testWidgets('the copy says what it is and what it is not', (tester) async {
     await _pumpChipIn(tester, funding: _StubFunding({}));
 
-    expect(
+    // The membership is billed by the app store and the one-time amounts
+    // are not, and the page has to say which is which: that distinction is
+    // the whole reason one is a subscription and the other is a product.
+    await _scrollTo(tester, find.textContaining('Billed by the app store'));
+    expect(find.textContaining('Cancel any time'), findsOneWidget);
+
+    await _scrollTo(
+      tester,
       find.textContaining('same in-app checkout you buy with'),
-      findsOneWidget,
     );
-    expect(find.textContaining('Not tax-deductible'), findsOneWidget);
-    // Phase 10 makes the monthly membership a store subscription, so there
-    // is no Monthly card here and no advert for one either.
-    expect(find.textContaining('Monthly'), findsNothing);
+    expect(find.textContaining('Not tax-deductible'), findsWidgets);
+    // Still no "coming soon" anywhere: a card that cannot be tapped is a
+    // card that should not be drawn (Grace, 2026-09-29).
     expect(find.textContaining('coming'), findsNothing);
   });
 }

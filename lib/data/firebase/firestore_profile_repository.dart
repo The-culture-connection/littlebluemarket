@@ -379,6 +379,12 @@ class FirestoreProfileRepository implements ProfileRepository {
       donationRoundUpHandle: FirestoreMappers.str(
         result.data['donationRoundUpHandle'],
       ),
+      membershipAppleProductId: FirestoreMappers.str(
+        result.data['membershipAppleProductId'],
+      ),
+      membershipPlayProductId: FirestoreMappers.str(
+        result.data['membershipPlayProductId'],
+      ),
     );
   }, operation: 'callable appConfig');
 }
