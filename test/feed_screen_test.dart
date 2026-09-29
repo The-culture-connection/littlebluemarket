@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/main.dart';
+import 'package:little_blue_market/data/fixtures/fixture_data.dart';
 import 'package:little_blue_market/models/models.dart';
 import 'package:little_blue_market/state/feed_tab.dart';
 import 'package:little_blue_market/state/providers.dart';
@@ -234,6 +235,34 @@ void main() {
     );
   });
 
+  test('a listing is in Following by the tags on its product', () {
+    // The bug this fixes, found on the live market: a listing post written
+    // by the catalogue mirror carries no tags of its own, because the
+    // hashtags live on the product. Reading only post.tags meant following
+    // a tag showed an empty feed while that tag had a full page of its own.
+    final post = ListingPost(
+      id: 'l1',
+      authorId: 'kali',
+      createdAt: DateTime.now(),
+      tags: const [],
+      likeCount: 0,
+      commentCount: 0,
+      likedByMe: false,
+      product: Fx.products['p1']!,
+    );
+
+    expect(
+      isFollowedPost(post, people: const {}, tagKeys: {'plasticfree'}),
+      isTrue,
+      reason: 'the tag is on the product, which is where the market puts it',
+    );
+    expect(
+      isFollowedPost(post, people: const {}, tagKeys: {'handmade'}),
+      isFalse,
+    );
+    // And the post's own tags still count, for everything else.
+    expect(tagsOn(post).toList(), Fx.products['p1']!.tags);
+  });
   testWidgets('the banner is one size and scrolls with the grid', (
     tester,
   ) async {

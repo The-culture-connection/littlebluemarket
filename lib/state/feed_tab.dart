@@ -21,6 +21,18 @@ enum FeedTab { following, forYou, nearMe }
 FeedTab initialFeedTab({required bool followsAnything}) =>
     followsAnything ? FeedTab.following : FeedTab.forYou;
 
+/// Every tag a post carries, its product included.
+///
+/// A listing post written by the catalogue mirror carries **no tags of
+/// its own**: the hashtags are on the product. The tag pages have always
+/// read both sources for this reason, and Following did not, which is why
+/// following a tag showed nothing on the live market while the same tag
+/// had a full page of its own (Grace, 2026-09-29).
+Iterable<String> tagsOn(Post post) sync* {
+  yield* post.tags;
+  if (post is ListingPost) yield* post.product.tags;
+}
+
 /// Whether a post belongs in Following. Pure.
 ///
 /// A post you follow the author of, or one carrying a tag you follow. The
@@ -32,7 +44,7 @@ bool isFollowedPost(
   required Set<String> tagKeys,
 }) {
   if (people.contains(post.authorId)) return true;
-  return post.tags.any((tag) => tagKeys.contains(tagKey(tag)));
+  return tagsOn(post).any((tag) => tagKeys.contains(tagKey(tag)));
 }
 
 /// The tab showing, remembered for as long as the app is open.

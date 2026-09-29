@@ -94,9 +94,16 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
             children: [
               _MakerHeader(
                 person: person,
-                canNotify:
-                    !person.unclaimed &&
-                    ref.watch(currentUidProvider) != person.id,
+                // Anybody but yourself, an unclaimed shop included.
+                //
+                // Notify me used to be hidden on a shop nobody had
+                // claimed, on the reasoning that there was no one behind
+                // it. That was backwards: following is about the person
+                // doing it, a shell shop posts every time the store gets
+                // a new product, and on this market most shops are
+                // unclaimed. It left the Following feed with almost
+                // nobody to follow (Grace, 2026-09-29).
+                canNotify: ref.watch(currentUidProvider) != person.id,
               ),
               // The shop is the first tab for a maker, and used to be labelled
               // "Posted", which put a grid of products under a word that means
