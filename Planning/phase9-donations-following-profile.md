@@ -101,3 +101,12 @@ Pure function `donationNudgeSlot(ctx) → int | null` in `lib/state/donation_nud
 | 8 | FE | Your profile | Threads and Comments tabs list your forum activity; "in {thread}" taps through | missing; wrong thread |
 | 9 | FE | Edit profile → turn Comments off → view your profile as someone else | no Comments tab for them; you still see it with "(hidden from others)" | hidden for you too; still visible to them |
 | 10 | BE | (after merge + deploy) place a real $1 test order with round-up on dev | vendor total excludes the round-up; `funding/{month}` raised increments; Shipturtle shows no shipment for the round-up line | round-up routed to a vendor |
+
+---
+
+## Addendum (2026-09-29, evening) — decisions since kickoff
+
+1. **Monthly membership will be an in-app purchase (Phase 10), not a Shopify variant.** A $3/month member with digital perks (🌱 badge, first look at drops) is a digital subscription, so Apple/Google billing is required and correct. Phase 9: **hide the Monthly card on the Chip in page entirely** (no "coming soon"), keep the four one-time amounts. The `Monthly · $3` variant may exist on the Shopify product; ignore it. Transparency tiles will later sum two sources (Shopify donation lines + store subscription payouts); leave `funding/{month}.raisedCents` as the Shopify-side number with a `sources` map so a second source can be added without a migration.
+2. **Gate 1 handling confirmed**: hidden-when-unset was the design; carry on. Products are being created in the **dev store** (`little_blue_market_devtestingshop`) first: `lbm-chip-in` ($2/$5/$10/$20, plus an unused Monthly variant) and `lbm-round-up` ($0.01), vendor "Little Blue Market", not a physical product, tax off.
+3. **Gate 2 workaround**: verify from the Shopify side (requires_shipping = false; test order on dev shows "No shipping required" and no Shipturtle activity on the line). Round-up stays defaulted off until that's observed. Treat `requires_shipping == false` + handle match as the donation-line signal in the webhook.
+4. **Sales channels**: do **not** unpublish the donation products from any channel until it is confirmed which channel the app's checkout uses (`commerceBuyNow` / `commerceBeginCheckout` — Admin API draft/checkout vs Storefront/Headless). If it is the Headless channel, the products must stay published there. Report which it is.

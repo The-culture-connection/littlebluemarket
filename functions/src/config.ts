@@ -167,6 +167,25 @@ export const DIRECTORY_ADD_LISTING_URL = defineString('DIRECTORY_ADD_LISTING_URL
   default: '',
 });
 
+/**
+ * The two hidden Shopify products that take donations, by handle.
+ *
+ * Empty by default, and left empty in production for now, on purpose: every
+ * donation surface hides itself when its handle is unset, so the feature
+ * ships dark and is turned on by setting a value rather than by a release.
+ *
+ * `lbm-chip-in` carries the one-time amounts. `lbm-round-up` is a single
+ * one-cent variant bought `quantity` times, so Shopify does the arithmetic
+ * and there is one price to get wrong instead of ninety-nine.
+ */
+export const DONATION_CHIP_IN_HANDLE = defineString('DONATION_CHIP_IN_HANDLE', {
+  default: '',
+});
+
+export const DONATION_ROUND_UP_HANDLE = defineString('DONATION_ROUND_UP_HANDLE', {
+  default: '',
+});
+
 /** Every secret a function might need, for the ones that touch everything. */
 export const ALL_SECRETS = [
   SHOPIFY_CLIENT_SECRET,

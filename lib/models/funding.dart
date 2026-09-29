@@ -16,6 +16,7 @@ class Funding {
     this.budgetCents = 0,
     this.donors = 0,
     this.costs = const {},
+    this.sources = const {},
   });
 
   /// `yyyy-mm`, the document id.
@@ -34,6 +35,21 @@ class Funding {
   /// in the order the map gives them.
   final Map<String, int> costs;
 
+  /// Where the money came from, by source: `{'shopify': 41800}`.
+  ///
+  /// [raisedCents] stays the Shopify-side number so nothing has to be
+  /// migrated when the monthly membership arrives as a store subscription in
+  /// Phase 10. That second source is added here, and the page can start
+  /// summing the map on the day it exists rather than on the day the schema
+  /// changes (addendum, 2026-09-29).
+  final Map<String, int> sources;
+
+  /// Everything raised, from every source. Falls back to [raisedCents] while
+  /// there is only one.
+  int get totalRaisedCents => sources.isEmpty
+      ? raisedCents
+      : sources.values.fold(0, (sum, cents) => sum + cents);
+
   /// True when there is enough here to show a bill rather than dashes.
   bool get hasBill => costs.isNotEmpty;
 
@@ -43,7 +59,7 @@ class Funding {
 
   /// How far through the month's costs the members have got, 0 to 1.
   double get progress =>
-      hasTarget ? (raisedCents / budgetCents).clamp(0.0, 1.0) : 0;
+      hasTarget ? (totalRaisedCents / budgetCents).clamp(0.0, 1.0) : 0;
 
   /// The month before [month], as a document id. Pure, and it has to handle
   /// January without reaching for a DateTime.

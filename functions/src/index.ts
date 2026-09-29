@@ -15,6 +15,8 @@ import {
   SHIPTURTLE_API_KEY,
   REGISTRATION_URL,
   DIRECTORY_ADD_LISTING_URL,
+  DONATION_CHIP_IN_HANDLE,
+  DONATION_ROUND_UP_HANDLE,
   WP_SECRETS,
   SMTP_PASS,
   WARM_COMMERCE,
@@ -431,6 +433,11 @@ export const appConfig = onCall(
     registrationUrl: REGISTRATION_URL.value().trim(),
     shipturtleUrl: 'https://app.shipturtle.com/',
     directoryAddListingUrl: DIRECTORY_ADD_LISTING_URL.value().trim(),
+    // Empty until the donation products exist in that environment, and the
+    // app hides every donation surface while they are. That is the whole
+    // switch: the feature ships dark and is turned on by setting a value.
+    donationChipInHandle: DONATION_CHIP_IN_HANDLE.value().trim(),
+    donationRoundUpHandle: DONATION_ROUND_UP_HANDLE.value().trim(),
   })),
 );
 
