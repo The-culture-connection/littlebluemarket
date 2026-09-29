@@ -13,6 +13,7 @@ import '../screens/market/post_screen.dart';
 import '../screens/market/product_screen.dart';
 import '../screens/market/collection_screen.dart';
 import '../screens/market/directory_browse_screen.dart';
+import '../screens/market/directory_listing_screen.dart';
 import '../screens/market/results_screen.dart';
 import '../screens/market/reviews_screen.dart';
 import '../screens/market/search_screen.dart';
@@ -101,6 +102,12 @@ List<RouteBase> _sharedRoutes() => [
     path: 'directory-category/:slug',
     builder: (context, state) =>
         DirectoryCategoryScreen(slug: state.pathParameters['slug']!),
+  ),
+  // Public data, so guests reach it from the Market like anyone else.
+  GoRoute(
+    path: 'directory-listing/:id',
+    builder: (context, state) =>
+        DirectoryListingScreen(listingId: state.pathParameters['id']!),
   ),
   GoRoute(
     path: 'results',

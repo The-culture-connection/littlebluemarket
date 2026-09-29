@@ -53,7 +53,12 @@ class FeedInputs {
     this.isNewMember = false,
     this.dismissedNudges = const {},
     this.filter = FeedFilter.all,
+    this.localListingIds = const {},
   });
+
+  /// Directory listings in the same state as the person, whose business
+  /// cards go first when there are more cards than room for them.
+  final Set<String> localListingIds;
 
   final List<Post> posts;
   final List<ForumThread> hotThreads;
@@ -104,6 +109,24 @@ const _postsBetweenBreaks = 3;
 /// page and the Market stops being the Market.
 const _maxThreadsPerPage = 3;
 
+/// A directory business card for at most every this many items.
+///
+/// The cards are full width and loud on purpose; one in every screenful is a
+/// discovery, two is an advertising column.
+const directoryCardEvery = 8;
+
+/// How many items go by before the first business card, so the feed opens
+/// on things for sale rather than on a card.
+const _itemsBeforeFirstCard = 4;
+
+/// Whether [item] spans both columns.
+///
+/// [FeedItem.isWide] plus the directory business card, which is landscape
+/// and full width. Decided here rather than on the model because the card's
+/// shape is a rule of this feed's layout, and this file is where the feed's
+/// layout rules live.
+bool isFullWidth(FeedItem item) => item.isWide || item is DirectoryItem;
+
 /// Turns the sources into the order the grid is drawn in.
 ///
 /// Pure, and deliberately so: the rules that keep a feed from reading as
@@ -116,7 +139,14 @@ List<FeedItem> assembleFeed(FeedInputs input) {
   // banner above it, the same size every time. As a pin it took a column's
   // width, came out square, and changed shape depending on whether it had
   // been read. See `widgets/hero_banner.dart`.
-  final postItems = [for (final post in input.posts) _itemFor(post)];
+  //
+  // Directory businesses are held back and dealt in afterwards, on their own
+  // rule: they are not somebody posting, they are places to find.
+  final postItems = [
+    for (final post in input.posts)
+      if (post is! DirectoryPost) _itemFor(post),
+  ];
+  final cards = _directoryCards(input);
   final queue = _interleaved(input);
 
   var sinceBreak = 0;
@@ -135,7 +165,52 @@ List<FeedItem> assembleFeed(FeedInputs input) {
     out.add(queue[next++]);
   }
 
-  return _onlyKind(_spacedOut(out), input.filter);
+  return _onlyKind(_withCards(_spacedOut(out), cards), input.filter);
+}
+
+/// The business cards, the person's own state first, otherwise newest first.
+List<DirectoryItem> _directoryCards(FeedInputs input) {
+  final all = [
+    for (final post in input.posts)
+      if (post is DirectoryPost) DirectoryItem(post),
+  ];
+  bool local(DirectoryItem i) =>
+      input.localListingIds.contains(i.post.listingId);
+  return [...all.where(local), ...all.where((i) => !local(i))];
+}
+
+/// Deals [cards] into [items]: never more than one per
+/// [directoryCardEvery] items, and never touching another full-width item.
+///
+/// Cards that do not fit are left off this page rather than piled up at the
+/// end. The page grows as the person scrolls and is assembled again, so a
+/// card left off now gets its slot once there are enough items around it.
+List<FeedItem> _withCards(List<FeedItem> items, List<DirectoryItem> cards) {
+  if (cards.isEmpty) return items;
+
+  final out = <FeedItem>[];
+  var next = 0;
+  // Counted as if a card had just gone by, so the first one waits for
+  // [_itemsBeforeFirstCard] items.
+  var sinceCard = directoryCardEvery - _itemsBeforeFirstCard;
+
+  bool fitsBefore(int i) =>
+      (out.isEmpty || !isFullWidth(out.last)) &&
+      (i >= items.length || !isFullWidth(items[i]));
+
+  for (var i = 0; i <= items.length; i++) {
+    if (next < cards.length &&
+        sinceCard >= directoryCardEvery &&
+        out.isNotEmpty &&
+        fitsBefore(i)) {
+      out.add(cards[next++]);
+      sinceCard = 0;
+    }
+    if (i == items.length) break;
+    out.add(items[i]);
+    sinceCard++;
+  }
+  return out;
 }
 
 FeedItem _itemFor(Post post) => switch (post) {
@@ -285,8 +360,9 @@ final nearbySellersProvider = FutureProvider<List<Person>>((ref) {
 });
 
 /// Nudges this phone has been told to stop showing, with their week's grace.
-final dismissedNudgesProvider =
-    NotifierProvider<DismissedNudges, Set<String>>(DismissedNudges.new);
+final dismissedNudgesProvider = NotifierProvider<DismissedNudges, Set<String>>(
+  DismissedNudges.new,
+);
 
 class DismissedNudges extends Notifier<Set<String>> {
   @override
@@ -413,7 +489,27 @@ final feedItemsProvider = Provider<AsyncValue<List<FeedItem>>>((ref) {
         isNewMember: me != null && me.purchases == 0 && me.posts == 0,
         dismissedNudges: ref.watch(dismissedNudgesProvider),
         filter: ref.watch(feedFilterProvider),
+        localListingIds: _localListingIds(ref, all, me),
       ),
     );
   });
 });
+
+/// The directory posts on the page whose business is in the person's state.
+///
+/// Reads the same live listing each card already watches, so this costs no
+/// extra reads. "Detroit, MI" matches a listing with state "MI"; a listing
+/// with no state on file matches nobody, which only means it is not
+/// preferred, not that it is hidden.
+Set<String> _localListingIds(Ref ref, List<Post> posts, Person? me) {
+  final home = (me?.cityState ?? '').split(',').last.trim().toUpperCase();
+  if (home.isEmpty) return const {};
+  final local = <String>{};
+  for (final post in posts.whereType<DirectoryPost>()) {
+    final listing = ref.watch(directoryListingProvider(post.listingId)).value;
+    if (listing != null && listing.state.toUpperCase() == home) {
+      local.add(post.listingId);
+    }
+  }
+  return local;
+}

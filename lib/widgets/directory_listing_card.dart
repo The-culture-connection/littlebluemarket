@@ -193,7 +193,14 @@ class DirectoryListingCard extends StatelessWidget {
         ],
       );
 
-    return bare ? content : LbmCard(child: content);
+    // The card opens the listing's own page, from every list it sits in.
+    // Not when bare: that is inside a post, which has a tap of its own.
+    return bare
+        ? content
+        : LbmCard(
+            onTap: () => context.goToDirectoryListing(l.id),
+            child: content,
+          );
   }
 }
 

@@ -82,6 +82,11 @@ extension LbmNavigation on BuildContext {
   void goToDirectoryCategory(String slug) =>
       _pushInBranch('/directory-category/$slug');
 
+  /// One littlebluecart.com business's page in the app, by listing id: the
+  /// back of the business card, and everything else the card left out.
+  void goToDirectoryListing(String id) =>
+      _pushInBranch('/directory-listing/${Uri.encodeComponent(id)}');
+
   /// Search results for a query — typed, or a tapped hashtag.
   ///
   /// **There is only ever one search in the back stack.** Searching is a

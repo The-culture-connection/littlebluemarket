@@ -79,6 +79,18 @@ Announcement _announcement({DateTime? at}) => Announcement(
   createdAt: at ?? DateTime(2026, 9, 21),
 );
 
+DirectoryPost _directory(int i) => DirectoryPost(
+  id: 'directory$i',
+  authorId: Fx.meId,
+  createdAt: DateTime(2026, 9, 20).subtract(Duration(minutes: 30 * i)),
+  tags: const [],
+  likeCount: 0,
+  commentCount: 0,
+  likedByMe: false,
+  listingId: '$i',
+  title: 'Business number $i',
+);
+
 ForumThread _thread(int i, {int comments = 10}) => ForumThread(
   id: 'thread$i',
   forumId: 'f1',
@@ -151,13 +163,11 @@ void main() {
       // They are the rotating banner above it (`widgets/hero_banner.dart`).
       // As a pin the announcement took a column's width, came out square, and
       // changed shape once it had been read (Grace, with a screenshot).
+      expect(assembleFeed(_member()).whereType<AnnouncementItem>(), isEmpty);
       expect(
-        assembleFeed(_member()).whereType<AnnouncementItem>(),
-        isEmpty,
-      );
-      expect(
-        assembleFeed(_member(announcementSeen: true))
-            .whereType<AnnouncementItem>(),
+        assembleFeed(
+          _member(announcementSeen: true),
+        ).whereType<AnnouncementItem>(),
         isEmpty,
       );
     });
@@ -259,40 +269,45 @@ void main() {
   });
 
   group('proof', () {
-    test('a listing says how many carted it only once that means something', () {
-      final loud = _products.firstWhere(
-        (p) => p.saveCount >= ProductItem.proofThreshold,
-        orElse: () => _products.first,
-      );
-      final quiet = _products.firstWhere(
-        (p) => p.saveCount < ProductItem.proofThreshold,
-        orElse: () => _products.first,
-      );
+    test(
+      'a listing says how many carted it only once that means something',
+      () {
+        final loud = _products.firstWhere(
+          (p) => p.saveCount >= ProductItem.proofThreshold,
+          orElse: () => _products.first,
+        );
+        final quiet = _products.firstWhere(
+          (p) => p.saveCount < ProductItem.proofThreshold,
+          orElse: () => _products.first,
+        );
 
-      ListingPost postOf(Product p) => ListingPost(
-        id: 'l_${p.id}',
-        authorId: p.sellerId,
-        createdAt: DateTime(2026, 9, 20),
-        tags: const [],
-        likeCount: 0,
-        commentCount: 0,
-        likedByMe: false,
-        product: p,
-      );
+        ListingPost postOf(Product p) => ListingPost(
+          id: 'l_${p.id}',
+          authorId: p.sellerId,
+          createdAt: DateTime(2026, 9, 20),
+          tags: const [],
+          likeCount: 0,
+          commentCount: 0,
+          likedByMe: false,
+          product: p,
+        );
 
-      final items = assembleFeed(FeedInputs(posts: [postOf(loud), postOf(quiet)]));
-      final byId = {
-        for (final item in items.whereType<ProductItem>())
-          item.product.id: item.proof,
-      };
+        final items = assembleFeed(
+          FeedInputs(posts: [postOf(loud), postOf(quiet)]),
+        );
+        final byId = {
+          for (final item in items.whereType<ProductItem>())
+            item.product.id: item.proof,
+        };
 
-      if (loud.saveCount >= ProductItem.proofThreshold) {
-        expect(byId[loud.id], isTrue);
-      }
-      if (quiet.saveCount < ProductItem.proofThreshold) {
-        expect(byId[quiet.id], isFalse);
-      }
-    });
+        if (loud.saveCount >= ProductItem.proofThreshold) {
+          expect(byId[loud.id], isTrue);
+        }
+        if (quiet.saveCount < ProductItem.proofThreshold) {
+          expect(byId[quiet.id], isFalse);
+        }
+      },
+    );
   });
 
   group('nudges', () {
@@ -390,17 +405,77 @@ void main() {
 
     test('Reviews and Carts each keep only their own', () {
       expect(
-        assembleFeed(
-          _member(filter: FeedFilter.review),
-        ).whereType<CartItem>(),
+        assembleFeed(_member(filter: FeedFilter.review)).whereType<CartItem>(),
         isEmpty,
       );
       expect(
-        assembleFeed(
-          _member(filter: FeedFilter.cart),
-        ).whereType<ReviewItem>(),
+        assembleFeed(_member(filter: FeedFilter.cart)).whereType<ReviewItem>(),
         isEmpty,
       );
+    });
+  });
+
+  group('directory business cards', () {
+    // Grace, 2026-09-28: a business card is full width and loud, so at most
+    // one in every eight items, and never pressed against another
+    // full-width thing.
+    FeedInputs page({Set<String> local = const {}}) => FeedInputs(
+      posts: [
+        for (var i = 0; i < 30; i++) _listing(i),
+        for (var i = 0; i < 6; i++) _directory(i),
+      ],
+      hotThreads: [_thread(0), _thread(1)],
+      chatMoment: _moment(),
+      nearbySellers: _people.take(4).toList(),
+      localListingIds: local,
+    );
+
+    test('30 posts and 6 listings: no more than 4 cards', () {
+      final items = assembleFeed(page());
+      final cards = items.whereType<DirectoryItem>().length;
+
+      expect(cards, greaterThan(0));
+      expect(cards, lessThanOrEqualTo(4));
+    });
+
+    test('at least eight items between two cards', () {
+      final items = assembleFeed(page());
+      final at = [
+        for (var i = 0; i < items.length; i++)
+          if (items[i] is DirectoryItem) i,
+      ];
+      for (var k = 1; k < at.length; k++) {
+        expect(at[k] - at[k - 1], greaterThan(directoryCardEvery));
+      }
+    });
+
+    test('a card is never next to another full-width item', () {
+      final items = assembleFeed(page());
+      expect(items.whereType<MakersRailItem>(), isNotEmpty);
+      for (var i = 1; i < items.length; i++) {
+        if (items[i] is DirectoryItem || items[i - 1] is DirectoryItem) {
+          expect(
+            isFullWidth(items[i]) && isFullWidth(items[i - 1]),
+            isFalse,
+            reason: 'items ${i - 1} and $i are both full width',
+          );
+        }
+      }
+    });
+
+    test('the business card is full width', () {
+      expect(isFullWidth(DirectoryItem(_directory(0))), isTrue);
+      expect(isFullWidth(ProductItem(_listing(0))), isFalse);
+    });
+
+    test('businesses in the person\'s state come first', () {
+      final items = assembleFeed(page(local: {'5'}));
+      expect(items.whereType<DirectoryItem>().first.post.listingId, '5');
+    });
+
+    test('the feed does not open on a card', () {
+      final items = assembleFeed(page());
+      expect(items.take(4).whereType<DirectoryItem>(), isEmpty);
     });
   });
 
@@ -435,5 +510,6 @@ extension on FeedInputs {
     isNewMember: isNewMember,
     dismissedNudges: dismissedNudges,
     filter: filter,
+    localListingIds: localListingIds,
   );
 }

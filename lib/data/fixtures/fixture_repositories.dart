@@ -1929,6 +1929,12 @@ class FixtureDirectoryRepository implements DirectoryRepository {
       tags: ['Woman-Owned'],
       locations: ['Online/Virtual'],
       plan: 'DIRECTORY SHOWCASE PLAN',
+      // A bundled demo photo, so the feed's business card has a picture in
+      // its circle on fixtures; the other demo listings show initials.
+      imageUrl: 'asset://assets/images/product-stickers.jpg',
+      description:
+          'Group trips and honeymoons planned end to end, from flights to '
+          'the dinner reservation on the last night.',
     ),
     // Stage 17: businesses on littlebluecart.com that nobody has claimed
     // yet, which is what the whole directory looks like on day one. No

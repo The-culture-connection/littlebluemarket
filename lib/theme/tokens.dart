@@ -25,6 +25,7 @@ class LbmColors extends ThemeExtension<LbmColors> {
     required this.sage,
     required this.sageMist,
     required this.clay,
+    required this.cardStock,
     required this.scrim,
     required this.shadowSoft,
     required this.shadowLift,
@@ -86,6 +87,13 @@ class LbmColors extends ThemeExtension<LbmColors> {
   final Color sageMist;
   final Color clay;
 
+  /// The cream stock of a directory business card.
+  ///
+  /// Its own colour rather than [surface], because the card is meant to read
+  /// as a printed thing laid on the grid: white is every other pin, and a
+  /// business card that matched them would be one more white rectangle.
+  final Color cardStock;
+
   /// What the app is dimmed to behind a popup: dull, dark and grey on
   /// purpose, so the blue underneath goes quiet.
   ///
@@ -121,6 +129,7 @@ class LbmColors extends ThemeExtension<LbmColors> {
     sage: Color(0xFF4E8A69),
     sageMist: Color(0xFFDDEDE4),
     clay: Color(0xFFC4796B),
+    cardStock: Color(0xFFFFFDF8),
     shadowSoft: [
       BoxShadow(
         color: Color(0x570D2342),
@@ -159,6 +168,7 @@ class LbmColors extends ThemeExtension<LbmColors> {
     sage: Color(0xFF8CC3A2),
     sageMist: Color(0xFF24422F),
     clay: Color(0xFFDE9A8C),
+    cardStock: Color(0xFF22314F),
     shadowSoft: [
       BoxShadow(
         color: Color(0x80000000),
@@ -215,6 +225,7 @@ class LbmColors extends ThemeExtension<LbmColors> {
     Color? sage,
     Color? sageMist,
     Color? clay,
+    Color? cardStock,
     Color? scrim,
     List<BoxShadow>? shadowSoft,
     List<BoxShadow>? shadowLift,
@@ -238,6 +249,7 @@ class LbmColors extends ThemeExtension<LbmColors> {
       sage: sage ?? this.sage,
       sageMist: sageMist ?? this.sageMist,
       clay: clay ?? this.clay,
+      cardStock: cardStock ?? this.cardStock,
       shadowSoft: shadowSoft ?? this.shadowSoft,
       shadowLift: shadowLift ?? this.shadowLift,
     );
@@ -265,6 +277,7 @@ class LbmColors extends ThemeExtension<LbmColors> {
       sage: Color.lerp(sage, other.sage, t)!,
       sageMist: Color.lerp(sageMist, other.sageMist, t)!,
       clay: Color.lerp(clay, other.clay, t)!,
+      cardStock: Color.lerp(cardStock, other.cardStock, t)!,
       shadowSoft: BoxShadow.lerpList(shadowSoft, other.shadowSoft, t)!,
       shadowLift: BoxShadow.lerpList(shadowLift, other.shadowLift, t)!,
     );
@@ -308,6 +321,32 @@ abstract final class LbmConst {
   /// (`android/.../values/colors.xml` `lbm_splash`, `LaunchScreen.storyboard`).
   /// Keep the three in step or the launch flashes.
   static const splashBlue = Color(0xFF70A0D1);
+
+  /// The avatar tints, for something with initials and no photograph.
+  ///
+  /// The same eight `FirestoreMappers.tintFor` hands a person, so a directory
+  /// business with no picture sits in the same family as a maker with none.
+  /// Held here rather than imported from the mapper, which a widget must not
+  /// reach into. Readable under white initials, which is what they carry.
+  static const makerTints = [
+    Color(0xFF5C8FCB),
+    Color(0xFFA78BC9),
+    Color(0xFFDB93A8),
+    Color(0xFFD96E9B),
+    Color(0xFF6FB5A6),
+    Color(0xFFD69B62),
+    Color(0xFF86B98C),
+    Color(0xFF93A9C4),
+  ];
+
+  /// A stable tint for [id], hashed the way `tintFor` hashes a uid.
+  static Color makerTintFor(String id) {
+    var hash = 0;
+    for (final unit in id.codeUnits) {
+      hash = (hash * 31 + unit) & 0x7fffffff;
+    }
+    return makerTints[hash % makerTints.length];
+  }
 }
 
 /// Corner radii. "Cute and soft, not rigid" — rounded everything, and no hard

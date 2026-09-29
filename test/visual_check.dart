@@ -27,6 +27,7 @@ import 'package:little_blue_market/theme/tokens.dart';
 import 'package:little_blue_market/widgets/masonry.dart';
 import 'package:little_blue_market/widgets/pins/announcement_pin.dart';
 import 'package:little_blue_market/widgets/pins/cart_pin.dart';
+import 'package:little_blue_market/widgets/pins/directory_card.dart';
 import 'package:little_blue_market/widgets/pins/chat_pin.dart';
 import 'package:little_blue_market/widgets/pins/makers_rail.dart';
 import 'package:little_blue_market/widgets/pins/nudge_pin.dart';
@@ -107,6 +108,8 @@ const _shots = <String, String>{
   'profile': '/you',
   'messages': '/you/messages',
   'dm': '/you/dm/kali?to=1',
+  'directorylisting': '/market/directory-listing/47494',
+  'directorylisting-initials': '/market/directory-listing/51001',
 };
 
 void main() {
@@ -119,8 +122,9 @@ void main() {
     WidgetTester tester,
     String name,
     String location,
-    Brightness brightness,
-  ) async {
+    Brightness brightness, {
+    Finder? scrollTo,
+  }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     tester.platformDispatcher.platformBrightnessTestValue = brightness;
@@ -158,6 +162,19 @@ void main() {
     });
     await tester.pumpAndSettle();
 
+    // Something further down the page, brought up into view.
+    if (scrollTo != null) {
+      await tester.scrollUntilVisible(
+        scrollTo,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(scrollTo);
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 260));
+      await tester.pumpAndSettle();
+    }
+
     final mode = brightness == Brightness.light ? 'light' : 'dark';
     await expectLater(
       find.byType(MaterialApp),
@@ -174,6 +191,21 @@ void main() {
   _shots.forEach((name, location) {
     testWidgets('$name dark', (t) => shoot(t, name, location, Brightness.dark));
   });
+
+  // The feed scrolled down to its directory business card, which sits a few
+  // items in and so is not in the top-of-feed shot.
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'feed-directory ${brightness.name}',
+      (t) => shoot(
+        t,
+        'feed-directory',
+        '/market',
+        brightness,
+        scrollTo: find.byType(DirectoryBusinessCard),
+      ),
+    );
+  }
 
   /// Every pin kind in one grid, which is the redesign's whole vocabulary on
   /// one page.
@@ -312,8 +344,7 @@ void main() {
     ];
     final wide = [
       for (final item in items)
-        item is MakersRail ||
-            (item is AnnouncementPin && item.item.hero),
+        item is MakersRail || (item is AnnouncementPin && item.item.hero),
     ];
 
     await tester.pumpWidget(
@@ -322,10 +353,11 @@ void main() {
         child: MaterialApp(
           theme: buildLbmTheme(brightness),
           home: Scaffold(
-            backgroundColor: (brightness == Brightness.light
-                    ? LbmColors.light
-                    : LbmColors.dark)
-                .paper,
+            backgroundColor:
+                (brightness == Brightness.light
+                        ? LbmColors.light
+                        : LbmColors.dark)
+                    .paper,
             body: SafeArea(
               child: LbmMasonry(wide: wide, bottom: 20, children: items),
             ),

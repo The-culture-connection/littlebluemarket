@@ -223,7 +223,7 @@ class _Grid extends ConsumerWidget {
             ...header,
             ...LbmMasonry.slivers(
               children: [for (final item in shown) _pinFor(context, ref, item)],
-              wide: [for (final item in shown) item.isWide],
+              wide: [for (final item in shown) isFullWidth(item)],
             ),
             SliverToBoxAdapter(child: _TheEnd(guest: isGuest)),
             // The tab bar is a real bottom bar rather than something floating
