@@ -7,6 +7,7 @@ import '../../models/models.dart';
 import '../../state/feed_items.dart';
 import '../../state/providers.dart';
 import '../../state/location.dart';
+import '../../state/notifications_ui.dart';
 import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
@@ -171,6 +172,7 @@ class _Grid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(feedItemsProvider);
+    final ui = ref.watch(notificationsUiProvider);
     final filter = ref.watch(feedFilterProvider);
 
     final header = <Widget>[
@@ -222,7 +224,17 @@ class _Grid extends ConsumerWidget {
           slivers: [
             ...header,
             ...LbmMasonry.slivers(
-              children: [for (final item in shown) _pinFor(context, ref, item)],
+              children: [
+                for (final item in shown)
+                  _GrowIn(
+                    key: ValueKey('grow:${item.key}'),
+                    active: ui.fresh.contains(item.key),
+                    onDone: () => ref
+                        .read(notificationsUiProvider.notifier)
+                        .settled(item.key),
+                    child: _pinFor(context, ref, item, ui),
+                  ),
+              ],
               wide: [for (final item in shown) isFullWidth(item)],
             ),
             SliverToBoxAdapter(child: _TheEnd(guest: isGuest)),
@@ -235,39 +247,53 @@ class _Grid extends ConsumerWidget {
       },
     );
   }
-
 }
 
 /// One pin per kind. Exhaustive on purpose: a new [FeedItem] is a compile
 /// error here rather than a hole in the grid.
-Widget _pinFor(BuildContext context, WidgetRef ref, FeedItem item) =>
-    switch (item) {
-      ProductItem i => ProductPin(key: ValueKey(i.key), item: i),
-      ReviewItem i => ReviewPin(key: ValueKey(i.key), item: i),
-      CartItem i => CartPin(
-        key: ValueKey(i.key),
-        item: i,
-        onAddAll: () => addManyToCart(
-          context,
-          ref,
-          [for (final line in i.post.items) line.productId],
-        ),
-      ),
-      ShoutoutItem i => ShoutoutPin(key: ValueKey(i.key), item: i),
-      DirectoryItem i => DirectoryPin(key: ValueKey(i.key), item: i),
-      ThreadItem i => ThreadPin(key: ValueKey(i.key), item: i),
-      ChatItem i => ChatPin(key: ValueKey(i.key), item: i),
-      // Announcements are the banner above the grid, never a pin in it.
-      AnnouncementItem i => AnnouncementPin(key: ValueKey(i.key), item: i),
-      NudgeItem i => NudgePin(
-        key: ValueKey(i.key),
-        item: i,
-        onTap: () => _openNudge(context, ref, i),
-        onDismiss: () =>
-            ref.read(dismissedNudgesProvider.notifier).dismiss(i.dismissKey),
-      ),
-      MakersRailItem i => MakersRail(key: ValueKey(i.key), item: i),
-    };
+Widget _pinFor(
+  BuildContext context,
+  WidgetRef ref,
+  FeedItem item,
+  NotificationsUiState ui,
+) => switch (item) {
+  ProductItem i => ProductPin(
+    key: ValueKey(i.key),
+    item: i,
+    hop: ui.fresh.contains(i.key),
+  ),
+  ReviewItem i => ReviewPin(key: ValueKey(i.key), item: i),
+  CartItem i => CartPin(
+    key: ValueKey(i.key),
+    item: i,
+    onAddAll: () => addManyToCart(context, ref, [
+      for (final line in i.post.items) line.productId,
+    ]),
+  ),
+  ShoutoutItem i => ShoutoutPin(key: ValueKey(i.key), item: i),
+  DirectoryItem i => DirectoryPin(key: ValueKey(i.key), item: i),
+  ThreadItem i => ThreadPin(
+    key: ValueKey(i.key),
+    item: i,
+    newCount: ui.threadNew[i.thread.id] ?? 0,
+    onTap: () {
+      ref.read(notificationsUiProvider.notifier).seenThread(i.thread.id);
+      context.go('/community/thread/${i.thread.id}');
+    },
+  ),
+  ChatItem i => ChatPin(key: ValueKey(i.key), item: i),
+  // Announcements are the banner above the grid, never a pin in it.
+  AnnouncementItem i => AnnouncementPin(key: ValueKey(i.key), item: i),
+  NudgeItem i => NudgePin(
+    key: ValueKey(i.key),
+    item: i,
+    hop: ui.fresh.contains(i.key),
+    onTap: () => _openNudge(context, ref, i),
+    onDismiss: () =>
+        ref.read(dismissedNudgesProvider.notifier).dismiss(i.dismissKey),
+  ),
+  MakersRailItem i => MakersRail(key: ValueKey(i.key), item: i),
+};
 
 void _openNudge(BuildContext context, WidgetRef ref, NudgeItem item) {
   switch (item.nudge) {
@@ -470,3 +496,101 @@ final followedPeopleProvider = StreamProvider<Set<String>>((ref) {
   if (ref.watch(isGuestProvider)) return Stream.value(const {});
   return ref.watch(socialRepositoryProvider).watchFollowedPeople();
 });
+
+/// A pin that arrived while the feed was up grows in from the top: past its
+/// height with a half-degree lean, back, and settled, the way the mockup's
+/// drop pin lands. Always in the tree around every pin, so a pin whose
+/// arrival is announced a moment after it appears still gets it, and the
+/// pin inside is never rebuilt from scratch when the growing stops.
+class _GrowIn extends StatefulWidget {
+  const _GrowIn({
+    super.key,
+    required this.active,
+    required this.onDone,
+    required this.child,
+  });
+
+  final bool active;
+  final VoidCallback onDone;
+  final Widget child;
+
+  @override
+  State<_GrowIn> createState() => _GrowInState();
+}
+
+class _GrowInState extends State<_GrowIn> with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    // The grow, then time for the button's hop to finish before the pin is
+    // told it is no longer new.
+    duration: LbmMotion.grow + LbmMotion.hop,
+    value: 1,
+  );
+
+  static final _scaleY = TweenSequence<double>([
+    TweenSequenceItem(tween: Tween(begin: 0, end: 1.06), weight: 60),
+    TweenSequenceItem(tween: Tween(begin: 1.06, end: .98), weight: 20),
+    TweenSequenceItem(tween: Tween(begin: .98, end: 1), weight: 20),
+  ]);
+  static final _lean = TweenSequence<double>([
+    TweenSequenceItem(tween: Tween(begin: -2, end: .6), weight: 60),
+    TweenSequenceItem(tween: Tween(begin: .6, end: -.3), weight: 20),
+    TweenSequenceItem(tween: Tween(begin: -.3, end: 0), weight: 20),
+  ]);
+
+  double get _growEnd =>
+      LbmMotion.grow.inMicroseconds / _controller.duration!.inMicroseconds;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.active) _start();
+  }
+
+  @override
+  void didUpdateWidget(_GrowIn old) {
+    super.didUpdateWidget(old);
+    if (widget.active && !old.active) _start();
+  }
+
+  void _start() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        widget.onDone();
+        return;
+      }
+      _controller.forward(from: 0).whenComplete(() {
+        if (mounted) widget.onDone();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) {
+        final t = (_controller.value / _growEnd).clamp(0.0, 1.0);
+        if (t >= 1) return child!;
+        return Opacity(
+          opacity: (t * 2.5).clamp(0.0, 1.0),
+          child: Transform(
+            alignment: Alignment.topCenter,
+            transform: Matrix4.identity()
+              ..rotateZ(_lean.transform(t) * 3.141592653589793 / 180)
+              ..scaleByDouble(1, _scaleY.transform(t), 1, 1),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+}

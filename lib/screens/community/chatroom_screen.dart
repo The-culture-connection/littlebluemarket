@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/models.dart';
 import '../../router/nav.dart';
+import '../../state/notifications_ui.dart';
 import '../../state/providers.dart';
 import '../../state/session.dart';
 import '../../theme/app_theme.dart';
@@ -24,6 +25,44 @@ class ChatroomScreen extends ConsumerStatefulWidget {
 
 class _ChatroomScreenState extends ConsumerState<ChatroomScreen> {
   bool _navigating = false;
+  final _scroll = ScrollController();
+
+  /// Within this far of the newest message counts as reading it.
+  static const _atBottom = 40.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_maybeCaughtUp);
+  }
+
+  @override
+  void dispose() {
+    _scroll
+      ..removeListener(_maybeCaughtUp)
+      ..dispose();
+    super.dispose();
+  }
+
+  bool get _scrolledUp => _scroll.hasClients && _scroll.offset > _atBottom;
+
+  /// Scrolled back down to the newest message: the pill has said its piece.
+  void _maybeCaughtUp() {
+    if (_scrolledUp) return;
+    final ui = ref.read(notificationsUiProvider);
+    if (ui.chatPillCount > 0) {
+      ref.read(notificationsUiProvider.notifier).seenChatBottom();
+    }
+  }
+
+  Future<void> _toNewest() async {
+    await _scroll.animateTo(
+      0,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+    );
+    ref.read(notificationsUiProvider.notifier).seenChatBottom();
+  }
 
   void _openForums() {
     if (_navigating) return;
@@ -51,6 +90,13 @@ class _ChatroomScreenState extends ConsumerState<ChatroomScreen> {
   Widget build(BuildContext context) {
     final c = context.c;
     final messages = ref.watch(chatroomProvider);
+    final pillCount = ref.watch(
+      notificationsUiProvider.select((s) => s.chatPillCount),
+    );
+    // Arrived while the newest message was on screen: already read.
+    if (pillCount > 0 && !_scrolledUp) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeCaughtUp());
+    }
 
     return LbmScreen(
       // A guest reads the room; the rules refuse their writes, so the bar
@@ -101,31 +147,117 @@ class _ChatroomScreenState extends ConsumerState<ChatroomScreen> {
           ),
           const _PinnedAnnouncement(),
           Expanded(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: _onOverscroll,
-              child: LbmAsync<List<Message>>(
-                messages,
-                skeleton: const ListRowSkeleton(rows: 4),
-                isEmpty: (messages) => messages.isEmpty,
-                empty: const LbmEmpty(
-                  title: 'Quiet in here',
-                  body: 'Say the first thing.',
+            child: Stack(
+              children: [
+                Positioned.fill(child: _room(messages)),
+                // New messages below where the person has scrolled to.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 12,
+                  child: Center(
+                    child: _NewBelowPill(
+                      count: _scrolledUp ? pillCount : 0,
+                      onTap: _toNewest,
+                    ),
+                  ),
                 ),
-                // Bottom up: the room opens on what was just said, not on
-                // the first thing anybody ever typed in it, and a message
-                // you send is on screen without scrolling for it.
-                data: (messages) => ListView.separated(
-                  padding: const EdgeInsets.all(14),
-                  reverse: true,
-                  itemCount: messages.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 14),
-                  itemBuilder: (context, i) =>
-                      _ChatBubble(message: messages[messages.length - 1 - i]),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _room(AsyncValue<List<Message>> messages) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: _onOverscroll,
+      child: LbmAsync<List<Message>>(
+        messages,
+        skeleton: const ListRowSkeleton(rows: 4),
+        isEmpty: (messages) => messages.isEmpty,
+        empty: const LbmEmpty(
+          title: 'Quiet in here',
+          body: 'Say the first thing.',
+        ),
+        // Bottom up: the room opens on what was just said, not on
+        // the first thing anybody ever typed in it, and a message
+        // you send is on screen without scrolling for it.
+        data: (messages) => ListView.separated(
+          controller: _scroll,
+          padding: const EdgeInsets.all(14),
+          reverse: true,
+          itemCount: messages.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 14),
+          itemBuilder: (context, i) =>
+              _ChatBubble(message: messages[messages.length - 1 - i]),
+        ),
+      ),
+    );
+  }
+}
+
+/// "3 new ↓" over the bottom of the room, for somebody scrolled up reading
+/// back. Springs up when there is something below, and scrolls to it.
+class _NewBelowPill extends StatelessWidget {
+  const _NewBelowPill({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final showing = count > 0;
+    final duration = LbmMotion.of(context, LbmMotion.enter);
+    const white = LbmConst.onGradient;
+
+    return IgnorePointer(
+      ignoring: !showing,
+      child: AnimatedSlide(
+        offset: showing ? Offset.zero : const Offset(0, 1.6),
+        duration: duration,
+        curve: LbmMotion.overshoot,
+        child: AnimatedOpacity(
+          opacity: showing ? 1 : 0,
+          duration: LbmMotion.of(context, LbmMotion.exit),
+          child: Semantics(
+            button: true,
+            label: '$count new messages, scroll to them',
+            excludeSemantics: true,
+            child: GestureDetector(
+              onTap: onTap,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
+                decoration: BoxDecoration(
+                  // Fixed dark, like the chat pin, so it reads over the
+                  // bubbles in either theme.
+                  color: LbmConst.chatInk,
+                  borderRadius: LbmRadius.pillR,
+                  boxShadow: context.c.shadowLift,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$count new',
+                      style: LbmText.pinTitle.copyWith(
+                        fontSize: 12,
+                        color: white,
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    const Icon(
+                      Icons.arrow_downward_rounded,
+                      size: 14,
+                      color: white,
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

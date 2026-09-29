@@ -291,6 +291,209 @@ class PillButton extends StatelessWidget {
   }
 }
 
+/// The four ways a small thing moves to say "this just happened".
+enum BounceKind {
+  /// A badge or dot arriving: small, overshoots big, settles, with a twist.
+  wobble,
+
+  /// The bell swinging side to side, dying away.
+  ring,
+
+  /// A button jumping, squashing as it lands.
+  hop,
+
+  /// An icon shaking its head once.
+  jiggle,
+}
+
+/// Plays one of [BounceKind] once, on [child], when it first appears (after
+/// [delay]), and again whenever [replay] changes.
+///
+/// The delay is part of the animation rather than a timer, so nothing is
+/// left pending when a test ends or the widget goes away. Held still when
+/// the phone asks for no animation.
+class Bounce extends StatefulWidget {
+  const Bounce({
+    super.key,
+    required this.kind,
+    required this.child,
+    this.delay = Duration.zero,
+    this.replay,
+    this.play = true,
+  });
+
+  final BounceKind kind;
+  final Widget child;
+  final Duration delay;
+
+  /// Change it to play again.
+  final Object? replay;
+
+  /// Whether to play at all. Turning it on plays; turning it off does not
+  /// cut short a bounce already under way.
+  final bool play;
+
+  static Duration lengthOf(BounceKind kind) => switch (kind) {
+    BounceKind.wobble => LbmMotion.wobble,
+    BounceKind.ring => LbmMotion.ring,
+    BounceKind.hop => LbmMotion.hop,
+    BounceKind.jiggle => const Duration(milliseconds: 600),
+  };
+
+  @override
+  State<Bounce> createState() => _BounceState();
+}
+
+class _BounceState extends State<Bounce> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: widget.delay + Bounce.lengthOf(widget.kind),
+  );
+
+  static TweenSequence<double> _steps(List<(double, double)> points) =>
+      TweenSequence([
+        for (var i = 1; i < points.length; i++)
+          TweenSequenceItem(
+            tween: Tween(begin: points[i - 1].$2, end: points[i].$2),
+            weight: points[i].$1 - points[i - 1].$1,
+          ),
+      ]);
+
+  // The mockup's keyframes, as (percent, value).
+  static final _wobbleScale = _steps([(0, .3), (50, 1.3), (70, .9), (100, 1)]);
+  static final _wobbleTurn = _steps([(0, -20), (50, 10), (70, -5), (100, 0)]);
+  static final _ringTurn = _steps([
+    (0, 0),
+    (15, -22),
+    (30, 18),
+    (45, -12),
+    (60, 8),
+    (75, -4),
+    (100, 0),
+  ]);
+  static final _ringScale = _steps([
+    (0, 1),
+    (15, 1.15),
+    (30, 1.15),
+    (45, 1.08),
+    (60, 1),
+    (100, 1),
+  ]);
+  static final _hopY = _steps([(0, 0), (30, -8), (50, 0), (70, -3), (100, 0)]);
+  static final _hopX = _steps([
+    (0, 1),
+    (30, 1.12),
+    (50, .94),
+    (70, 1.04),
+    (100, 1),
+  ]);
+  static final _hopSquash = _steps([
+    (0, 1),
+    (30, .9),
+    (50, 1.08),
+    (70, .97),
+    (100, 1),
+  ]);
+  static final _jiggleTurn = _steps([
+    (0, 0),
+    (25, -8),
+    (50, 8),
+    (75, -4),
+    (100, 0),
+  ]);
+  static final _jiggleScale = _steps([
+    (0, 1),
+    (25, 1.1),
+    (50, 1.1),
+    (75, 1),
+    (100, 1),
+  ]);
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.play) _play();
+  }
+
+  @override
+  void didUpdateWidget(Bounce old) {
+    super.didUpdateWidget(old);
+    final switchedOn = widget.play && !old.play;
+    final replayed = widget.play && old.replay != widget.replay;
+    if (switchedOn || replayed) _play();
+  }
+
+  void _play() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || MediaQuery.disableAnimationsOf(context)) return;
+      _controller.forward(from: 0);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = _controller.duration!.inMicroseconds;
+    final start = total == 0 ? 0.0 : widget.delay.inMicroseconds / total;
+
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) {
+        if (!_controller.isAnimating || _controller.value < start) {
+          // Before its delay a wobble is still invisible; everything else
+          // is simply at rest.
+          return widget.kind == BounceKind.wobble && _controller.isAnimating
+              ? Transform.scale(scale: .3, child: child)
+              : child!;
+        }
+        final t = start >= 1 ? 1.0 : (_controller.value - start) / (1 - start);
+        const degree = 3.141592653589793 / 180;
+        return switch (widget.kind) {
+          BounceKind.wobble => Transform.rotate(
+            angle: _wobbleTurn.transform(t) * degree,
+            child: Transform.scale(
+              scale: _wobbleScale.transform(t),
+              child: child,
+            ),
+          ),
+          BounceKind.ring => Transform.rotate(
+            angle: _ringTurn.transform(t) * degree,
+            child: Transform.scale(
+              scale: _ringScale.transform(t),
+              child: child,
+            ),
+          ),
+          BounceKind.hop => Transform.translate(
+            offset: Offset(0, _hopY.transform(t)),
+            child: Transform(
+              alignment: Alignment.bottomCenter,
+              transform: Matrix4.diagonal3Values(
+                _hopX.transform(t),
+                _hopSquash.transform(t),
+                1,
+              ),
+              child: child,
+            ),
+          ),
+          BounceKind.jiggle => Transform.rotate(
+            angle: _jiggleTurn.transform(t) * degree,
+            child: Transform.scale(
+              scale: _jiggleScale.transform(t),
+              child: child,
+            ),
+          ),
+        };
+      },
+    );
+  }
+}
+
 /// The 38pt circular icon button used in app bars and post actions.
 class CircleIconButton extends StatelessWidget {
   const CircleIconButton({
@@ -304,6 +507,7 @@ class CircleIconButton extends StatelessWidget {
     this.size = 38,
     this.iconSize = 20,
     this.badge = false,
+    this.ring = false,
   });
 
   final IconData icon;
@@ -317,12 +521,17 @@ class CircleIconButton extends StatelessWidget {
   final double size;
   final double iconSize;
 
-  /// The small accent dot used for unread state.
+  /// The small accent dot used for unread state. It wobbles in.
   final bool badge;
+
+  /// Swing the icon once, the way a bell rings: when this is true as the
+  /// button appears, and each time it turns true after that.
+  final bool ring;
 
   @override
   Widget build(BuildContext context) {
     final c = context.c;
+    final glyph = Icon(icon, size: iconSize, color: color ?? c.ink);
     Widget button = Container(
       width: size,
       height: size,
@@ -336,7 +545,7 @@ class CircleIconButton extends StatelessWidget {
         child: InkWell(
           onTap: onPressed,
           customBorder: const CircleBorder(),
-          child: Icon(icon, size: iconSize, color: color ?? c.ink),
+          child: Bounce(kind: BounceKind.ring, play: ring, child: glyph),
         ),
       ),
     );
@@ -349,12 +558,15 @@ class CircleIconButton extends StatelessWidget {
           Positioned(
             top: 4,
             right: 4,
-            child: Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: c.accentDeep,
-                shape: BoxShape.circle,
+            child: Bounce(
+              kind: BounceKind.wobble,
+              child: Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: c.accentDeep,
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
           ),
@@ -907,9 +1119,7 @@ class TopTabs extends StatelessWidget {
                           Container(
                             height: 2.5,
                             decoration: BoxDecoration(
-                              color: i == selected
-                                  ? c.ink
-                                  : Colors.transparent,
+                              color: i == selected ? c.ink : Colors.transparent,
                               borderRadius: LbmRadius.pillR,
                             ),
                           ),
@@ -1072,10 +1282,7 @@ class _HashtagTextState extends State<HashtagText> {
       spans.add(
         TextSpan(
           text: token,
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            color: widget.tagColor,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w800, color: widget.tagColor),
           recognizer: recognizer,
         ),
       );
@@ -1205,4 +1412,3 @@ class GuestJoinBar extends StatelessWidget {
     );
   }
 }
-

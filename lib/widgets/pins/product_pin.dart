@@ -6,6 +6,7 @@ import '../../models/models.dart';
 import '../../router/nav.dart';
 import '../../state/providers.dart';
 import '../cart_pill.dart';
+import '../primitives.dart';
 import '../product_art.dart';
 import 'pin_caption.dart';
 
@@ -16,12 +17,19 @@ import 'pin_caption.dart';
 /// thing drawn on top of it is the orchid cart pill, because adding to the
 /// cart is the one action a pin offers and the accent is reserved for it.
 class ProductPin extends ConsumerWidget {
-  const ProductPin({super.key, required this.item});
+  const ProductPin({super.key, required this.item, this.hop = false});
 
   ProductPin.of(ListingPost post, {Key? key, bool proof = false})
-    : this(key: key, item: ProductItem(post, proof: proof));
+    : this(
+        key: key,
+        item: ProductItem(post, proof: proof),
+      );
 
   final ProductItem item;
+
+  /// The pin has just grown in at the top of the feed: its cart button
+  /// hops once it has landed, so the eye goes to the one thing to do.
+  final bool hop;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -54,7 +62,12 @@ class ProductPin extends ConsumerWidget {
               Positioned(
                 right: 8,
                 bottom: 8,
-                child: CartPill(productId: product.id),
+                child: Bounce(
+                  kind: BounceKind.hop,
+                  delay: const Duration(milliseconds: 500),
+                  play: hop,
+                  child: CartPill(productId: product.id),
+                ),
               ),
             ],
           ),

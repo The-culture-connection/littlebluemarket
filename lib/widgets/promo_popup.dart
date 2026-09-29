@@ -153,8 +153,7 @@ class _PromoLayerState extends ConsumerState<PromoLayer> {
     widget.router.push('${branchPrefixOf(_path)}/tag/${tagKey(tag)}');
   }
 
-  String get _path =>
-      widget.router.routeInformationProvider.value.uri.path;
+  String get _path => widget.router.routeInformationProvider.value.uri.path;
 
   /// The button. Three destinations now, and the tap is counted for all
   /// three: an advert that sends people to a shop has earned the click as
@@ -242,18 +241,25 @@ class _PromoLayerState extends ConsumerState<PromoLayer> {
               opacity: _visible ? 1 : 0,
               duration: fade,
               curve: Curves.easeOut,
-              child: AnimatedScale(
-                // A whisper of a zoom on the way in; nothing bouncy.
-                scale: _visible ? 1 : 0.96,
-                duration: fade,
-                curve: Curves.easeOutCubic,
-                child: SafeArea(
-                  child: PromoCard(
-                    promo: showing,
-                    onDismiss: _dismiss,
-                    onCta: () => _tapCta(showing),
-                    onOpenProfile: _openProfile,
-                    onOpenTag: _openTag,
+              // Springs up on the way in: from 70%, a touch past full size,
+              // and settled, rising as it grows (the mockup's `cardin`,
+              // 2026-09-28). Out is quick and straight, with no bounce.
+              child: AnimatedSlide(
+                offset: _visible ? Offset.zero : const Offset(0, 0.04),
+                duration: _visible ? _cardIn : fade,
+                curve: _visible ? LbmMotion.overshoot : Curves.easeIn,
+                child: AnimatedScale(
+                  scale: _visible ? 1 : 0.7,
+                  duration: _visible ? _cardIn : fade,
+                  curve: _visible ? LbmMotion.overshoot : Curves.easeIn,
+                  child: SafeArea(
+                    child: PromoCard(
+                      promo: showing,
+                      onDismiss: _dismiss,
+                      onCta: () => _tapCta(showing),
+                      onOpenProfile: _openProfile,
+                      onOpenTag: _openTag,
+                    ),
                   ),
                 ),
               ),
@@ -263,6 +269,10 @@ class _PromoLayerState extends ConsumerState<PromoLayer> {
       ],
     );
   }
+
+  /// The spring up, a little longer than the fade so the settle shows.
+  Duration get _cardIn =>
+      LbmMotion.of(context, const Duration(milliseconds: 650));
 }
 
 /// The card itself: the picture first, then who it is from, the title, the
@@ -334,105 +344,105 @@ class _PromoCardState extends State<PromoCard> {
             children: [
               _closeButton(c),
               Dismissible(
-                  key: ValueKey('promo_${promo.id}'),
-                  direction: DismissDirection.down,
-                  onDismissed: (_) => widget.onDismiss(),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      // surface, not paper: paper is the app's cornflower
-                      // background, so the card was blue on blue.
-                      color: c.surface,
+                key: ValueKey('promo_${promo.id}'),
+                direction: DismissDirection.down,
+                onDismissed: (_) => widget.onDismiss(),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    // surface, not paper: paper is the app's cornflower
+                    // background, so the card was blue on blue.
+                    color: c.surface,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: c.shadowLift,
+                  ),
+                  // A Material ancestor, the way LbmCard has one. Without
+                  // it every Text here is painted with Flutter's
+                  // missing-style marker, which is the gold underline
+                  // under the title, the caption and the button
+                  // (Grace, 2026-09-14).
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: ClipRRect(
                       borderRadius: BorderRadius.circular(22),
-                      boxShadow: c.shadowLift,
-                    ),
-                    // A Material ancestor, the way LbmCard has one. Without
-                    // it every Text here is painted with Flutter's
-                    // missing-style marker, which is the gold underline
-                    // under the title, the caption and the button
-                    // (Grace, 2026-09-14).
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(22),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(maxHeight: cardHeight),
-                          // The picture sets its own height, so on a short
-                          // phone with a tall picture and a long caption the
-                          // card can want more room than there is. It
-                          // scrolls rather than either cutting the picture
-                          // or running off the screen. In the ordinary case
-                          // nothing scrolls and this costs nothing.
-                          child: SingleChildScrollView(
-                            child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Always the card's full width, whatever shape
-                            // the picture is.
-                            if (photos.isNotEmpty)
-                              _PhotoFrame(
-                                url: photos.first,
-                                child: _photos(photos, c),
-                              ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                18,
-                                16,
-                                18,
-                                18,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    isNews
-                                        ? 'FROM LITTLE BLUE MARKET'
-                                        : 'SPONSORED',
-                                    style: LbmText.tiny.copyWith(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.7,
-                                      color: c.ink3,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxHeight: cardHeight),
+                        // The picture sets its own height, so on a short
+                        // phone with a tall picture and a long caption the
+                        // card can want more room than there is. It
+                        // scrolls rather than either cutting the picture
+                        // or running off the screen. In the ordinary case
+                        // nothing scrolls and this costs nothing.
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Always the card's full width, whatever shape
+                              // the picture is.
+                              if (photos.isNotEmpty)
+                                _PhotoFrame(
+                                  url: photos.first,
+                                  child: _photos(photos, c),
+                                ),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  18,
+                                  16,
+                                  18,
+                                  18,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isNews
+                                          ? 'FROM LITTLE BLUE MARKET'
+                                          : 'SPONSORED',
+                                      style: LbmText.tiny.copyWith(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.7,
+                                        color: c.ink3,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 7),
-                                  _named(
-                                    promo.title,
-                                    style: LbmText.display.copyWith(
-                                      fontSize: 23,
-                                      height: 1.15,
-                                      color: c.ink,
+                                    const SizedBox(height: 7),
+                                    _named(
+                                      promo.title,
+                                      style: LbmText.display.copyWith(
+                                        fontSize: 23,
+                                        height: 1.15,
+                                        color: c.ink,
+                                      ),
+                                      tagColor: c.accentText,
                                     ),
-                                    tagColor: c.accentText,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  _named(
-                                    promo.caption,
-                                    style: TextStyle(
-                                      fontSize: 14.5,
-                                      height: 1.5,
-                                      color: c.ink2,
+                                    const SizedBox(height: 8),
+                                    _named(
+                                      promo.caption,
+                                      style: TextStyle(
+                                        fontSize: 14.5,
+                                        height: 1.5,
+                                        color: c.ink2,
+                                      ),
+                                      tagColor: c.accentText,
                                     ),
-                                    tagColor: c.accentText,
-                                  ),
-                                  if (promo.hasCta) ...[
-                                    const SizedBox(height: 18),
-                                    PillButton(
-                                      promo.ctaLabel,
-                                      onPressed: widget.onCta,
-                                    ),
+                                    if (promo.hasCta) ...[
+                                      const SizedBox(height: 18),
+                                      PillButton(
+                                        promo.ctaLabel,
+                                        onPressed: widget.onCta,
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
-                            ),
-                          ],
-                            ),
+                            ],
                           ),
                         ),
                       ),
                     ),
                   ),
                 ),
+              ),
             ],
           ),
         ),
@@ -525,13 +535,12 @@ class _PromoCardState extends State<PromoCard> {
             controller: _pages,
             itemCount: photos.length,
             onPageChanged: (i) => setState(() => _page = i),
-            itemBuilder: (context, i) =>
-                RemoteImage(
-                  url: photos[i],
-                  fill: true,
-                  fit: BoxFit.contain,
-                  cacheWidth: 900,
-                ),
+            itemBuilder: (context, i) => RemoteImage(
+              url: photos[i],
+              fill: true,
+              fit: BoxFit.contain,
+              cacheWidth: 900,
+            ),
           ),
         ),
         Padding(

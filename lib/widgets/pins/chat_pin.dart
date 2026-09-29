@@ -16,15 +16,27 @@ import '../../theme/tokens.dart';
 /// in this system, and the mockup's "23 here now" is a drawing. What it can
 /// honestly say is how much was said in the last hour, which the messages
 /// themselves answer.
-class ChatPin extends StatelessWidget {
+class ChatPin extends StatefulWidget {
   const ChatPin({super.key, required this.item, this.onTap});
 
   final ChatItem item;
   final VoidCallback? onTap;
 
   @override
+  State<ChatPin> createState() => _ChatPinState();
+}
+
+class _ChatPinState extends State<ChatPin> {
+  /// The messages that were already here when the pin was drawn. Anything
+  /// else arrived while the person was looking, and slides in.
+  Set<String>? _seen;
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
+    final onTap = widget.onTap;
     final moment = item.moment;
+    final seen = _seen ??= {for (final m in moment.latest) m.id};
     // Everything on this pin is fixed, because the tile it sits on is fixed.
     const white = LbmConst.onGradient;
 
@@ -63,7 +75,17 @@ class ChatPin extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             for (final message in moment.latest.take(2)) ...[
-              _Bubble(text: message.text, color: white),
+              if (!seen.contains(message.id))
+                _SlideIn(
+                  key: ValueKey(message.id),
+                  child: _Bubble(text: message.text, color: white),
+                )
+              else
+                _Bubble(
+                  key: ValueKey(message.id),
+                  text: message.text,
+                  color: white,
+                ),
               const SizedBox(height: 6),
             ],
             if (moment.latest.isEmpty)
@@ -117,7 +139,7 @@ class ChatPin extends StatelessWidget {
 /// A translucent chat bubble, squared off at the bottom-left like the ones in
 /// the room itself.
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.text, required this.color});
+  const _Bubble({super.key, required this.text, required this.color});
 
   final String text;
   final Color color;
@@ -193,6 +215,62 @@ class _LiveDotState extends State<_LiveDot>
         width: 7,
         height: 7,
         decoration: BoxDecoration(color: sage, shape: BoxShape.circle),
+      ),
+    );
+  }
+}
+
+/// A message arriving: up from below, a little past, and settled.
+class _SlideIn extends StatefulWidget {
+  const _SlideIn({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<_SlideIn> createState() => _SlideInState();
+}
+
+class _SlideInState extends State<_SlideIn>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 550),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _controller.value = 1;
+      } else {
+        _controller.forward();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = CurvedAnimation(parent: _controller, curve: LbmMotion.overshoot);
+    return FadeTransition(
+      opacity: CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0, 0.5),
+      ),
+      child: AnimatedBuilder(
+        animation: t,
+        child: widget.child,
+        builder: (context, child) => Transform.translate(
+          offset: Offset(0, 16 * (1 - t.value)),
+          child: Transform.scale(scale: 0.9 + 0.1 * t.value, child: child),
+        ),
       ),
     );
   }

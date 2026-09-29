@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
 import '../../router/nav.dart';
+import '../../state/notifications_ui.dart';
 import '../../state/providers.dart';
 import '../../state/session.dart';
 import '../../theme/app_theme.dart';
@@ -43,6 +44,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   /// otherwise).
   int? _tab;
 
+  /// Whether the bell has a ring waiting, and if so, marks it rung once
+  /// this frame has drawn it swinging.
+  bool _ringBell(WidgetRef ref) {
+    final pending = ref.watch(
+      notificationsUiProvider.select((s) => s.bellRingPending),
+    );
+    if (pending) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(notificationsUiProvider.notifier).bellRung();
+      });
+    }
+    return pending;
+  }
+
   @override
   Widget build(BuildContext context) {
     final me = ref.watch(meProvider);
@@ -75,6 +90,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             icon: Icons.notifications_none_rounded,
             tooltip: 'Notifications',
             badge: ref.watch(unreadNotificationsProvider) > 0,
+            // Swings once for something that arrived since it last did,
+            // including while this screen was not up.
+            ring: _ringBell(ref),
             onPressed: () => context.push('/you/notifications'),
           ),
           CircleIconButton(

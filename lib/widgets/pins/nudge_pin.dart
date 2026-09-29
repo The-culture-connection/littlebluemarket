@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/feed_item.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../primitives.dart';
 
 /// A small prompt to do the one thing that would help this person now.
 ///
@@ -10,11 +11,20 @@ import '../../theme/tokens.dart';
 /// that keeps it from being nagging lives in the feed's assembly, not here:
 /// at most one per eight items, never two in a row.
 class NudgePin extends StatelessWidget {
-  const NudgePin({super.key, required this.item, this.onTap, this.onDismiss});
+  const NudgePin({
+    super.key,
+    required this.item,
+    this.onTap,
+    this.onDismiss,
+    this.hop = false,
+  });
 
   final NudgeItem item;
   final VoidCallback? onTap;
   final VoidCallback? onDismiss;
+
+  /// Just grown in: the button hops once it has landed.
+  final bool hop;
 
   /// What each nudge says. Copy lives here so the feed can stay about
   /// assembly and the wording is in one place to change.
@@ -118,22 +128,27 @@ class NudgePin extends StatelessWidget {
               style: LbmText.pinMeta.copyWith(fontSize: 12, color: c.ink2),
             ),
             const SizedBox(height: 10),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: ctaFill,
-                borderRadius: LbmRadius.pillR,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 11,
-                  vertical: 6,
+            Bounce(
+              kind: BounceKind.hop,
+              delay: const Duration(milliseconds: 500),
+              play: hop,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: ctaFill,
+                  borderRadius: LbmRadius.pillR,
                 ),
-                child: Text(
-                  copy.cta,
-                  style: LbmText.pinMeta.copyWith(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    color: ctaInk,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 6,
+                  ),
+                  child: Text(
+                    copy.cta,
+                    style: LbmText.pinMeta.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: ctaInk,
+                    ),
                   ),
                 ),
               ),

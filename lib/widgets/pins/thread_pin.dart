@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/feed_item.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../primitives.dart';
 
 /// A forum question in the market grid.
 ///
@@ -11,9 +12,20 @@ import '../../theme/tokens.dart';
 /// two apps: a thread shows up where people already are, with the best reply
 /// under it so the pin says something rather than just advertising itself.
 class ThreadPin extends StatelessWidget {
-  const ThreadPin({super.key, required this.item, this.onTap});
+  const ThreadPin({
+    super.key,
+    required this.item,
+    this.onTap,
+    this.newCount = 0,
+  });
 
   final ThreadItem item;
+
+  /// Replies since the person last opened the thread. Zero shows nothing;
+  /// anything more is an orchid "N new" in the corner, instead of a toast:
+  /// a busy thread should be somewhere you look, not something that
+  /// interrupts.
+  final int newCount;
 
   /// Defaults to the thread's own screen in the Community tab.
   final VoidCallback? onTap;
@@ -24,7 +36,7 @@ class ThreadPin extends StatelessWidget {
     final thread = item.thread;
     final reply = item.topReply;
 
-    return GestureDetector(
+    final card = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap ?? () => context.go('/community/thread/${thread.id}'),
       child: Container(
@@ -38,15 +50,19 @@ class ThreadPin extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'FORUM · ${item.forumName ?? 'Community'}'.toUpperCase(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: LbmText.pinMeta.copyWith(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
-                color: c.sage,
+            Padding(
+              // Out from under the "N new" pill.
+              padding: EdgeInsets.only(right: newCount > 0 ? 48 : 0),
+              child: Text(
+                'FORUM · ${item.forumName ?? 'Community'}'.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: LbmText.pinMeta.copyWith(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                  color: c.sage,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -65,9 +81,7 @@ class ThreadPin extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.only(left: 8),
                 decoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(color: c.sageMist, width: 3),
-                  ),
+                  border: Border(left: BorderSide(color: c.sageMist, width: 3)),
                 ),
                 child: Text(
                   reply.text,
@@ -120,6 +134,36 @@ class ThreadPin extends StatelessWidget {
           ],
         ),
       ),
+    );
+
+    if (newCount <= 0) return card;
+    return Stack(
+      children: [
+        card,
+        Positioned(
+          top: 10,
+          right: 10,
+          child: Bounce(
+            kind: BounceKind.wobble,
+            replay: newCount,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: c.accentDeep,
+                borderRadius: LbmRadius.pillR,
+              ),
+              child: Text(
+                '$newCount new',
+                style: LbmText.pinMeta.copyWith(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: c.accentInk,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

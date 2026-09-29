@@ -349,6 +349,41 @@ abstract final class LbmConst {
   }
 }
 
+/// How things move when something happens: bouncy, never slow.
+///
+/// Every entrance overshoots and settles (the mockup's
+/// `cubic-bezier(.34,1.56,.64,1)`), and everything lands in 550 to 700 ms,
+/// which reads as playful rather than as waiting. One place for the numbers
+/// so a toast, a badge and a new pin all bounce the same way.
+abstract final class LbmMotion {
+  /// The overshoot: past the mark by a little, then back.
+  static const overshoot = Cubic(0.34, 1.56, 0.64, 1);
+
+  /// A toast or banner dropping in.
+  static const enter = Duration(milliseconds: 600);
+
+  /// Anything leaving: quicker than it came, and without the bounce.
+  static const exit = Duration(milliseconds: 300);
+
+  /// A new pin growing in at the top of the feed.
+  static const grow = Duration(milliseconds: 700);
+
+  /// A badge or dot arriving.
+  static const wobble = Duration(milliseconds: 550);
+
+  /// A button hopping to be noticed.
+  static const hop = Duration(milliseconds: 700);
+
+  /// The bell swinging.
+  static const ring = Duration(milliseconds: 800);
+
+  /// [duration], or none at all when the phone asks for no animation.
+  static Duration of(BuildContext context, Duration duration) =>
+      MediaQuery.maybeDisableAnimationsOf(context) ?? false
+      ? Duration.zero
+      : duration;
+}
+
 /// Corner radii. "Cute and soft, not rigid" — rounded everything, and no hard
 /// 1px grid anywhere.
 abstract final class LbmRadius {

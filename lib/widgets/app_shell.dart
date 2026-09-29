@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../router/nav.dart';
+import '../state/notifications_ui.dart';
 import '../state/providers.dart';
 import '../state/session.dart';
 import '../state/tips.dart';
@@ -12,6 +13,8 @@ import '../theme/tokens.dart';
 import 'composers.dart';
 import 'first_tour.dart';
 import 'keep_it_here_dialog.dart';
+import 'lbm_toast.dart';
+import 'primitives.dart';
 import 'sheets.dart';
 
 /// Branch order inside the shell. Guests never reach 1 or 2.
@@ -23,14 +26,88 @@ abstract final class Tabs {
 
 /// The three-tab shell. Each branch keeps its own back stack, which is what
 /// gives Market, Community and You independent history.
-class AppShell extends ConsumerWidget {
+///
+/// Also where the notification choreography is drawn from: it is the one
+/// widget that is on screen whichever tab is, so the toast slot, the DM
+/// banner and the quiet-hours strip are raised here.
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(notificationsUiProvider.notifier).resumed();
+    }
+  }
+
+  /// Raises whatever the choreography put in the slot.
+  void _showToast(UiToast toast) {
+    final ui = ref.read(notificationsUiProvider.notifier);
+    void open() {
+      final route = toast.route;
+      if (route != null && route.isNotEmpty) context.go(route);
+    }
+
+    if (toast.isBanner) {
+      LbmToast.showBanner(
+        context,
+        avatar: _BannerAvatar(personId: toast.personId ?? ''),
+        name: toast.title,
+        message: toast.subtitle ?? '',
+        onReply: open,
+        onGone: () => ui.toastGone(toast.id),
+      );
+      return;
+    }
+    LbmToast.show(
+      context,
+      kicker: toast.kicker,
+      title: toast.title,
+      subtitle: toast.subtitle,
+      icon: switch (toast.event) {
+        UiEvent.mention => Icons.alternate_email_rounded,
+        UiEvent.tagPost => Icons.sell_outlined,
+        _ => Icons.chat_bubble_outline_rounded,
+      },
+      action: toast.route == null ? null : (toast.actionLabel, open),
+      linger: LbmToast.otherLinger,
+      onGone: () => ui.toastGone(toast.id),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.c;
+    final navigationShell = widget.navigationShell;
+    ref.watch(notificationsChoreographyProvider);
+    ref.listen(notificationsUiProvider.select((s) => s.toast), (prev, next) {
+      if (next != null && next.id != prev?.id) _showToast(next);
+    });
+    ref.listen(notificationsUiProvider.select((s) => s.quietStrip), (_, next) {
+      if (next == null) return;
+      LbmToast.showQuietStrip(context, next);
+      ref.read(notificationsUiProvider.notifier).quietStripShown();
+    });
     final isDark = Theme.of(context).brightness == Brightness.dark;
     // The tab bar gets out of the way when the keyboard is up, so a composer
     // sits directly above the keys.
@@ -73,6 +150,31 @@ class AppShell extends ConsumerWidget {
   }
 }
 
+/// The face on a DM banner, once the sender's profile has loaded.
+class _BannerAvatar extends ConsumerWidget {
+  const _BannerAvatar({required this.personId});
+
+  final String personId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final person = personId.isEmpty
+        ? null
+        : ref.watch(personProvider(personId)).value;
+    if (person == null) {
+      return Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: context.c.skyMist,
+          shape: BoxShape.circle,
+        ),
+      );
+    }
+    return Avatar(person, size: AvatarSize.md);
+  }
+}
+
 /// The floating pill tab bar.
 ///
 /// In guest mode Community and You are not in the bar at all; the second slot
@@ -95,6 +197,9 @@ class LbmTabBar extends ConsumerWidget {
     final c = context.c;
     final isGuest = ref.watch(isGuestProvider);
     final current = navigationShell.currentIndex;
+    final ui = ref.watch(notificationsUiProvider);
+    final seen = ref.read(notificationsUiProvider.notifier);
+    final mail = ref.watch(mailUnreadProvider);
 
     return Container(
       color: c.paper,
@@ -135,8 +240,14 @@ class LbmTabBar extends ConsumerWidget {
                       activeIcon: Icons.chat_bubble_rounded,
                       label: 'Community',
                       selected: current == Tabs.community,
-                      badge: true,
-                      onTap: () => _goBranch(Tabs.community),
+                      // A reply in a thread you are in, or the room getting
+                      // going. It used to be on all the time, which is a dot
+                      // that says nothing.
+                      badge: ui.communityDot,
+                      onTap: () {
+                        seen.seenCommunity();
+                        _goBranch(Tabs.community);
+                      },
                     ),
                   // Posting is the middle of the bar rather than a button
                   // floating over the grid, where it covered a pin and moved
@@ -151,7 +262,13 @@ class LbmTabBar extends ConsumerWidget {
                       activeIcon: Icons.person_rounded,
                       label: 'You',
                       selected: current == Tabs.you,
-                      onTap: () => _goBranch(Tabs.you),
+                      // Unread messages as a number; a delivery as a dot.
+                      count: mail,
+                      badge: mail == 0 && ui.youDot,
+                      onTap: () {
+                        seen.seenYou();
+                        _goBranch(Tabs.you);
+                      },
                     ),
                 ],
               ),
@@ -303,12 +420,15 @@ class _TabButton extends StatelessWidget {
                         Positioned(
                           top: 1,
                           right: 12,
-                          child: Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: c.accentDeep,
-                              shape: BoxShape.circle,
+                          child: Bounce(
+                            kind: BounceKind.wobble,
+                            child: Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: c.accentDeep,
+                                shape: BoxShape.circle,
+                              ),
                             ),
                           ),
                         ),
@@ -316,24 +436,28 @@ class _TabButton extends StatelessWidget {
                         Positioned(
                           top: -1,
                           right: 6,
-                          child: Container(
-                            constraints: const BoxConstraints(minWidth: 16),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 1,
-                            ),
-                            decoration: BoxDecoration(
-                              color: c.accentDeep,
-                              borderRadius: LbmRadius.pillR,
-                            ),
-                            child: Text(
-                              '$count',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                                height: 1.3,
-                                color: c.accentInk,
+                          child: Bounce(
+                            kind: BounceKind.wobble,
+                            replay: count,
+                            child: Container(
+                              constraints: const BoxConstraints(minWidth: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: c.accentDeep,
+                                borderRadius: LbmRadius.pillR,
+                              ),
+                              child: Text(
+                                '$count',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.3,
+                                  color: c.accentInk,
+                                ),
                               ),
                             ),
                           ),

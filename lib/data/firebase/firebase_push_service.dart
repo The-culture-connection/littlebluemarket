@@ -225,11 +225,32 @@ class FirebasePushService implements PushService {
     }, operation: 'firestore users/{uid}/devices');
   }
 
+  /// Push types the app shows for itself while it is open: the bell row it
+  /// writes arrives on the notifications stream, and the choreography in
+  /// `state/notifications_ui.dart` turns it into a toast, a badge or a pin.
+  /// The phone's own banner on top of that would be the same news twice.
+  /// Announcements and the test push are not here: their path is unchanged.
+  static const _drawnInApp = {
+    'mention',
+    'comment',
+    'review',
+    'forumThread',
+    'forumReply',
+    'newProduct',
+    'newPost',
+    'tagPost',
+  };
+
   void _showForeground(RemoteMessage message) {
     final notification = message.notification;
     if (notification == null) return;
-    // iOS presents it itself (see the presentation options above).
+    // iOS presents it itself (see the presentation options above). Which
+    // means an iPhone still shows its own banner for the types below as
+    // well as the app's toast; stopping that per type needs the options
+    // above off and iOS banners drawn here, which would also move how
+    // announcements appear, so it is left for Grace to decide.
     if (!kIsWeb && platformIsIOS) return;
+    if (_drawnInApp.contains(message.data['type']?.toString())) return;
     unawaited(
       _local.show(
         id: message.hashCode,

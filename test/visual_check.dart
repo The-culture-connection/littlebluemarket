@@ -8,6 +8,7 @@
 //
 // Regenerate with:
 //   flutter test test/visual_check.dart --update-goldens
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -19,6 +20,7 @@ import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/models/feed_item.dart';
 import 'package:little_blue_market/models/models.dart';
 import 'package:little_blue_market/router/app_router.dart';
+import 'package:little_blue_market/state/notifications_ui.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 import 'package:little_blue_market/screens/onboarding/welcome_screen.dart';
@@ -124,6 +126,8 @@ void main() {
     String location,
     Brightness brightness, {
     Finder? scrollTo,
+    void Function(NotificationsUi ui)? event,
+    DateTime Function()? clock,
   }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
@@ -133,7 +137,12 @@ void main() {
       tester.platformDispatcher.clearPlatformBrightnessTestValue();
     });
 
-    final container = ProviderContainer(retry: lbmRetry);
+    final container = ProviderContainer(
+      retry: lbmRetry,
+      overrides: [
+        nowProvider.overrideWithValue(clock ?? () => DateTime(2026, 9, 28, 14)),
+      ],
+    );
     addTearDown(container.dispose);
     container.read(sessionProvider.notifier).signIn();
 
@@ -162,6 +171,13 @@ void main() {
     });
     await tester.pumpAndSettle();
 
+    // A pin that changes when something happens: the event first, then
+    // scroll to what it changed.
+    if (event != null && scrollTo != null) {
+      event(container.read(notificationsUiProvider.notifier));
+      await tester.pumpAndSettle();
+    }
+
     // Something further down the page, brought up into view.
     if (scrollTo != null) {
       await tester.scrollUntilVisible(
@@ -169,10 +185,20 @@ void main() {
         200,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.ensureVisible(scrollTo);
+      unawaited(
+        Scrollable.ensureVisible(
+          tester.element(scrollTo.first),
+          alignment: 0.45,
+        ),
+      );
       await tester.pumpAndSettle();
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, 260));
-      await tester.pumpAndSettle();
+    }
+
+    // Something happening, caught once it has landed.
+    if (event != null && scrollTo == null) {
+      event(container.read(notificationsUiProvider.notifier));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1200));
     }
 
     final mode = brightness == Brightness.light ? 'light' : 'dark';
@@ -180,6 +206,12 @@ void main() {
       find.byType(MaterialApp),
       matchesGoldenFile('shots/$mode-$name.png'),
     );
+
+    // Let a toast run out, so its timer does not outlive the test.
+    if (event != null) {
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    }
   }
 
   _shots.forEach((name, location) {
@@ -205,6 +237,73 @@ void main() {
         scrollTo: find.byType(DirectoryBusinessCard),
       ),
     );
+  }
+
+  // The notification choreography: each surface, caught as it lands.
+  final moments = <String, (String, void Function(NotificationsUi))>{
+    'notify-dm': (
+      '/market',
+      (ui) => ui.handle(
+        UiEvent.dm,
+        title: 'Kali Brooks',
+        subtitle: "Pawpaw's in through mid-October, want me to hold two?",
+        route: '/you/dm/kali?to=1',
+        personId: 'kali',
+      ),
+    ),
+    'notify-mention': (
+      '/market',
+      (ui) => ui.handle(
+        UiEvent.mention,
+        kicker: 'Mention',
+        title: 'Ama Mensah mentioned you',
+        subtitle: "@maya Kali's in Ypsi too",
+        route: '/community',
+      ),
+    ),
+    'notify-quiet': (
+      '/market',
+      (ui) {
+        ui.handle(UiEvent.comment, title: 'Held', route: '/market/post/x');
+        ui.handle(UiEvent.tagPost, title: 'Held', route: '/market/tag/y');
+      },
+    ),
+    'notify-thread': (
+      '/market',
+      (ui) => ui.handle(
+        UiEvent.forumReply,
+        route: '/community/thread/t1',
+        threadId: 't1',
+      ),
+    ),
+  };
+  for (final brightness in Brightness.values) {
+    moments.forEach((name, moment) {
+      testWidgets('$name ${brightness.name}', (t) async {
+        final quiet = name == 'notify-quiet';
+        var now = quiet
+            ? DateTime(2026, 9, 28, 22, 30)
+            : DateTime(2026, 9, 28, 14);
+        await shoot(
+          t,
+          name,
+          moment.$1,
+          brightness,
+          scrollTo: name == 'notify-thread' ? find.text('1 new') : null,
+          // Held at 10:30 pm, then the phone is opened again at 8:30.
+          clock: () => now,
+          event: quiet
+              ? (ui) {
+                  moment.$2(ui);
+                  now = DateTime(2026, 9, 29, 8, 30);
+                  t.binding
+                    ..handleAppLifecycleStateChanged(AppLifecycleState.paused)
+                    ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+                }
+              : moment.$2,
+        );
+      });
+    });
   }
 
   /// Every pin kind in one grid, which is the redesign's whole vocabulary on
