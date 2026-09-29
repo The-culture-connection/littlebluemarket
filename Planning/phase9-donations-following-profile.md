@@ -110,3 +110,52 @@ Pure function `donationNudgeSlot(ctx) → int | null` in `lib/state/donation_nud
 2. **Gate 1 handling confirmed**: hidden-when-unset was the design; carry on. Products are being created in the **dev store** (`little_blue_market_devtestingshop`) first: `lbm-chip-in` ($2/$5/$10/$20, plus an unused Monthly variant) and `lbm-round-up` ($0.01), vendor "Little Blue Market", not a physical product, tax off.
 3. **Gate 2 workaround**: verify from the Shopify side (requires_shipping = false; test order on dev shows "No shipping required" and no Shipturtle activity on the line). Round-up stays defaulted off until that's observed. Treat `requires_shipping == false` + handle match as the donation-line signal in the webhook.
 4. **Sales channels**: do **not** unpublish the donation products from any channel until it is confirmed which channel the app's checkout uses (`commerceBuyNow` / `commerceBeginCheckout` — Admin API draft/checkout vs Storefront/Headless). If it is the Headless channel, the products must stay published there. Report which it is.
+
+---
+
+## Built (2026-09-29, night) — what landed, and what is still open
+
+Parts A, B and C are built and committed on `redesign/phase9-donations`,
+rebased once onto `redesign/pinterest-grid`. 867 Flutter tests, 285 functions
+tests, `flutter analyze` clean, `tsc` clean.
+
+**Channel, as asked (addendum 4).** `commerceBeginCheckout` and
+`commerceBuyNow` both build a cart with the Storefront API's `cartCreate`,
+authenticated with `Shopify-Storefront-Private-Token`
+(`functions/src/shopify/storefront.ts`). That is the **Headless** channel, not
+the Admin API. So both donation products must stay published to Headless or
+the app cannot add them to a cart; they may safely be unpublished from Online
+Store if you would rather they were not browsable on the website, though the
+"bought on the website" half of the webhook signal then never fires, which is
+harmless.
+
+**The donation-line signal (addendum 3), as built.** A line's handle is not in
+a Shopify order webhook payload, so a handle match is not available there.
+Two signals instead, in `functions/src/donation_lines.ts`:
+
+1. `app_donation`, a line attribute stamped by the two places that build a
+   donation line. Needs no lookup and cannot drift. This is what every gift
+   made through the app carries.
+2. For a gift bought on the website, which carries no attribute:
+   `requires_shipping == false` **and** the line's product id is one of the
+   two configured donation products, resolved from the handles once every six
+   hours. Either test alone would be wrong.
+
+**Bought cannot be a tab on somebody else's profile.** `users/{uid}/purchases`
+is readable by its owner alone, so there is nothing for a visitor to draw
+whatever the switch says. Its switch governs the Bought *number* in the
+header instead, which is the part a visitor can see. The other five switches
+govern tabs as specified.
+
+**Gate 2 is still open.** It needs a real order on the dev store, which needs
+the two handles in `functions/.env.little-blue-610e5` and a deploy. Round-up
+therefore stays defaulted off. What to check on that order: the round-up line
+says "No shipping required", the timeline shows no Shipturtle activity on it,
+`funding/{yyyy-mm}.raisedCents` incremented by the round-up, and the vendor's
+`grossSalesCents` did not.
+
+**Not built, and deliberately.** The monthly membership flow. `in_app_purchase`
+is in `pubspec.yaml` and the Apple product id `lbm_member_monthly2` is in
+`lib/models/membership.dart`, but there is no purchase UI and no receipt
+verification: that needs an App Store Connect API key, a Google Play service
+account and a Play product id. Phase 10.
