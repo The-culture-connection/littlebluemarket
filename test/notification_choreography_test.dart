@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:little_blue_market/data/firebase/mappers.dart';
 import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/models/models.dart';
 import 'package:little_blue_market/router/app_router.dart';
@@ -466,6 +467,87 @@ void main() {
       await tester.tap(find.text('1 new'));
       await tester.pumpAndSettle();
       expect(c.read(notificationsUiProvider).chatPillCount, 0);
+    });
+  });
+
+  group('quiet hours, set by the person (C3)', () {
+    test('default 10 pm to 8 am; anything unreadable falls back', () {
+      expect(const NotificationPrefs().quietMinutes, (
+        start: 22 * 60,
+        end: 8 * 60,
+      ));
+      expect(
+        const NotificationPrefs(
+          quietStart: '23:30',
+          quietEnd: 'later',
+        ).quietMinutes,
+        (start: 23 * 60 + 30, end: 8 * 60),
+      );
+    });
+
+    test('saved as the two strings the backend reads', () {
+      final map = const NotificationPrefs(quietStart: '21:00').toMap();
+      expect(map['quietStart'], '21:00');
+      expect(map['quietEnd'], '08:00');
+      final back = FirestoreMappers.notificationPrefs({'quietStart': '21:00'});
+      expect(back.quietStart, '21:00');
+      expect(back.quietEnd, NotificationPrefs.defaultQuietEnd);
+      expect(FirestoreMappers.notificationPrefs(null).quietStart, '22:00');
+    });
+
+    testWidgets('the settings screen shows the window, 10 pm to 8 am', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final c = ProviderContainer(retry: lbmRetry);
+      addTearDown(c.dispose);
+      c.read(sessionProvider.notifier).signIn();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: c,
+          child: const LittleBlueMarketApp(),
+        ),
+      );
+      await tester.pump();
+      c.read(routerProvider).go('/you/notification-settings');
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Until'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('10:00 PM'), findsOneWidget);
+      expect(find.text('8:00 AM'), findsOneWidget);
+      expect(
+        find.textContaining('Forum replies: digest every 30 min'),
+        findsOneWidget,
+      );
+    });
+
+    test('the app follows the saved window, not a fixed one', () async {
+      final c = ProviderContainer(
+        overrides: [
+          nowProvider.overrideWithValue(() => DateTime(2026, 9, 28, 14)),
+          currentPathProvider.overrideWithValue(() => '/market'),
+          notificationPrefsProvider.overrideWith(
+            (ref) => Stream.value(
+              const NotificationPrefs(quietStart: '13:00', quietEnd: '15:00'),
+            ),
+          ),
+        ],
+      );
+      addTearDown(c.dispose);
+      final sub = c.listen(notificationPrefsProvider, (_, _) {});
+      addTearDown(sub.close);
+      await Future<void>.delayed(Duration.zero);
+
+      final surfaces = c
+          .read(notificationsUiProvider.notifier)
+          .handle(UiEvent.tagPost, title: 'Held', route: '/market/tag/x');
+      expect(surfaces, contains(Surface.quietQueue));
     });
   });
 }

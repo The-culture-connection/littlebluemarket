@@ -142,6 +142,11 @@ abstract final class FirestoreMappers {
           announcements: boolean(data['announcements'], true),
           mutedForums: strings(data['mutedForums']),
           announcementsSeenAt: timeOrNull(data['announcementsSeenAt']),
+          quietStart: str(
+            data['quietStart'],
+            NotificationPrefs.defaultQuietStart,
+          ),
+          quietEnd: str(data['quietEnd'], NotificationPrefs.defaultQuietEnd),
         );
 
   static DeletionRequest deletionRequest(

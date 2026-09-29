@@ -5,6 +5,7 @@ import {
   forumReplyRecipients,
   forumThreadRecipients,
   isAudience,
+  isQuietHours,
   shouldNotifyAtAll,
   shouldPrune,
   shouldPush,
@@ -101,4 +102,59 @@ test('a Shopify scope refusal is reworded for the seller', async () => {
   assert.match(friendlyStoreError(raw), /add or change products/);
   assert.match(friendlyStoreError(raw), /store owner/);
   assert.equal(friendlyStoreError('The store refused it: title is blank'), 'The store refused it: title is blank');
+});
+
+// ---------------------------------------------------------- timing (C1)
+// Detroit is UTC-4 in late September: 02:30Z is 10:30 pm the night before,
+// 18:00Z is 2 pm.
+const NIGHT = new Date('2026-09-29T02:30:00Z');
+const AFTERNOON = new Date('2026-09-28T18:00:00Z');
+
+test('a promo never pushes, whatever the switches say', () => {
+  assert.equal(shouldPush(undefined, { type: 'promo' }), false);
+  assert.equal(shouldPush({ announcements: true }, { type: 'promo' }, { now: AFTERNOON }), false);
+});
+
+test('quiet hours: a mention still pushes, a drop does not', () => {
+  assert.equal(isQuietHours(undefined, NIGHT), true);
+  assert.equal(shouldPush(undefined, { type: 'mention' }, { now: NIGHT }), true);
+  assert.equal(shouldPush(undefined, { type: 'newPost' }, { now: NIGHT }), false);
+  assert.equal(shouldPush(undefined, { type: 'newProduct' }, { now: NIGHT }), false);
+  assert.equal(shouldPush(undefined, { type: 'tagPost' }, { now: NIGHT }), false);
+  assert.equal(shouldPush(undefined, { type: 'newPost' }, { now: AFTERNOON }), true);
+});
+
+test('quiet hours follow the person\'s own window and time zone', () => {
+  // 10:30 pm in Detroit is 7:30 pm in Los Angeles: not quiet there.
+  assert.equal(isQuietHours({ tz: 'America/Los_Angeles' }, NIGHT), false);
+  // A window that does not cross midnight.
+  assert.equal(isQuietHours({ quietStart: '13:00', quietEnd: '15:00' }, AFTERNOON), true);
+  assert.equal(isQuietHours({ quietStart: '15:00', quietEnd: '16:00' }, AFTERNOON), false);
+  // Unreadable settings fall back to the defaults rather than to "never".
+  assert.equal(isQuietHours({ quietStart: 'soon', tz: 'Mars/Olympus' }, NIGHT), true);
+  // The same start and end means no quiet hours at all.
+  assert.equal(isQuietHours({ quietStart: '09:00', quietEnd: '09:00' }, NIGHT), false);
+});
+
+test('rate limit: one push per 20 minutes outside mentions', () => {
+  const tenAgo = new Date(AFTERNOON.getTime() - 10 * 60 * 1000);
+  const halfHourAgo = new Date(AFTERNOON.getTime() - 30 * 60 * 1000);
+  assert.equal(shouldPush(undefined, { type: 'comment' }, { now: AFTERNOON, lastPushAt: tenAgo }), false);
+  assert.equal(shouldPush(undefined, { type: 'comment' }, { now: AFTERNOON, lastPushAt: halfHourAgo }), true);
+  assert.equal(shouldPush(undefined, { type: 'mention' }, { now: AFTERNOON, lastPushAt: tenAgo }), true);
+});
+
+test('a forum reply never pushes directly, only as the digest', () => {
+  assert.equal(shouldPush(undefined, { type: 'forumReply' }, { now: AFTERNOON }), false);
+  assert.equal(shouldPush(undefined, { type: 'forumReply' }, { now: AFTERNOON, digest: true }), true);
+  assert.equal(shouldPush(undefined, { type: 'forumReply' }, { now: NIGHT, digest: true }), false);
+  // A new thread in a forum you joined is not a reply: it pushes as before.
+  assert.equal(shouldPush(undefined, { type: 'forumThread' }, { now: AFTERNOON }), true);
+});
+
+test('announcements and the test push keep their path: no timing rule applies', () => {
+  const justNow = new Date(NIGHT.getTime() - 60 * 1000);
+  assert.equal(shouldPush(undefined, { type: 'announcement' }, { now: NIGHT, lastPushAt: justNow }), true);
+  assert.equal(shouldPush({ announcements: false }, { type: 'announcement' }, { now: AFTERNOON }), false);
+  assert.equal(shouldPush(undefined, { type: 'test' }, { now: NIGHT, lastPushAt: justNow }), true);
 });

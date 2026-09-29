@@ -102,7 +102,7 @@ import {
   syncProfileTagsLower,
   syncTagKeyMirror,
 } from './profile_tags.ts';
-import { displayName, mentionsToNotify, notify } from './notifications.ts';
+import { displayName, mentionsToNotify, notify, runForumDigest } from './notifications.ts';
 import { syncShipturtleOrders } from './shipturtle_orders.ts';
 import { publishListing, searchCategories } from './listings.ts';
 import { pruneSellerCatalog, refreshListings, updateListing } from './listing_updates.ts';
@@ -1117,6 +1117,21 @@ export const sellerRefreshShipments = onCall(
     requireUid(request.auth);
     return syncShipturtleOrders();
   }),
+);
+
+/**
+ * The forum digest (2026-09-28): a reply in a thread you are in no longer
+ * pushes on its own. It waits under `users/{uid}/pendingDigest`, and every
+ * half hour each person with replies waiting gets one push, "3 new replies
+ * in 2 threads", unless it is their quiet hours or they were pushed in the
+ * last twenty minutes, in which case it waits for the next run.
+ */
+export const forumDigestScheduled = onSchedule(
+  { schedule: 'every 30 minutes', timeoutSeconds: 300 },
+  async () => {
+    const tally = await runForumDigest();
+    logger.info('Forum digest', tally);
+  },
 );
 
 /** Collections change rarely; twice a day keeps the picker honest. */

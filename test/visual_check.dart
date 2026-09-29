@@ -239,6 +239,20 @@ void main() {
     );
   }
 
+  // Quiet hours, at the bottom of the notification settings.
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'settings-quiet ${brightness.name}',
+      (t) => shoot(
+        t,
+        'settings-quiet',
+        '/you/notification-settings',
+        brightness,
+        scrollTo: find.text('Until'),
+      ),
+    );
+  }
+
   // The notification choreography: each surface, caught as it lands.
   final moments = <String, (String, void Function(NotificationsUi))>{
     'notify-dm': (

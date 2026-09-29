@@ -108,7 +108,12 @@ class NotificationPrefs {
     this.announcements = true,
     this.mutedForums = const [],
     this.announcementsSeenAt,
+    this.quietStart = defaultQuietStart,
+    this.quietEnd = defaultQuietEnd,
   });
+
+  static const defaultQuietStart = '22:00';
+  static const defaultQuietEnd = '08:00';
 
   final bool mentions;
   final bool comments;
@@ -131,6 +136,26 @@ class NotificationPrefs {
   /// the account rather than a flag on each: anything newer is unread.
   final DateTime? announcementsSeenAt;
 
+  /// Quiet hours, "HH:mm" in the phone's own time: no pushes then except
+  /// somebody talking to you directly, and no toasts in the app for the rest.
+  /// The backend reads the same two strings (`push.ts` `isQuietHours`).
+  final String quietStart;
+  final String quietEnd;
+
+  /// [quietStart] and [quietEnd] as minutes after midnight, falling back to
+  /// the defaults for anything unreadable, as the backend does.
+  ({int start, int end}) get quietMinutes =>
+      (start: _minutes(quietStart, 22 * 60), end: _minutes(quietEnd, 8 * 60));
+
+  static int _minutes(String hhmm, int fallback) {
+    final m = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(hhmm);
+    if (m == null) return fallback;
+    final h = int.parse(m.group(1)!);
+    final min = int.parse(m.group(2)!);
+    if (h > 23 || min > 59) return fallback;
+    return h * 60 + min;
+  }
+
   NotificationPrefs copyWith({
     bool? mentions,
     bool? comments,
@@ -142,6 +167,8 @@ class NotificationPrefs {
     bool? announcements,
     List<String>? mutedForums,
     DateTime? announcementsSeenAt,
+    String? quietStart,
+    String? quietEnd,
   }) => NotificationPrefs(
     mentions: mentions ?? this.mentions,
     comments: comments ?? this.comments,
@@ -153,6 +180,8 @@ class NotificationPrefs {
     announcements: announcements ?? this.announcements,
     mutedForums: mutedForums ?? this.mutedForums,
     announcementsSeenAt: announcementsSeenAt ?? this.announcementsSeenAt,
+    quietStart: quietStart ?? this.quietStart,
+    quietEnd: quietEnd ?? this.quietEnd,
   );
 
   Map<String, Object> toMap() => {
@@ -165,6 +194,8 @@ class NotificationPrefs {
     'tagPosts': tagPosts,
     'announcements': announcements,
     'mutedForums': mutedForums,
+    'quietStart': quietStart,
+    'quietEnd': quietEnd,
   };
 }
 

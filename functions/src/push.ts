@@ -28,6 +28,12 @@ export type PushType =
   | 'newPost'
   | 'tagPost'
   | 'announcement'
+  /**
+   * A seller's advert. Never pushed: it is the feed's banner, labelled, and
+   * nothing else (Grace, 2026-09-28). Here so that rule has somewhere to be
+   * written down and tested, not because anything sends one.
+   */
+  | 'promo'
   | 'test';
 
 /** `users/{uid}/settings/notifications`. Every switch defaults to on. */
@@ -43,6 +49,13 @@ export interface NotificationPrefs {
   tagPosts?: boolean;
   announcements?: boolean;
   mutedForums?: string[];
+  /** Quiet hours, "HH:mm" local. Default 22:00 to 08:00. */
+  quietStart?: string;
+  quietEnd?: string;
+  /** The person's time zone. Default America/Detroit, where the market is. */
+  tz?: string;
+  /** When this person was last pushed to, written by `notify()`. */
+  lastPushAt?: { toDate(): Date } | Date;
 }
 
 export interface PushEvent {
@@ -50,8 +63,107 @@ export interface PushEvent {
   forumId?: string;
 }
 
-/** Whether these preferences let this push through. Pure. */
-export function shouldPush(prefs: NotificationPrefs | undefined, event: PushEvent): boolean {
+/**
+ * When a push would go, for the timing rules. Without it [shouldPush] is
+ * the preferences alone, which is what the switches on the settings screen
+ * mean.
+ */
+export interface PushContext {
+  now: Date;
+  /** The last push this person got, from any path. */
+  lastPushAt?: Date;
+  /** The forum digest, which is the only way a forum reply may push. */
+  digest?: boolean;
+}
+
+export const DEFAULT_QUIET_START = '22:00';
+export const DEFAULT_QUIET_END = '08:00';
+export const DEFAULT_TZ = 'America/Detroit';
+
+/** Outside DMs and mentions, no more than one push in this long. */
+export const PUSH_GAP_MS = 20 * 60 * 1000;
+
+/** "22:00" → 1320. Anything unreadable is null, and the default is used. */
+function minutesOf(hhmm: string | undefined): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm ?? '');
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return null;
+  return h * 60 + min;
+}
+
+/** Minutes after midnight at [now] in [tz]. Falls back to the default zone. */
+function localMinutes(now: Date, tz: string | undefined): number {
+  const read = (zone: string) => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(now);
+    const h = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
+    const m = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
+    return h * 60 + m;
+  };
+  try {
+    return read(tz || DEFAULT_TZ);
+  } catch {
+    return read(DEFAULT_TZ);
+  }
+}
+
+/** Whether [now] is inside this person's quiet hours. Pure. */
+export function isQuietHours(prefs: NotificationPrefs | undefined, now: Date): boolean {
+  const start = minutesOf(prefs?.quietStart) ?? minutesOf(DEFAULT_QUIET_START)!;
+  const end = minutesOf(prefs?.quietEnd) ?? minutesOf(DEFAULT_QUIET_END)!;
+  if (start === end) return false;
+  const at = localMinutes(now, prefs?.tz);
+  // The default window crosses midnight, which is the case to get right.
+  return start < end ? at >= start && at < end : at >= start || at < end;
+}
+
+/**
+ * A person talking to you: the one kind of push that is let through at
+ * night and is not rate limited. There is no DM push today (a direct
+ * message reaches the app through the inbox, not through here); when there
+ * is one it belongs in this list too.
+ */
+function isPersonToYou(type: PushType): boolean {
+  return type === 'mention';
+}
+
+/**
+ * Whether this push goes. Pure.
+ *
+ * The preferences first, exactly as before. Then, when [ctx] says when:
+ * promos never; a forum reply only as the digest; announcements and the
+ * test push as they always were (Grace's launch schedule depends on the
+ * announcement path, so no timing rule touches it); a mention always; and
+ * everything else neither in quiet hours nor within twenty minutes of the
+ * last push. What is held back is still on the bell.
+ */
+export function shouldPush(
+  prefs: NotificationPrefs | undefined,
+  event: PushEvent,
+  ctx?: PushContext,
+): boolean {
+  if (event.type === 'promo') return false;
+  if (!allowedByPrefs(prefs, event)) return false;
+  if (!ctx) return true;
+
+  if (event.type === 'announcement' || event.type === 'test') return true;
+  if (event.type === 'forumReply' && !ctx.digest) return false;
+  if (isPersonToYou(event.type)) return true;
+  if (isQuietHours(prefs, ctx.now)) return false;
+  if (ctx.lastPushAt && ctx.now.getTime() - ctx.lastPushAt.getTime() < PUSH_GAP_MS) {
+    return false;
+  }
+  return true;
+}
+
+/** The switches on the settings screen, and the per-forum mute. Pure. */
+function allowedByPrefs(prefs: NotificationPrefs | undefined, event: PushEvent): boolean {
   const on = (value: boolean | undefined) => value !== false;
   if (event.forumId && (prefs?.mutedForums ?? []).includes(event.forumId)) return false;
   switch (event.type) {
@@ -72,6 +184,8 @@ export function shouldPush(prefs: NotificationPrefs | undefined, event: PushEven
       return on(prefs?.tagPosts);
     case 'announcement':
       return on(prefs?.announcements);
+    case 'promo':
+      return false;
     case 'test':
       return true;
   }
@@ -115,6 +229,7 @@ export function titleFor(type: PushType, fromName: string, fallbackTitle?: strin
     case 'tagPost':
       return fallbackTitle || `${who} posted under a tag you follow`;
     case 'announcement':
+    case 'promo':
       return fallbackTitle || 'Little Blue Market';
     case 'test':
       return 'Little Blue Market';

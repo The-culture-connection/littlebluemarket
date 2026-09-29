@@ -307,11 +307,12 @@ typedef LocationReader = String Function();
 /// The clock, so a test can stand at 10:30 pm.
 final nowProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
-/// The quiet-hours window in minutes after midnight, from the prefs once they
-/// carry one (Part C); 22:00 to 08:00 until then.
-final quietHoursProvider = Provider<({int start, int end})>(
-  (ref) => (start: 22 * 60, end: 8 * 60),
-);
+/// The quiet-hours window in minutes after midnight, from the person's own
+/// settings; 22:00 to 08:00 until they change it.
+final quietHoursProvider = Provider<({int start, int end})>((ref) {
+  final prefs = ref.watch(notificationPrefsProvider).value;
+  return (prefs ?? const NotificationPrefs()).quietMinutes;
+});
 
 /// Where the app is, as a path. Read off the router, so it follows pushes as
 /// well as tab switches.

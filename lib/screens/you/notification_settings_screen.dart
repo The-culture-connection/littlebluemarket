@@ -190,9 +190,11 @@ class _NotificationSettingsScreenState
                   ),
                   _Switch(
                     title: 'Forums',
+                    // Says how replies arrive now, so one push for three
+                    // replies does not read as two going missing.
                     subtitle:
                         'New threads where you are a member, and replies to '
-                        'you',
+                        'you. Forum replies: digest every 30 min.',
                     value: p.forums,
                     onChanged: (v) => _save(p.copyWith(forums: v)),
                   ),
@@ -246,8 +248,99 @@ class _NotificationSettingsScreenState
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          const SectionHead('Quiet hours'),
+          const SizedBox(height: 8),
+          LbmAsync<NotificationPrefs>(
+            prefs,
+            skeleton: const SizedBox(height: 60),
+            data: (p) => LbmCard(
+              child: RowStack(
+                children: [
+                  ListRow(
+                    leading: Icon(
+                      Icons.bedtime_outlined,
+                      size: 22,
+                      color: c.ink2,
+                    ),
+                    title: const Text('Quiet hours'),
+                    subtitle: const Text(
+                      'Nothing buzzes except someone mentioning you. The '
+                      'rest waits on the bell for the morning.',
+                    ),
+                  ),
+                  _TimeRow(
+                    label: 'From',
+                    hhmm: p.quietStart,
+                    onPicked: (v) => _save(p.copyWith(quietStart: v)),
+                  ),
+                  _TimeRow(
+                    label: 'Until',
+                    hhmm: p.quietEnd,
+                    onPicked: (v) => _save(p.copyWith(quietEnd: v)),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
+    );
+  }
+}
+
+/// One end of the quiet hours: tap to pick a time.
+class _TimeRow extends StatelessWidget {
+  const _TimeRow({
+    required this.label,
+    required this.hhmm,
+    required this.onPicked,
+  });
+
+  final String label;
+
+  /// "22:00".
+  final String hhmm;
+  final ValueChanged<String> onPicked;
+
+  TimeOfDay get _time {
+    final parts = hhmm.split(':');
+    return TimeOfDay(
+      hour: int.tryParse(parts.first) ?? 0,
+      minute: parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0,
+    );
+  }
+
+  static String _hhmm(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:'
+      '${t.minute.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return ListRow(
+      title: Text(label),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _time.format(context),
+            style: LbmText.tiny.copyWith(
+              fontWeight: FontWeight.w800,
+              color: c.skyDeep,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(Icons.chevron_right_rounded, size: 20, color: c.ink3),
+        ],
+      ),
+      onTap: () async {
+        final picked = await showTimePicker(
+          context: context,
+          initialTime: _time,
+        );
+        if (picked != null) onPicked(_hhmm(picked));
+      },
     );
   }
 }
