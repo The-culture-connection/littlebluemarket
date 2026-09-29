@@ -192,9 +192,22 @@ List<DirectoryItem> _directoryCards(FeedInputs input) {
 /// Deals [cards] into [items]: never more than one per
 /// [directoryCardEvery] items, and never touching another full-width item.
 ///
-/// Cards that do not fit are left off this page rather than piled up at the
-/// end. The page grows as the person scrolls and is assembled again, so a
-/// card left off now gets its slot once there are enough items around it.
+/// **Whatever does not fit goes on the end.** The rationing exists to stop
+/// business cards crowding out a feed of things for sale, and it used to drop
+/// the ones it could not place, on the reasoning that the page grows as you
+/// scroll and they would get a slot next time.
+///
+/// That assumed the cards are the garnish. On the live market they are the
+/// meal: the newest twenty posts were one shared cart and nineteen directory
+/// businesses, so the counter never reached eight, the only opening was
+/// beside the full-width makers rail, and **all nineteen were dropped**. The
+/// feed showed four things and ended (Grace, 2026-09-29, with a screenshot).
+///
+/// So the spacing still applies whenever there is anything to space them
+/// among, and the leftovers are only stacked on the end when leaving them out
+/// would empty the page: when nothing could be placed at all, or when the
+/// cards outnumber everything else. A page of business cards is what a market
+/// of business cards looks like, and it beats an empty one.
 List<FeedItem> _withCards(List<FeedItem> items, List<DirectoryItem> cards) {
   if (cards.isEmpty) return items;
 
@@ -219,6 +232,15 @@ List<FeedItem> _withCards(List<FeedItem> items, List<DirectoryItem> cards) {
     if (i == items.length) break;
     out.add(items[i]);
     sinceCard++;
+  }
+  // The ones there was no room for, but only when leaving them out would
+  // empty the page. With plenty of other items the old reasoning holds: a
+  // card left off now gets a properly spaced slot as the page grows, and
+  // stacking them would spoil a feed that does not need it.
+  if (next == 0 || cards.length > items.length) {
+    while (next < cards.length) {
+      out.add(cards[next++]);
+    }
   }
   return out;
 }
