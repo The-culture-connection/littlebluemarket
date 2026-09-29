@@ -3,6 +3,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 
 import { applyMarkerChanges, markerChanges } from './carted.ts';
 import { adminGraphQL } from './shopify/token.ts';
+import { roundUpLine } from './donations.ts';
 import { storefrontGraphQL } from './shopify/storefront.ts';
 import { toCents } from './orders.ts';
 
@@ -397,11 +398,21 @@ export function explainCheckoutError(message: string | undefined, lines: CartLin
  */
 export async function beginCheckout(
   uid: string,
+  options: { roundUpCents?: number } = {},
 ): Promise<{ cartId: string; checkoutUrl: string }> {
   const cart = await readCart(uid);
   if (cart.lines.length === 0) {
     throw new HttpsError('failed-precondition', 'Your cart is empty.');
   }
+
+  // The round-up, when the buyer asked for one. Resolved before the cart is
+  // built so a misconfigured donation product fails the checkout loudly here
+  // rather than charging the right goods and the wrong change. Everything
+  // about it lives in `donations.ts`; this is the whole of its footprint in
+  // the money path.
+  const donation = options.roundUpCents
+    ? await roundUpLine(options.roundUpCents)
+    : null;
 
   const mutation = [
     'mutation CreateCart($input: CartInput!) {',
@@ -419,11 +430,18 @@ export async function beginCheckout(
     };
   }>(mutation, {
     input: {
-      lines: cart.lines.map((line) => ({
-        merchandiseId: `gid://shopify/ProductVariant/${line.variantId}`,
-        quantity: line.quantity,
-        attributes: [{ key: 'app_seller_uid', value: line.sellerUid }],
-      })),
+      lines: [
+        ...cart.lines.map((line) => ({
+          merchandiseId: `gid://shopify/ProductVariant/${line.variantId}`,
+          quantity: line.quantity,
+          attributes: [{ key: 'app_seller_uid', value: line.sellerUid }],
+        })),
+        // No `app_seller_uid`: nobody is selling this, and a donation line
+        // that carried one would be credited to a vendor by the paid
+        // webhook. Its merchandise id is already a gid, so it is not
+        // prefixed again.
+        ...(donation ? [donation] : []),
+      ],
       attributes: [{ key: 'app_uid', value: uid }],
     },
   });

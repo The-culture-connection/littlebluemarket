@@ -165,8 +165,10 @@ class CommerceProxyRepository implements CommerceRepository {
   }
 
   @override
-  Future<CheckoutHandoff> beginCheckout() async {
-    final data = await _call('commerceBeginCheckout');
+  Future<CheckoutHandoff> beginCheckout({int? roundUpCents}) async {
+    final data = await _call('commerceBeginCheckout', {
+      if (roundUpCents != null && roundUpCents > 0) 'roundUpCents': roundUpCents,
+    });
     final url = data['checkoutUrl'];
     if (url is! String) {
       throw const BackendException('Checkout did not return a URL');
@@ -174,6 +176,19 @@ class CommerceProxyRepository implements CommerceRepository {
     // The function stamps this account onto the cart, which is what lets the
     // resulting order be attributed back here. Nothing about the returned
     // handoff claims the purchase happened.
+    return CheckoutHandoff(
+      cartId: FirestoreMappers.str(data['cartId']),
+      webUrl: Uri.parse(url),
+    );
+  }
+
+  @override
+  Future<CheckoutHandoff> chipIn({required int amountCents}) async {
+    final data = await _call('commerceChipIn', {'amountCents': amountCents});
+    final url = data['checkoutUrl'];
+    if (url is! String) {
+      throw const BackendException('Checkout did not return a URL');
+    }
     return CheckoutHandoff(
       cartId: FirestoreMappers.str(data['cartId']),
       webUrl: Uri.parse(url),

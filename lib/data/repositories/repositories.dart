@@ -158,7 +158,18 @@ abstract interface class CommerceRepository {
 
   /// Hands the cart to whoever takes the money, tagged so the resulting order
   /// can be attributed back to this account.
-  Future<CheckoutHandoff> beginCheckout();
+  ///
+  /// [roundUpCents] is the change to the next dollar, when the buyer asked
+  /// for it. Off by default and absent unless they turned it on: an opt-in
+  /// that defaults to on is not one.
+  Future<CheckoutHandoff> beginCheckout({int? roundUpCents});
+
+  /// A checkout for a donation on its own, leaving the cart alone.
+  ///
+  /// Not [buyNow]: that resolves its variant from the catalogue mirror, and
+  /// the donation products are deliberately not mirrored — a mirrored one
+  /// would turn up in the app's own search and browse.
+  Future<CheckoutHandoff> chipIn({required int amountCents});
 
   /// Buy now: a checkout for this one item, the cart left as it was.
   Future<CheckoutHandoff> buyNow({

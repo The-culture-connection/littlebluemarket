@@ -369,6 +369,12 @@ class FirestoreProfileRepository implements ProfileRepository {
       directoryAddListingUrl: FirestoreMappers.str(
         result.data['directoryAddListingUrl'],
       ),
+      donationChipInHandle: FirestoreMappers.str(
+        result.data['donationChipInHandle'],
+      ),
+      donationRoundUpHandle: FirestoreMappers.str(
+        result.data['donationRoundUpHandle'],
+      ),
     );
   }, operation: 'callable appConfig');
 }

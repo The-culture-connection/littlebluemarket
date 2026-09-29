@@ -21,6 +21,8 @@ class AppConfig {
     required this.registrationUrl,
     required this.shipturtleUrl,
     this.directoryAddListingUrl = '',
+    this.donationChipInHandle = '',
+    this.donationRoundUpHandle = '',
   });
 
   /// Where a new seller applies, on the website.
@@ -32,4 +34,13 @@ class AppConfig {
   /// Where a business adds itself to the littlebluecart.com directory (the
   /// website form). Staging on dev, the live site in production.
   final String directoryAddListingUrl;
+
+  /// The two hidden Shopify products that take donations. Empty means the
+  /// environment has none, and every donation surface hides itself: the
+  /// feature ships dark and is turned on by setting a value.
+  final String donationChipInHandle;
+  final String donationRoundUpHandle;
+
+  bool get canChipIn => donationChipInHandle.isNotEmpty;
+  bool get canRoundUp => donationRoundUpHandle.isNotEmpty;
 }

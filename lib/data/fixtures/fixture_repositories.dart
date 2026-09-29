@@ -498,13 +498,27 @@ class FixtureCommerceRepository implements CommerceRepository {
   }
 
   @override
-  Future<CheckoutHandoff> beginCheckout() async {
+  Future<CheckoutHandoff> beginCheckout({int? roundUpCents}) async {
     final cart = _store.cart.value;
     if (cart.isEmpty) throw const ValidationException('Your cart is empty');
     await _backend._settle();
+    // Recorded so a test can ask what the checkout was actually told. The
+    // round-up is money, and "the switch was on" is not the same claim as
+    // "the checkout was asked for 60 cents".
+    _store.lastRoundUpCents = roundUpCents;
     return CheckoutHandoff(
       cartId: cart.id,
       webUrl: Uri.parse('https://example.invalid/checkout/${cart.id}'),
+    );
+  }
+
+  @override
+  Future<CheckoutHandoff> chipIn({required int amountCents}) async {
+    await _backend._settle();
+    _store.lastChipInCents = amountCents;
+    return CheckoutHandoff(
+      cartId: 'chipin_$amountCents',
+      webUrl: Uri.parse('https://example.invalid/checkout/chipin/$amountCents'),
     );
   }
 
@@ -1414,6 +1428,11 @@ class FixtureProfileRepository implements ProfileRepository {
       registrationUrl: 'https://example.com/pages/sell-with-us',
       shipturtleUrl: 'https://app.shipturtle.com/',
       directoryAddListingUrl: 'https://example.com/add-directory-listing/',
+      // The demo has both products, so the donation surfaces are visible
+      // with no backend. Production leaves these empty until the real ones
+      // exist, and then every one of them hides itself.
+      donationChipInHandle: 'lbm-chip-in',
+      donationRoundUpHandle: 'lbm-round-up',
     ),
   );
 

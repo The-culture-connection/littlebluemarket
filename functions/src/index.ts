@@ -98,6 +98,7 @@ import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
 import { noteVendorFromCatalog, syncVendorRoster } from './roster_grant.ts';
 import { geocodeProfileIfNeeded } from './geocode.ts';
 import { geocodeDirectoryPage } from './directory_geo.ts';
+import { chipInCheckout } from './donations.ts';
 import {
   backfillProfileTagsLower,
   backfillTagKeyMirror,
@@ -223,8 +224,31 @@ export const commerceRemoveSaved = onCall(commerceOptions, withLoudErrors('comme
   removeSaved(requireUid(request.auth), requireLineId(request.data)),
 ));
 
-export const commerceBeginCheckout = onCall(commerceOptions, withLoudErrors('commerceBeginCheckout', async (request) => beginCheckout(requireUid(request.auth)),
-));
+export const commerceBeginCheckout = onCall(commerceOptions, withLoudErrors('commerceBeginCheckout', async (request) => {
+  const uid = requireUid(request.auth);
+  const { roundUpCents } = (request.data ?? {}) as { roundUpCents?: unknown };
+  // Absent or zero means the buyer left the switch alone, which is the
+  // default and the common case. Anything present is validated in
+  // `donations.ts` before a cart is built.
+  const cents = typeof roundUpCents === 'number' && roundUpCents > 0 ? roundUpCents : undefined;
+  return beginCheckout(uid, { roundUpCents: cents });
+}));
+
+/**
+ * Chipping in: a checkout for a donation on its own, the cart untouched.
+ *
+ * Not `commerceBuyNow`, which resolves its variant out of the catalogue
+ * mirror — the donation products are deliberately not mirrored, because a
+ * mirrored one would appear in the app's own search and browse.
+ */
+export const commerceChipIn = onCall(commerceOptions, withLoudErrors('commerceChipIn', async (request) => {
+  const uid = requireUid(request.auth);
+  const { amountCents } = (request.data ?? {}) as { amountCents?: unknown };
+  if (typeof amountCents !== 'number' || !Number.isInteger(amountCents) || amountCents <= 0) {
+    throw new HttpsError('invalid-argument', 'How much?');
+  }
+  return chipInCheckout(uid, amountCents);
+}));
 
 /** Buy now: a checkout for one item, the cart untouched. */
 export const commerceBuyNow = onCall(commerceOptions, withLoudErrors('commerceBuyNow', async (request) => {

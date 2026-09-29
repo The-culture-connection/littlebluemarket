@@ -120,6 +120,12 @@ class FixtureStore {
   /// backend at all. Live ones are written from the admin website.
   late final promos = Watchable<List<Promo>>([...Fx.promos]);
 
+  /// What the last checkout was told about a round-up and a chip-in.
+  /// Tests read these: the claim worth checking is the amount the checkout
+  /// was asked for, not that a switch was flipped.
+  int? lastRoundUpCents;
+  int? lastChipInCents;
+
   /// Notes from the floating bug button. Empty until someone sends one.
   final feedback = Watchable<List<FeedbackItem>>([]);
 
