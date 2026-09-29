@@ -449,6 +449,14 @@ async function main() {
           record(check.ok ? 'PASS' : 'FAIL', `  ${check.name}`, check.summary, check.fix);
         }
       } catch (error) {
+        // On production the function is admin-only, and the doctor signs in
+        // as a throwaway account that is not an admin. Being refused is the
+        // guard working, not the backend failing, and calling it a FAIL
+        // every single run teaches you to ignore the one red line the
+        // doctor prints. It is only news if the function is missing.
+        if (/Admins only|PERMISSION_DENIED/i.test(error.message)) {
+          skip('backend health', 'admin-only on this project; the function answered and refused a non-admin, which is correct');
+        } else
         fail('backend health', error.message, /401|403/.test(error.message)
           ? 'the function refused the call. If the body below is HTML, Cloud Run IAM is blocking public invocation: in Google Cloud Console -> Cloud Run -> diagnosticsHealthCheck -> Security, allow unauthenticated invocations (Firebase callables check the Firebase token themselves). Otherwise: firebase functions:log --only diagnosticsHealthCheck --project ' + alias
           : 'firebase functions:log --only diagnosticsHealthCheck --project ' + alias);
