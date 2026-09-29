@@ -68,8 +68,9 @@ class DirectoryPin extends ConsumerWidget {
       // it (Grace, 2026-09-29). The card is a real 3.5-by-2 business card, so
       // its height is known before its contents are.
       skeleton: LayoutBuilder(
-        builder: (_, constraints) =>
-            LbmSkeleton.block(height: constraints.maxWidth / kCardAspect),
+        builder: (_, constraints) => LbmSkeleton.block(
+          height: directoryCardHeightFor(constraints.maxWidth),
+        ),
       ),
       errorBuilder: (_, _) => fallback,
       data: (current) => current == null

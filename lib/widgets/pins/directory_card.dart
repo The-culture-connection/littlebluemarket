@@ -27,6 +27,22 @@ const kCardTilt = -1.5 * math.pi / 180;
 /// Card height over width, as a real 3.5 by 2 business card.
 const kCardAspect = 1.75;
 
+/// The ink border, top and bottom, which sits outside the card's minimum.
+const _kCardBorder = 2.5 * 2;
+
+/// About how tall a card of this width comes out, for anything that has to
+/// reserve room before the listing has arrived.
+///
+/// **Close, and it cannot be exact.** The card is a minimum height wrapped
+/// round intrinsic content, so a long business name, a third tag or a large
+/// text size all make it taller. Reserving roughly the right room takes the
+/// error from the ~140 pixels a generic placeholder was out by down to about
+/// fifteen, and it is the sum of those errors that decides whether a fling
+/// lands where the phone said it would (Grace, 2026-09-29: "slowly dragging
+/// does work").
+double directoryCardHeightFor(double width) =>
+    width / kCardAspect + _kCardBorder;
+
 /// A littlebluecart.com business in the feed, as a cartoon business card.
 ///
 /// Full width and landscape, laid on the grid at a slight tilt with a strip
