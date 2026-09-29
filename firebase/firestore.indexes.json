@@ -258,6 +258,21 @@
       ]
     },
     {
+      "_comment": "The forum threads one person started, for their profile.",
+      "collectionGroup": "threads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "authorId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "_comment": "What one person said, in threads and under posts, for their profile.",
       "collectionGroup": "comments",
       "queryScope": "COLLECTION_GROUP",
