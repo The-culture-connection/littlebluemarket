@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Little Blue Market — donation prompts</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#9CBFE3;--paperDeep:#84AEDC;--surface:#fff;--ink:#152E52;--ink2:#31507B;--ink3:#5F7BA3;--sky:#70A0D0;--skyDeep:#2A5992;--skyMist:#DCE9F7;--skyWash:#F0F5FC;--accent:#D56ED1;--accentDeep:#A93BA5;--accentMist:#F7E2F6;--accentText:#7E2A7A;--sage:#4E8A69;--sageDeep:#3B6E52;--sageMist:#DDEDE4;--clay:#C4796B;--scrim:rgba(34,40,49,.72);--shadow:0 3px 14px -5px rgba(13,35,66,.38);--lift:0 14px 34px -12px rgba(13,35,66,.5);--display:'Fraunces',Georgia,serif;--body:'Nunito',system-ui,sans-serif;--ov:cubic-bezier(.34,1.56,.64,1)}
+*{box-sizing:border-box}
+body{margin:0;background:#EEF3F9;color:#152E52;font-family:var(--body);font-size:14px}
+.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 18px;border-bottom:1px solid #DCE4EE;background:#fff;position:sticky;top:0;z-index:5}
+.top h1{font-family:var(--display);font-size:20px;margin:0 14px 0 0;font-weight:700}
+.seg{display:inline-flex;background:#E7EEF7;border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;padding:6px 13px;border-radius:999px;font:800 12.5px var(--body);color:#31507B;cursor:pointer}
+.seg button.on{background:#152E52;color:#fff}
+.wrap{display:flex;gap:26px;padding:16px 18px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.phonewrap{flex:none;position:sticky;top:70px;width:calc(410px * var(--s,1));height:calc(864px * var(--s,1))}
+.phone{width:390px;height:844px;border-radius:44px;background:#0d1626;padding:10px;box-shadow:0 30px 60px -20px rgba(13,35,66,.5);transform:scale(var(--s,1));transform-origin:top left;position:relative}
+.screen{width:100%;height:100%;border-radius:36px;overflow:hidden;background:linear-gradient(180deg,var(--paperDeep) 0,var(--paper) 220px);color:var(--ink);position:relative}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:30px;background:#0d1626;border-radius:0 0 18px 18px;z-index:9}
+.view{position:absolute;inset:0;display:flex;flex-direction:column}
+.scroll{flex:1;overflow-y:auto;padding:0 10px 110px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.hdr{padding:50px 12px 8px;display:flex;align-items:center;gap:8px}
+.hdr h2{font-family:var(--display);font-size:24px;margin:0;font-weight:700;flex:1;line-height:1.05}
+.hdr .sub{font-size:12px;color:var(--ink2);font-weight:800}
+.circ{width:42px;height:42px;border-radius:999px;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);flex:none;cursor:pointer;font-size:18px;font-weight:900}
+.search{flex:1;height:42px;border-radius:999px;background:rgba(255,255,255,.92);display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--ink3);font-weight:700;box-shadow:var(--shadow)}
+.tabsrow{display:flex;gap:2px;padding:0 12px 10px}
+.tabsrow div{padding:7px 11px;font-weight:900;font-size:14px;color:var(--ink2);position:relative}
+.tabsrow div.on{color:var(--ink)}.tabsrow div.on:after{content:'';position:absolute;left:11px;right:11px;bottom:1px;height:3px;border-radius:9px;background:var(--ink)}
+.masonry{columns:2;column-gap:10px}
+.pin{break-inside:avoid;margin-bottom:12px;position:relative;cursor:pointer}
+.pin.wide{column-span:all}
+.ph{position:relative;border-radius:18px;overflow:hidden;background:var(--skyMist)}
+.ph .fb{aspect-ratio:4/5;display:flex;align-items:flex-end;padding:10px;font:800 12px var(--body);color:#173257}
+.cartbtn{position:absolute;right:8px;bottom:8px;height:32px;padding:0 11px 0 9px;border-radius:999px;background:var(--accentDeep);color:#fff;display:flex;align-items:center;gap:5px;font:900 12px var(--body)}
+.cap{padding:7px 4px 0}.cap .t{font-weight:800;font-size:13px;line-height:1.3}.cap .m{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:11.5px;color:var(--ink2);font-weight:700}
+.cap .m .price{font-family:var(--display);font-size:14px;color:var(--ink);font-weight:700;margin-left:auto}
+.av{border-radius:99px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;flex:none;font-size:10px;width:22px;height:22px}
+.av.md{width:36px;height:36px;font-size:13px}
+.tabs{position:absolute;left:12px;right:12px;bottom:12px;height:66px;background:var(--surface);border-radius:999px;box-shadow:var(--lift);display:flex;align-items:center;padding:6px;z-index:4}
+.tab{flex:1;height:54px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:900;color:var(--ink3)}
+.tab.on{color:var(--ink)}.tab i{font-style:normal;font-size:20px}
+.fabc{width:54px;height:54px;border-radius:99px;background:var(--accentDeep);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;flex:none;margin:0 4px}
+/* ---- donation pieces ---- */
+.chip{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;font:900 12px var(--body);cursor:pointer;border:0}
+.chip.sage{background:var(--sageDeep);color:#fff}
+.chip.sagelite{background:var(--sageMist);color:var(--sageDeep)}
+.chip.ghost{background:var(--skyWash);color:var(--ink2)}
+.chip.on{background:var(--ink);color:#fff}
+.chip.bounce{animation:hop .7s ease-out}
+.note{border-radius:18px;padding:14px;background:var(--sageMist);display:flex;flex-direction:column;justify-content:space-between;min-height:150px;position:relative;overflow:hidden}
+.note .ic{font-size:26px}
+.note b{font-family:var(--display);font-size:16px;line-height:1.15;display:block;margin:8px 0 4px;font-weight:700}
+.note span{font-size:12px;color:var(--sageDeep);font-weight:700;line-height:1.35}
+.note .go{margin-top:10px;align-self:flex-start}
+.note .x{position:absolute;top:8px;right:10px;font-size:12px;font-weight:900;color:var(--sageDeep);opacity:.7}
+.hero{border-radius:20px;overflow:hidden;position:relative;min-height:170px;background:linear-gradient(160deg,#4E8A69,#2E5A45 70%,#2A5992);color:#fff;padding:16px;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:var(--lift)}
+.hero .k{font-size:10.5px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;opacity:.85}
+.hero h3{font-family:var(--display);font-size:24px;line-height:1.02;margin:4px 0 6px;font-weight:800}
+.hero p{margin:0;font-size:13px;opacity:.92;max-width:270px;line-height:1.4}
+.hero .cta{margin-top:10px;align-self:flex-start;background:#fff;color:var(--sageDeep);padding:8px 14px;border-radius:99px;font-weight:900;font-size:12.5px}
+.hero .glyph{position:absolute;right:-20px;top:-16px;font-size:150px;opacity:.14;transform:rotate(-12deg)}
+.hero .row{display:flex;gap:8px;margin-top:10px}
+.hero .pct{position:absolute;right:14px;top:14px;background:rgba(255,255,255,.18);font-size:11px;font-weight:900;padding:4px 9px;border-radius:99px}
+.bar{height:10px;border-radius:99px;background:rgba(255,255,255,.25);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;border-radius:99px;background:#fff;width:0;transition:width 1.2s var(--ov)}
+.bar.dark{background:var(--sageMist)}.bar.dark i{background:var(--sage)}
+.card{background:var(--surface);border-radius:20px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card h4{font-family:var(--display);font-size:17px;margin:0 0 6px;font-weight:700}
+.rowm{display:flex;align-items:center;gap:8px}
+.bigbtn{border:0;width:100%;height:50px;border-radius:999px;font:900 15px var(--body);background:var(--accentDeep);color:#fff;cursor:pointer}
+.bigbtn.sage{background:var(--sageDeep)}
+.line{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--skyWash);font-size:13.5px;font-weight:700}
+.line:last-child{border:0}
+.line .amt{margin-left:auto;font-family:var(--display);font-weight:700}
+.toggle{width:44px;height:26px;border-radius:99px;background:var(--skyMist);position:relative;cursor:pointer;transition:background .3s;flex:none}
+.toggle i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:99px;background:#fff;transition:left .35s var(--ov);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on{background:var(--sageDeep)}.toggle.on i{left:21px}
+.amts{display:flex;gap:6px;margin:10px 0 6px}
+.amts .chip{flex:1;justify-content:center;font-size:13px;padding:10px 0}
+.tiles{display:flex;gap:6px;margin:8px 0 4px}
+.tile{flex:1;background:var(--skyWash);border-radius:14px;padding:9px 10px}
+.tile b{font-family:var(--display);font-size:17px;display:block;line-height:1.1}
+.tile span{font-size:10.5px;color:var(--ink2);font-weight:800}
+.badge{display:inline-flex;align-items:center;gap:4px;background:var(--sageMist);color:var(--sageDeep);font:900 11px var(--body);padding:4px 9px;border-radius:99px;animation:wobble .6s var(--ov)}
+.tipcard{position:absolute;left:14px;right:14px;top:120px;background:var(--surface);border-radius:22px;padding:14px 16px;box-shadow:var(--lift);z-index:20;animation:down .6s var(--ov)}
+.tipcard .rowm b{font-size:14px}
+.tipcard .sub{font-size:12px;color:var(--ink2);font-weight:700}
+.toast{position:absolute;left:14px;right:14px;top:56px;background:var(--surface);border-radius:20px;padding:11px 14px;box-shadow:var(--lift);display:flex;gap:10px;align-items:center;z-index:30;animation:down .6s var(--ov)}
+.toast .ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none;background:var(--sageMist);animation:jiggle .6s .25s ease-in-out}
+.toast b{display:block;font-size:13.5px}.toast span{font-size:12px;color:var(--ink2);font-weight:700;display:block}
+.confetti{position:absolute;left:50%;top:150px;pointer-events:none;z-index:31}
+.confetti i{position:absolute;width:8px;height:8px;border-radius:2px;animation:burst 1.1s ease-out forwards}
+.hat{position:absolute;left:12px;right:12px;bottom:90px;background:var(--ink);color:#fff;border-radius:18px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:var(--lift);z-index:5;animation:up .6s var(--ov)}
+.hat b{font-size:13px;display:block}.hat span{font-size:11.5px;opacity:.8;font-weight:700}
+.sellrow{display:flex;gap:8px;justify-content:center;margin-top:12px}
+.stats3{display:flex;gap:6px;margin:12px 0 0}
+.stats3 div{flex:1;text-align:center;background:rgba(255,255,255,.55);border-radius:14px;padding:8px}
+.stats3 b{font-family:var(--display);font-size:18px;display:block}.stats3 span{font-size:10.5px;font-weight:800;color:var(--ink2)}
+.ring{width:84px;height:84px;border-radius:99px;background:conic-gradient(var(--sage) 0 var(--p,0%),var(--sageMist) var(--p,0%) 100%);display:flex;align-items:center;justify-content:center;margin:0 auto;transition:--p 1s}
+.ring div{width:68px;height:68px;border-radius:99px;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:16px;line-height:1}
+.ring div small{font:800 9.5px var(--body);color:var(--ink2)}
+@keyframes down{0%{transform:translateY(-70px) scale(.9);opacity:0}60%{transform:translateY(8px) scale(1.03);opacity:1}80%{transform:translateY(-3px) scale(.99)}100%{transform:none;opacity:1}}
+@keyframes up{0%{transform:translateY(40px) scale(.9);opacity:0}60%{transform:translateY(-6px) scale(1.04);opacity:1}100%{transform:none}}
+@keyframes hop{0%{transform:translateY(0)}30%{transform:translateY(-8px) scale(1.12,.9)}50%{transform:translateY(0) scale(.94,1.08)}70%{transform:translateY(-3px) scale(1.04,.97)}100%{transform:none}}
+@keyframes wobble{0%{transform:scale(.3) rotate(-20deg)}50%{transform:scale(1.3) rotate(10deg)}70%{transform:scale(.9) rotate(-5deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes jiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg) scale(1.1)}50%{transform:rotate(8deg) scale(1.1)}75%{transform:rotate(-4deg)}}
+@keyframes burst{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(540deg);opacity:0}}
+@keyframes grow{0%{transform:scaleY(0);opacity:0;margin-bottom:-60px}60%{transform:scaleY(1.06);opacity:1;margin-bottom:12px}100%{transform:none;margin-bottom:12px}}
+.insert{animation:grow .7s var(--ov);transform-origin:top}
+/* panel */
+.panel{width:470px;max-width:100%;background:#fff;border-radius:22px;box-shadow:0 10px 28px -14px rgba(13,35,66,.35);overflow:hidden}
+.pbody{padding:18px 20px;max-height:800px;overflow-y:auto;font-size:13.5px;line-height:1.55}
+.pbody h4{font-family:var(--display);font-size:17px;margin:16px 0 6px}.pbody h4:first-child{margin-top:0}
+.pbody p{margin:0 0 10px}.small{font-size:12px;color:#5B7290}
+.trig{display:flex;gap:10px;align-items:flex-start;border:1px solid #E5ECF4;border-radius:14px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.trig:hover,.trig.on{border-color:#4E8A69;background:#F3F9F5}
+.trig .ic{width:36px;height:36px;border-radius:12px;background:#F4F7FB;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+.trig b{display:block;font-size:13.5px}.trig span{color:#5B7290;font-size:12.5px}
+.trig .k{display:inline-block;font-size:10px;font-weight:900;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;letter-spacing:.06em;background:#DDEDE4;color:#3B6E52}
+.trig .k.lbm{background:#DCE9F7;color:#2A5992}.trig .k.tip{background:#F7E2F6;color:#7E2A7A}
+</style>
+</head>
+<body>
+<div class="top"><h1>Little Blue Market · donation prompts</h1>
+  <div class="seg"><button id="notesBtn">Hide notes</button></div>
+  <span class="small" style="margin-left:auto">Tap a moment in the panel. Everything in the phone is tappable.</span></div>
+<div class="wrap">
+  <div class="phonewrap"><div class="phone"><div class="notch"></div><div class="screen" id="screen"></div></div></div>
+  <div class="panel"><div class="pbody" id="pbody"></div></div>
+</div>
+<script>
+const S={screen:'feed',overlays:[],roundup:false,tip:null,amt:null,gave:false,goal:1240,feedNudge:true,hat:false};
+const $=id=>document.getElementById(id);
+const av=(t,c,cls='')=>`<div class="av ${cls}" style="background:${c}">${t}</div>`;
+const prod=(t,by,price,c1,c2)=>`<div class="pin"><div class="ph"><div class="fb" style="background:linear-gradient(135deg,${c1},${c2})">${t}</div><div class="cartbtn">🛒 Cart</div></div><div class="cap"><div class="t">${t}</div><div class="m">${av(by[0],by[1])}<span>${by[2]}</span><span class="price">${price}</span></div></div></div>`;
+function tabs(on='market'){return `<div class="tabs"><div class="tab ${on==='market'?'on':''}"><i>🏠</i>Market</div><div class="tab"><i>💬</i>Community</div><div class="fabc">+</div><div class="tab ${on==='cart'?'on':''}"><i>👜</i>Cart</div><div class="tab ${on==='you'?'on':''}"><i>👤</i>You</div></div>`;}
+function toast(t,s,ic='🌱',ms=2800){const h=`<div class="toast"><div class="ic">${ic}</div><div><b>${t}</b><span>${s}</span></div></div>`;S.overlays.push(h);render();setTimeout(()=>{S.overlays=S.overlays.filter(x=>x!==h);render();},ms);}
+function confetti(){const cols=['#D56ED1','#70A0D0','#4E8A69','#F4C48A','#fff'];let h='<div class="confetti">';for(let i=0;i<18;i++){const a=Math.random()*Math.PI*2,r=60+Math.random()*90;h+=`<i style="background:${cols[i%5]};--dx:${Math.cos(a)*r}px;--dy:${Math.sin(a)*r-40}px;animation-delay:${Math.random()*.15}s"></i>`;}h+='</div>';S.overlays.push(h);render();setTimeout(()=>{S.overlays=S.overlays.filter(x=>x!==h);render();},1300);}
+function give(amt,what){S.gave=true;S.goal+=amt;confetti();toast(`Thank you 💙`,`$${amt} to ${what} · you'll see it on your profile`,'🌱');}
+
+/* --- pieces --- */
+const nudge=()=>S.feedNudge?`<div class="pin"><div class="note"><span class="x" onclick="event.stopPropagation();S.feedNudge=false;render()">✕</span><div><div class="ic">🌱</div><b>Member-run, not ad-run</b><span>212 people chipped in this month to keep the app and the directory going.</span></div><button class="chip sage go" onclick="event.stopPropagation();go('chipin')">Chip in →</button></div></div>`:'';
+const causeHero=()=>`<div class="pin wide" onclick="go('cause')"><div class="hero"><div class="glyph">🗳️</div><div class="pct">${Math.round(S.goal/3000*100)}%</div><div class="k">#VoteCollection · registration drive</div><h3>$${S.goal.toLocaleString()} of $3,000</h3><p>48 makers give 20% of every sale under this tag through November.</p><div class="bar"><i id="heroBar"></i></div><div class="row"><span class="cta">Chip in</span><span class="cta" style="background:rgba(255,255,255,.2);color:#fff">Shop the drive</span></div></div></div>`;
+const whyHero=()=>`<div class="pin wide" onclick="go('chipin')"><div class="hero" style="background:linear-gradient(160deg,#2A5992,#152E52)"><div class="glyph">🛒</div><div class="k">From Little Blue Market · once a season</div><h3>Why we ask</h3><p>The app costs about $340 a month to run. 3% of members cover it. No ads, no investors — just us.</p><span class="cta" style="color:#2A5992">See the bill →</span></div></div>`;
+
+const SC={};
+SC.feed=()=>`<div class="view"><div class="hdr"><div class="search">🔍 Search goods, makers, #tags</div><div class="circ">👜</div></div><div class="tabsrow"><div class="on">For you</div><div>Near me</div><div>Following</div></div>
+  <div class="scroll"><div class="masonry">${S._hero==='why'?whyHero():causeHero()}${prod('6-pack jam sampler',['BF','#C4796B','Berries'],'$25','#FBEBD3','#F4D8B0')}${prod('Sunflower arch earrings',['MW','#D9A05B','Madi'],'$25','#EAE4F6','#D6CBEE')}${nudge()}${prod('Magical raccoon sticker',['SG','#D56ED1','Sim'],'$3','#F9DDE9','#F3C3D7')}${prod('Summer Song face cream',['UA','#4E8A69','Untamed'],'$32','#E7EFE9','#CFE2D5')}${prod('"Have courage" necklace',['SS','#5F6A82','Silver'],'$40','#DCE9F7','#BFD6EF')}</div></div>
+  ${S.hat?`<div class="hat">🎩<div><b>Town hall is live · pass the hat</b><span>$86 so far tonight · 31 people</span></div><span class="chip sage" style="margin-left:auto" onclick="give(2,'tonight\\'s town hall')">$2</span></div>`:''}
+  ${S.overlays.join('')}${tabs()}</div>`;
+
+SC.checkout=()=>{const sub=57,ship=6,tip=S.tip||0,ru=S.roundup?(Math.ceil((sub+ship+tip))-(sub+ship+tip)+ (Number.isInteger(sub+ship+tip)?1:0)):0;const total=sub+ship+tip+ru;return `<div class="view"><div class="hdr"><div class="circ" onclick="go('feed')">‹</div><h2>Checkout</h2></div><div class="scroll" style="padding:4px 18px">
+  <div class="card"><h4>2 items · $57</h4><div class="line">${av('BF','#C4796B')}6-pack jam sampler<span class="amt">$25</span></div><div class="line">${av('UA','#4E8A69')}Summer Song face cream<span class="amt">$32</span></div></div>
+  <div class="card"><div class="rowm"><div style="flex:1"><b style="font-size:14px">Add a tip for the makers</b><div class="small">Goes straight to Berries &amp; Flour and Untamed Alchemy, split evenly.</div></div></div><div class="amts">${[1,2,5].map(a=>`<button class="chip ${S.tip===a?'on':'ghost'}" onclick="S.tip=S.tip===a?null:${a};render()">$${a}</button>`).join('')}<button class="chip ${S.tip===null?'on':'ghost'}" onclick="S.tip=null;render()">No tip</button></div></div>
+  <div class="card"><div class="rowm"><div style="flex:1"><b style="font-size:14px">Round up for Little Blue Market</b><div class="small">${S.roundup?`$${ru.toFixed(2)} keeps the app member-run. Thank you 🌱`:'Round up to the nearest dollar. The change keeps the app running.'}</div></div><div class="toggle ${S.roundup?'on':''}" onclick="S.roundup=!S.roundup;render();if(S.roundup)toast('Rounded up 🌱','$'+(${ru}||0.6).toFixed(2)+' to Little Blue Market')"><i></i></div></div></div>
+  <div class="card"><div class="line">Items<span class="amt">$57.00</span></div><div class="line">Shipping · 2 boxes<span class="amt">$6.00</span></div>${tip?`<div class="line" style="color:var(--sageDeep)">Maker tip<span class="amt">$${tip}.00</span></div>`:''}${S.roundup?`<div class="line" style="color:var(--sageDeep)">Round-up 🌱<span class="amt">$${ru.toFixed(2)}</span></div>`:''}<div class="line" style="font-size:15px"><b>Total</b><span class="amt" style="font-size:20px">$${total.toFixed(2)}</span></div></div>
+  <button class="bigbtn" onclick="go('placed')">Pay $${total.toFixed(2)}</button><div class="small" style="text-align:center;margin-top:8px">Secured by Shopify · tips and round-ups are line items on this order</div></div></div>`;};
+
+SC.placed=()=>`<div class="view"><div class="hdr"><h2 style="text-align:center;flex:1">Order placed 🎉</h2></div><div class="scroll" style="padding:4px 18px;text-align:center">
+  <div class="card"><div style="font-size:44px">📦</div><h4>Two boxes on the way</h4><div class="small">Berries &amp; Flour ships Fri · Untamed Alchemy ships Mon</div></div>
+  ${S.tip?'':`<div class="tipcard" style="position:static;margin:0 0 12px;animation-delay:.6s"><div class="rowm">${av('BF','#C4796B','md')}<div style="flex:1;text-align:left"><b>Made by hand by Kali &amp; Ama</b><div class="sub">Add a little something for them?</div></div></div><div class="amts">${[1,2,5].map(a=>`<button class="chip sagelite" onclick="this.classList.add('bounce');S.tip=${a};give(${a},'your makers')">$${a}</button>`).join('')}<button class="chip ghost" onclick="S.tip=0;render()">No thanks</button></div></div>`}
+  <button class="bigbtn" style="background:var(--surface);color:var(--ink);box-shadow:var(--shadow)" onclick="go('feed')">Back to the market</button></div>${S.overlays.join('')}</div>`;
+
+SC.cause=()=>`<div class="view"><div class="hdr"><div class="circ" onclick="go('feed')">‹</div><div style="flex:1"><h2>#VoteCollection</h2><div class="sub">Collection · registration drive</div></div><span class="chip sagelite">✓ Following</span></div><div class="scroll">
+  <div class="card" style="background:var(--sageMist);box-shadow:none"><div class="rowm"><div class="ring" style="--p:${Math.round(S.goal/3000*100)}%"><div>${Math.round(S.goal/3000*100)}%<small>of $3,000</small></div></div><div style="flex:1"><b style="font-family:var(--display);font-size:18px;line-height:1.1;display:block">$${S.goal.toLocaleString()} raised</b><div class="small" style="color:var(--sageDeep);font-weight:800">412 people · 48 makers giving 20% · closes Nov 30</div><div class="amts" style="margin:8px 0 0">${[2,5,10].map(a=>`<button class="chip sage" onclick="this.classList.add('bounce');give(${a},'the drive')">$${a}</button>`).join('')}</div></div></div></div>
+  <div class="card"><h4>Where it goes</h4><div class="tiles"><div class="tile"><b>$2,400</b><span>voter registration tables</span></div><div class="tile"><b>$400</b><span>printing</span></div><div class="tile"><b>$200</b><span>snacks 🍪</span></div></div><div class="small">Run by Little Blue Market members. Receipts posted in the forum on Dec 1.</div></div>
+  <div class="masonry">${prod('Books > Bots tee · 20% to the drive',['DD','#2A5992','Daybreak'],'$26.95','#EAE4F6','#D6CBEE')}${prod('Raccoon sticker · $1 to the drive',['SG','#D56ED1','Sim'],'$3','#F9DDE9','#F3C3D7')}${prod('Jam sampler · 20%',['BF','#C4796B','Berries'],'$25','#FBEBD3','#F4D8B0')}${prod('Village advent · 20%',['MJ','#B565B0','Jill'],'$41','#E7EFE9','#CFE2D5')}</div></div>${S.overlays.join('')}${tabs()}</div>`;
+
+SC.chipin=()=>`<div class="view"><div class="hdr"><div class="circ" onclick="go('feed')">‹</div><div style="flex:1"><h2>Chip in</h2><div class="sub">Little Blue Market is member-run</div></div></div><div class="scroll">
+  <div class="card"><h4>Last month's bill</h4><div class="tiles"><div class="tile"><b>$180</b><span>hosting &amp; push</span></div><div class="tile"><b>$95</b><span>directory sync</span></div><div class="tile"><b>$65</b><span>town halls</span></div></div><div class="bar dark"><i id="billBar"></i></div><div class="small" style="margin-top:6px"><b>212 members</b> covered <b>$310 of $340</b>. No ads, no investors.</div></div>
+  <div class="card"><h4>One-time</h4><div class="amts">${[2,5,10,20].map(a=>`<button class="chip ${S.amt===a?'on':'ghost'}" onclick="S.amt=${a};render()">$${a}</button>`).join('')}</div><button class="bigbtn sage" onclick="if(S.amt){give(S.amt,'Little Blue Market');}else{toast('Pick an amount','','👆',1500)}">Chip in${S.amt?' $'+S.amt:''}</button><div class="small" style="text-align:center;margin-top:8px">Opens the same in-app checkout you buy with. Not tax-deductible.</div></div>
+  <div class="card"><div class="rowm"><div style="flex:1"><b style="font-size:14px">Monthly member</b><div class="small">$3/month · a 🌱 on your profile · first look at drops</div></div><span class="chip sagelite">$3/mo</span></div></div>
+  <div class="card"><h4>Or, at checkout</h4><div class="small">Round up your next order — the change comes here. It's off by default and you'll see it as a line item every time.</div></div></div>${S.overlays.join('')}${tabs()}</div>`;
+
+SC.you=()=>`<div class="view"><div class="hdr"><h2>You</h2><div class="circ">🔔</div><div class="circ">✉️</div><div class="circ">⚙️</div></div><div class="scroll" style="padding-top:2px">
+  <div class="rowm" style="gap:14px;margin-bottom:12px">${av('ME','#152E52','md').replace('class="av md"','class="av md" style="width:72px;height:72px;font-size:24px"')}<div style="flex:1"><div style="font-family:var(--display);font-size:22px;font-weight:700;line-height:1">Morgan Ellis</div><div class="small" style="font-weight:800;margin-top:3px">@morgan · Ypsilanti, MI</div><div class="rowm" style="margin-top:6px;gap:5px"><span class="chip ghost" style="padding:4px 9px;font-size:11px">#BIPOCOwned</span>${S.gave?'<span class="badge">🌱 Chipped in</span>':''}</div></div></div>
+  <div class="stats3"><div><b>12</b><span>bought</span></div><div><b>7</b><span>in cart</span></div><div><b>5</b><span>reviews</span></div><div><b>3</b><span>posts</span></div></div>
+  <div class="rowm" style="background:rgba(255,255,255,.55);border-radius:16px;padding:10px 12px;margin:12px 0;cursor:pointer" onclick="go('chipin')"><div style="width:36px;height:36px;border-radius:10px;background:var(--sageMist);display:flex;align-items:center;justify-content:center;font-size:18px">🌱</div><div style="flex:1;font-size:13px;font-weight:800">${S.gave?'You chipped in this month — thank you':'Chip in to Little Blue Market'}</div><span style="font-size:12px;font-weight:900;color:var(--sageDeep)">${S.gave?'See the bill →':'From $2 →'}</span></div>
+  <div class="rowm" style="background:rgba(255,255,255,.55);border-radius:16px;padding:10px 12px;margin-bottom:12px"><div style="width:36px;height:36px;border-radius:10px;background:var(--sageMist);display:flex;align-items:center;justify-content:center;font-size:18px">🏪</div><div style="flex:1;font-size:13px;font-weight:800">Got something to sell?</div><span style="font-size:12px;font-weight:900;color:var(--sageDeep)">Apply →</span></div>
+  <div class="tabsrow" style="padding:0 0 10px"><div class="on">Bought</div><div>Reviews</div><div>Posts</div><div>Carts</div></div><div class="masonry">${prod('Jam sampler',['BF','#C4796B','Berries'],'$25','#FBEBD3','#F4D8B0')}${prod('Summer Song cream',['UA','#4E8A69','Untamed'],'$32','#E7EFE9','#CFE2D5')}</div></div>${S.overlays.join('')}${tabs('you')}</div>`;
+
+SC.seller=()=>`<div class="view"><div class="hdr"><div class="circ" onclick="go('feed')">‹</div><h2></h2><div class="circ">✉️</div></div><div class="scroll"><div style="text-align:center;padding:6px 0 14px">${av('BF','#C4796B','md').replace('class="av md"','class="av md" style="width:64px;height:64px;font-size:20px;margin:0 auto 8px"')}<h3 style="font-family:var(--display);font-size:24px;margin:0;font-weight:700">Berries &amp; Flour</h3><div class="small" style="font-weight:800">Ypsilanti, MI · joined Aug 2026</div><div class="sellrow"><span class="chip" style="background:var(--accentDeep);color:#fff">Get drop alerts</span><span class="chip ghost" style="background:rgba(255,255,255,.7)">Message</span><span class="chip sagelite" onclick="S.overlays.push(tipSheet());render()">🌱 Tip jar</span></div></div>
+  <div class="stats3"><div><b>212</b><span>sales</span></div><div><b>4.9</b><span>rating</span></div><div><b>340</b><span>carted</span></div><div><b>38</b><span>tipped</span></div></div>
+  <div class="masonry" style="margin-top:12px">${prod('6-pack jam sampler',['BF','#C4796B','Berries'],'$25','#FBEBD3','#F4D8B0')}${prod('Pawpaw jam · 8oz',['BF','#C4796B','Berries'],'$12','#F4D8B0','#E7C78F')}</div></div>${S.overlays.join('')}${tabs()}</div>`;
+const tipSheet=()=>`<div style="position:absolute;inset:0;background:var(--scrim);z-index:20;display:flex;align-items:flex-end" onclick="S.overlays=[];render()"><div style="width:100%;background:var(--surface);border-radius:30px 30px 0 0;padding:12px 18px 26px;animation:up .5s var(--ov)" onclick="event.stopPropagation()"><div style="width:44px;height:5px;border-radius:99px;background:var(--skyMist);margin:0 auto 14px"></div><div class="rowm">${av('BF','#C4796B','md')}<div><h4 style="margin:0">Tip Kali &amp; Ama</h4><div class="small">100% goes to them. Optional, always.</div></div></div><div class="amts" style="margin-top:14px">${[1,3,5].map(a=>`<button class="chip sage" onclick="this.classList.add('bounce');S.overlays=[];give(${a},'Berries &amp; Flour')">$${a}</button>`).join('')}</div><div class="small" style="text-align:center;margin-top:6px">Kali turned the tip jar on. Makers choose.</div></div></div>`;
+
+function go(s){S.screen=s;S.overlays=[];render();}
+function render(){$('screen').innerHTML=(SC[S.screen]||SC.feed)();renderPanel();requestAnimationFrame(()=>{const b=$('heroBar');if(b)b.style.width=(S.goal/3000*100)+'%';const bb=$('billBar');if(bb)bb.style.width='91%';});}
+
+const MOMENTS=[
+  ['🧾','Checkout round-up','Toggle off by default, styled like the ship/pickup controls. The change shows as a line item. Safest and best-converting ask in the app.','lbm',()=>{S.roundup=false;go('checkout')}],
+  ['🎁','Post-purchase maker tip','After "Order placed", a card drops in: $1 / $2 / $5 / No thanks. Never before the order. Tapping bursts confetti and thanks you.','tip',()=>{S.tip=null;go('placed')}],
+  ['🗳️','Initiative tag page','A cause tag gets a progress ring, three "where it goes" tiles, and the products giving a cut. Chip in lives where the posts live.','cause',()=>go('cause')],
+  ['🌱','Feed nudge (sage note-pin)','Same shape as the review nudge. Real number, one line, dismissable for 30 days. Max one per 8 items.','lbm',()=>{S.feedNudge=true;S._hero='cause';go('feed');setTimeout(()=>document.querySelector('.scroll')?.scrollTo({top:420,behavior:'smooth'}),100)}],
+  ['📣','"Why we ask" hero (once a season)','Slot 1 of the feed, from you, with the actual monthly bill. Honest beats clever.','lbm',()=>{S._hero='why';go('feed')}],
+  ['💙','Chip in page','The bill as tiles with a progress bar, one-time amounts, a $3 monthly membership with a 🌱 badge, and the round-up explained. Opens Shopify checkout.','lbm',()=>{S.amt=null;go('chipin')}],
+  ['👤','You tab quiet row','A permanent, never-pushed row under the stats. After giving it becomes a thank-you and a 🌱 chip on the profile.','lbm',()=>go('you')],
+  ['🎩','Town hall · pass the hat','While the live pin is up, a dark bar above the tab bar with a running total and a $2 button.','cause',()=>{S.hat=true;S._hero='cause';go('feed')}],
+  ['🫙','Maker tip jar (opt-in per seller)','A sage "Tip jar" pill on the maker board that opens a sheet. Sellers turn it on themselves.','tip',()=>go('seller')],
+];
+window.MOMENTS=MOMENTS;
+function renderPanel(){$('pbody').innerHTML=`<p class="small">Three kinds of ask, one motion language. <span class="trig" style="display:inline;border:0;padding:0"><span class="k lbm">LBM</span></span> support the app · <span class="k" style="display:inline-block;font-size:10px;font-weight:900;padding:2px 7px;border-radius:99px;background:#DDEDE4;color:#3B6E52">CAUSE</span> an initiative · <span class="k" style="display:inline-block;font-size:10px;font-weight:900;padding:2px 7px;border-radius:99px;background:#F7E2F6;color:#7E2A7A">TIP</span> a maker. Sage is the "chip in" colour so it never competes with the orchid cart.</p>`+
+  MOMENTS.map((m,i)=>`<div class="trig ${S.screen===['checkout','placed','cause','feed','feed','chipin','you','feed','seller'][i]&&i!==3&&i!==4&&i!==7?'on':''}" onclick="MOMENTS[${i}][4]()"><div class="ic">${m[0]}</div><div><b>${m[1]}<span class="k ${m[3]}">${m[3].toUpperCase()}</span></b><span>${m[2]}</span></div></div>`).join('')+
+  `<h4>Guardrails</h4><p>Ask only after a positive moment (order placed, review posted, following a cause). Never on app open, never a popup, never a push. One donation surface visible per session. Amounts small, nothing pre-selected, "No thanks" is a real button. Dismissed twice → the feed nudge sleeps 90 days; the You-tab row stays. Say where it goes every time, in one sentence. Never gate a feature.</p>
+  <h4>App Store reality</h4><p class="small">Unless LBM is a registered 501(c)(3), Apple won't allow a standalone in-app donation charged through the app. Every ask here resolves to a Shopify checkout: round-ups and tips are line items on a physical order, and "Chip in" opens a $2/$5/$10 donation product in the same in-app checkout you already use. That's why the copy says "opens the same checkout you buy with" and "not tax-deductible."</p>
+  <h4>What it needs</h4><p class="small"><b>Frontend:</b> round-up toggle + tip chips on checkout; post-purchase tip card; sage note-pin kind; cause hero + tag page ring; Chip in screen; You-tab row + 🌱 badge; pass-the-hat bar; tip-jar sheet on maker board. <b>Backend:</b> tip / round-up / donation as Shopify products (or order line items via <code>commerceBeginCheckout</code>), a <code>causes/{tag}</code> doc with goal + raised (incremented by the order webhook when the line item is present), <code>Person.chippedInAt</code> for the badge, and a seller <code>tipJar: bool</code> setting.</p>`;}
+let notes=true;$('notesBtn').onclick=function(){notes=!notes;document.querySelector('.panel').style.display=notes?'':'none';this.textContent=notes?'Hide notes':'Show notes';fit();};
+function fit(){const top=document.querySelector('.top').offsetHeight;const sc=Math.min(1,(window.innerHeight-top-32)/864);document.documentElement.style.setProperty('--s',sc.toFixed(3));}
+window.addEventListener('resize',fit);fit();S._hero='cause';render();
+</script>
+</body>
+</html>

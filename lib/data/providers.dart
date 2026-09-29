@@ -15,6 +15,9 @@ import 'firebase/firestore_report_repository.dart';
 import 'firebase/firebase_push_service.dart';
 import 'fixtures/fixture_push_service.dart';
 import 'push/push_service.dart';
+import 'fixtures/fixture_funding_repository.dart';
+import 'firebase/firestore_funding_repository.dart';
+import 'repositories/funding_repository.dart';
 import 'firebase/firestore_messaging_repository.dart';
 import 'firebase/firestore_profile_repository.dart';
 import 'firebase/firestore_promo_repository.dart';
@@ -348,4 +351,17 @@ final _uidProvider = Provider<String?>((ref) {
 
 final _authUserProvider = StreamProvider<AuthUser?>((ref) {
   return ref.watch(authServiceProvider).authStateChanges();
+});
+
+/// What a month cost and raised. Phase 9; see `funding_repository.dart` for
+/// why the interface lives in its own file.
+final fundingRepositoryProvider = Provider<FundingRepository>((ref) {
+  return switch (ref.watch(backendProvider)) {
+    Backend.fixtures => FixtureFundingRepository(
+      ref.watch(fixtureBackendProvider),
+    ),
+    Backend.live => FirestoreFundingRepository(
+      firestore: ref.watch(firestoreProvider),
+    ),
+  };
 });

@@ -98,6 +98,7 @@ abstract final class FirestoreMappers {
     cityState: str(data['cityState']),
     lat: data['lat'] == null ? null : decimal(data['lat']),
     lng: data['lng'] == null ? null : decimal(data['lng']),
+    chippedInAt: timeOrNull(data['chippedInAt']),
   );
 
   static AppNotification notification(String id, Map<String, dynamic> data) =>

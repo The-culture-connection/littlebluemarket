@@ -53,6 +53,7 @@ class Person {
     this.lat,
     this.lng,
     this.unclaimed = false,
+    this.chippedInAt,
   });
 
   /// A shop on the market that nobody has signed up for yet.
@@ -63,6 +64,13 @@ class Person {
   /// hands everything over the moment somebody claims it by verifying the
   /// shop's email (Grace, 2026-09-24).
   final bool unclaimed;
+
+  /// When this person last chipped in to Little Blue Market.
+  ///
+  /// Written only by the order webhook, never by the phone: it decides
+  /// whether the feed stops asking and whether the You tab says thank you,
+  /// and neither should be settable by the thing being asked.
+  final DateTime? chippedInAt;
 
   final String id;
   final String name;

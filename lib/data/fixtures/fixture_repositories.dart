@@ -44,6 +44,11 @@ class FixtureBackend {
   Future<void> _settle() async {
     if (latency > Duration.zero) await Future<void>.delayed(latency);
   }
+
+  /// The same pause, for a fixture repository that lives in its own file.
+  /// `_delayed` is private to this library; a repository written beside it
+  /// rather than inside it still wants the demo's loading states.
+  Future<T> delayed<T>(T value) => _delayed(value);
 }
 
 class FixtureCatalogRepository implements CatalogRepository {
