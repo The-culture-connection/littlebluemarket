@@ -159,3 +159,61 @@ is in `pubspec.yaml` and the Apple product id `lbm_member_monthly2` is in
 `lib/models/membership.dart`, but there is no purchase UI and no receipt
 verification: that needs an App Store Connect API key, a Google Play service
 account and a Play product id. Phase 10.
+
+---
+
+## Part D (2026-09-29, later) — the monthly membership
+
+Built, green, on `staging`. **Not deployed**, and it cannot be until two
+secrets exist: a Cloud Function that declares a secret will not deploy while
+that secret is missing, so the two commands below are the gate on everything
+else here.
+
+**What it is.** A Monthly card on the Chip in page, billed by Apple or
+Google rather than by the shop. It is the only money in the app that does
+not go through Shopify, and it has to be: a recurring digital membership is
+theirs to bill.
+
+**The rule it is built around.** A membership is a grant, never a client
+write. The phone buys, hands the receipt to `membershipVerify`, and the
+server asks the store whether the receipt is real before writing
+`users/{uid}.memberUntil`. That field is locked in the rules exactly as
+`revenueCents` is, and `memberships/{uid}` is readable only by its owner and
+writable by nobody. A receipt somebody invented stops at the store.
+
+**Money.** `funding/{month}.sources.membership`, gross like the Shopify side,
+counted once per period through `memberships/{uid}/periods/{periodId}`, so a
+phone that verifies at every launch moves the tiles once.
+
+**Hidden until configured**, the same dark ship as the donation handles: no
+product id for the store this phone is on means no card at all, and no
+"coming soon" either.
+
+### What Grace has to do, in order
+
+1. **Store the two keys.** Secret Manager writes are not something this
+   session may do, so these are hers to run, from `functions/`:
+   ```
+   firebase functions:secrets:set PLAY_SERVICE_ACCOUNT --project dev --data-file "../../little-blue-cart-prod-b826be8634f1.json"
+   firebase functions:secrets:set APPLE_IAP_KEY --project dev --data-file "<path to the AuthKey_XXXXXXXX.p8>"
+   ```
+   Both must exist before the next dev deploy, even the one that is not
+   being used yet.
+2. **Three values into `functions/.env.little-blue-610e5`**: the Play
+   subscription's product id, and the App Store Connect key's issuer id and
+   key id (both printed next to the key in App Store Connect). Set
+   `MEMBERSHIP_APPLE_PRODUCT_ID=lbm_member_monthly2` at the same time as the
+   Apple key, not before: a card that appears before its key exists fails at
+   the till.
+3. `scripts\deploy-dev.ps1`.
+
+### Notes
+
+- The Play service account is `lbm-play-verify` in the **prod** Cloud
+  project, which is fine: Play grants access to a service account by
+  invitation in the Play Console, and does not care which project it lives
+  in. It must be invited there with "View financial data", and that grant
+  takes up to a day to work.
+- The round-up and chip-in donation products still have **tax switched on**
+  in the dev store. Tax on a round-up stops the total landing on a whole
+  dollar, which is the one thing that makes the feature look broken.
