@@ -98,7 +98,7 @@ import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
 import { noteVendorFromCatalog, syncVendorRoster } from './roster_grant.ts';
 import { geocodeProfileIfNeeded } from './geocode.ts';
 import { geocodeDirectoryPage } from './directory_geo.ts';
-import { chipInCheckout } from './donations.ts';
+import { chipInCheckout, donationProductIds } from './donations.ts';
 import {
   backfillProfileTagsLower,
   backfillTagKeyMirror,
@@ -1269,7 +1269,25 @@ export const shopifyWebhook = onRequest(
       switch (topic) {
         case 'orders/paid':
         case 'orders/create': {
-          const order = await normalizeOrder(payload);
+          // A gift bought on the website carries no attribute, so the
+          // donation products have to be recognised by id. Failing to
+          // look them up must never lose an order: the app-made lines
+          // still say what they are, and the worst case is a website
+          // gift recorded as a sale, which is fixable afterwards. An
+          // order that was never recorded is not.
+          let donationIds = new Set<string>();
+          try {
+            donationIds = await donationProductIds();
+          } catch (error) {
+            logger.warn('Could not read the donation product ids', {
+              error: String(error),
+            });
+          }
+          const order = await normalizeOrder(
+            payload,
+            undefined,
+            donationIds,
+          );
           const outcome = await recordPaidOrder(order);
           logger.info('Handled an order webhook', { topic, id: order.id, outcome });
           break;

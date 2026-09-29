@@ -3,6 +3,11 @@ import { logger } from 'firebase-functions';
 
 import { applyMarkerChanges, markerChanges } from './carted.ts';
 
+import {
+  donationCentsIn,
+  fundingMonth,
+  isDonationItem,
+} from './donation_lines.ts';
 import { resolveSellerUid, type VendorHints } from './vendors.ts';
 
 /**
@@ -37,6 +42,15 @@ export interface NormalizedLine {
   quantity: number;
   sellerUid: string;
   imageUrl?: string;
+
+  /**
+   * A gift to Little Blue Market rather than a purchase from a maker.
+   *
+   * Everything downstream reads this one flag: no vendor is credited, no
+   * product counts a sale, and the buyer gets no purchase document for it,
+   * because there is nothing to review and nothing to be delivered.
+   */
+  donation?: boolean;
 }
 
 export interface NormalizedOrder {
@@ -89,6 +103,9 @@ export async function normalizeOrder(
   // or an emulator. This is the function whose bugs corrupt money data, so it
   // must be testable in isolation.
   resolve: (hints: VendorHints) => Promise<string> = resolveSellerUid,
+  // The configured donation products, for recognising a gift bought on the
+  // website. A donation line the app made says so itself and needs none.
+  donationProductIds: ReadonlySet<string> = new Set<string>(),
 ): Promise<NormalizedOrder> {
   const noteAttributes = payload.note_attributes as
     | Array<{ name?: string; value?: string }>
@@ -96,13 +113,18 @@ export async function normalizeOrder(
 
   const lines: NormalizedLine[] = [];
   for (const item of (payload.line_items ?? []) as Array<Record<string, any>>) {
+    const donation = isDonationItem(item, donationProductIds);
     // Per-line, because a multi-vendor order credits each seller only for
-    // their own lines.
-    const sellerUid = await resolve({
-      vendor: item.vendor,
-      productId: item.product_id ? String(item.product_id) : undefined,
-      lineAttribute: attribute(item.properties, 'app_seller_uid'),
-    });
+    // their own lines. A gift is not asked about at all: the store itself
+    // is the vendor on it, and resolving that would hand somebody's
+    // donation to whoever the store resolves to.
+    const sellerUid = donation
+      ? ''
+      : await resolve({
+          vendor: item.vendor,
+          productId: item.product_id ? String(item.product_id) : undefined,
+          lineAttribute: attribute(item.properties, 'app_seller_uid'),
+        });
 
     lines.push({
       id: String(item.id ?? ''),
@@ -113,6 +135,7 @@ export async function normalizeOrder(
       unitPriceCents: toCents(item.price),
       quantity: Number(item.quantity ?? 1),
       sellerUid,
+      donation,
     });
   }
 
@@ -180,6 +203,9 @@ export async function recordPaidOrder(
     ? (await db.collection('carts').doc(order.buyerUid).get()).data()
     : undefined;
   let clearedCart: Array<{ productId: string }> = [];
+  // What of this order was a gift, and which month it belongs to.
+  const donationCents = donationCentsIn(order.lines);
+  const month = fundingMonth(order.placedAt);
 
   const outcome = await db.runTransaction(async (tx) => {
     const existing = await tx.get(orderRef);
@@ -188,6 +214,18 @@ export async function recordPaidOrder(
       logger.info('Ignoring a replayed order webhook', { orderId: order.id });
       return 'duplicate' as const;
     }
+
+    // Before the first write, because a transaction may not read after one.
+    // Counting donors needs to know whether this person has already given
+    // this month, and the answer must be the answer inside this
+    // transaction or two simultaneous gifts both count as a new donor.
+    const donorRef =
+      donationCents > 0 && buyerUid
+        ? db.collection('funding').doc(month).collection('donors').doc(buyerUid)
+        : null;
+    const firstGiftThisMonth = donorRef
+      ? !(await tx.get(donorRef)).exists
+      : false;
 
     const sellerUids = [
       ...new Set(order.lines.map((line) => line.sellerUid).filter(Boolean)),
@@ -208,6 +246,9 @@ export async function recordPaidOrder(
     // Each seller is credited only for their own lines.
     const revenueBySeller = new Map<string, number>();
     for (const line of order.lines) {
+      // A gift is not a sale. It reaches no vendor total, which is the
+      // property Gate 2 checks on the Shopify side.
+      if (line.donation) continue;
       if (!line.sellerUid) continue;
       revenueBySeller.set(
         line.sellerUid,
@@ -235,6 +276,7 @@ export async function recordPaidOrder(
     // Counted from the paid order, like every other money-shaped number.
     const soldByProduct = new Map<string, number>();
     for (const line of order.lines) {
+      if (line.donation) continue;
       if (!line.productId) continue;
       soldByProduct.set(
         line.productId,
@@ -264,8 +306,48 @@ export async function recordPaidOrder(
       ? ((cartBefore?.lines ?? []) as Array<{ productId: string }>)
       : [];
 
+    // What was given, this month, from the store. `raisedCents` stays the
+    // Shopify-side number and `sources` carries the same figure under its
+    // own name, so the monthly membership can be added as a second source
+    // in Phase 10 without migrating anything (addendum, 2026-09-29).
+    if (donationCents > 0) {
+      tx.set(
+        db.collection('funding').doc(month),
+        {
+          raisedCents: FieldValue.increment(donationCents),
+          sources: { shopify: FieldValue.increment(donationCents) },
+          lastGiftAt: FieldValue.serverTimestamp(),
+          // Once per person per month. An anonymous gift, from a website
+          // order whose email matches no account, still raises the money
+          // and counts nobody: a donor we cannot name is not a donor we
+          // can count once.
+          ...(firstGiftThisMonth ? { donors: FieldValue.increment(1) } : {}),
+        },
+        { merge: true },
+      );
+      if (donorRef && firstGiftThisMonth) {
+        tx.set(donorRef, {
+          firstGiftAt: Timestamp.fromDate(order.placedAt),
+          orderId: order.id,
+        });
+      }
+      if (buyerUid) {
+        // The one thing the app reads to stop asking: the feed nudge and
+        // the You row both go quiet on it.
+        tx.set(
+          db.collection('users').doc(buyerUid),
+          { chippedInAt: Timestamp.fromDate(order.placedAt) },
+          { merge: true },
+        );
+      }
+    }
+
     if (buyerUid) {
-      const itemCount = order.lines.reduce((sum, l) => sum + l.quantity, 0);
+      // Gifts are not things you bought, so they move no purchase count.
+      const itemCount = order.lines.reduce(
+        (sum, l) => (l.donation ? sum : sum + l.quantity),
+        0,
+      );
       tx.set(
         db.collection('users').doc(buyerUid),
         { purchaseCount: FieldValue.increment(itemCount) },
@@ -288,7 +370,9 @@ export async function recordPaidOrder(
 
       // One purchase document per line, because that is how they are used:
       // the profile grid lists them and the review composer picks one.
+      // Not for a gift: there is nothing to deliver and nothing to review.
       for (const line of order.lines) {
+        if (line.donation) continue;
         tx.set(
           db
             .collection('users')

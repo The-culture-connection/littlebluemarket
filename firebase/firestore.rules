@@ -178,6 +178,25 @@ service cloud.firestore {
     // plus admin(): without that the admin website could not list a paused
     // one to press Resume on. Written only by the admin callables in promos.ts;
     // the two counters are moved by promoRecord, never from a phone.
+    // What it costs to run Little Blue Market, and what members gave.
+    //
+    // Members read it because the Chip in page is the promise that the
+    // numbers on it are real; a guest has nothing to chip in with yet. Every
+    // figure is written by the paid webhook or by Grace through the admin
+    // portal, never by a phone: a page asking for money must not also be a
+    // page anyone can write a total onto.
+    match /funding/{month} {
+      allow read: if member();
+      allow write: if false;
+
+      // Who gave, one document per person per month, so a second gift does
+      // not count a second donor. Closed in both directions: the count is
+      // public on the page, and the list of names is nobody's business.
+      match /donors/{donorUid} {
+        allow read, write: if false;
+      }
+    }
+
     match /promos/{id} {
       allow read: if resource.data.active == true || admin();
       allow write: if false;
@@ -242,7 +261,10 @@ service cloud.firestore {
           // is claimed, and by whom, is not a thing a phone may assert.
           'unclaimed',
           'claimedBy',
-          'shopVendorName'
+          'shopVendorName',
+          // Stamped by the paid webhook when somebody chips in. It is what
+          // stops the feed asking again, so a phone may not set it.
+          'chippedInAt'
         ]);
 
       allow delete: if false;

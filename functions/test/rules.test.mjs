@@ -808,3 +808,70 @@ describe('deletion requests are the callable\'s to write and the merchant\'s to 
     await assertFails(adminUser().doc('deletionRequests/d1').delete());
   });
 });
+
+describe('the month\'s bill is readable and nobody\'s to write', () => {
+  before(async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('funding/2026-09').set({
+        raisedCents: 4180,
+        budgetCents: 12000,
+        donors: 9,
+        costs: { 'Hosting & push': 4200 },
+        sources: { shopify: 4180 },
+      });
+      await admin.firestore().doc('funding/2026-09/donors/maya').set({ orderId: '5001' });
+    });
+  });
+
+  test('a member reads it, because the page promises the numbers are real', async () => {
+    await assertSucceeds(member('maya').doc('funding/2026-09').get());
+    // A guest has nothing to chip in with yet.
+    await assertFails(guest().doc('funding/2026-09').get());
+  });
+
+  test('nobody writes a total onto a page asking for money', async () => {
+    await assertFails(member('maya').doc('funding/2026-09').set({ raisedCents: 999999 }));
+    await assertFails(member('maya').doc('funding/2026-09').update({ donors: 500 }));
+    await assertFails(adminUser('grace').doc('funding/2026-09').update({ budgetCents: 1 }));
+    await assertFails(member('maya').doc('funding/2026-10').set({ raisedCents: 1 }));
+    await assertFails(adminUser('grace').doc('funding/2026-09').delete());
+  });
+
+  test('who gave is nobody\'s business, the count aside', async () => {
+    await assertFails(member('maya').doc('funding/2026-09/donors/maya').get());
+    await assertFails(adminUser('grace').collection('funding/2026-09/donors').get());
+    await assertFails(member('maya').doc('funding/2026-09/donors/maya').set({ orderId: 'x' }));
+  });
+});
+
+describe('what shows on your profile is yours; chipping in is not', () => {
+  before(async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('users/maya').set({
+        name: 'Maya',
+        revenueCents: 0,
+        grossSalesCents: 0,
+        purchaseCount: 0,
+        postCount: 0,
+      });
+    });
+  });
+
+  test('you set your own six switches', async () => {
+    await assertSucceeds(
+      member('maya').doc('users/maya').update({
+        profileSections: { bought: true, reviews: true, posts: true, carts: true, threads: true, comments: false },
+      }),
+    );
+    // And not somebody else's.
+    await assertFails(
+      member('kali').doc('users/maya').update({ profileSections: { comments: false } }),
+    );
+  });
+
+  test('you cannot say you chipped in', async () => {
+    // It is what stops the feed asking again, so it is the webhook's to stamp.
+    await assertFails(member('maya').doc('users/maya').update({ chippedInAt: now() }));
+    await assertFails(member('maya').doc('users/maya').update({ chippedInAt: new Date() }));
+  });
+});

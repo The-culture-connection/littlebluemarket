@@ -2,6 +2,11 @@ import { HttpsError } from 'firebase-functions/v2/https';
 
 import { DONATION_CHIP_IN_HANDLE, DONATION_ROUND_UP_HANDLE } from './config.ts';
 import { toCents } from './orders.ts';
+import {
+  DONATION_ATTRIBUTE,
+  numericId,
+  type DonationLine,
+} from './donation_lines.ts';
 import { storefrontGraphQL } from './shopify/storefront.ts';
 
 /**
@@ -90,6 +95,47 @@ export async function donationVariants(handle: string): Promise<DonationVariant[
   return nodes.map((node) => ({ id: node.id, priceCents: toCents(node.price.amount) }));
 }
 
+const PRODUCT_ID_QUERY =
+  'query DonationId($handle: String!) { product(handle: $handle) { id } }';
+
+/** Cached per instance: two products, and a webhook should not ask twice. */
+let productIds: { ids: Set<string>; at: number } | null = null;
+
+/** Long enough that a busy day asks once, short enough that a fix lands. */
+const PRODUCT_ID_TTL_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * The donation products' Shopify ids, for recognising a gift bought on the
+ * website.
+ *
+ * Empty when the handles are not configured, which is also how the whole
+ * feature stays invisible in production until Grace sets them.
+ */
+export async function donationProductIds(): Promise<Set<string>> {
+  const { chipIn, roundUp } = donationHandles();
+  if (!chipIn && !roundUp) return new Set<string>();
+  if (productIds && Date.now() - productIds.at < PRODUCT_ID_TTL_MS) {
+    return productIds.ids;
+  }
+
+  const ids = new Set<string>();
+  for (const handle of [chipIn, roundUp]) {
+    if (!handle) continue;
+    const result = await storefrontGraphQL<{ product: { id: string } | null }>(
+      PRODUCT_ID_QUERY,
+      { handle },
+    );
+    const gid = result.product?.id;
+    if (gid) ids.add(numericId(gid));
+  }
+  productIds = { ids, at: Date.now() };
+  return ids;
+}
+
+/** Forgets the cached ids. Tests only. */
+export function resetDonationProductIds(): void {
+  productIds = null;
+}
 /** The configured handles, trimmed. Empty means the feature is off. */
 export function donationHandles(): { chipIn: string; roundUp: string } {
   return {
@@ -104,9 +150,7 @@ export function donationHandles(): { chipIn: string; roundUp: string } {
  * One variant at a penny, bought `cents` times, so Shopify does the
  * arithmetic and there is one price to get wrong instead of ninety-nine.
  */
-export async function roundUpLine(
-  cents: number,
-): Promise<{ merchandiseId: string; quantity: number } | null> {
+export async function roundUpLine(cents: number): Promise<DonationLine | null> {
   const { roundUp } = donationHandles();
   if (!roundUp) return null;
   if (!isValidRoundUpCents(cents)) {
@@ -125,7 +169,13 @@ export async function roundUpLine(
       `${roundUp} must have a single one-cent variant; found ${penny.priceCents}.`,
     );
   }
-  return { merchandiseId: penny.id, quantity: cents };
+  // It says what it is, so the paid webhook needs no lookup for anything
+  // the app itself sent.
+  return {
+    merchandiseId: penny.id,
+    quantity: cents,
+    attributes: [{ key: DONATION_ATTRIBUTE, value: 'round-up' }],
+  };
 }
 
 /**
@@ -166,7 +216,13 @@ export async function chipInCheckout(
     };
   }>(mutation, {
     input: {
-      lines: [{ merchandiseId: variant.id, quantity: 1 }],
+      lines: [
+        {
+          merchandiseId: variant.id,
+          quantity: 1,
+          attributes: [{ key: DONATION_ATTRIBUTE, value: 'chip-in' }],
+        },
+      ],
       // The same attribution the rest of checkout uses, so the paid webhook
       // knows whose gift this was without guessing from an email.
       attributes: [{ key: 'app_uid', value: uid }],

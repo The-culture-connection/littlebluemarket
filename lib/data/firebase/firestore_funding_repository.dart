@@ -22,16 +22,22 @@ class FirestoreFundingRepository implements FundingRepository {
     // Read one field at a time rather than through a shared mapper: this is
     // the only place these fields exist, and the shape is the thing the
     // transparency block promises to be honest about.
-    final costs = <String, int>{};
-    final raw = data['costs'];
-    if (raw is Map) {
+    Map<String, int> centsMap(Object? raw) {
+      final out = <String, int>{};
+      if (raw is! Map) return out;
       for (final entry in raw.entries) {
         final label = entry.key.toString();
         final value = entry.value;
         final cents = value is num ? value.round() : int.tryParse('$value');
-        if (label.isNotEmpty && cents != null) costs[label] = cents;
+        if (label.isNotEmpty && cents != null) out[label] = cents;
       }
+      return out;
     }
+
+    final costs = centsMap(data['costs']);
+    // Where it came from, by name. The webhook writes 'shopify'; Phase 10's
+    // membership adds its own key without a migration.
+    final sources = centsMap(data['sources']);
 
     int cents(Object? value) => value is num ? value.round() : 0;
     return Funding(
@@ -40,6 +46,7 @@ class FirestoreFundingRepository implements FundingRepository {
       budgetCents: cents(data['budgetCents']),
       donors: cents(data['donors']),
       costs: costs,
+      sources: sources,
     );
   }, operation: 'firestore funding/$month');
 }
