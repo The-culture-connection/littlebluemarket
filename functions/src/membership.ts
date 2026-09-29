@@ -211,22 +211,33 @@ export function decodeJwsPayload(jws: string): Record<string, any> {
   return JSON.parse(json) as Record<string, any>;
 }
 
-/** The short-lived token the App Store Server API wants. */
+/**
+ * The short-lived token the App Store Server API wants.
+ *
+ * The issuer id is optional here, and deliberately. Apple's two key types
+ * behave differently and their own pages disagree about it: a team-level
+ * **App Store Connect API** key (`AuthKey_*.p8`) has an issuer id printed
+ * above the key table and wants it in `iss`, while an **In-App Purchase**
+ * key (`SubscriptionKey_*.p8`) is generated on a page that shows no issuer
+ * id at all. Sending an empty one is worse than sending none, so an unset
+ * `APPLE_ISSUER_ID` leaves the claim out rather than filling it with a
+ * blank, and either key can be tried without a code change.
+ */
 function appleToken(): string {
   const key = APPLE_IAP_KEY.value();
   const issuer = APPLE_ISSUER_ID.value().trim();
   const keyId = APPLE_KEY_ID.value().trim();
-  if (!key.trim() || !issuer || !keyId) {
+  if (!key.trim() || !keyId) {
     throw new HttpsError(
       'failed-precondition',
-      'The App Store Connect key, issuer id or key id is not set.',
+      'The App Store Connect key or its key id is not set.',
     );
   }
   const issued = Math.floor(Date.now() / 1000);
   return signJwt(
     { alg: 'ES256', kid: keyId, typ: 'JWT' },
     {
-      iss: issuer,
+      ...(issuer ? { iss: issuer } : {}),
       iat: issued,
       exp: issued + 600,
       aud: 'appstoreconnect-v1',
