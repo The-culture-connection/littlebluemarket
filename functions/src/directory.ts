@@ -636,6 +636,31 @@ export async function syncListings(
   const db = getFirestore();
   const index = await ownerIndex(lookups, { force: options.force ?? false });
   const ids = listingIdsOf(index, wpUserId);
+
+  // The count that authorises has to be the count that is acted on.
+  //
+  // `syncDirectory` asks `listingOwnershipRefusal` about one index and then
+  // calls this, which fetches the index *again* — with `force`, so it may
+  // rebuild. On 2026-09-29 the first read came back short, so the guard saw
+  // a handful of listings and waved it through; this one then rebuilt the
+  // index properly and attributed 259 businesses to one account. The
+  // production log tells the story by omission: no refusal was ever
+  // recorded, because at the moment of asking there was nothing to refuse.
+  //
+  // So the last word belongs here, where the writing happens, and it is
+  // checked against the ids this call is actually about to mirror. Nothing
+  // between the two reads can widen it.
+  const refusal = listingOwnershipRefusal({ roles: [], listingCount: ids.length });
+  if (refusal) {
+    logger.error('Refused to mirror a directory to one account', {
+      ownerUid,
+      wpUserId,
+      listings: ids.length,
+      reason: refusal,
+    });
+    return 0;
+  }
+
   const records = ids.length ? await lookups.listingsByIds(ids) : [];
   const needed = termIdsNeeded(records);
   const names: TermNames = {

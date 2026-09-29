@@ -198,3 +198,41 @@ void test('an empty name is not a match for anything', () => {
   assert.equal(profileAfterRelease({ current: { name: '' }, borrowedTitles: [''] }).outcome, 'kept');
   assert.equal(profileAfterRelease({ current: {}, borrowedTitles: ['Liberal Lawn'] }).outcome, 'kept');
 });
+
+/**
+ * The third time (Grace, 2026-09-29: "the erin bug happened again!!").
+ *
+ * The production log for `directoryLinkMe` carries no refusal at all for
+ * that run — and 259 businesses were attributed to one account anyway. That
+ * is not the guard failing to decide; it is the guard being asked the wrong
+ * question at the wrong moment.
+ *
+ * `syncDirectory` reads the owner index, counts this account's listings and
+ * asks `listingOwnershipRefusal`. Then, if allowed, it calls `syncListings`,
+ * which reads the index *again* with `force`, so it may rebuild from the
+ * website. A first read that came back short made the count small, nothing
+ * was refused, and the second read then returned everything.
+ *
+ * The rule, in one line: the count that authorises must be the count that is
+ * acted on. `syncListings` now asks about the ids it is about to mirror, and
+ * that check cannot be separated from the write by anything.
+ */
+void test('the count that authorises is the count that is acted on', () => {
+  // What the first read saw, on the run that went wrong.
+  const atCheckTime = 9;
+  // What the second read returned, and what was written.
+  const atWriteTime = 259;
+
+  assert.equal(listingOwnershipRefusal({ roles: [], listingCount: atCheckTime }), null);
+  const refusal = listingOwnershipRefusal({ roles: [], listingCount: atWriteTime });
+  assert.ok(refusal, 'the number actually being written must be refused');
+  assert.match(refusal!, /259 listings/);
+});
+
+void test('the boundary is the same wherever it is asked', () => {
+  // One business with a lot of listings is still a business; the site's own
+  // account is not. Both checks read the same constant, so moving it moves
+  // every copy at once.
+  assert.equal(listingOwnershipRefusal({ roles: [], listingCount: MAX_OWNED_LISTINGS }), null);
+  assert.ok(listingOwnershipRefusal({ roles: [], listingCount: MAX_OWNED_LISTINGS + 1 }));
+});
