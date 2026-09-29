@@ -510,8 +510,27 @@ final notificationsChoreographyProvider = Provider<void>((ref) {
 
   Future<String> nameOf(String personId) async {
     if (personId.isEmpty) return 'Someone';
+    // Already loaded, which it usually is: their pin is on the screen the
+    // notification is about.
+    final loaded = ref.read(personProvider(personId)).value;
+    if (loaded != null) return loaded.name;
+
     try {
-      final person = await ref.read(personProvider(personId).future);
+      // Bounded, and that is the point. A toast must not wait on a name.
+      //
+      // This read used to be unbounded, and it only ever finished because
+      // something else on screen happened to be watching that person. Once
+      // the feed stopped building every pin eagerly there were screens where
+      // nothing was, the read never completed, and the toast was never
+      // raised at all: a mention arrived and the app said nothing (found
+      // 2026-09-29, after the grid was made lazier per run).
+      //
+      // Half a second is longer than a profile read takes and shorter than
+      // anyone will wait to be told they were mentioned. "Someone mentioned
+      // you" is a worse toast than their name; no toast is a bug.
+      final person = await ref
+          .read(personProvider(personId).future)
+          .timeout(const Duration(milliseconds: 500));
       return person.name;
     } on Object {
       return 'Someone';
