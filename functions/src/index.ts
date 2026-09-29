@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
-import { onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onRequest } from 'firebase-functions/v2/https';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
@@ -102,7 +102,7 @@ import {
   syncProfileTagsLower,
   syncTagKeyMirror,
 } from './profile_tags.ts';
-import { displayName, mentionsToNotify, notify, runForumDigest } from './notifications.ts';
+import { displayName, mentionsToNotify, notify, pushDirectMessage, runForumDigest } from './notifications.ts';
 import { syncShipturtleOrders } from './shipturtle_orders.ts';
 import { publishListing, searchCategories } from './listings.ts';
 import { pruneSellerCatalog, refreshListings, updateListing } from './listing_updates.ts';
@@ -1117,6 +1117,18 @@ export const sellerRefreshShipments = onCall(
     requireUid(request.auth);
     return syncShipturtleOrders();
   }),
+);
+
+/**
+ * A direct message pushes to the other person (2026-09-28). The open chat
+ * is its own `chatroom` collection, so nothing said there reaches this.
+ */
+export const onDirectMessageCreated = onDocumentCreated(
+  'conversations/{conversationId}/messages/{messageId}',
+  async (event) => {
+    const message = event.data?.data();
+    if (message) await pushDirectMessage(event.params.conversationId, message);
+  },
 );
 
 /**

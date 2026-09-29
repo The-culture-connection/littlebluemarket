@@ -139,6 +139,7 @@ abstract final class FirestoreMappers {
           newProducts: boolean(data['newProducts'], true),
           newPosts: boolean(data['newPosts'], true),
           tagPosts: boolean(data['tagPosts'], true),
+          messages: boolean(data['messages'], true),
           announcements: boolean(data['announcements'], true),
           mutedForums: strings(data['mutedForums']),
           announcementsSeenAt: timeOrNull(data['announcementsSeenAt']),

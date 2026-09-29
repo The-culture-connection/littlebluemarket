@@ -27,6 +27,8 @@ export type PushType =
   | 'newProduct'
   | 'newPost'
   | 'tagPost'
+  /** A direct message. No bell row: the inbox is where a DM lives. */
+  | 'newMessage'
   | 'announcement'
   /**
    * A seller's advert. Never pushed: it is the feed's banner, labelled, and
@@ -47,6 +49,8 @@ export interface NotificationPrefs {
   newPosts?: boolean;
   /** A post under a tag you asked to be told about ("Notify me" on a tag). */
   tagPosts?: boolean;
+  /** Direct messages. */
+  messages?: boolean;
   announcements?: boolean;
   mutedForums?: string[];
   /** Quiet hours, "HH:mm" local. Default 22:00 to 08:00. */
@@ -125,12 +129,10 @@ export function isQuietHours(prefs: NotificationPrefs | undefined, now: Date): b
 
 /**
  * A person talking to you: the one kind of push that is let through at
- * night and is not rate limited. There is no DM push today (a direct
- * message reaches the app through the inbox, not through here); when there
- * is one it belongs in this list too.
+ * night and is not rate limited: a mention, and a direct message.
  */
 function isPersonToYou(type: PushType): boolean {
-  return type === 'mention';
+  return type === 'mention' || type === 'newMessage';
 }
 
 /**
@@ -182,6 +184,8 @@ function allowedByPrefs(prefs: NotificationPrefs | undefined, event: PushEvent):
       return on(prefs?.newPosts);
     case 'tagPost':
       return on(prefs?.tagPosts);
+    case 'newMessage':
+      return on(prefs?.messages);
     case 'announcement':
       return on(prefs?.announcements);
     case 'promo':
@@ -228,6 +232,10 @@ export function titleFor(type: PushType, fromName: string, fallbackTitle?: strin
     // #handmade" as the fallback title, and the body names the person.
     case 'tagPost':
       return fallbackTitle || `${who} posted under a tag you follow`;
+    // A message is from a person, and their name is the whole title, as in
+    // every phone's own messaging app.
+    case 'newMessage':
+      return who;
     case 'announcement':
     case 'promo':
       return fallbackTitle || 'Little Blue Market';

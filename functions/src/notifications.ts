@@ -136,6 +136,49 @@ async function markPushed(uid: string, at: Date): Promise<void> {
     .set({ lastPushAt: at }, { merge: true });
 }
 
+// ---------------------------------------------------------- direct messages
+
+/** Who a message in a two-person conversation is for. Pure. */
+export function dmRecipient(participants: unknown, authorId: string): string | null {
+  if (!Array.isArray(participants) || !authorId) return null;
+  const others = participants.map(String).filter((p) => p && p !== authorId);
+  return others.length === 1 ? (others[0] ?? null) : null;
+}
+
+/**
+ * A direct message reaches the other person's phone. No bell row: the inbox
+ * is where a DM lives, and the app shows its own banner while it is open.
+ * A person talking to you, so it is let through at night and is not rate
+ * limited; somebody you have blocked never gets through at all.
+ */
+export async function pushDirectMessage(
+  conversationId: string,
+  message: { authorId?: unknown; text?: unknown },
+): Promise<void> {
+  const db = getFirestore();
+  const authorId = String(message.authorId ?? '');
+  const conversation = (await db.collection('conversations').doc(conversationId).get()).data();
+  const to = dmRecipient(conversation?.participantIds, authorId);
+  if (!to) return;
+
+  const blocked = await db.doc(`users/${to}/blocks/${authorId}`).get();
+  if (blocked.exists) return;
+
+  const prefs = await readPrefs(to);
+  const now = new Date();
+  if (!shouldPush(prefs, { type: 'newMessage' }, { now, lastPushAt: toDate(prefs?.lastPushAt) })) return;
+  try {
+    const outcome = await sendPushToUid(to, {
+      title: titleFor('newMessage', await displayName(authorId)),
+      body: String(message.text ?? '').slice(0, 140),
+      data: { route: `/you/dm/${conversationId}`, type: 'newMessage', postId: '' },
+    });
+    if (outcome.sent > 0) await markPushed(to, now);
+  } catch (error) {
+    logger.warn('DM push failed', { to, message: (error as Error).message });
+  }
+}
+
 // ------------------------------------------------------------ forum digest
 
 /** One thread's replies waiting under `users/{uid}/pendingDigest/{threadId}`. */

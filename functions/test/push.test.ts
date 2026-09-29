@@ -13,6 +13,7 @@ import {
   titleFor,
   topicTarget,
 } from '../src/push.ts';
+import { dmRecipient } from '../src/notifications.ts';
 
 test('a new thread goes to every member but its author, once each, capped', () => {
   assert.deepEqual(forumThreadRecipients(['a', 'b', 'a', 'author', ''], 'author'), ['a', 'b']);
@@ -157,4 +158,19 @@ test('announcements and the test push keep their path: no timing rule applies', 
   assert.equal(shouldPush(undefined, { type: 'announcement' }, { now: NIGHT, lastPushAt: justNow }), true);
   assert.equal(shouldPush({ announcements: false }, { type: 'announcement' }, { now: AFTERNOON }), false);
   assert.equal(shouldPush(undefined, { type: 'test' }, { now: NIGHT, lastPushAt: justNow }), true);
+});
+
+test('a direct message pushes at night and past the rate limit, like a mention', () => {
+  const justNow = new Date(NIGHT.getTime() - 60 * 1000);
+  assert.equal(shouldPush(undefined, { type: 'newMessage' }, { now: NIGHT, lastPushAt: justNow }), true);
+  assert.equal(shouldPush({ messages: false }, { type: 'newMessage' }, { now: AFTERNOON }), false);
+  assert.equal(titleFor('newMessage', 'Kali Brooks'), 'Kali Brooks');
+});
+
+test('a DM is for the one other person in the conversation', () => {
+  assert.equal(dmRecipient(['maya', 'kali'], 'kali'), 'maya');
+  assert.equal(dmRecipient(['maya', 'kali'], 'maya'), 'kali');
+  assert.equal(dmRecipient(['maya', 'maya'], 'maya'), null);
+  assert.equal(dmRecipient(undefined, 'maya'), null);
+  assert.equal(dmRecipient(['maya', 'kali'], ''), null);
 });

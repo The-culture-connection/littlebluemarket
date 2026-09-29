@@ -98,3 +98,45 @@ Rules: this file is the queue. Do the first unticked box only. A box is ticked w
 
 ## Phase 8 — reserved for findings from the adversarial review and Grace's manual pass
 - [ ] (add tasks here as symptom → cause → file:line → fix, never as "tweak X")
+
+## Phase 8 — Directory business cards + notification choreography (`Planning/phase8-directory-and-notifications.md`)
+- [x] A1 `DirectoryBusinessCard` (photo left, 2-line description, tags, location, Visit → website, tap → detail)
+- [x] A2 `directory-listing/:id` route + `DirectoryListingScreen` + `goToDirectoryListing`
+      No hours row (the directory has none) and no share button (the app has no share).
+- [x] A3 feed placement rule (1 in 8, never adjacent to another wide item)
+      Width is decided in `feed_items.dart` (`isFullWidth`), since `models/feed_item.dart` was outside the map.
+- [x] Part A verify (`-Phase 5`) green · commit `redesign(8a): …` · push: f85bfd2
+      The welcome gate diffs against the stale local `main`, as in Phases 1–6; checked against origin/main by hand.
+- [x] B1 `NotificationsUi` state machine + `decide()` matrix tests
+- [x] B2 surfaces + motion · `LbmMotion` tokens · disableAnimations respected
+      Grace, 2026-09-28: bell rings on You (primitives.dart, profile_screen.dart); Android skips its own banner for in-app kinds
+      (firebase_push_service.dart); popup motion only (no icon bob: the card has a photo); "drop pin" = any new pin grows in.
+      No Following dot: that tab was removed 2026-09-25.
+- [x] B3 goldens + smoke route
+- [x] Part B verify (`-Phase 5`) green · commit `redesign(8b): …` · push · report to Grace with shots: 9c96ba0
+- [x] C1 `shouldPush` context: promo never, quiet hours, 20-min rate limit, forumReply never direct
+      Plus DM pushes (`onDirectMessageCreated`), which the plan assumed existed and did not: a person talking to you, so
+      through quiet hours and the limit; blocks respected; "Direct messages" switch.
+- [x] C2 forum digest queue + `forumDigestScheduled` (30 min)
+- [x] C3 client prefs (quiet hours row) + fixture mirror
+- [x] Part C verify (`-Phase 6`) green · deploy **dev** · `deploy-check-redesign.ps1` PASS · commit `redesign(8c): …` · push: a252a07
+- [x] End to end on dev: `scripts\e2e-notifications.ps1` (a real FCM device receives or does not receive each push)
+- [ ] **Prod deploy: Grace says when.**
+- [ ] iPhone: the OS still draws its own banner in the foreground next to the in-app toast (changing it moves how
+      announcements appear on iPhone; Grace to decide).
+
+## Phase 9 — Chip in + round-up, Following-first, comments on profiles (`Planning/phase9-donations-following-profile.md`) — runs in worktree `..\lbm-phase9`, branch `redesign/phase9-donations`
+- [ ] §0 worktree created from the last commit of `redesign/pinterest-grid`; no pulls/merges until the end
+- [ ] A1 `ChipInScreen` + route + transparency block (data from `funding/{month}` or "—")
+- [ ] A2 checkout round-up toggle (off by default) + line item + `beginCheckout(roundUpCents)`
+- [ ] A3 sage donation nudge pin + `donationNudgeSlot` cadence rules + You-tab row + 🌱 chip
+- [ ] Part A verify (`-Phase 5`) · commit `redesign(9a): …` · push branch
+- [ ] B1 tabs Following · For you · Near me; default = Following when following anything; empty state with tag chips
+- [ ] B2 Threads + Comments tabs on profiles (`threadsBy`, `commentsBy`, collection-group index file)
+- [ ] B3 Edit profile "What shows on your profile" toggles (`profileSections`) governing the public view
+- [ ] Part B verify (`-Phase 5`) · commit `redesign(9b): …` · push branch
+- [ ] C1 `commerceBeginCheckout(roundUpCents)` + config handles + `appConfig`
+- [ ] C2 order webhook: exclude donation lines from vendor sales; `funding/{month}` raised/donors; `chippedInAt`
+- [ ] C3 rules + index (file changes + tests; **no deploy from this worktree**)
+- [ ] Part C verify (unit tests + tsc) · commit `redesign(9c): …` · push branch
+- [ ] Rebase once onto `redesign/pinterest-grid` · `-Phase 5` green · report conflict list + shots · **Grace merges, main session deploys**

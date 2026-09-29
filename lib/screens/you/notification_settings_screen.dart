@@ -189,6 +189,12 @@ class _NotificationSettingsScreenState
                     onChanged: (v) => _save(p.copyWith(comments: v)),
                   ),
                   _Switch(
+                    title: 'Direct messages',
+                    subtitle: 'Someone sends you a message',
+                    value: p.messages,
+                    onChanged: (v) => _save(p.copyWith(messages: v)),
+                  ),
+                  _Switch(
                     title: 'Forums',
                     // Says how replies arrive now, so one push for three
                     // replies does not read as two going missing.
@@ -265,8 +271,8 @@ class _NotificationSettingsScreenState
                     ),
                     title: const Text('Quiet hours'),
                     subtitle: const Text(
-                      'Nothing buzzes except someone mentioning you. The '
-                      'rest waits on the bell for the morning.',
+                      'Nothing buzzes except someone messaging or mentioning '
+                      'you. The rest waits on the bell for the morning.',
                     ),
                   ),
                   _TimeRow(

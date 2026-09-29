@@ -105,6 +105,7 @@ class NotificationPrefs {
     this.newProducts = true,
     this.newPosts = true,
     this.tagPosts = true,
+    this.messages = true,
     this.announcements = true,
     this.mutedForums = const [],
     this.announcementsSeenAt,
@@ -129,6 +130,9 @@ class NotificationPrefs {
   /// subject are different appetites, and one being too noisy should not
   /// silence the other.
   final bool tagPosts;
+
+  /// A direct message, as a push. In the app it is the banner either way.
+  final bool messages;
   final bool announcements;
   final List<String> mutedForums;
 
@@ -164,6 +168,7 @@ class NotificationPrefs {
     bool? newProducts,
     bool? newPosts,
     bool? tagPosts,
+    bool? messages,
     bool? announcements,
     List<String>? mutedForums,
     DateTime? announcementsSeenAt,
@@ -177,6 +182,7 @@ class NotificationPrefs {
     newProducts: newProducts ?? this.newProducts,
     newPosts: newPosts ?? this.newPosts,
     tagPosts: tagPosts ?? this.tagPosts,
+    messages: messages ?? this.messages,
     announcements: announcements ?? this.announcements,
     mutedForums: mutedForums ?? this.mutedForums,
     announcementsSeenAt: announcementsSeenAt ?? this.announcementsSeenAt,
@@ -192,6 +198,7 @@ class NotificationPrefs {
     'newProducts': newProducts,
     'newPosts': newPosts,
     'tagPosts': tagPosts,
+    'messages': messages,
     'announcements': announcements,
     'mutedForums': mutedForums,
     'quietStart': quietStart,

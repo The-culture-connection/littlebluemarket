@@ -493,6 +493,13 @@ void main() {
       expect(back.quietStart, '21:00');
       expect(back.quietEnd, NotificationPrefs.defaultQuietEnd);
       expect(FirestoreMappers.notificationPrefs(null).quietStart, '22:00');
+      // Direct messages: on unless switched off.
+      expect(const NotificationPrefs().messages, isTrue);
+      expect(
+        FirestoreMappers.notificationPrefs({'messages': false}).messages,
+        isFalse,
+      );
+      expect(const NotificationPrefs(messages: false).toMap()['messages'], false);
     });
 
     testWidgets('the settings screen shows the window, 10 pm to 8 am', (

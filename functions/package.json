@@ -41,6 +41,7 @@
     "inspect:product": "node scripts/inspect-product.mjs --project dev",
     "move-stock": "node scripts/move-stock.mjs --project dev",
     "peek": "node scripts/peek.mjs --project dev",
+    "e2e:notify": "node scripts/e2e-notifications.mjs",
     "peek:prod": "node scripts/peek.mjs --project prod",
     "replay-order": "node scripts/replay-order.mjs --project dev",
     "wp:probe": "node scripts/wp-probe.mjs --project dev",
@@ -55,6 +56,7 @@
     "nodemailer": "^6.10.1"
   },
   "devDependencies": {
+    "@eneris/push-receiver": "^4.4.0",
     "@firebase/rules-unit-testing": "^5.0.2",
     "@types/node": "^22.10.0",
     "@types/nodemailer": "^6.4.24",

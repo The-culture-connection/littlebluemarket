@@ -239,6 +239,8 @@ class FirebasePushService implements PushService {
     'newProduct',
     'newPost',
     'tagPost',
+    // The DM banner, drawn by the app from the inbox.
+    'newMessage',
   };
 
   void _showForeground(RemoteMessage message) {
