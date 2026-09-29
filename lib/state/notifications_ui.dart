@@ -373,13 +373,18 @@ class NotificationsUi extends Notifier<NotificationsUiState> {
     String? threadId,
     String? feedKey,
     Iterable<String> viewing = const [],
+    bool preview = false,
   }) {
     final chatUnseen = event == UiEvent.chat
         ? state.chatUnseen + 1
         : state.chatUnseen;
     final surfaces = decide(
       event,
-      _context(subjects: [?route, ...viewing], chatUnseen: chatUnseen),
+      // A Diagnostics preview shows the surface whatever the clock says and
+      // wherever the phone is: it exists to be looked at.
+      preview
+          ? DecideContext(chatUnseen: chatUnseen)
+          : _context(subjects: [?route, ...viewing], chatUnseen: chatUnseen),
     );
 
     var next = state;
@@ -475,6 +480,12 @@ class NotificationsUi extends Notifier<NotificationsUiState> {
       quietStrip: held == 1 ? '1 notification waiting' : '$held waiting',
     );
   }
+
+  /// Diagnostics: the "N waiting" strip, now, as the next open after quiet
+  /// hours would show it.
+  void previewQuietStrip(int held) => state = state.copyWith(
+    quietStrip: held == 1 ? '1 notification waiting' : '$held waiting',
+  );
 
   /// The strip has been shown.
   void quietStripShown() => state = state.copyWith(clearQuietStrip: true);

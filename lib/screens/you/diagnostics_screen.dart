@@ -8,12 +8,16 @@ import '../../data/repositories/dev_error_sink.dart';
 import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
 import '../../state/providers.dart';
+import '../../models/feed_item.dart';
+import '../../state/feed_items.dart';
 import '../../state/notification_delivery_suite.dart';
+import '../../state/notifications_ui.dart';
 import '../../state/promos.dart';
 import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/lbm_toast.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
@@ -95,6 +99,9 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> {
           const SizedBox(height: 18),
           const SectionHead('Adverts and announcements'),
           const _PromosCard(),
+          const SizedBox(height: 18),
+          const SectionHead('Notification preview'),
+          const _PreviewCard(),
           const SizedBox(height: 18),
           const SectionHead('Notification delivery'),
           const _DeliveryCard(),
@@ -942,6 +949,245 @@ class _ResultRow extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One button per kind of notification, raising what it looks like on this
+/// phone right now, the way the mockup's trigger panel did.
+///
+/// Nothing is sent and nothing is written: each button hands the same
+/// choreography the real event would reach, in preview mode, so it shows
+/// whatever the clock says (quiet hours do not hide a preview) and wherever
+/// the phone is. For whether a real push arrives, see Notification delivery
+/// below.
+class _PreviewCard extends ConsumerWidget {
+  const _PreviewCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final ui = ref.read(notificationsUiProvider.notifier);
+
+    void say(String line) => ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(line)));
+
+    /// Somebody real to put on the DM banner: whoever the latest
+    /// conversation is with, or failing that this account.
+    String someone() {
+      final me = ref.read(currentUidProvider) ?? '';
+      final inbox = ref.read(inboxProvider).value ?? const [];
+      for (final conversation in inbox) {
+        for (final id in conversation.participantIds) {
+          if (id != me) return id;
+        }
+      }
+      return me;
+    }
+
+    List<FeedItem> feed() => ref.read(feedItemsProvider).value ?? const [];
+
+    final previews = <(IconData, String, String, VoidCallback)>[
+      (
+        Icons.campaign_outlined,
+        'Announcement',
+        'The popup springs up, and the bell on You rings next time you see it.',
+        () {
+          ref
+              .read(promoOverrideProvider.notifier)
+              .show(
+                const Promo(
+                  id: 'preview-announcement',
+                  kind: PromoKind.announcement,
+                  title: 'Town hall tonight at 7',
+                  caption: 'Come tell us what to build next. Live in the app.',
+                  audience: AnnouncementAudience.all,
+                  ctaLabel: 'Remind me',
+                ),
+              );
+          ui.handle(UiEvent.announcement, preview: true);
+        },
+      ),
+      (
+        Icons.sell_outlined,
+        'Advert',
+        'The popup, labelled Sponsored. Never a push or a bell.',
+        () => ref
+            .read(promoOverrideProvider.notifier)
+            .show(
+              const Promo(
+                id: 'preview-advert',
+                kind: PromoKind.ad,
+                title: '20% off everything this week',
+                caption: 'Daybreak Digitals, print shop in Detroit.',
+                audience: AnnouncementAudience.all,
+                ctaLabel: 'Shop the drop',
+              ),
+            ),
+      ),
+      (
+        Icons.mail_outline_rounded,
+        'Direct message',
+        'The banner drops in with Reply for 4 seconds.',
+        () => ui.handle(
+          UiEvent.dm,
+          title: 'Kali Brooks',
+          subtitle: "Pawpaw's in through mid-October, want me to hold two?",
+          route: '/you/messages',
+          personId: someone(),
+          preview: true,
+        ),
+      ),
+      (
+        Icons.alternate_email_rounded,
+        'Mention',
+        'A toast, and the bell rings.',
+        () => ui.handle(
+          UiEvent.mention,
+          kicker: 'Mention · Open chat',
+          title: 'Ama Mensah mentioned you',
+          subtitle: "@you Kali's in Ypsi too",
+          route: '/community',
+          preview: true,
+        ),
+      ),
+      (
+        Icons.chat_bubble_outline_rounded,
+        'Reply to your post',
+        'A toast, and the bell rings.',
+        () => ui.handle(
+          UiEvent.comment,
+          kicker: 'Your post',
+          title: 'Holler Goods replied',
+          subtitle: "Not so far, it's a thread embroidery",
+          route: '/you/notifications',
+          actionLabel: 'See',
+          preview: true,
+        ),
+      ),
+      (
+        Icons.forum_outlined,
+        'Forum reply',
+        'No toast. "1 new" on the thread pin in the Market, and a dot on '
+            'Community.',
+        () {
+          final thread = feed().whereType<ThreadItem>().firstOrNull;
+          ui.handle(
+            UiEvent.forumReply,
+            route: thread == null
+                ? null
+                : '/community/thread/${thread.thread.id}',
+            threadId: thread?.thread.id,
+            preview: true,
+          );
+          say(
+            thread == null
+                ? 'No thread pin in the feed right now; the Community dot is on.'
+                : 'Go to the Market: "1 new" is on "${thread.thread.title}".',
+          );
+        },
+      ),
+      (
+        Icons.circle_outlined,
+        'Open chat, getting busy',
+        'Never a toast. Five unseen messages put a dot on Community.',
+        () {
+          for (var i = 0; i < chatDotAfter; i++) {
+            ui.handle(UiEvent.chat, preview: true);
+          }
+        },
+      ),
+      (
+        Icons.tag_rounded,
+        'Post under a tag you follow',
+        'A toast, and the bell rings.',
+        () => ui.handle(
+          UiEvent.tagPost,
+          kicker: 'New under #Handmade',
+          title: 'Madi Winger Art posted',
+          subtitle: 'Checkered sunflower arches, back in stock',
+          route: '/market',
+          actionLabel: 'See',
+          preview: true,
+        ),
+      ),
+      (
+        Icons.auto_awesome_outlined,
+        'New from a maker you follow',
+        'No toast: the pin grows in at the top of the Market and its button '
+            'hops.',
+        () {
+          final pin = feed().whereType<ProductItem>().firstOrNull;
+          ui.handle(UiEvent.drop, feedKey: pin?.key, preview: true);
+          say(
+            pin == null
+                ? 'No product pin in the feed right now.'
+                : 'Go to the Market: "${pin.product.title}" grows in.',
+          );
+        },
+      ),
+      (
+        Icons.inventory_2_outlined,
+        'Delivered',
+        'The review prompt grows in, and a dot on You.',
+        () {
+          final nudge = feed().whereType<NudgeItem>().firstOrNull;
+          ui.handle(UiEvent.delivered, feedKey: nudge?.key, preview: true);
+          if (nudge == null) {
+            say('No review prompt in the feed right now; the You dot is on.');
+          }
+        },
+      ),
+      (
+        Icons.shopping_bag_outlined,
+        'Your own action',
+        'The cart toast with the photo. Never a bell.',
+        () {
+          final pin = feed().whereType<ProductItem>().firstOrNull;
+          LbmToast.show(
+            context,
+            title: 'In your little blue cart',
+            subtitle: pin?.product.title ?? 'Wild Plum Jam',
+            thumbnailUrl: pin?.product.imageUrls.firstOrNull,
+          );
+        },
+      ),
+      (
+        Icons.bedtime_outlined,
+        'After quiet hours',
+        'The one-line "waiting" strip, as the first open in the morning shows.',
+        () => ui.previewQuietStrip(3),
+      ),
+    ];
+
+    return LbmCard(
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 2, 8, 8),
+            child: Text(
+              'How each notification looks on this phone. Nothing is sent; '
+              'each one shows exactly what the real event would.',
+              style: LbmText.tiny.copyWith(color: c.ink2, height: 1.5),
+            ),
+          ),
+          for (final (icon, title, what, onTap) in previews)
+            ListRow(
+              leading: Icon(icon, size: 22, color: c.accentText),
+              title: Text(title),
+              subtitle: Text(what),
+              trailing: Icon(
+                Icons.play_circle_outline_rounded,
+                size: 22,
+                color: c.ink3,
+              ),
+              onTap: onTap,
+            ),
         ],
       ),
     );
