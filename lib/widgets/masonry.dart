@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+
+import 'masonry_run.dart';
 
 /// The two-column grid the app is laid out on.
 ///
@@ -12,8 +13,15 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 /// are full-width. Rather than stretch them across both columns inside the
 /// grid (which strands whichever column is shorter), a wide item **breaks the
 /// grid**: the children are cut into runs at each wide item, and each run is
-/// its own masonry sliver with the wide item laid between them. Both columns
+/// laid out on its own with the wide item between them. Both columns
 /// therefore start level again after every wide item.
+///
+/// A run is one box ([MasonryRun]), not a masonry sliver. See the note
+/// there: the package's sliver corrupts its own leading-edge cache during
+/// ordinary scrolling and reconciles it by correcting the scroll offset,
+/// which on the live feed meant the page refusing to scroll down at all.
+/// Laziness stays, one level up: the runs are built on demand by a
+/// `SliverList`, and a run is only ever a handful of pins.
 class LbmMasonry extends StatelessWidget {
   const LbmMasonry({
     super.key,
@@ -65,49 +73,22 @@ class LbmMasonry extends StatelessWidget {
     double horizontal = gutter,
     double bottom = 0,
   }) {
-    final slivers = <Widget>[];
     final run = <Widget>[];
     final pad = EdgeInsets.symmetric(horizontal: horizontal);
+    // One entry per run and per wide item, in order, each with a stable
+    // key so a re-cut run keeps the element it already had.
+    final rows = <Widget>[];
 
     void flushRun() {
       if (run.isEmpty) return;
       final items = List<Widget>.of(run);
       run.clear();
-      if (slivers.isNotEmpty) slivers.add(_gap);
-      // Keyed on the run's first child, not on its position.
-      //
-      // A wide item appearing or disappearing re-cuts the runs, so the sliver
-      // that was third in the list is suddenly holding a different slice of
-      // the feed. Unkeyed, Flutter matches slivers by position and hands that
-      // one somebody else's children, which is the reindexing that makes
-      // `RenderSliverMasonryGrid` correct the scroll offset back to the run's
-      // start. Keyed, a re-cut run finds the sliver that already had it.
-      //
-      // `_GridState` is what actually prevents this, by not changing the
-      // children while the grid is moving. This is the belt to that braces:
-      // it costs nothing and it is one less way to be surprised.
       final key = items.first.key;
-      slivers.add(
-        SliverPadding(
+      rows.add(
+        Padding(
           key: key == null ? null : ValueKey('run:$key'),
           padding: pad,
-          sliver: SliverMasonryGrid(
-            gridDelegate: const SliverSimpleGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-            ),
-            mainAxisSpacing: rowGap,
-            crossAxisSpacing: gutter,
-            delegate: SliverChildBuilderDelegate(
-              (context, i) => items[i],
-              childCount: items.length,
-              // A child whose index moved is moved, rather than built again
-              // from nothing.
-              findChildIndexCallback: (key) {
-                final at = items.indexWhere((child) => child.key == key);
-                return at < 0 ? null : at;
-              },
-            ),
-          ),
+          child: MasonryRun(gutter: gutter, rowGap: rowGap, children: items),
         ),
       );
     }
@@ -119,23 +100,31 @@ class LbmMasonry extends StatelessWidget {
         continue;
       }
       flushRun();
-      if (slivers.isNotEmpty) slivers.add(_gap);
-      slivers.add(
-        SliverPadding(
+      final wideKey = children[i].key;
+      rows.add(
+        Padding(
+          // Derived, never the child's own: a wrapper wearing its child's key
+          // makes `find.byKey` ambiguous, and makes the two of them look like
+          // one widget to anything that matches by key.
+          key: wideKey == null ? null : ValueKey('wide:$wideKey'),
           padding: pad,
-          sliver: SliverToBoxAdapter(child: children[i]),
+          child: children[i],
         ),
       );
     }
     flushRun();
 
-    if (bottom > 0) {
-      slivers.add(SliverToBoxAdapter(child: SizedBox(height: bottom)));
-    }
-    return slivers;
-  }
+    if (rows.isEmpty) return const <Widget>[];
 
-  static const _gap = SliverToBoxAdapter(child: SizedBox(height: rowGap));
+    return [
+      SliverList.separated(
+        itemCount: rows.length,
+        itemBuilder: (context, i) => rows[i],
+        separatorBuilder: (context, i) => const SizedBox(height: rowGap),
+      ),
+      if (bottom > 0) SliverToBoxAdapter(child: SizedBox(height: bottom)),
+    ];
+  }
 
   /// The same two columns, not scrolling, for a capped run of pins inside a
   /// page that already scrolls.
@@ -145,42 +134,20 @@ class LbmMasonry extends StatelessWidget {
   /// scroll view, and nesting one costs either a fight over the drag or a
   /// shrink-wrap that builds everything anyway.
   ///
-  /// Children alternate between the columns rather than filling the shorter
-  /// one, because which is shorter is not known until after layout. With a
-  /// handful of pins the difference is not visible.
+  /// Each pin goes into the shorter column, the same rule the scrolling
+  /// grid uses, so a capped run and a feed run look alike. They used to
+  /// alternate left and right, because which column was shorter was not
+  /// known until after layout; [MasonryRun] knows, because it lays them
+  /// out itself.
   static Widget fixed({
     required List<Widget> children,
     double horizontal = gutter,
   }) {
     if (children.isEmpty) return const SizedBox.shrink();
 
-    final left = <Widget>[];
-    final right = <Widget>[];
-    for (var i = 0; i < children.length; i++) {
-      (i.isEven ? left : right).add(children[i]);
-    }
-
-    Widget column(List<Widget> items) => Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < items.length; i++) ...[
-          if (i > 0) const SizedBox(height: rowGap),
-          items[i],
-        ],
-      ],
-    );
-
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontal),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: column(left)),
-          const SizedBox(width: gutter),
-          Expanded(child: right.isEmpty ? const SizedBox() : column(right)),
-        ],
-      ),
+      child: MasonryRun(gutter: gutter, rowGap: rowGap, children: children),
     );
   }
 

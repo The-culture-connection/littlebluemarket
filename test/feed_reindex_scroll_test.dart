@@ -12,11 +12,14 @@ import 'package:little_blue_market/widgets/masonry.dart';
 /// reindexed — the sliver restarts from index 0, cannot climb back to where
 /// the viewport is, and corrects the offset to the start of that run.
 ///
-/// This is the package's behaviour, not ours, and it is the same on master.
-/// The first test measures it so that nobody has to take the brief's word for
-/// it, and so that a package upgrade that fixes it shows up as a surprise
-/// rather than as silence. The second is the rule the feed lives by because
-/// of it: **never reindex a grid somebody is holding.**
+/// That was measured here, at 430 px, while `SliverMasonryGrid` still laid
+/// the runs out. It is now 0: a run is one box ([MasonryRun]) inside a
+/// `SliverList`, and a box takes no part in scroll geometry, so it has no
+/// leading-edge cache to corrupt and no way to emit a correction.
+///
+/// The tests stayed, with their expectations turned round. They are the
+/// regression on the whole class of bug: if anything ever puts a lazy grid
+/// back under the feed, the first one goes red.
 
 Widget _tile(String key, {double height = 160}) =>
     SizedBox(key: ValueKey(key), height: height);
@@ -91,18 +94,21 @@ Future<double> _dropOneMidDrag(
 }
 
 void main() {
-  testWidgets('reindexing a masonry run under a finger throws the scroll '
-      'back to the run start', (tester) async {
-    // The mechanism, measured. If this ever stops being true the package has
-    // been fixed and the holding in _GridState can be reconsidered.
+  testWidgets('reindexing a run under a finger does not move the scroll', (
+    tester,
+  ) async {
+    // This asserted the opposite until the runs stopped being lazy slivers:
+    // removing one pin from above the viewport threw the scroll back 430 px
+    // in a single frame, which is the whole bug. A box cannot do that.
     final jump = await _dropOneMidDrag(tester, reindex: true);
 
     expect(
-      jump,
-      greaterThan(200),
+      jump.abs(),
+      lessThan(1),
       reason:
-          'expected the documented correction; the grid moved $jump px, which '
-          'is less than a run, so the package may have changed',
+          'the grid moved $jump px when one pin above the viewport was '
+          'removed; something under the feed is correcting the scroll offset '
+          'again, which means a lazy grid is back',
     );
   });
 
