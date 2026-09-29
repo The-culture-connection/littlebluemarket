@@ -233,11 +233,14 @@ List<FeedItem> _withCards(List<FeedItem> items, List<DirectoryItem> cards) {
     out.add(items[i]);
     sinceCard++;
   }
-  // The ones there was no room for, but only when leaving them out would
-  // empty the page. With plenty of other items the old reasoning holds: a
-  // card left off now gets a properly spaced slot as the page grows, and
-  // stacking them would spoil a feed that does not need it.
-  if (next == 0 || cards.length > items.length) {
+  // The ones there was no room for, unless the page is long enough that
+  // waiting is a real promise. "It gets a slot as the page grows" only holds
+  // while the page is still growing: on a market whose whole feed is eleven
+  // posts there is no next page, so a card held back is a business nobody
+  // ever sees. Below two cards' worth of items, or when the cards outnumber
+  // everything else, or when not one could be placed, they all go on.
+  final roomToWait = items.length >= directoryCardEvery * 2;
+  if (next == 0 || cards.length > items.length || !roomToWait) {
     while (next < cards.length) {
       out.add(cards[next++]);
     }
