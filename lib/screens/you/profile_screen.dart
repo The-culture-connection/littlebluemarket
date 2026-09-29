@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/repositories/repositories.dart';
 import '../../models/models.dart';
+import '../../models/profile_tabs.dart';
 import '../../router/nav.dart';
 import '../../state/donation_nudge.dart';
 import '../../state/notifications_ui.dart';
@@ -23,6 +24,7 @@ import '../../widgets/seller_products_grid.dart';
 import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
 import '../market/results_screen.dart';
+import 'profile_activity.dart';
 
 /// Your own profile: the Instagram layout, remapped.
 ///
@@ -40,10 +42,13 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  /// Null until the person picks one, so the first tab can depend on
-  /// whether they are a seller (Bought is the third tab then, the second
-  /// otherwise).
-  int? _tab;
+  /// Null until the person picks one, so the first tab can depend on who
+  /// they are: a seller's shop comes first, a buyer's Bought does.
+  ///
+  /// A key rather than an index, because the tab set is now the enabled
+  /// subset of six sections and an index would mean a different tab the
+  /// moment one is switched off.
+  String? _tab;
 
   /// Whether the bell has a ring waiting, and if so, marks it rung once
   /// this frame has drawn it swinging.
@@ -79,7 +84,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final directoryLinked =
         ref.watch(directoryLinkProvider).value?.linked ?? false;
     final sellerLike = me.isSeller || directoryLinked;
-    final tab = _tab ?? (widget.openBought ? (sellerLike ? 2 : 1) : 0);
+
+    // Your own profile keeps all six sections, the switched-off ones
+    // marked. Products is not one of the six: a shop is not something you
+    // hide behind a switch.
+    final sections = visibleSections(me.profileSections, own: true);
+    final tabs = <(String, String)>[
+      if (sellerLike) ('products', 'Products'),
+      for (final section in sections) (section.key, section.label),
+    ];
+    // A remembered key can vanish: a seller who stops being one loses
+    // Products. Fall back to the first tab rather than to nothing.
+    var tab = _tab ?? (widget.openBought ? 'bought' : tabs.first.$1);
+    if (!tabs.any((t) => t.$1 == tab)) tab = tabs.first.$1;
 
     return LbmScreen(
       appBar: LbmAppBar(
@@ -153,32 +170,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             const _ChipInRow(),
             const SizedBox(height: 6),
-            // A seller gets their shop first. The labels are shorter when there
-            // are three, so the row survives large text.
+            // A seller gets their shop first. Seven chips scroll rather
+            // than wrap, which is what FilterChips already does.
             FilterChips(
-              items: sellerLike
-                  ? const [
-                      ('products', 'Products'),
-                      ('posts', 'Posts'),
-                      ('bought', 'Bought'),
-                    ]
-                  : const [('posts', 'Posts'), ('bought', 'Bought')],
-              selected: (sellerLike
-                  ? ['products', 'posts', 'bought']
-                  : ['posts', 'bought'])[tab],
-              onSelect: (key) => setState(() {
-                _tab = (sellerLike
-                    ? ['products', 'posts', 'bought']
-                    : ['posts', 'bought']).indexOf(key);
-              }),
+              items: tabs,
+              selected: tab,
+              onSelect: (key) => setState(() => _tab = key),
             ),
             const SizedBox(height: 12),
-            // The tab now actually switches the grid. It was tracked and ignored.
             // Market products first, the directory's after: a directory
             // business that later joins the Market keeps its website-link
             // products; Shopify simply takes the top of the tab.
-            switch ((sellerLike, tab)) {
-              (true, 0) => Column(
+            if (tab != 'products' && !me.profileSections.enabled(tab))
+              HiddenFromOthersNote(onEdit: () => context.push('/you/edit')),
+            switch (tab) {
+              'products' => Column(
                 children: [
                   if (directoryLinked)
                     DirectoryPhotoStrip(ownerUid: me.id, own: true),
@@ -198,8 +204,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     DirectoryListings(ownerUid: me.id, own: true),
                 ],
               ),
-              (true, 1) || (false, 0) => _PostedGrid(personId: me.id),
-              _ => const _PurchasesGrid(),
+              'bought' => const _PurchasesGrid(),
+              'review' => ProfileReviewsList(uid: me.id, own: true),
+              'post' => _PostedGrid(personId: me.id),
+              'cart' => ProfileCartsList(uid: me.id, own: true),
+              'thread' => ProfileThreadsList(uid: me.id, own: true),
+              _ => ProfileCommentsList(uid: me.id, own: true),
             },
             const Puff(),
             const SizedBox(height: 20),
@@ -257,10 +267,7 @@ class _YouIdentity extends StatelessWidget {
                 ),
                 if (person.tags.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  TagChips(
-                    person.tags,
-                    onTap: (tag) => context.goToTag(tag),
-                  ),
+                  TagChips(person.tags, onTap: (tag) => context.goToTag(tag)),
                 ],
               ],
             ),
@@ -371,7 +378,10 @@ class _ReviewBanner extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
     final purchases = ref.watch(purchasesProvider).value ?? const <Purchase>[];
-    final waiting = [for (final p in purchases) if (p.canReview) p];
+    final waiting = [
+      for (final p in purchases)
+        if (p.canReview) p,
+    ];
     if (waiting.isEmpty) return const SizedBox.shrink();
 
     final first = waiting.first;
@@ -409,10 +419,7 @@ class _ReviewBanner extends ConsumerWidget {
                           'a review',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: LbmText.pinMeta.copyWith(
-                  fontSize: 12.5,
-                  color: c.ink,
-                ),
+                style: LbmText.pinMeta.copyWith(fontSize: 12.5, color: c.ink),
               ),
             ),
             const SizedBox(width: 8),

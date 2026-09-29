@@ -17,6 +17,8 @@ import '../../widgets/async.dart';
 import '../../widgets/photo_source.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/tag_entry.dart';
+import '../../models/profile_activity.dart';
+import '../../widgets/profile_sections_card.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
 
@@ -38,6 +40,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _city = TextEditingController();
   List<String>? _tags;
   bool _saving = false;
+
+  /// Null until something is toggled, so an edit that never touches
+  /// these leaves them exactly as they were rather than writing today's
+  /// defaults over a choice made last month.
+  ProfileSections? _sections;
   String? _error;
 
   @override
@@ -135,6 +142,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               bio: _bio.text.trim(),
               cityState: _city.text.trim(),
               tags: _tags,
+              profileSections: _sections,
             ),
           );
       if (!mounted) return;
@@ -274,6 +282,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             Text(_error!, style: LbmText.tiny.copyWith(color: c.clay)),
           ],
           const SizedBox(height: 16),
+          ProfileSectionsCard(
+            sections: _sections ?? me.profileSections,
+            onChanged: (next) => setState(() => _sections = next),
+          ),
+          const SizedBox(height: 12),
           if (me.isSeller) const _SellerRows() else const _BuyerRows(),
           const SizedBox(height: 12),
           // The store's policies, on littlebluemarket.com. App review asks

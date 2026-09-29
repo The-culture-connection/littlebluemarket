@@ -6,6 +6,7 @@ import '../../models/feed_item.dart';
 import '../../models/models.dart';
 import '../../state/feed_items.dart';
 import '../../state/providers.dart';
+import '../../state/feed_tab.dart';
 import '../../state/location.dart';
 import '../../state/notifications_ui.dart';
 import '../../state/session.dart';
@@ -14,6 +15,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/directory_listing_card.dart';
 import '../../widgets/filter_chips.dart';
+import '../../widgets/following_grid.dart';
 import '../../widgets/hero_banner.dart';
 import '../../widgets/masonry.dart';
 import '../../widgets/pins/announcement_pin.dart';
@@ -54,7 +56,7 @@ class FeedScreen extends ConsumerStatefulWidget {
 /// Following was here too and is gone (Grace, 2026-09-25): with tags not yet
 /// followable it could only ever filter by people, which on a young market
 /// is an empty screen most of the time.
-enum _Tab { forYou, nearMe }
+
 
 class _FeedScreenState extends ConsumerState<FeedScreen> {
   final _controller = ScrollController();
@@ -67,8 +69,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   /// send you to the Market, where the tab was still on For you and nothing
   /// looked as though it had happened (Grace, 2026-09-28). One flag, read by
   /// everything, is the only arrangement where they cannot disagree.
-  _Tab get _tab =>
-      ref.read(searchFiltersProvider).nearMe ? _Tab.nearMe : _Tab.forYou;
+  FeedTab get _tab => ref.read(feedTabProvider);
 
   @override
   void initState() {
@@ -86,7 +87,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   /// Fetches the next page once four fifths of the way down, so the grid is
   /// already longer by the time the bottom would have arrived.
   void _maybeLoadMore() {
-    if (_tab != _Tab.forYou) return;
+    if (_tab != FeedTab.forYou) return;
     if (!_controller.hasClients) return;
     final position = _controller.position;
     if (position.maxScrollExtent <= 0) return;
@@ -109,13 +110,18 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   /// measure from — and when it does the flag stays off and so does the tab,
   /// which is the right outcome: an empty Near me grid explains nothing.
   void _selectTab(int index) {
-    final next = _Tab.values[index];
+    final next = FeedTab.values[index];
     if (next == _tab) return;
-    if (next == _Tab.nearMe) {
+    // Near me is a flag the search and results screens share, so moving on
+    // or off it moves the flag; the other two are just a choice.
+    if (next == FeedTab.nearMe) {
       toggleNearMe(context, ref);
-    } else {
+      return;
+    }
+    if (ref.read(searchFiltersProvider).nearMe) {
       ref.read(searchFiltersProvider.notifier).toggleNearMe();
     }
+    ref.read(feedTabChoiceProvider.notifier).select(next);
   }
 
   @override
@@ -124,9 +130,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     final isGuest = ref.watch(isGuestProvider);
     // Watched, not read: the search screen can turn Near me on from another
     // route, and this screen has to redraw on the way back to it.
-    final tab = ref.watch(searchFiltersProvider).nearMe
-        ? _Tab.nearMe
-        : _Tab.forYou;
+    final tab = ref.watch(feedTabProvider);
 
     return LbmScreen(
       appBar: Container(
@@ -141,7 +145,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
             ),
             const SizedBox(height: 4),
             TopTabs(
-              labels: const ['For you', 'Near me'],
+              labels: const ['Following', 'For you', 'Near me'],
               selected: tab.index,
               onChanged: _selectTab,
               padding: EdgeInsets.zero,
@@ -155,8 +159,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       child: RefreshIndicator(
         onRefresh: _refresh,
         child: switch (tab) {
-          _Tab.nearMe => _NearMeGrid(controller: _controller),
-          _Tab.forYou => _Grid(controller: _controller, isGuest: isGuest),
+          FeedTab.nearMe => _NearMeGrid(controller: _controller),
+          FeedTab.following => FollowingGrid(controller: _controller),
+          FeedTab.forYou => _Grid(controller: _controller, isGuest: isGuest),
         },
       ),
     );

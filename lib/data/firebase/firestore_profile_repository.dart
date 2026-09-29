@@ -172,6 +172,10 @@ class FirestoreProfileRepository implements ProfileRepository {
       },
       if (edit.bio != null) 'bio': edit.bio!.trim(),
       if (edit.cityState != null) 'cityState': edit.cityState!.trim(),
+      // Yours to set; the rules allow it on your own document and nowhere
+      // else, because it governs what strangers see of you.
+      if (edit.profileSections != null)
+        'profileSections': edit.profileSections!.toMap(),
       if (edit.tags != null) ...{
         'tags': edit.tags,
         // Searched case-insensitively; the trigger keeps this in step for

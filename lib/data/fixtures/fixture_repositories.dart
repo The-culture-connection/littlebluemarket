@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../models/models.dart';
+import '../../models/profile_activity.dart';
 import '../auth/auth_service.dart';
 import '../repositories/repositories.dart';
 import 'fixture_data.dart';
@@ -1161,6 +1162,41 @@ class FixtureSocialRepository implements SocialRepository {
       _store.threadComments.stream.map((all) => all[threadId] ?? const []);
 
   @override
+  Future<List<ForumThread>> threadsBy(String uid, {int limit = 30}) {
+    final mine = [
+      for (final thread in _store.threads.value)
+        if (thread.authorId == uid) thread,
+    ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return _backend._delayed(mine.take(limit).toList());
+  }
+
+  @override
+  Future<List<ProfileComment>> commentsBy(String uid, {int limit = 30}) {
+    final titles = {
+      for (final thread in _store.threads.value) thread.id: thread.title,
+    };
+    final mine = <ProfileComment>[];
+    for (final entry in _store.threadComments.value.entries) {
+      for (final (i, comment) in entry.value.indexed) {
+        if (comment.authorId != uid) continue;
+        mine.add(
+          ProfileComment(
+            id: '${entry.key}_$i',
+            text: comment.text,
+            createdAt: comment.createdAt,
+            place: CommentPlace.thread,
+            parentId: entry.key,
+            parentTitle: titles[entry.key] ?? '',
+          ),
+        );
+      }
+    }
+    mine.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return _backend._delayed(mine.take(limit).toList());
+  }
+
+
+  @override
   Future<void> addThreadComment({
     required String threadId,
     required String text,
@@ -1388,6 +1424,7 @@ class FixtureProfileRepository implements ProfileRepository {
       tags: edit.tags,
       avatarUrl: edit.avatarUrl,
       cityState: edit.cityState,
+      profileSections: edit.profileSections,
     );
     _store.people.value = people;
   }

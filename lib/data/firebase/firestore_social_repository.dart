@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../models/models.dart';
+import '../../models/profile_activity.dart';
 import '../repositories/repositories.dart';
 import 'firestore_errors.dart';
 import 'mappers.dart';
@@ -873,4 +874,68 @@ class FirestoreSocialRepository implements SocialRepository {
     }
     await batch.commit();
   }, operation: 'firestore notifications markRead');
+
+  @override
+  Future<List<ForumThread>> threadsBy(String uid, {int limit = 30}) =>
+      guardFirestore(() async {
+        if (uid.isEmpty) return const [];
+        final snapshot = await _threads
+            .where('authorId', isEqualTo: uid)
+            .orderBy('createdAt', descending: true)
+            .limit(limit)
+            .get();
+        return [
+          for (final doc in snapshot.docs)
+            FirestoreMappers.thread(doc.id, doc.data()),
+        ];
+      }, operation: 'firestore threads by author');
+
+  @override
+  Future<List<ProfileComment>> commentsBy(String uid, {int limit = 30}) =>
+      guardFirestore(() async {
+        if (uid.isEmpty) return const [];
+        // One collection-group query covers both homes: thread comments live
+        // under threads/{id}/comments and post comments under
+        // posts/{id}/comments, and a profile wants them interleaved by time
+        // rather than in two lists nobody asked to separate.
+        final snapshot = await _db
+            .collectionGroup('comments')
+            .where('authorId', isEqualTo: uid)
+            .orderBy('createdAt', descending: true)
+            .limit(limit)
+            .get();
+
+        // The parents, read together rather than one per row.
+        final parents = <DocumentReference<Map<String, dynamic>>>{
+          for (final doc in snapshot.docs) ?doc.reference.parent.parent,
+        }.toList();
+        final titles = <String, String>{};
+        for (var i = 0; i < parents.length; i += 20) {
+          final slice = parents.sublist(
+            i,
+            i + 20 > parents.length ? parents.length : i + 20,
+          );
+          for (final got in await Future.wait(slice.map((r) => r.get()))) {
+            final data = got.data();
+            if (data == null) continue;
+            titles[got.reference.path] =
+                FirestoreMappers.str(data['title'], '');
+          }
+        }
+
+        return [
+          for (final doc in snapshot.docs)
+            if (doc.reference.parent.parent case final parent?)
+              ProfileComment(
+                id: doc.id,
+                text: FirestoreMappers.str(doc.data()['text']),
+                createdAt: FirestoreMappers.time(doc.data()['createdAt']),
+                place: parent.parent.id == 'threads'
+                    ? CommentPlace.thread
+                    : CommentPlace.post,
+                parentId: parent.id,
+                parentTitle: titles[parent.path] ?? '',
+              ),
+        ];
+      }, operation: 'firestore comments by author');
 }

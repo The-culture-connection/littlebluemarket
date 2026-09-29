@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/providers.dart';
 import '../data/repositories/repositories.dart';
 import '../models/models.dart';
+import '../models/profile_activity.dart';
 import 'session.dart';
 
 export '../data/providers.dart';
@@ -93,13 +94,12 @@ final collectionProvider = FutureProvider.family<Collection, String>((
 /// listings and nothing else, with no sign there were more (Grace's testers,
 /// 2026-09-23). The screen keeps the pages after this one and asks the
 /// repository for them itself.
-final collectionProductsProvider =
-    FutureProvider.family<Page<Product>, String>((ref, handle) {
-      ref.keepCached();
-      return ref
-          .watch(collectionRepositoryProvider)
-          .productsInCollection(handle);
-    });
+final collectionProductsProvider = FutureProvider.family<Page<Product>, String>(
+  (ref, handle) {
+    ref.keepCached();
+    return ref.watch(collectionRepositoryProvider).productsInCollection(handle);
+  },
+);
 
 /// The signed-in seller's drafts and submissions, live.
 final listingsProvider = StreamProvider<List<Listing>>((ref) {
@@ -294,12 +294,15 @@ Set<String> _blocked(Ref ref) =>
 
 final feedProvider = StreamProvider<List<Post>>((ref) {
   final blocked = _blocked(ref);
-  return ref.watch(socialRepositoryProvider).watchFeed().map(
-    (posts) => [
-      for (final post in posts)
-        if (!blocked.contains(post.authorId)) post,
-    ],
-  );
+  return ref
+      .watch(socialRepositoryProvider)
+      .watchFeed()
+      .map(
+        (posts) => [
+          for (final post in posts)
+            if (!blocked.contains(post.authorId)) post,
+        ],
+      );
 });
 
 final postProvider = FutureProvider.family<Post, String>((ref, id) {
@@ -318,12 +321,15 @@ final commentsProvider = StreamProvider.family<List<Comment>, String>((
   postId,
 ) {
   final blocked = _blocked(ref);
-  return ref.watch(socialRepositoryProvider).watchComments(postId).map(
-    (comments) => [
-      for (final comment in comments)
-        if (!blocked.contains(comment.authorId)) comment,
-    ],
-  );
+  return ref
+      .watch(socialRepositoryProvider)
+      .watchComments(postId)
+      .map(
+        (comments) => [
+          for (final comment in comments)
+            if (!blocked.contains(comment.authorId)) comment,
+        ],
+      );
 });
 
 final reviewsProvider = StreamProvider.family<List<Review>, String>((
@@ -377,7 +383,6 @@ final directoryLinkProvider = StreamProvider<DirectoryLink?>((ref) {
   return ref.watch(directoryRepositoryProvider).watchLink();
 });
 
-
 /// littlebluecart.com's own categories, biggest first. Empty until the
 /// public sync has run against this project, which is what hides the
 /// "Browse the directory" rail rather than showing an empty one.
@@ -413,6 +418,7 @@ final directorySearchProvider =
     FutureProvider.family<List<DirectoryListing>, String>((ref, query) {
       return ref.watch(directoryRepositoryProvider).searchDirectory(query);
     });
+
 /// Orders from littlebluecart.com, newest first.
 final directoryOrdersProvider = StreamProvider<List<DirectoryOrder>>((ref) {
   final uid = ref.watch(currentUidProvider);
@@ -564,23 +570,30 @@ final cartCountProvider = Provider<int>((ref) {
 
 final chatroomProvider = StreamProvider<List<Message>>((ref) {
   final blocked = _blocked(ref);
-  return ref.watch(messagingRepositoryProvider).watchChatroom().map(
-    (messages) => [
-      for (final message in messages)
-        if (!blocked.contains(message.authorId)) message,
-    ],
-  );
+  return ref
+      .watch(messagingRepositoryProvider)
+      .watchChatroom()
+      .map(
+        (messages) => [
+          for (final message in messages)
+            if (!blocked.contains(message.authorId)) message,
+        ],
+      );
 });
 
 final inboxProvider = StreamProvider<List<Conversation>>((ref) {
   final blocked = _blocked(ref);
   // A one-to-one thread with somebody blocked leaves the inbox whole.
-  return ref.watch(messagingRepositoryProvider).watchInbox().map(
-    (conversations) => [
-      for (final conversation in conversations)
-        if (!conversation.participantIds.any(blocked.contains)) conversation,
-    ],
-  );
+  return ref
+      .watch(messagingRepositoryProvider)
+      .watchInbox()
+      .map(
+        (conversations) => [
+          for (final conversation in conversations)
+            if (!conversation.participantIds.any(blocked.contains))
+              conversation,
+        ],
+      );
 });
 
 final conversationProvider = StreamProvider.family<List<Message>, String>((
@@ -619,12 +632,15 @@ final threadsProvider = StreamProvider.family<List<ForumThread>, String>((
   forumId,
 ) {
   final blocked = _blocked(ref);
-  return ref.watch(socialRepositoryProvider).watchThreads(forumId).map(
-    (threads) => [
-      for (final thread in threads)
-        if (!blocked.contains(thread.authorId)) thread,
-    ],
-  );
+  return ref
+      .watch(socialRepositoryProvider)
+      .watchThreads(forumId)
+      .map(
+        (threads) => [
+          for (final thread in threads)
+            if (!blocked.contains(thread.authorId)) thread,
+        ],
+      );
 });
 
 final threadProvider = StreamProvider.family<ForumThread, String>((ref, id) {
@@ -644,6 +660,26 @@ final threadCommentsProvider =
             ],
           );
     });
+
+/// The forum threads one person started, for their profile.
+final threadsByProvider = FutureProvider.family<List<ForumThread>, String>((
+  ref,
+  uid,
+) {
+  return ref.watch(socialRepositoryProvider).threadsBy(uid);
+});
+
+/// What one person has said, in threads and under posts, for their profile.
+///
+/// Blocked authors are filtered everywhere else; here the author is the
+/// subject of the screen, so the filter belongs on the profile itself
+/// rather than on the list.
+final commentsByProvider = FutureProvider.family<List<ProfileComment>, String>((
+  ref,
+  uid,
+) {
+  return ref.watch(socialRepositoryProvider).commentsBy(uid);
+});
 
 /// When a failed provider should try again.
 ///

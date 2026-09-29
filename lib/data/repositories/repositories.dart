@@ -20,6 +20,7 @@
 /// piece that is meant to be thrown away.
 library;
 
+import '../../models/profile_activity.dart';
 import '../../models/models.dart';
 
 export 'exceptions.dart';
@@ -347,6 +348,15 @@ abstract interface class SocialRepository {
   Stream<ForumThread> watchThread(String id);
   Future<String> createThread(NewThread draft);
   Stream<List<ThreadComment>> watchThreadComments(String threadId);
+
+  /// The forum threads this person started, newest first. Phase 9: a
+  /// profile shows what somebody does in the community, not only what they
+  /// sell.
+  Future<List<ForumThread>> threadsBy(String uid, {int limit = 30});
+
+  /// What this person has said, in threads and under posts, newest first.
+  /// Each carries where it was said, because the words alone are a fragment.
+  Future<List<ProfileComment>> commentsBy(String uid, {int limit = 30});
   Future<void> addThreadComment({
     required String threadId,
     required String text,
@@ -730,12 +740,17 @@ class ProfileEdit {
     this.tags,
     this.avatarUrl,
     this.cityState,
+    this.profileSections,
   });
 
   final String? name;
   final String? handle;
   final String? bio;
   final List<String>? tags;
+  /// Which sections of the profile other people may see. Null leaves
+  /// them as they were; this edit screen is the only thing that sets them.
+  final ProfileSections? profileSections;
+
   final String? avatarUrl;
 
   /// "City, ST". The backend geocodes it; Near me measures from it.

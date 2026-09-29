@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/feed_item.dart';
 import '../../models/models.dart';
+import '../../models/profile_tabs.dart';
 import '../../router/nav.dart';
 import '../../state/providers.dart';
 import '../../state/session.dart';
@@ -18,6 +19,7 @@ import '../../widgets/report_sheet.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
+import '../you/profile_activity.dart';
 
 /// The public view of a profile.
 ///
@@ -34,11 +36,9 @@ class SellerFeedScreen extends ConsumerStatefulWidget {
 }
 
 class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
-  int _tab = 0;
-
-  static const _tabKeys = ['shop', 'reviews', 'about'];
-  String get _tabKey => _tabKeys[_tab];
-  static int _indexOf(String key) => _tabKeys.indexOf(key).clamp(0, 2);
+  /// Null until they pick one, so the first tab can be the shop for a
+  /// maker and their first enabled section for everybody else.
+  String? _tab;
 
   @override
   Widget build(BuildContext context) {
@@ -77,53 +77,70 @@ class _SellerFeedScreenState extends ConsumerState<SellerFeedScreen> {
         person,
         skeleton: const IdentitySkeleton(),
         onRetry: () => ref.invalidate(personProvider(widget.personId)),
-        data: (person) => ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            _MakerHeader(
-              person: person,
-              canNotify:
-                  !person.unclaimed &&
-                  ref.watch(currentUidProvider) != person.id,
-            ),
-            // A buyer has no shop, so they get one tab rather than an empty
-            // one. The first tab is the shop's **products**, and used to be
-            // labelled "Posted", which put a grid of products under a word
-            // that means something else and directly under a "Posts" count
-            // that disagreed with it: a shop showing "1 Posts" above twelve
-            // product tiles looked plainly broken (Grace, 2026-09-24).
-            if (person.isSeller || hasDirectory)
-              FilterChips(
-                items: const [
-                  ('shop', 'Shop'),
-                  ('reviews', 'Reviews'),
-                  ('about', 'About'),
-                ],
-                selected: _tabKey,
-                onSelect: (key) => setState(() => _tab = _indexOf(key)),
+        data: (person) {
+          final sections = visibleSections(person.profileSections, own: false);
+          final tabs = <(String, String)>[
+            if (person.isSeller || hasDirectory) ('shop', 'Shop'),
+            for (final section in sections) (section.key, section.label),
+            ('about', 'About'),
+          ];
+          // A remembered key can vanish when its owner switches the
+          // section off between visits.
+          var tab = _tab ?? tabs.first.$1;
+          if (!tabs.any((t) => t.$1 == tab)) tab = tabs.first.$1;
+
+          return ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              _MakerHeader(
+                person: person,
+                canNotify:
+                    !person.unclaimed &&
+                    ref.watch(currentUidProvider) != person.id,
               ),
-            const SizedBox(height: 12),
-            if ((person.isSeller || hasDirectory) && _tab == 0) ...[
-              if (hasDirectory) DirectoryPhotoStrip(ownerUid: person.id),
-              if (person.isSeller) _ShopGrid(sellerId: person.id),
-              if (hasDirectory)
-                DirectoryProductsGrid(
-                  ownerUid: person.id,
-                  heading: person.isSeller ? 'Sold on their website' : null,
-                ),
-              // Everything this shop has is on this one tab, so the
-              // littlebluecart.com listings belong here too rather than in a
-              // band of their own above the tabs, where they read as part of
-              // the profile header (Grace, 2026-09-24: a products tab
-              // "which will also list directory listings").
-              DirectoryListings(ownerUid: person.id),
-            ] else if (_tab == 2)
-              _About(person: person)
-            else
-              _ReviewsWritten(personId: person.id),
-            const SizedBox(height: 26),
-          ],
-        ),
+              // The shop is the first tab for a maker, and used to be labelled
+              // "Posted", which put a grid of products under a word that means
+              // something else and directly under a "Posts" count that
+              // disagreed with it: a shop showing "1 Posts" above twelve
+              // product tiles looked plainly broken (Grace, 2026-09-24).
+              //
+              // The rest is whatever this person left switched on in Edit
+              // profile. This screen is always the *public* view, even when
+              // the person looking is the owner, so tapping your own name in
+              // a post is how you check what a visitor gets.
+              FilterChips(
+                items: tabs,
+                selected: tab,
+                onSelect: (key) => setState(() => _tab = key),
+              ),
+              const SizedBox(height: 12),
+              if (tab == 'shop') ...[
+                if (hasDirectory) DirectoryPhotoStrip(ownerUid: person.id),
+                if (person.isSeller) _ShopGrid(sellerId: person.id),
+                if (hasDirectory)
+                  DirectoryProductsGrid(
+                    ownerUid: person.id,
+                    heading: person.isSeller ? 'Sold on their website' : null,
+                  ),
+                // Everything this shop has is on this one tab, so the
+                // littlebluecart.com listings belong here too rather than in a
+                // band of their own above the tabs, where they read as part of
+                // the profile header (Grace, 2026-09-24: a products tab
+                // "which will also list directory listings").
+                DirectoryListings(ownerUid: person.id),
+              ] else
+                switch (tab) {
+                  'review' => ProfileReviewsList(uid: person.id),
+                  'post' => ProfilePostsGrid(uid: person.id),
+                  'cart' => ProfileCartsList(uid: person.id),
+                  'thread' => ProfileThreadsList(uid: person.id),
+                  'comment' => ProfileCommentsList(uid: person.id),
+                  _ => _About(person: person),
+                },
+              const SizedBox(height: 26),
+            ],
+          );
+        },
       ),
     );
   }
@@ -285,10 +302,17 @@ class _MakerStats extends StatelessWidget {
               ),
             ),
           if (!person.isSeller) ...[
+            // The Bought switch has no tab to govern here, because
+            // users/{uid}/purchases is readable by its owner alone. It
+            // governs this number instead, which is the part of what they
+            // bought that a visitor can see.
+            if (person.profileSections.bought)
+              Expanded(
+                child: _Stat(value: '${person.purchases}', label: 'Bought'),
+              ),
             Expanded(
-              child: _Stat(value: '${person.purchases}', label: 'Bought'),
+              child: _Stat(value: '${person.posts}', label: 'Posts'),
             ),
-            Expanded(child: _Stat(value: '${person.posts}', label: 'Posts')),
           ],
         ],
       ),
@@ -475,9 +499,7 @@ class _NotifyMeButtonState extends ConsumerState<_NotifyMeButton> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            on
-                ? 'You will hear when they post.'
-                : 'No more posts from them.',
+            on ? 'You will hear when they post.' : 'No more posts from them.',
           ),
         ),
       );
@@ -501,49 +523,6 @@ class _NotifyMeButtonState extends ConsumerState<_NotifyMeButton> {
       onPressed: _busy
           ? null
           : () => requireProfile(context, ref, () => _toggle(!following)),
-    );
-  }
-}
-
-class _ReviewsWritten extends ConsumerWidget {
-  const _ReviewsWritten({required this.personId});
-
-  final String personId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final posts = ref.watch(postsByProvider(personId));
-
-    return LbmAsync<List<Post>>(
-      posts,
-      skeleton: const ListRowSkeleton(rows: 2),
-      data: (all) {
-        final reviews = all.whereType<ReviewPost>().toList();
-        if (reviews.isEmpty) {
-          return const LbmEmpty(title: 'No reviews written yet', compact: true);
-        }
-        return Column(
-          children: [
-            for (final post in reviews)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                child: LbmCard(
-                  padding: EdgeInsets.zero,
-                  onTap: () => context.goToPost(post.id),
-                  child: ListRow(
-                    leading: Stars(post.rating.toDouble(), size: 12),
-                    title: Text(
-                      post.text,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(post.age),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
     );
   }
 }

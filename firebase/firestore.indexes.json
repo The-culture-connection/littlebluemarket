@@ -258,6 +258,21 @@
       ]
     },
     {
+      "_comment": "What one person said, in threads and under posts, for their profile.",
+      "collectionGroup": "comments",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "authorId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "_comment": "Reviews carrying a hashtag, across every product.",
       "collectionGroup": "reviews",
       "queryScope": "COLLECTION_GROUP",

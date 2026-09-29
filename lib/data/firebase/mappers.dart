@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../models/models.dart';
+import '../../models/profile_activity.dart';
 
 /// Firestore documents in, app models out.
 ///
@@ -99,6 +100,7 @@ abstract final class FirestoreMappers {
     lat: data['lat'] == null ? null : decimal(data['lat']),
     lng: data['lng'] == null ? null : decimal(data['lng']),
     chippedInAt: timeOrNull(data['chippedInAt']),
+    profileSections: ProfileSections.fromMap(data['profileSections']),
   );
 
   static AppNotification notification(String id, Map<String, dynamic> data) =>

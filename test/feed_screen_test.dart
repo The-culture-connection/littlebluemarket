@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/main.dart';
+import 'package:little_blue_market/models/models.dart';
+import 'package:little_blue_market/state/feed_tab.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 import 'package:little_blue_market/widgets/cart_pill.dart';
@@ -179,17 +181,57 @@ void main() {
     expect(find.byIcon(Icons.favorite), findsNothing);
   });
 
-  testWidgets('there are two ways in, and Following is not one', (
-    tester,
-  ) async {
+  testWidgets('three ways in, Following first', (tester) async {
+    // Reversed deliberately. Following was removed on 2026-09-25 because
+    // tags were not followable yet, so it could only filter by people and on
+    // a young market that is an empty screen most of the time. Tags are
+    // followable now, so it has something to show, and Grace asked for it
+    // first (2026-09-29). The guard against the old failure is not the
+    // tab's absence any more but the rule below it: nobody lands on
+    // Following unless they follow something.
     await _pumpFeed(tester);
 
     expect(find.byType(TopTabs), findsOneWidget);
+    expect(find.text('Following'), findsOneWidget);
     expect(find.text('For you'), findsOneWidget);
     expect(find.text('Near me'), findsOneWidget);
-    // Removed 2026-09-25: with tags not yet followable it could only filter
-    // by people, which on a young market is an empty screen most of the time.
-    expect(find.text('Following'), findsNothing);
+  });
+
+  test('you only land on Following if it has something in it', () {
+    // The whole reason it was removed, kept as a rule rather than an
+    // absence: an empty room you are put in is worse than a tab you chose.
+    expect(initialFeedTab(followsAnything: true), FeedTab.following);
+    expect(initialFeedTab(followsAnything: false), FeedTab.forYou);
+  });
+
+  test('a post is in Following by its author or by its tags', () {
+    // The tag half is matched by key, so #WomanOwned and #womanowned are
+    // one tag here as they are everywhere else.
+    final post = ShoutoutPost(
+      id: 's1',
+      authorId: 'kali',
+      createdAt: DateTime.now(),
+      tags: const ['#WomanOwned'],
+      likeCount: 0,
+      commentCount: 0,
+      likedByMe: false,
+      text: 'hello',
+    );
+
+    expect(
+      isFollowedPost(post, people: {'kali'}, tagKeys: const {}),
+      isTrue,
+      reason: 'followed the author',
+    );
+    expect(
+      isFollowedPost(post, people: const {}, tagKeys: {'womanowned'}),
+      isTrue,
+      reason: 'followed the tag, whatever its capitals',
+    );
+    expect(
+      isFollowedPost(post, people: const {'dee'}, tagKeys: {'handmade'}),
+      isFalse,
+    );
   });
 
   testWidgets('the banner is one size and scrolls with the grid', (

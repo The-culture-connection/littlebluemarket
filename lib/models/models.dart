@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'formatting.dart';
+import 'profile_activity.dart';
 
 // Re-exported so a screen can keep importing one models file and get the whole
 // domain vocabulary. The types live in their own files because they group into
@@ -54,6 +55,7 @@ class Person {
     this.lng,
     this.unclaimed = false,
     this.chippedInAt,
+    this.profileSections = const ProfileSections(),
   });
 
   /// A shop on the market that nobody has signed up for yet.
@@ -64,6 +66,11 @@ class Person {
   /// hands everything over the moment somebody claims it by verifying the
   /// shop's email (Grace, 2026-09-24).
   final bool unclaimed;
+
+  /// What this person lets other people see on their profile. Everything
+  /// is on until they say otherwise: this is a market where people are
+  /// trying to be found.
+  final ProfileSections profileSections;
 
   /// When this person last chipped in to Little Blue Market.
   ///
@@ -134,6 +141,7 @@ class Person {
     bool? isLinked,
     String? cityState,
     DateTime? chippedInAt,
+    ProfileSections? profileSections,
   }) => Person(
     id: id,
     name: name ?? this.name,
@@ -151,6 +159,7 @@ class Person {
     lat: lat,
     lng: lng,
     chippedInAt: chippedInAt ?? this.chippedInAt,
+    profileSections: profileSections ?? this.profileSections,
   );
 }
 
