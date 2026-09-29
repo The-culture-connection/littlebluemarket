@@ -59,7 +59,18 @@ class DirectoryPin extends ConsumerWidget {
 
     return LbmAsync<DirectoryListing?>(
       listing,
-      skeleton: const ListRowSkeleton(rows: 2),
+      // The shape the card will be, not a generic two-row placeholder.
+      //
+      // Each of these resolves on its own, and a placeholder of the wrong
+      // height means every one of them shoves the column below it down as its
+      // listing arrives. On a feed that is mostly business cards that is
+      // several hundred pixels of the page moving while somebody is reading
+      // it (Grace, 2026-09-29). The card is a real 3.5-by-2 business card, so
+      // its height is known before its contents are.
+      skeleton: LayoutBuilder(
+        builder: (_, constraints) =>
+            LbmSkeleton.block(height: constraints.maxWidth / kCardAspect),
+      ),
       errorBuilder: (_, _) => fallback,
       data: (current) => current == null
           ? fallback
