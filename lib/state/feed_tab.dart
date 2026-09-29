@@ -80,19 +80,80 @@ final feedTabProvider = Provider<FeedTab>((ref) {
       initialFeedTab(followsAnything: ref.watch(followsAnythingProvider));
 });
 
-/// The posts from the people and tags this person follows.
-final followingFeedProvider = Provider<List<Post>>((ref) {
-  final posts = ref.watch(feedProvider).value ?? const <Post>[];
+/// How many of each we will ask about.
+///
+/// One query per followed person and per followed tag, so this is a cap on
+/// round trips rather than on taste. Twenty makers and ten tags is more
+/// than anybody follows today and still a bounded number of reads.
+const kFollowedPeopleQueried = 20;
+const kFollowedTagsQueried = 10;
+
+/// What the people you follow have posted.
+///
+/// **Asked for, not sifted out.** This used to filter the main feed, which
+/// is the newest twenty posts on the whole market: on a market this size a
+/// maker you follow is almost never in that twenty, so Following was empty
+/// no matter how many people you followed (Grace, 2026-09-29). It asks for
+/// their posts now, the way a profile does.
+final followedPeoplePostsProvider = Provider<List<Post>>((ref) {
   final people = ref.watch(followedPeopleProvider).value ?? const <String>{};
-  final tags = {
-    for (final tag in ref.watch(followedTagsProvider).value ?? const <String>{})
-      tagKey(tag),
-  };
-  if (people.isEmpty && tags.isEmpty) return const [];
-  return [
-    for (final post in posts)
-      if (isFollowedPost(post, people: people, tagKeys: tags)) post,
-  ];
+  if (people.isEmpty) return const [];
+  final blocked =
+      ref.watch(blockedUidsProvider).value ?? const <String>{};
+  final out = <String, Post>{};
+  for (final uid in people.take(kFollowedPeopleQueried)) {
+    if (blocked.contains(uid)) continue;
+    for (final post in ref.watch(postsByProvider(uid)).value ?? const []) {
+      out[post.id] = post;
+    }
+  }
+  final posts = out.values.toList()
+    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  return posts;
+});
+
+/// What is on the market under the tags you follow.
+///
+/// Products rather than posts, and that is not a shortcut: a hashtag on
+/// this market lives on the **product**, not on the post about it. It is
+/// the same question a tag page asks, through the same provider, so a tag
+/// in Following shows exactly what its own page shows.
+final followedTagProductsProvider = Provider<List<Product>>((ref) {
+  final tags = ref.watch(followedTagsProvider).value ?? const <String>{};
+  if (tags.isEmpty) return const [];
+  final out = <String, Product>{};
+  for (final tag in tags.take(kFollowedTagsQueried)) {
+    final key = tagKey(tag);
+    if (key.isEmpty) continue;
+    for (final product in ref.watch(tagProductsProvider(key)).value ??
+        const <Product>[]) {
+      out[product.id] = product;
+    }
+  }
+  return out.values.toList();
+});
+
+/// Whether anything is still on its way, so the tab can say so rather
+/// than showing the empty state at somebody who follows plenty.
+final followingLoadingProvider = Provider<bool>((ref) {
+  final people = ref.watch(followedPeopleProvider).value ?? const <String>{};
+  final tags = ref.watch(followedTagsProvider).value ?? const <String>{};
+  for (final uid in people.take(kFollowedPeopleQueried)) {
+    if (ref.watch(postsByProvider(uid)).isLoading) return true;
+  }
+  for (final tag in tags.take(kFollowedTagsQueried)) {
+    final key = tagKey(tag);
+    if (key.isNotEmpty && ref.watch(tagProductsProvider(key)).isLoading) {
+      return true;
+    }
+  }
+  return false;
+});
+
+/// The posts from the people this person follows. Kept for the tests and
+/// for anything that wants only the post half.
+final followingFeedProvider = Provider<List<Post>>((ref) {
+  return ref.watch(followedPeoplePostsProvider);
 });
 
 /// Everyone this person follows. Empty for a guest, who follows nobody.

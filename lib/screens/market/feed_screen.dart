@@ -57,7 +57,6 @@ class FeedScreen extends ConsumerStatefulWidget {
 /// followable it could only ever filter by people, which on a young market
 /// is an empty screen most of the time.
 
-
 class _FeedScreenState extends ConsumerState<FeedScreen> {
   final _controller = ScrollController();
 
@@ -169,15 +168,40 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 }
 
 /// The grid.
-class _Grid extends ConsumerWidget {
+class _Grid extends ConsumerStatefulWidget {
   const _Grid({required this.controller, required this.isGuest});
 
   final ScrollController controller;
   final bool isGuest;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(feedItemsProvider);
+  ConsumerState<_Grid> createState() => _GridState();
+}
+
+class _GridState extends ConsumerState<_Grid> {
+  /// What this grid is already showing.
+  ///
+  /// The grid draws as soon as the posts arrive, which is right: waiting
+  /// for the makers rail, the forum threads, the chat moment, the adverts
+  /// and the directory cards would mean staring at a skeleton while five
+  /// more queries finish. But each of those then arrived and was spliced
+  /// into the middle, and everything below it moved down the screen.
+  /// Scroll a little, let go, and the feed shifted under your thumb, once
+  /// per late answer (Grace, 2026-09-29).
+  ///
+  /// Kept here rather than in the provider because it belongs to this
+  /// grid: it dies when the screen does, and one test cannot inherit
+  /// another one's running order.
+  List<FeedItem> _shown = const [];
+
+  ScrollController get controller => widget.controller;
+  bool get isGuest => widget.isGuest;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = ref
+        .watch(feedItemsProvider)
+        .whenData((next) => _shown = stableOrder(_shown, next));
     final ui = ref.watch(notificationsUiProvider);
     final filter = ref.watch(feedFilterProvider);
 

@@ -10,6 +10,7 @@ import '../state/tags.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import '../widgets/masonry.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/pins/product_pin.dart';
 import '../widgets/pins/review_pin.dart';
 import '../widgets/pins/cart_pin.dart';
@@ -35,13 +36,55 @@ class FollowingGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final posts = ref.watch(followingFeedProvider);
-    if (posts.isEmpty) return _Empty(controller: controller);
+    final posts = ref.watch(followedPeoplePostsProvider);
+    final products = ref.watch(followedTagProductsProvider);
+
+    // A followed maker whose listing is also under a followed tag would
+    // otherwise arrive twice, once as their post and once as the product.
+    // The post wins: it says who put it up.
+    final posted = {
+      for (final post in posts)
+        if (post is ListingPost) post.product.id,
+    };
+
+    if (posts.isEmpty && products.isEmpty) {
+      // Still asking. An empty state shown to somebody who follows twenty
+      // makers is the app calling them wrong, so it waits instead.
+      if (ref.watch(followingLoadingProvider)) {
+        return const GridSkeleton(count: 6);
+      }
+      return _Empty(controller: controller);
+    }
 
     return CustomScrollView(
       controller: controller,
       slivers: LbmMasonry.slivers(
-        children: [for (final post in posts) ?pinFor(post)],
+        children: [
+          for (final post in posts) ?pinFor(post),
+          // What the tags you follow have on the market. Products rather
+          // than posts because that is where a hashtag lives here.
+          for (final product in products)
+            if (!posted.contains(product.id))
+              ProductPin(
+                key: ValueKey('tag_${product.id}'),
+                item: ProductItem(
+                  // The same standing-in listing the tag page builds: a
+                  // pin is drawn from a post, and a product that nobody
+                  // posted about still belongs under its own hashtag.
+                  ListingPost(
+                    id: 'tag_${product.id}',
+                    authorId: product.sellerId,
+                    createdAt: DateTime.now(),
+                    tags: product.tags,
+                    likeCount: 0,
+                    commentCount: 0,
+                    likedByMe: false,
+                    product: product,
+                  ),
+                  proof: product.saveCount >= ProductItem.proofThreshold,
+                ),
+              ),
+        ],
         bottom: 24,
       ),
     );

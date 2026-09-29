@@ -452,6 +452,41 @@ class FeedPagingNotifier extends Notifier<FeedPaging> {
 }
 
 /// The grid, assembled.
+/// Keeps what is already on screen where it is.
+///
+/// The grid draws as soon as the posts arrive, which is right: waiting for
+/// the makers rail, the forum threads, the chat moment, the adverts and the
+/// directory cards would mean staring at a skeleton while five more queries
+/// finish. But each of those then arrived and was **spliced into the middle**
+/// of the grid, and everything below it moved down the screen. Scroll a
+/// little, let go, and the feed shifted under your thumb: five times, once
+/// per late answer (Grace, 2026-09-29).
+///
+/// So assembly still decides the order, and this decides when it is allowed
+/// to take effect. Anything already shown keeps its place; anything new goes
+/// after it. The first assembly is unconstrained, because nothing has been
+/// seen yet, so a feed that loads all at once is composed exactly as before.
+///
+/// The cost is that a rail which arrives late sits lower than it would have.
+/// That is the right trade: nobody notices a rail one screen further down,
+/// and everybody notices the page moving while they are reading it.
+List<FeedItem> stableOrder(List<FeedItem> shown, List<FeedItem> next) {
+  if (shown.isEmpty) return next;
+  final wanted = {for (final item in next) item.key: item};
+  final placed = <String>{};
+  final out = <FeedItem>[];
+  for (final item in shown) {
+    final current = wanted[item.key];
+    // Dropped between assemblies (filtered out, dismissed, replaced) —
+    // it goes, because leaving it would be showing something stale.
+    if (current != null && placed.add(item.key)) out.add(current);
+  }
+  for (final item in next) {
+    if (placed.add(item.key)) out.add(item);
+  }
+  return out;
+}
+
 final feedItemsProvider = Provider<AsyncValue<List<FeedItem>>>((ref) {
   final posts = ref.watch(feedProvider);
   final isGuest = ref.watch(isGuestProvider);
@@ -474,7 +509,7 @@ final feedItemsProvider = Provider<AsyncValue<List<FeedItem>>>((ref) {
         if (seen.add(post.id)) post,
     ];
 
-    return assembleFeed(
+    final assembled = assembleFeed(
       FeedInputs(
         posts: all,
         hotThreads: ref.watch(hotThreadsProvider).value ?? const [],
@@ -505,6 +540,7 @@ final feedItemsProvider = Provider<AsyncValue<List<FeedItem>>>((ref) {
         localListingIds: _localListingIds(ref, all, me),
       ),
     );
+    return assembled;
   });
 });
 

@@ -158,6 +158,50 @@ FeedInputs _member({
 );
 
 void main() {
+  group('the grid does not move under you', () {
+    test('a late arrival goes after what is already shown, never above it', () {
+      // The makers rail, the forum threads and the directory cards all
+      // arrive after the posts. Splicing them into the middle is what moved
+      // the feed under Grace's thumb every time she let go of a scroll.
+      final shown = assembleFeed(_member());
+      // Something the fixture does not already have, so it is genuinely new.
+      final late = const NudgeItem(NudgeKind.chipIn);
+      final withARail = [late, ...shown];
+
+      final next = stableOrder(shown, withARail);
+
+      expect(
+        next.take(shown.length).map((i) => i.key).toList(),
+        shown.map((i) => i.key).toList(),
+      );
+      expect(next.last, late);
+      expect(next.length, shown.length + 1);
+    });
+
+    test('nothing already shown is dropped, duplicated or reordered', () {
+      final shown = assembleFeed(_member());
+      final shuffled = shown.reversed.toList();
+
+      final next = stableOrder(shown, shuffled);
+
+      expect(next.map((i) => i.key).toList(), shown.map((i) => i.key).toList());
+    });
+
+    test('something that went away really goes', () {
+      // Dismissed, filtered out, replaced. Holding it would be showing
+      // something stale, which is worse than a small move.
+      final shown = assembleFeed(_member());
+      final fewer = shown.skip(1).toList();
+
+      expect(stableOrder(shown, fewer).length, shown.length - 1);
+    });
+
+    test('the first assembly is composed exactly as it likes', () {
+      final fresh = assembleFeed(_member());
+      expect(stableOrder(const [], fresh), fresh);
+    });
+  });
+
   group('announcements', () {
     test('are not pins in the grid', () {
       // They are the rotating banner above it (`widgets/hero_banner.dart`).
