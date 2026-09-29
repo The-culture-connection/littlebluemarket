@@ -418,11 +418,20 @@ class FeedPaging {
     this.cursor,
     this.loading = false,
     this.done = false,
+    this.generation = 0,
   });
 
   final List<Post> extra;
   final String? cursor;
   final bool loading;
+
+  /// Bumped by [FeedPagingNotifier.reset], which is pull to refresh.
+  ///
+  /// The grid keeps everything it has shown, because removing an item above
+  /// the viewport jerks the scroll backwards. Refreshing is the one moment a
+  /// person has asked for the list to be replaced, so it is the one moment
+  /// the grid is allowed to forget. This is how it hears about it.
+  final int generation;
 
   /// The backend has no more to give.
   final bool done;
@@ -437,6 +446,7 @@ class FeedPaging {
     cursor: cursor ?? this.cursor,
     loading: loading ?? this.loading,
     done: done ?? this.done,
+    generation: generation,
   );
 }
 
@@ -472,6 +482,7 @@ class FeedPagingNotifier extends Notifier<FeedPaging> {
         extra: [...state.extra, ...page.items],
         cursor: page.cursor,
         done: !page.hasMore || page.isEmpty,
+        generation: state.generation,
       );
     } on Object {
       // Leave what is already loaded alone; the next scroll tries again.
@@ -481,7 +492,7 @@ class FeedPagingNotifier extends Notifier<FeedPaging> {
 
   /// Pull to refresh drops the tail: it was assembled against a first page
   /// that no longer exists.
-  void reset() => state = const FeedPaging();
+  void reset() => state = FeedPaging(generation: state.generation + 1);
 }
 
 /// The grid, assembled.
@@ -503,16 +514,29 @@ class FeedPagingNotifier extends Notifier<FeedPaging> {
 /// The cost is that a rail which arrives late sits lower than it would have.
 /// That is the right trade: nobody notices a rail one screen further down,
 /// and everybody notices the page moving while they are reading it.
+///
+/// **Nothing is ever removed.** An item that assembly stops including keeps
+/// its place until the next pull to refresh. This is not tidiness, it is the
+/// scroll: removing an item above the viewport shifts the index of every item
+/// after it, and `RenderSliverMasonryGrid` responds to a reindexed run by
+/// correcting the scroll offset back to that run's start. On the phone that
+/// is the grid jumping several hundred pixels backwards under a finger that
+/// is still moving (Grace, 2026-09-29, two screen recordings).
+///
+/// Nothing is lost by keeping it. A thread that stopped being one of the hot
+/// ones is still a thread, and a chat moment whose provider is momentarily
+/// empty is still what was there a second ago. Refreshing replaces the list
+/// outright, which is when a person expects the grid to change.
 List<FeedItem> stableOrder(List<FeedItem> shown, List<FeedItem> next) {
   if (shown.isEmpty) return next;
   final wanted = {for (final item in next) item.key: item};
   final placed = <String>{};
   final out = <FeedItem>[];
   for (final item in shown) {
-    final current = wanted[item.key];
-    // Dropped between assemblies (filtered out, dismissed, replaced) —
-    // it goes, because leaving it would be showing something stale.
-    if (current != null && placed.add(item.key)) out.add(current);
+    if (!placed.add(item.key)) continue;
+    // The newer copy where assembly still has one, so a pin's own contents
+    // stay live; the one already on screen otherwise.
+    out.add(wanted[item.key] ?? item);
   }
   for (final item in next) {
     if (placed.add(item.key)) out.add(item);

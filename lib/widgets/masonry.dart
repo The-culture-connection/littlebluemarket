@@ -74,15 +74,39 @@ class LbmMasonry extends StatelessWidget {
       final items = List<Widget>.of(run);
       run.clear();
       if (slivers.isNotEmpty) slivers.add(_gap);
+      // Keyed on the run's first child, not on its position.
+      //
+      // A wide item appearing or disappearing re-cuts the runs, so the sliver
+      // that was third in the list is suddenly holding a different slice of
+      // the feed. Unkeyed, Flutter matches slivers by position and hands that
+      // one somebody else's children, which is the reindexing that makes
+      // `RenderSliverMasonryGrid` correct the scroll offset back to the run's
+      // start. Keyed, a re-cut run finds the sliver that already had it.
+      //
+      // `_GridState` is what actually prevents this, by not changing the
+      // children while the grid is moving. This is the belt to that braces:
+      // it costs nothing and it is one less way to be surprised.
+      final key = items.first.key;
       slivers.add(
         SliverPadding(
+          key: key == null ? null : ValueKey('run:$key'),
           padding: pad,
-          sliver: SliverMasonryGrid.count(
-            crossAxisCount: 2,
+          sliver: SliverMasonryGrid(
+            gridDelegate: const SliverSimpleGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+            ),
             mainAxisSpacing: rowGap,
             crossAxisSpacing: gutter,
-            childCount: items.length,
-            itemBuilder: (context, i) => items[i],
+            delegate: SliverChildBuilderDelegate(
+              (context, i) => items[i],
+              childCount: items.length,
+              // A child whose index moved is moved, rather than built again
+              // from nothing.
+              findChildIndexCallback: (key) {
+                final at = items.indexWhere((child) => child.key == key);
+                return at < 0 ? null : at;
+              },
+            ),
           ),
         ),
       );

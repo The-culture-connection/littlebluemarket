@@ -187,13 +187,22 @@ void main() {
       expect(next.map((i) => i.key).toList(), shown.map((i) => i.key).toList());
     });
 
-    test('something that went away really goes', () {
-      // Dismissed, filtered out, replaced. Holding it would be showing
-      // something stale, which is worse than a small move.
+    test('something that went away stays where it was', () {
+      // This assertion used to be the other way round, and the screen
+      // recordings changed it. Removing an item shifts the index of every
+      // item after it, and a masonry run whose children are reindexed
+      // corrects the scroll offset back to its own start: several hundred
+      // pixels backwards, under a finger that is still moving. Measured in
+      // feed_reindex_scroll_test.dart.
+      //
+      // Nothing is lost by keeping it, and the two places a person asks for
+      // a different list — pull to refresh, and the filter chips — clear the
+      // grid outright rather than coming through here.
       final shown = assembleFeed(_member());
       final fewer = shown.skip(1).toList();
 
-      expect(stableOrder(shown, fewer).length, shown.length - 1);
+      expect(stableOrder(shown, fewer).length, shown.length);
+      expect(stableOrder(shown, fewer).first, shown.first);
     });
 
     test('the first assembly is composed exactly as it likes', () {

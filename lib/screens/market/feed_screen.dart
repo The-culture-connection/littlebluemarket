@@ -207,12 +207,71 @@ class _GridState extends ConsumerState<_Grid> {
   /// another one's running order.
   List<FeedItem> _shown = const [];
 
+  /// An assembly that arrived while the grid was moving, held until it stops.
+  ///
+  /// Changing the children of a masonry run that is on screen makes
+  /// `RenderSliverMasonryGrid` correct the scroll offset back to that run's
+  /// start: several hundred pixels backwards, in one frame, while the finger
+  /// is still down (Grace, 2026-09-29, two screen recordings). Against the
+  /// fixtures the feed is assembled once and this never happens; against the
+  /// live backend the chat moment, the hot threads, the makers rail, the
+  /// adverts and every directory listing land on their own schedule, and each
+  /// one re-runs assembly. So a drag can expect several.
+  ///
+  /// Nothing is lost by waiting. The feed is a minute old either way, and a
+  /// person mid-scroll is reading, not waiting for news.
+  List<FeedItem>? _pending;
+
+  /// Which refresh this grid's contents belong to.
+  int _generation = 0;
+
+  /// And which filter chip.
+  String? _filter;
+
   ScrollController get controller => widget.controller;
   bool get isGuest => widget.isGuest;
+
+  /// True while a finger or a fling is moving the grid.
+  bool get _moving =>
+      controller.hasClients &&
+      controller.position.isScrollingNotifier.value;
+
+  @override
+  void initState() {
+    super.initState();
+    // The position does not exist until the first layout.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _watchScrolling());
+  }
+
+  void _watchScrolling() {
+    if (!mounted || !controller.hasClients) return;
+    controller.position.isScrollingNotifier.addListener(_onScrollingChanged);
+  }
+
+  void _onScrollingChanged() {
+    if (!mounted || _moving) return;
+    final held = _pending;
+    if (held == null) return;
+    setState(() {
+      _pending = null;
+      _shown = stableOrder(_shown, held);
+    });
+  }
+
+  @override
+  void dispose() {
+    if (controller.hasClients) {
+      controller.position.isScrollingNotifier.removeListener(
+        _onScrollingChanged,
+      );
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final items = ref.watch(feedItemsProvider);
+    final filter = ref.watch(feedFilterProvider);
     // Read off the value, never mapped through it.
     //
     // `whenData` looks like the obvious way to do this and is a trap:
@@ -225,9 +284,31 @@ class _GridState extends ConsumerState<_Grid> {
     // anything the feed reads refreshes (Grace, 2026-09-29, with a screen
     // recording). The stale data was supposed to stay on screen; this is the
     // one line that threw it away.
-    if (items.hasValue) _shown = stableOrder(_shown, items.requireValue);
+    // The grid keeps everything it has shown, so the two places a person
+    // *asks* for a different list are the two places it forgets: pull to
+    // refresh, and tapping a filter chip. Neither happens mid-scroll, and
+    // both would be baffling if nothing changed.
+    final generation = ref.watch(
+      feedPagingProvider.select((paging) => paging.generation),
+    );
+    if (generation != _generation || filter != _filter) {
+      _generation = generation;
+      _filter = filter;
+      _shown = const [];
+      _pending = null;
+    }
+
+    if (items.hasValue) {
+      // While the grid is moving the new assembly waits: reindexing a run
+      // that is on screen is what jerks the scroll backwards.
+      if (_moving && _shown.isNotEmpty) {
+        _pending = items.requireValue;
+      } else {
+        _pending = null;
+        _shown = stableOrder(_shown, items.requireValue);
+      }
+    }
     final ui = ref.watch(notificationsUiProvider);
-    final filter = ref.watch(feedFilterProvider);
 
     final header = <Widget>[
       SliverToBoxAdapter(
