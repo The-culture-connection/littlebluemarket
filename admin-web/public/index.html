@@ -207,6 +207,17 @@
       <span id="dirBuild" class="build"></span>
     </div>
   </section>
+
+  <section id="catalogCard" class="card" hidden>
+    <h2>Remove leftover products</h2>
+    <p class="hint">Products that were deleted or replaced in Shopify can stay behind in the app when Shopify never told the app they were gone. They show with no price and fail at checkout with <em>"is not available in the app's shop"</em>. This asks Shopify about every product in the app and takes away only the ones Shopify says it does not have. Products that are drafts or archived in Shopify are left alone.</p>
+    <p class="hint"><strong>Check first</strong> counts them and names a few without changing anything. <strong>Remove leftovers</strong> takes them off the Market, out of search and off shop pages. It checks about 250 products at a time, so the whole catalogue takes a few minutes. Leave this page open. It is safe to run again, and stopping partway loses nothing.</p>
+    <div class="row" style="margin-top:8px">
+      <div><button id="sweepCheckBtn" class="quiet">Check first</button></div>
+      <div><button id="sweepRunBtn" class="primary">Remove leftovers</button></div>
+    </div>
+    <div id="sweepNotice" class="notice" hidden></div>
+  </section>
   <section id="promoCard" class="card" hidden>
     <h2>Adverts and popups</h2>
     <p class="hint">A card that fades in gently over the app, once per person per app opening, and never the same one twice. <strong>Advert</strong> is a popup only. <strong>Announcement</strong> is the same popup plus a push to phones and a line under their bell.</p>

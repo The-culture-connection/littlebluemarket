@@ -144,3 +144,13 @@ test('a card never says $0 when some variant has a price', () => {
   assert.equal(cardPriceCents([]), 0);
   assert.equal(cardPriceCents(undefined), 0);
 });
+
+test('the sweep retires only what the store says it does not have', async () => {
+  const { missingFrom, pageLooksWrong } = await import('../src/catalog_sweep.ts');
+  const nodes = [{ id: 'gid://shopify/Product/1' }, null, { id: 'gid://shopify/Product/3' }];
+  assert.deepEqual(missingFrom(['1', '2', '3'], nodes), ['2']);
+  // Nothing recognised on a full page is a broken login, not fifty deletions.
+  assert.equal(pageLooksWrong(250, 250), true);
+  assert.equal(pageLooksWrong(250, 12), false);
+  assert.equal(pageLooksWrong(3, 3), false);
+});

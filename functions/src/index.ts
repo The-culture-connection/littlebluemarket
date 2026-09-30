@@ -93,6 +93,7 @@ import {
   type PromoKind,
 } from './promos.ts';
 import { backfillCatalogPage } from './backfill.ts';
+import { sweepCatalogPage } from './catalog_sweep.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { isDiagStep, requireDevProject, runDiagStep } from './diagnostics_notify.ts';
 import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
@@ -1195,6 +1196,24 @@ export const adminBackfillCatalog = onCall(
       typeof cursor === 'string' ? cursor : null,
       { reset: reset === true },
     );
+  }),
+);
+
+/**
+ * One page of the leftover sweep: mirror rows for products the store no
+ * longer has. `apply: false` only counts. The admin page follows the cursor
+ * until done. See `catalog_sweep.ts`.
+ */
+export const adminSweepCatalog = onCall(
+  { secrets: [SHOPIFY_CLIENT_SECRET], timeoutSeconds: 300, memory: '512MiB' },
+  withLoudErrors('adminSweepCatalog', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const { after, apply } = request.data ?? {};
+    return sweepCatalogPage({
+      after: typeof after === 'string' && after ? after : null,
+      apply: apply === true,
+    });
   }),
 );
 

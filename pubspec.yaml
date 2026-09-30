@@ -1,7 +1,7 @@
 ﻿name: little_blue_market
 description: "Little Blue Market - a marketplace for small makers."
 publish_to: 'none'
-version: 0.4.0+13
+version: 0.4.1+14
 
 environment:
   sdk: ^3.11.0

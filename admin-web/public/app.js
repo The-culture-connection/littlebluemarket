@@ -192,7 +192,7 @@ function watchRecent() {
 async function refreshGate(user) {
   if (!user) {
     show('signin', true); show('notadmin', false); show('send', false); show('recentCard', false); show('feedbackCard', false); show('reportsCard', false); show('signout', false);
-    show('promoCard', false); show('promoListCard', false); show('announceListCard', false); show('dirCard', false); show('vendorCard', false);
+    show('promoCard', false); show('promoListCard', false); show('announceListCard', false); show('dirCard', false); show('catalogCard', false); show('vendorCard', false);
     $('who').textContent = '';
     unsubscribeRecent?.(); unsubscribeRecent = null;
     unsubscribeFeedback?.(); unsubscribeFeedback = null;
@@ -215,6 +215,7 @@ async function refreshGate(user) {
   show('promoListCard', isAdmin);
   show('announceListCard', isAdmin);
   show('dirCard', isAdmin);
+  show('catalogCard', isAdmin);
   show('vendorCard', isAdmin);
   if (isAdmin) { watchRecent(); watchFeedback(); watchReports(); watchPromos(); watchAnnouncements(); }
 }
@@ -1206,3 +1207,53 @@ $('geoBtn').addEventListener('click', async () => {
     $('geoBtn').disabled = false;
   }
 });
+
+// Leftover products: mirror rows for products Shopify no longer has, which
+// show at $0 and fail at checkout (Grace, 2026-09-30). The server asks the
+// store about each page of the mirror and only ever retires what the store
+// says is gone; this follows its cursor to the end. Check first passes
+// apply: false and writes nothing.
+async function sweepCatalog(apply) {
+  const prompt = apply
+    ? 'Remove the leftover products?\n\nOnly products Shopify says it does not have are taken off the Market. Drafts and archived products are left alone. Leave this page open until it says Done.'
+    : null;
+  if (prompt && !window.confirm(prompt)) return;
+  $('sweepCheckBtn').disabled = true;
+  $('sweepRunBtn').disabled = true;
+  const call = httpsCallable(functions, 'adminSweepCatalog', { timeout: DIR_CALL_TIMEOUT_MS });
+  let cursor = null;
+  let checked = 0;
+  let leftovers = 0;
+  let removed = 0;
+  const samples = [];
+  try {
+    const seen = new Set();
+    for (let page = 1; page <= 400; page++) {
+      notice('sweepNotice', `Working. ${checked} checked, ${leftovers} leftovers found so far…`, true);
+      const { data } = await call({ after: cursor, apply });
+      checked += data.checked;
+      leftovers += data.leftovers;
+      removed += data.removed;
+      for (const s of data.samples ?? []) if (samples.length < 8) samples.push(s);
+      if (data.done) break;
+      if (!data.cursor || seen.has(data.cursor)) break;
+      seen.add(data.cursor);
+      cursor = data.cursor;
+    }
+    const named = samples.length ? ` For example: ${samples.map((s) => `"${s}"`).join(', ')}.` : '';
+    notice(
+      'sweepNotice',
+      apply
+        ? `Done. ${checked} checked, ${removed} leftovers taken off the Market.${named}`
+        : `Checked ${checked}. ${leftovers} are leftovers Shopify no longer has.${named} Nothing was changed. Press Remove leftovers to take them off.`,
+      true,
+    );
+  } catch (error) {
+    notice('sweepNotice', `${describe(error)} (${checked} checked, ${removed} removed before it stopped; running it again carries on safely).`, false);
+  } finally {
+    $('sweepCheckBtn').disabled = false;
+    $('sweepRunBtn').disabled = false;
+  }
+}
+$('sweepCheckBtn').addEventListener('click', () => sweepCatalog(false));
+$('sweepRunBtn').addEventListener('click', () => sweepCatalog(true));
