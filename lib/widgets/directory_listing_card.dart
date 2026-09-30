@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../router/nav.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
+import 'copy_address.dart';
 import 'primitives.dart';
 import 'remote_image.dart';
 import 'sheets.dart';
@@ -60,12 +61,21 @@ class DirectoryListingCard extends StatelessWidget {
       if (l.stateLabel.isNotEmpty) l.stateLabel,
       ...l.tags,
     }.toList();
-    final actions = <({String label, IconData icon, Uri? uri})>[
-      (label: 'Website', icon: Icons.language_rounded, uri: l.websiteUri),
-      (label: 'Call', icon: Icons.call_rounded, uri: l.callUri),
-      (label: 'Email', icon: Icons.mail_outline_rounded, uri: l.emailUri),
-      (label: 'Directions', icon: Icons.near_me_rounded, uri: l.directionsUri),
-    ].where((a) => a.uri != null).toList();
+    final actions = <({String label, IconData icon, VoidCallback onTap})>[
+      for (final (label, icon, uri) in [
+        ('Website', Icons.language_rounded, l.websiteUri),
+        ('Call', Icons.call_rounded, l.callUri),
+        ('Email', Icons.mail_outline_rounded, l.emailUri),
+      ])
+        if (uri != null)
+          (label: label, icon: icon, onTap: () => _open(context, uri)),
+      if (l.address.isNotEmpty)
+        (
+          label: 'Copy address',
+          icon: Icons.content_copy_rounded,
+          onTap: () => copyAddress(context, l.address),
+        ),
+    ];
 
     // RemoteImage rather than a bare Image.network: it routes the picture
     // through this origin on the web (littlebluecart.com sends no CORS
@@ -81,117 +91,117 @@ class DirectoryListingCard extends StatelessWidget {
           );
 
     final content = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (image != null)
-            bare
-                ? Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-                    child: image,
-                  )
-                : image,
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l.title,
-                        style: LbmText.display.copyWith(
-                          fontSize: 17,
-                          color: c.ink,
-                        ),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (image != null)
+          bare
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                  child: image,
+                )
+              : image,
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      l.title,
+                      style: LbmText.display.copyWith(
+                        fontSize: 17,
+                        color: c.ink,
                       ),
                     ),
-                    if (showStatus) ...[
-                      const SizedBox(width: 8),
-                      LbmChip(l.statusLabel),
-                    ],
+                  ),
+                  if (showStatus) ...[
+                    const SizedBox(width: 8),
+                    LbmChip(l.statusLabel),
+                  ],
+                ],
+              ),
+              if (meta.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(meta, style: LbmText.xtiny.copyWith(color: c.ink3)),
+              ],
+              if (l.description.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  l.description,
+                  style: LbmText.tiny.copyWith(color: c.ink2, height: 1.45),
+                ),
+              ],
+              if (chips.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  // Tappable: a chip that says "Woman Owned" and does
+                  // nothing reads as a broken button, and the word is the
+                  // most obvious thing on the card to want more of
+                  // (Grace, 2026-09-28). A search rather than a category
+                  // page, because these are three different kinds of word
+                  // — a category, a state, a directory tag — and search is
+                  // the one place that takes all three.
+                  children: [
+                    for (final chip in chips)
+                      LbmChip(chip, onTap: () => context.goToResults(chip)),
                   ],
                 ),
-                if (meta.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(meta, style: LbmText.xtiny.copyWith(color: c.ink3)),
-                ],
-                if (l.description.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    l.description,
-                    style: LbmText.tiny.copyWith(color: c.ink2, height: 1.45),
-                  ),
-                ],
-                if (chips.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    // Tappable: a chip that says "Woman Owned" and does
-                    // nothing reads as a broken button, and the word is the
-                    // most obvious thing on the card to want more of
-                    // (Grace, 2026-09-28). A search rather than a category
-                    // page, because these are three different kinds of word
-                    // — a category, a state, a directory tag — and search is
-                    // the one place that takes all three.
-                    children: [
-                      for (final chip in chips)
-                        LbmChip(chip, onTap: () => context.goToResults(chip)),
-                    ],
-                  ),
-                ],
-                if (l.address.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    l.address,
-                    style: LbmText.tiny.copyWith(color: c.ink2, height: 1.4),
-                  ),
-                ],
-                if (actions.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final action in actions)
-                        PillButton(
-                          action.label,
-                          small: true,
-                          expand: false,
-                          icon: action.icon,
-                          style: PillStyle.quiet,
-                          onPressed: () => _open(context, action.uri),
-                        ),
-                    ],
-                  ),
-                ],
-                if (showClaim && l.ownerUid.isEmpty) ...[
-                  const SizedBox(height: 10),
-                  const _ClaimRow(),
-                ],
-                if (l.linkUri != null) ...[
-                  const SizedBox(height: 10),
-                  InkWell(
-                    onTap: () => _open(context, l.linkUri),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        'View on littlebluecart.com',
-                        style: LbmText.xtiny.copyWith(
-                          color: c.ink3,
-                          decoration: TextDecoration.underline,
-                        ),
+              ],
+              if (l.address.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  l.address,
+                  style: LbmText.tiny.copyWith(color: c.ink2, height: 1.4),
+                ),
+              ],
+              if (actions.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final action in actions)
+                      PillButton(
+                        action.label,
+                        small: true,
+                        expand: false,
+                        icon: action.icon,
+                        style: PillStyle.quiet,
+                        onPressed: action.onTap,
+                      ),
+                  ],
+                ),
+              ],
+              if (showClaim && l.ownerUid.isEmpty) ...[
+                const SizedBox(height: 10),
+                const _ClaimRow(),
+              ],
+              if (l.linkUri != null) ...[
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: () => _open(context, l.linkUri),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      'View on littlebluecart.com',
+                      style: LbmText.xtiny.copyWith(
+                        color: c.ink3,
+                        decoration: TextDecoration.underline,
                       ),
                     ),
                   ),
-                ],
+                ),
               ],
-            ),
+            ],
           ),
-        ],
-      );
+        ),
+      ],
+    );
 
     // The card opens the listing's own page, from every list it sits in.
     // Not when bare: that is inside a post, which has a tap of its own.

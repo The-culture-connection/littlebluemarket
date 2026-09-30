@@ -171,6 +171,12 @@ class FirestoreSocialRepository implements SocialRepository {
     return post;
   });
 
+  /// How many of one person's posts a profile reads. Every profile tab
+  /// (posts, carts, threads) is cut from this one list, so sixty stopped a
+  /// busy seller's profile well short of what they had posted (Grace,
+  /// 2026-09-30). Product lookups for them are batched thirty at a time.
+  static const _postsPerPerson = 200;
+
   @override
   Future<List<Post>> postsBy(String personId, {PostKind? kind}) =>
       guardFirestore(() async {
@@ -178,7 +184,7 @@ class FirestoreSocialRepository implements SocialRepository {
         if (kind != null) query = query.where('kind', isEqualTo: kind.name);
         final snapshot = await query
             .orderBy('createdAt', descending: true)
-            .limit(60)
+            .limit(_postsPerPerson)
             .get();
         return _hydrate(snapshot);
       });
@@ -187,7 +193,7 @@ class FirestoreSocialRepository implements SocialRepository {
   Stream<List<Post>> watchPostsBy(String personId) => _posts
       .where('authorId', isEqualTo: personId)
       .orderBy('createdAt', descending: true)
-      .limit(60)
+      .limit(_postsPerPerson)
       .snapshots()
       .asyncMap(_hydrate)
       .guarded(operation: 'firestore posts by author');
@@ -918,8 +924,10 @@ class FirestoreSocialRepository implements SocialRepository {
           for (final got in await Future.wait(slice.map((r) => r.get()))) {
             final data = got.data();
             if (data == null) continue;
-            titles[got.reference.path] =
-                FirestoreMappers.str(data['title'], '');
+            titles[got.reference.path] = FirestoreMappers.str(
+              data['title'],
+              '',
+            );
           }
         }
 

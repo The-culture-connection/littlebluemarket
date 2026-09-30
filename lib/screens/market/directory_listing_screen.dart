@@ -8,6 +8,7 @@ import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
+import '../../widgets/copy_address.dart';
 import '../../widgets/detail_sheet.dart';
 import '../../widgets/masonry.dart';
 import '../../widgets/pins/directory_card.dart';
@@ -107,6 +108,11 @@ class _Body extends ConsumerWidget {
       [l.city, l.state, l.zip].where((s) => s.isNotEmpty).join(' '),
     ].where((s) => s.trim().isNotEmpty).join('\n');
     final address = findUs.isNotEmpty ? findUs : l.address;
+    // What a maps app's search box wants: the address on one line.
+    final oneLine = address
+        .split('\n')
+        .where((s) => s.trim().isNotEmpty)
+        .join(', ');
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -157,21 +163,20 @@ class _Body extends ConsumerWidget {
                     icon: Icons.north_east_rounded,
                     onPressed: () => _open(context, ref, l.linkUri),
                   ),
-                if (l.directionsUri != null || canMessage(l, me)) ...[
+                if (address.isNotEmpty || canMessage(l, me)) ...[
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      if (l.directionsUri != null)
+                      if (address.isNotEmpty)
                         Expanded(
                           child: PillButton(
-                            'Directions',
-                            icon: Icons.near_me_rounded,
+                            'Copy address',
+                            icon: Icons.content_copy_rounded,
                             style: PillStyle.ghost,
-                            onPressed: () =>
-                                _open(context, ref, l.directionsUri),
+                            onPressed: () => copyAddress(context, oneLine),
                           ),
                         ),
-                      if (l.directionsUri != null && canMessage(l, me))
+                      if (address.isNotEmpty && canMessage(l, me))
                         const SizedBox(width: 10),
                       if (canMessage(l, me))
                         Expanded(
@@ -209,9 +214,7 @@ class _Body extends ConsumerWidget {
                         _ReachRow(
                           icon: Icons.place_rounded,
                           text: address,
-                          onTap: l.directionsUri == null
-                              ? null
-                              : () => _open(context, ref, l.directionsUri),
+                          onTap: () => copyAddress(context, oneLine),
                         ),
                       if (l.callUri != null)
                         _ReachRow(

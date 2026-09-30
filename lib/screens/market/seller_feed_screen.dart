@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/repositories/repositories.dart';
 import '../../models/feed_item.dart';
 import '../../models/models.dart';
 import '../../models/profile_tabs.dart';
@@ -363,45 +364,152 @@ class _Stat extends StatelessWidget {
 }
 
 /// The shop's shelf, in the same grid as everywhere else.
-class _ShopGrid extends ConsumerWidget {
+///
+/// The first thirty stay live off the stream; the rest come a page at a
+/// time. It used to stop at thirty with no way on, so a shop with ninety
+/// products looked like it had thirty (Grace, 2026-09-30). Same paging as
+/// [SellerProductsGrid] on the owner's own profile.
+class _ShopGrid extends ConsumerStatefulWidget {
   const _ShopGrid({required this.sellerId});
 
   final String sellerId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final products = ref.watch(sellerProductsProvider(sellerId));
+  ConsumerState<_ShopGrid> createState() => _ShopGridState();
+}
+
+class _ShopGridState extends ConsumerState<_ShopGrid> {
+  final _more = <Product>[];
+  String? _cursor;
+  bool _loadingMore = false;
+  String? _moreError;
+  String? _seededFrom;
+
+  Future<void> _loadMore() async {
+    final cursor = _cursor;
+    if (cursor == null || _loadingMore) return;
+    setState(() {
+      _loadingMore = true;
+      _moreError = null;
+    });
+    try {
+      final page = await ref
+          .read(catalogRepositoryProvider)
+          .productsBySeller(widget.sellerId, cursor: cursor);
+      if (!mounted) return;
+      setState(() {
+        _more.addAll(page.items);
+        _cursor = page.cursor;
+        _loadingMore = false;
+      });
+    } on RepositoryException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loadingMore = false;
+        _moreError = describeError(error).body;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final raw = ref.watch(sellerProductsProvider(widget.sellerId));
+
+    // The cursor is the last document the server read, so it comes from the
+    // unfiltered first page, not from what is drawn.
+    final firstPage = raw.value;
+    if (firstPage != null && firstPage.isNotEmpty) {
+      final last = firstPage.last.id;
+      if (_seededFrom != last) {
+        _seededFrom = last;
+        _cursor = firstPage.length < 30 ? null : last;
+        _more.clear();
+      }
+    }
+
+    // A visitor sees what is on sale. Keyed by id, because the live first
+    // page can arrive again carrying a product a later page already added.
+    final products = raw.whenData((all) {
+      final byId = <String, Product>{};
+      for (final p in [...all, ..._more]) {
+        if (p.active) byId[p.id] = p;
+      }
+      return byId.values.toList();
+    });
 
     return LbmAsync<List<Product>>(
       products,
       skeleton: const GridSkeleton(count: 4),
-      isEmpty: (all) => all.isEmpty,
+      isEmpty: (all) => all.isEmpty && _cursor == null,
       empty: const LbmEmpty(
         title: 'Nothing listed yet',
         body: 'When they list something it shows up here.',
         compact: true,
       ),
-      data: (all) => LbmMasonry.fixed(
+      data: (all) => Column(
         children: [
-          for (final product in all)
-            ProductPin(
-              key: ValueKey('shop_${product.id}'),
-              item: ProductItem(
-                ListingPost(
-                  id: 'shop_${product.id}',
-                  authorId: product.sellerId,
-                  createdAt: DateTime.now(),
-                  tags: product.tags,
-                  likeCount: 0,
-                  commentCount: 0,
-                  likedByMe: false,
-                  product: product,
-                ),
-                proof: product.saveCount >= ProductItem.proofThreshold,
+          _ShopPins(products: all),
+          if (_moreError != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _moreError!,
+              style: LbmText.tiny.copyWith(
+                color: context.c.clay,
+                fontWeight: FontWeight.w700,
               ),
             ),
+            const SizedBox(height: 8),
+            PillButton(
+              'Try again',
+              small: true,
+              expand: false,
+              style: PillStyle.quiet,
+              onPressed: _loadingMore ? null : _loadMore,
+            ),
+          ] else if (_cursor != null) ...[
+            const SizedBox(height: 12),
+            PillButton(
+              _loadingMore ? 'Loading' : 'Load more',
+              small: true,
+              expand: false,
+              style: PillStyle.quiet,
+              onPressed: _loadingMore ? null : _loadMore,
+            ),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _ShopPins extends StatelessWidget {
+  const _ShopPins({required this.products});
+
+  final List<Product> products;
+
+  @override
+  Widget build(BuildContext context) {
+    final all = products;
+    return LbmMasonry.fixed(
+      children: [
+        for (final product in all)
+          ProductPin(
+            key: ValueKey('shop_${product.id}'),
+            item: ProductItem(
+              ListingPost(
+                id: 'shop_${product.id}',
+                authorId: product.sellerId,
+                createdAt: DateTime.now(),
+                tags: product.tags,
+                likeCount: 0,
+                commentCount: 0,
+                likedByMe: false,
+                product: product,
+              ),
+              proof: product.saveCount >= ProductItem.proofThreshold,
+            ),
+          ),
+      ],
     );
   }
 }
