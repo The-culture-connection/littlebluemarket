@@ -61,7 +61,7 @@ class FirestoreSearchRepository implements SearchRepository {
             : const <TaggedReview>[];
 
         return SearchResults(
-          products: _sorted(products, filters),
+          products: _sorted(products.where(isShoppable).toList(), filters),
           sellers: people,
           reviews: reviews,
         );

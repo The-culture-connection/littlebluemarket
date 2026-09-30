@@ -320,3 +320,14 @@ List<String> typeSlugsFor(String query) {
     for (final variant in wordVariants(last)) '$head$variant',
   }.take(30).toList();
 }
+
+/// Whether a listing belongs in front of a shopper who is not its seller.
+///
+/// A catalogue product with no price is almost always one the store has
+/// removed or replaced while the app kept its copy: The Birdhive's live
+/// products were all priced, and the $0 ones in search were old versions
+/// checkout refused as "not available in the app's shop" (Grace,
+/// 2026-09-30). A website-link product with no price is fine; it says
+/// "See website".
+bool isShoppable(Product product) =>
+    product.isExternal || product.priceCents > 0;

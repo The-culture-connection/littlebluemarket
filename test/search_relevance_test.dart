@@ -206,6 +206,13 @@ void main() {
     });
   });
 
+  group('what a shopper is shown', () {
+    test('a store product with no price is a leftover, and is hidden', () {
+      expect(isShoppable(listing('priced', priceCents: 3200)), isTrue);
+      expect(isShoppable(listing('stale', priceCents: 0)), isFalse);
+    });
+  });
+
   group('the scope a linked query carries', () {
     test('a hashtag searches hashtags, whatever the chips were left on', () {
       expect(scopeFor('#PlasticFree'), SearchScope.hashtags);

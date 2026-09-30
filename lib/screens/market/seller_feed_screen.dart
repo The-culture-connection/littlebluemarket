@@ -432,7 +432,7 @@ class _ShopGridState extends ConsumerState<_ShopGrid> {
     final products = raw.whenData((all) {
       final byId = <String, Product>{};
       for (final p in [...all, ..._more]) {
-        if (p.active) byId[p.id] = p;
+        if (p.active && isShoppable(p)) byId[p.id] = p;
       }
       return byId.values.toList();
     });
