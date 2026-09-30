@@ -134,3 +134,13 @@ test('search words cover the description, not only the title', () => {
   assert.ok(words.includes('sturdy'));
   assert.ok(words.includes('fast'));
 });
+
+test('a card never says $0 when some variant has a price', () => {
+  const { cardPriceCents } = catalog;
+  assert.equal(cardPriceCents([{ id: 1, price: '42.00' }, { id: 2, price: '45.00' }]), 4200);
+  // The first variant unpriced: the cheapest priced one, not zero.
+  assert.equal(cardPriceCents([{ id: 1, price: '0.00' }, { id: 2, price: '48.00' }, { id: 3, price: '44.00' }]), 4400);
+  assert.equal(cardPriceCents([{ id: 1 }, { id: 2, price: 'n/a' }, { id: 3, price: 30 }]), 3000);
+  assert.equal(cardPriceCents([]), 0);
+  assert.equal(cardPriceCents(undefined), 0);
+});

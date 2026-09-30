@@ -242,34 +242,72 @@ class _ResultsSkeleton extends StatelessWidget {
 }
 
 /// The three-up grid of product tiles, each stamped with its price.
-class _ProductGrid extends StatelessWidget {
+///
+/// A page at a time. The grid sits inside the screen's ListView, so it lays
+/// out every tile it is given, photographs and all, and a search that found
+/// three hundred shirts ran the phone out of memory (Grace, 2026-09-30).
+class _ProductGrid extends StatefulWidget {
   const _ProductGrid({required this.products});
 
   final List<Product> products;
 
   @override
+  State<_ProductGrid> createState() => _ProductGridState();
+}
+
+class _ProductGridState extends State<_ProductGrid> {
+  static const _page = 30;
+  int _shown = _page;
+
+  @override
+  void didUpdateWidget(_ProductGrid old) {
+    super.didUpdateWidget(old);
+    // A new search or a new sort starts at the top again.
+    if (!identical(old.products, widget.products)) _shown = _page;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 7,
-          crossAxisSpacing: 7,
+    final products = widget.products;
+    final count = products.length < _shown ? products.length : _shown;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 7,
+              crossAxisSpacing: 7,
+            ),
+            itemCount: count,
+            itemBuilder: (context, i) {
+              final product = products[i];
+              return GridCell(
+                product: product,
+                // "$0" on a card is a mirror that lost the price, never a
+                // free hoodie. Say nothing rather than something wrong.
+                badge: product.priceCents > 0 || product.isExternal
+                    ? product.price
+                    : null,
+                onTap: () => context.goToProduct(product.id),
+              );
+            },
+          ),
         ),
-        itemCount: products.length,
-        itemBuilder: (context, i) {
-          final product = products[i];
-          return GridCell(
-            product: product,
-            badge: product.price,
-            onTap: () => context.goToProduct(product.id),
-          );
-        },
-      ),
+        if (count < products.length)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: LbmChip(
+              'Show more (${products.length - count} more)',
+              fontSize: 13,
+              onTap: () => setState(() => _shown += _page),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -317,6 +355,9 @@ class GridCell extends StatelessWidget {
               child: ProductArt(
                 product,
                 square: true,
+                // A tile is a third of the screen: decoding at 600 wide for
+                // it was four times the memory for nothing.
+                cacheWidth: 360,
                 borderRadius: const BorderRadius.all(Radius.circular(14)),
               ),
             ),

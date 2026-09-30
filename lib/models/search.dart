@@ -9,9 +9,8 @@ import 'models.dart';
 /// filtered anything.
 /// The scope a query arriving from a link should be searched in: a hashtag
 /// as a hashtag, anything else across everything.
-SearchScope scopeFor(String query) => query.trimLeft().startsWith('#')
-    ? SearchScope.hashtags
-    : SearchScope.all;
+SearchScope scopeFor(String query) =>
+    query.trimLeft().startsWith('#') ? SearchScope.hashtags : SearchScope.all;
 
 enum SearchScope {
   all('All'),
@@ -254,4 +253,70 @@ class SearchResults {
   bool get hasMore => cursor != null;
 
   int get totalCount => products.length + sellers.length + reviews.length;
+}
+
+/// How well [product] answers [query]; see [searchScore].
+int productSearchScore(Product product, String query) => searchScore(
+  query,
+  title: product.title,
+  type: product.type,
+  tags: [...product.tags, ...product.collectionHandles],
+  description: product.description,
+);
+
+/// What a text search shows, in the order it shows it.
+///
+/// The index matches words loosely, so "rings" also pulled in every shirt
+/// made of "ring-spun" cotton (Grace, 2026-09-30). Anything that does not
+/// really say the query is dropped, unless it belongs to a shop the query
+/// named ([sellerIds]).
+///
+/// Relevance, spelled out: a named shop first, then where the listing says
+/// the query. Its name counts most, then its type and tags, then its
+/// description. Only when [byRelevance]; any other sort is the person
+/// telling us what they want, and is applied afterwards.
+List<Product> rankSearchHits(
+  Iterable<Product> hits,
+  String query, {
+  Set<String> sellerIds = const {},
+  bool byRelevance = true,
+}) {
+  final score = {
+    for (final product in hits) product.id: productSearchScore(product, query),
+  };
+  final found = [
+    for (final product in hits)
+      if (score[product.id]! > 0 || sellerIds.contains(product.sellerId))
+        product,
+  ];
+  if (!byRelevance) return found;
+  found.sort((a, b) {
+    final byShop =
+        (sellerIds.contains(b.sellerId) ? 1 : 0) -
+        (sellerIds.contains(a.sellerId) ? 1 : 0);
+    if (byShop != 0) return byShop;
+    final byScore = score[b.id]! - score[a.id]!;
+    if (byScore != 0) return byScore;
+    return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+  });
+  return found;
+}
+
+/// Every stored spelling of a type worth asking for: "ring" finds the type
+/// "Rings", and "rings" the type "Ring" (Grace, 2026-09-30). The catalogue
+/// stores `typeSlug` as the type lowercased with every run of other
+/// characters turned into one hyphen.
+List<String> typeSlugsFor(String query) {
+  final slug = query
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+      .replaceAll(RegExp(r'^-|-$'), '');
+  final words = slug.split('-')..removeWhere((w) => w.isEmpty);
+  if (words.isEmpty) return [slug];
+  final last = words.removeLast();
+  final head = words.isEmpty ? '' : '${words.join('-')}-';
+  return {
+    slug,
+    for (final variant in wordVariants(last)) '$head$variant',
+  }.take(30).toList();
 }

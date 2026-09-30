@@ -66,6 +66,63 @@ void main() {
     });
   });
 
+  group('where a listing says the word', () {
+    const shirtCopy =
+        'A soft tee in combed and ring-spun cotton. Brings out your colours.';
+
+    test('a shirt of ring-spun cotton is not a ring', () {
+      expect(
+        searchScore('rings', title: 'Butterfly Tee', description: shirtCopy),
+        0,
+      );
+      expect(saysWord('spring collection', 'ring'), isFalse);
+      expect(saysWord(shirtCopy, 'ring'), isFalse);
+    });
+
+    test('the name beats the type, and the type beats the description', () {
+      final name = searchScore('rings', title: 'Gold Ring');
+      final type = searchScore('rings', title: 'Gold Band', type: 'Rings');
+      final said = searchScore(
+        'rings',
+        title: 'Gift Box',
+        description: 'Holds two rings.',
+      );
+      expect(name, greaterThan(type));
+      expect(type, greaterThan(said));
+      expect(said, greaterThan(0));
+    });
+
+    test('singular and plural find each other', () {
+      expect(searchScore('ring', title: 'x', type: 'Rings'), greaterThan(0));
+      expect(searchScore('rings', title: 'Silver Ring'), greaterThan(0));
+    });
+
+    test('a ring filed under Rings beats a ring holder that is only named', () {
+      expect(
+        searchScore('rings', title: 'Gold Stacking Ring', type: 'Rings'),
+        greaterThan(searchScore('rings', title: 'Concrete Ring Holder')),
+      );
+    });
+
+    test('filler words neither match nor cost a lookup', () {
+      expect(queryWords('gift for mom'), ['gift', 'mom']);
+      expect(nameQueryWords('hair extensions for the weekend'), [
+        'extensions',
+        'weekend',
+        'hair',
+      ]);
+      expect(typeSlugsFor('ring'), containsAll(['ring', 'rings']));
+      expect(typeSlugsFor('Rings'), containsAll(['rings', 'ring']));
+    });
+
+    test('a collection handle counts as the words in it', () {
+      expect(
+        searchScore('rings', title: 'Band', tags: ['rings-and-bands']),
+        greaterThan(0),
+      );
+    });
+  });
+
   group('sorting', () {
     final products = [
       listing('a', title: 'Alpha', priceCents: 300, soldCount: 1, saveCount: 9),
@@ -74,17 +131,19 @@ void main() {
     ];
 
     test('best sellers reads what has been bought, not what was saved', () {
-      expect(
-        sortProducts(products, SortOrder.bestSellers).map((p) => p.id),
-        ['b', 'c', 'a'],
-      );
+      expect(sortProducts(products, SortOrder.bestSellers).map((p) => p.id), [
+        'b',
+        'c',
+        'a',
+      ]);
     });
 
     test('most popular reads what people added to their cart', () {
-      expect(
-        sortProducts(products, SortOrder.mostPopular).map((p) => p.id),
-        ['a', 'c', 'b'],
-      );
+      expect(sortProducts(products, SortOrder.mostPopular).map((p) => p.id), [
+        'a',
+        'c',
+        'b',
+      ]);
     });
 
     test('price goes both ways', () {
@@ -103,10 +162,10 @@ void main() {
         listing('one', title: 'One', rating: 5, ratingCount: 1),
         listing('many', title: 'Many', rating: 5, ratingCount: 90),
       ];
-      expect(
-        sortProducts(rated, SortOrder.topRated).map((p) => p.id),
-        ['many', 'one'],
-      );
+      expect(sortProducts(rated, SortOrder.topRated).map((p) => p.id), [
+        'many',
+        'one',
+      ]);
     });
 
     test('a listing with no date sorts last under Newest, not first', () {
@@ -115,10 +174,11 @@ void main() {
         listing('old', title: 'Old', createdAt: DateTime(2025)),
         listing('new', title: 'New', createdAt: DateTime(2026)),
       ];
-      expect(
-        sortProducts(dated, SortOrder.newest).map((p) => p.id),
-        ['new', 'old', 'unknown'],
-      );
+      expect(sortProducts(dated, SortOrder.newest).map((p) => p.id), [
+        'new',
+        'old',
+        'unknown',
+      ]);
     });
 
     test('equal counts fall back to the title, so a list cannot reshuffle', () {
@@ -126,17 +186,18 @@ void main() {
         listing('z', title: 'Zebra', soldCount: 4),
         listing('a', title: 'Apple', soldCount: 4),
       ];
-      expect(
-        sortProducts(tied, SortOrder.bestSellers).map((p) => p.id),
-        ['a', 'z'],
-      );
+      expect(sortProducts(tied, SortOrder.bestSellers).map((p) => p.id), [
+        'a',
+        'z',
+      ]);
     });
 
     test('relevance leaves the order the search produced alone', () {
-      expect(
-        sortProducts(products, SortOrder.relevance).map((p) => p.id),
-        ['a', 'b', 'c'],
-      );
+      expect(sortProducts(products, SortOrder.relevance).map((p) => p.id), [
+        'a',
+        'b',
+        'c',
+      ]);
     });
 
     test('Nearest is not offered in the sheet; Near me owns it', () {

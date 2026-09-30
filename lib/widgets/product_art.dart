@@ -51,6 +51,7 @@ class ProductArt extends StatelessWidget {
     this.square = false,
     this.borderRadius,
     this.natural = false,
+    this.cacheWidth = 600,
   });
 
   final Product product;
@@ -63,11 +64,18 @@ class ProductArt extends StatelessWidget {
   /// see [ProductGallery.naturalAspect] for the limits it is clamped to.
   final bool natural;
 
+  /// Decode width for the photograph; a small tile needs less than a card.
+  final int cacheWidth;
+
   @override
   Widget build(BuildContext context) {
     final fitted = natural && !square && product.hasPhoto;
     final art = product.hasPhoto
-        ? _Photo(product: product, fit: fitted ? BoxFit.contain : BoxFit.cover)
+        ? _Photo(
+            product: product,
+            fit: fitted ? BoxFit.contain : BoxFit.cover,
+            cacheWidth: cacheWidth,
+          )
         : _Tile(product: product);
     final child = fitted
         ? _NaturalFrame(url: product.imageUrls.first, child: art)
@@ -129,10 +137,15 @@ class ProductPhoto extends StatelessWidget {
 }
 
 class _Photo extends StatelessWidget {
-  const _Photo({required this.product, this.fit = BoxFit.cover});
+  const _Photo({
+    required this.product,
+    this.fit = BoxFit.cover,
+    this.cacheWidth = 600,
+  });
 
   final Product product;
   final BoxFit fit;
+  final int cacheWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -141,6 +154,7 @@ class _Photo extends StatelessWidget {
       child: ProductPhoto(
         url: product.imageUrls.first,
         fit: fit,
+        cacheWidth: cacheWidth,
         fallback: _Tile(product: product),
       ),
     );

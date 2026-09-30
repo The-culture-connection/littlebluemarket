@@ -217,8 +217,9 @@ class NotificationPrefs {
 List<String> parseMentionHandles(String text) {
   final seen = <String>{};
   final out = <String>[];
-  for (final match
-      in RegExp(r'(?<![\w.])@([A-Za-z0-9_.-]+)').allMatches(text)) {
+  for (final match in RegExp(
+    r'(?<![\w.])@([A-Za-z0-9_.-]+)',
+  ).allMatches(text)) {
     final handle = match.group(1)!.replaceAll(RegExp(r'[.-]+$'), '');
     if (handle.isEmpty) continue;
     final key = handle.toLowerCase();
@@ -266,11 +267,28 @@ bool matchesAllWords(String haystack, String query) {
 }
 
 /// The words of a query, folded the way the catalogue indexes them:
-/// lowercase, letters and digits only, one-letter noise dropped.
+/// lowercase, letters and digits only, one-letter noise and filler dropped.
+///
+/// Filler because "gift for mom" is about gifts and mums, and "for" is in
+/// the name of a thousand listings that are neither.
 List<String> queryWords(String query) => [
   for (final word in query.toLowerCase().split(RegExp(r'[^a-z0-9]+')))
-    if (word.length > 1) word,
+    if (word.length > 1 && !_filler.contains(word)) word,
 ];
+
+const _filler = {
+  'an', 'and', 'the', 'for', 'of', 'to', 'in', 'on', 'at', 'by', 'with', //
+  'my', 'your', 'you', 'or', 'is', 'it', 'from',
+};
+
+/// The words of a query that each get their own name lookup: distinct,
+/// longest (most distinctive) first, at most three, so a long query cannot
+/// turn one search into a dozen reads.
+List<String> nameQueryWords(String query) {
+  final words = queryWords(query).toSet().toList()
+    ..sort((a, b) => b.length.compareTo(a.length));
+  return words.take(3).toList();
+}
 
 /// The spellings of one word worth looking for.
 ///
@@ -302,8 +320,7 @@ List<String> wordVariants(String word) {
 /// Every spelling worth looking for across a whole query, most distinctive
 /// word first, capped at [limit] because `array-contains-any` takes 30.
 List<String> queryVariants(String query, {int limit = 30}) {
-  final words = queryWords(query)
-    ..sort((a, b) => b.length.compareTo(a.length));
+  final words = queryWords(query)..sort((a, b) => b.length.compareTo(a.length));
   final out = <String>{};
   for (final word in words) {
     for (final variant in wordVariants(word)) {
@@ -323,9 +340,57 @@ int wordsMatched(String haystack, String query) {
   final text = haystack.toLowerCase();
   var found = 0;
   for (final word in queryWords(query)) {
-    if (wordVariants(word).any(text.contains)) found += 1;
+    if (saysWord(text, word)) found += 1;
   }
   return found;
+}
+
+/// Whether [text] says [word], in any spelling, as a word of its own.
+///
+/// Not `contains`: that let "rings" find "spring" and "bring". A hyphen
+/// also counts as part of the word, because "ring-spun cotton" is on half
+/// the shirts in the store and is not about rings (Grace, 2026-09-30).
+bool saysWord(String text, String word) {
+  final lower = text.toLowerCase();
+  for (final variant in wordVariants(word)) {
+    final pattern = RegExp(
+      '(?<![a-z0-9-])${RegExp.escape(variant)}(?![a-z0-9-])',
+    );
+    if (pattern.hasMatch(lower)) return true;
+  }
+  return false;
+}
+
+/// How well a listing answers a query: the higher, the nearer the top.
+///
+/// Where a word appears matters more than whether it appears. A listing
+/// called "Gold Ring", or of type "Rings", is a ring; a shirt whose
+/// description mentions a ring is not. The name and the labels add up, so a
+/// ring called a ring *and* filed under Rings beats a ring holder that is
+/// only called one, and every word of a longer query that is said counts.
+/// The description only counts for a word said nowhere else. Zero means the
+/// listing does not match at all.
+int searchScore(
+  String query, {
+  required String title,
+  String type = '',
+  Iterable<String> tags = const [],
+  String description = '',
+}) {
+  // A type or tag is a label, so "rings-and-bands" is three words there.
+  String words(String value) =>
+      value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ');
+  final labels = words('$type ${tags.join(' ')}');
+  final name = words(title);
+  var score = 0;
+  for (final word in queryWords(query)) {
+    final named = saysWord(name, word);
+    final labelled = saysWord(labels, word);
+    if (named) score += 4;
+    if (labelled) score += 3;
+    if (!named && !labelled && saysWord(description, word)) score += 1;
+  }
+  return score;
 }
 
 /// Something to try when a search found nothing.

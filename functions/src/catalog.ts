@@ -3,6 +3,7 @@ import { logger } from 'firebase-functions';
 
 import { ensureOnAppChannel, productCollectionHandles, publishToAllChannels } from './collections.ts';
 import { geohash } from './geohash.ts';
+import { adminGraphQL } from './shopify/token.ts';
 import { toCents } from './orders.ts';
 import { normalizeVendorName } from './sellers.ts';
 import { ensureShopShell } from './shops.ts';
@@ -120,6 +121,49 @@ export function listingIdFromTags(tags: string[]): string | null {
   return tag ? tag.slice(4) : null;
 }
 
+/**
+ * The price a card shows: the first variant's, or when that one is free or
+ * unpriced, the cheapest variant that has a price. A card saying "$0" for
+ * a $42 hoodie is what Grace saw in search on 2026-09-30.
+ */
+export function cardPriceCents(variants: RestProduct['variants']): number {
+  const prices = (variants ?? []).map((v) => {
+    try {
+      return v.price === undefined || v.price === null ? 0 : toCents(v.price);
+    } catch {
+      return 0;
+    }
+  });
+  if (prices.length === 0) return 0;
+  if (prices[0]! > 0) return prices[0]!;
+  const priced = prices.filter((p) => p > 0);
+  return priced.length ? Math.min(...priced) : 0;
+}
+
+/** Whether a payload carries a price worth mirroring. */
+function hasPrice(payload: RestProduct): boolean {
+  return cardPriceCents(payload.variants) > 0;
+}
+
+const PRODUCT_QUERY = `
+  query Product($id: ID!) {
+    product(id: $id) {
+      id title descriptionHtml vendor productType tags status createdAt publishedAt
+      images(first: 20) { nodes { url } }
+      variants(first: 100) { nodes { id title price availableForSale inventoryQuantity inventoryPolicy } }
+      collections(first: 50) { nodes { handle } }
+    }
+  }
+`;
+
+/** The product as the store has it now, in the webhook's shape. */
+async function fetchProduct(id: string): Promise<RestProduct | null> {
+  const data: { product: GraphQLProduct | null } = await adminGraphQL(PRODUCT_QUERY, {
+    id: `gid://shopify/Product/${id}`,
+  });
+  return data.product ? productFromGraphQL(data.product) : null;
+}
+
 /** The shape adapter: GraphQL in, the webhook's REST shape out. */
 export function productFromGraphQL(node: GraphQLProduct): RestProduct {
   return {
@@ -165,7 +209,6 @@ export function catalogDocFor(
   const id = String(payload.id);
   const title = String(payload.title ?? 'Untitled');
   const variants = payload.variants ?? [];
-  const first = variants[0];
 
   // Tags arrive as a comma-separated string. The hashtag-shaped ones are
   // initiative tags, which the post/search vocabulary uses; every tag is
@@ -184,7 +227,7 @@ export function catalogDocFor(
     doc: {
       title,
       description: stripHtml(String(payload.body_html ?? '')),
-      priceCents: first ? toCents(first.price) : 0,
+      priceCents: cardPriceCents(variants),
       sellerId: seller?.uid ?? '',
       // The raw Shopify vendor string, and its normalised form. This is the
       // join key: when a vendor claims their shop later, every product
@@ -264,9 +307,21 @@ export function catalogDocFor(
  */
 
 /** Mirrors one product. Webhook and backfill both end here. */
-export async function mirrorProduct(payload: RestProduct): Promise<void> {
+export async function mirrorProduct(incoming: RestProduct): Promise<void> {
   const db = getFirestore();
-  const id = String(payload.id);
+  const id = String(incoming.id);
+
+  // A webhook with no priced variant would write "$0" over a real price, so
+  // ask the store for the product instead. The backfill already reads the
+  // store, so it never needs this; a product that really is free stays free.
+  let payload = incoming;
+  if (!hasPrice(incoming) && !incoming.collectionHandles) {
+    try {
+      payload = (await fetchProduct(id)) ?? incoming;
+    } catch (error) {
+      logger.warn('Could not re-read an unpriced product', { id, error: String(error) });
+    }
+  }
 
   // The account that has claimed this vendor, if anybody has. Otherwise the
   // shop's shell profile, so the listing still has a shop behind it: one
