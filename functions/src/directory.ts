@@ -269,6 +269,35 @@ export const SITE_ROLES = ['administrator', 'editor', 'shop_manager'];
 export const MAX_OWNED_LISTINGS = 25;
 
 /**
+ * The WordPress accounts that run littlebluecart.com, by id. User 6 is
+ * `lbcerin`, who types in every business's listing on their behalf.
+ *
+ * Why a fixed list when the role and count checks exist: both are read from
+ * the website on every run, and the website can answer differently tomorrow.
+ * A short owner index made her look like a small business with a handful of
+ * listings, the count check waved it through, and she was handed them again
+ * every day however often an admin released them (Grace, 2026-09-28, 29 and
+ * 30). An id cannot come back different. Add the next staff account here.
+ */
+export const SITE_WP_USER_IDS: ReadonlySet<number> = new Set([6]);
+
+/**
+ * Whether a `directory/{uid}` link may be handed the listings its website
+ * account authored. One predicate for every path that attributes listings,
+ * so they cannot drift apart again: the six-hourly sync used to skip this
+ * check while the whole-directory pass honoured it, and the one poisoned
+ * what the other then preserved.
+ */
+export function mayOwnListings(data: {
+  ownsListings?: unknown;
+  ownershipLocked?: unknown;
+  wpUserId?: unknown;
+}): boolean {
+  if (data.ownsListings === false || data.ownershipLocked === true) return false;
+  return !SITE_WP_USER_IDS.has(Number(data.wpUserId));
+}
+
+/**
  * Why this WordPress user must not be handed listing ownership, or null.
  *
  * **This is the guard that was missing on 2026-09-24.** A member linked by
@@ -295,11 +324,16 @@ export function listingOwnershipRefusal(input: {
    * checks below, and nothing recomputes it away.
    */
   released?: boolean;
+  /** The WordPress user the listings were authored by. */
+  wpUserId?: number;
 }): string | null {
-  // First, because it is the only input that is not derived from a website
-  // that can answer differently tomorrow. See `ownershipLocked`.
+  // First, because neither is derived from a website that can answer
+  // differently tomorrow. See `ownershipLocked` and `SITE_WP_USER_IDS`.
   if (input.released) {
     return 'an admin released these listings from this account';
+  }
+  if (input.wpUserId !== undefined && SITE_WP_USER_IDS.has(input.wpUserId)) {
+    return 'the website account is one of the accounts that run littlebluecart.com';
   }
   const role = input.roles
     .map((r) => r.trim().toLowerCase())
@@ -631,9 +665,27 @@ export async function syncListings(
   ownerUid: string,
   wpUserId: number,
   lookups: Lookups,
-  options: { force?: boolean } = {},
+  options: {
+    force?: boolean;
+    /** The WordPress roles the link learned, so a short index cannot hide them. */
+    roles?: string[];
+    /** The account is locked by an admin or by an earlier refusal. */
+    released?: boolean;
+  } = {},
 ): Promise<number> {
   const db = getFirestore();
+  // Refused before the index is even read, when the refusal does not depend
+  // on it.
+  const early = listingOwnershipRefusal({
+    roles: options.roles ?? [],
+    listingCount: 0,
+    released: options.released,
+    wpUserId,
+  });
+  if (early) {
+    await enforceRefusal(ownerUid, early, wpUserId);
+    return 0;
+  }
   const index = await ownerIndex(lookups, { force: options.force ?? false });
   const ids = listingIdsOf(index, wpUserId);
 
@@ -650,7 +702,11 @@ export async function syncListings(
   // So the last word belongs here, where the writing happens, and it is
   // checked against the ids this call is actually about to mirror. Nothing
   // between the two reads can widen it.
-  const refusal = listingOwnershipRefusal({ roles: [], listingCount: ids.length });
+  const refusal = listingOwnershipRefusal({
+    roles: options.roles ?? [],
+    listingCount: ids.length,
+    wpUserId,
+  });
   if (refusal) {
     logger.error('Refused to mirror a directory to one account', {
       ownerUid,
@@ -658,6 +714,10 @@ export async function syncListings(
       listings: ids.length,
       reason: refusal,
     });
+    // A refusal used to log and return, leaving whatever an earlier run had
+    // written. It now leaves the data the way an admin's release does, and
+    // stays that way until an admin says otherwise.
+    await enforceRefusal(ownerUid, refusal, wpUserId);
     return 0;
   }
 
@@ -1008,23 +1068,57 @@ export async function releaseDirectoryFrom(
   return { listings: mine.size, posts, dryRun, restored, profile: outcome };
 }
 
-/** wpUserId -> uid, for the accounts that have linked. */
-async function linkedOwners(): Promise<Map<number, string>> {
+/**
+ * A refusal, made to stick: the account is locked, every listing mirrored
+ * under it goes back to unclaimed, and its directory posts are deleted,
+ * exactly as an admin's release does. Only `allowDirectoryFor` lifts it.
+ *
+ * Cheap when there is nothing to undo, which is every run after the first:
+ * one read, and no writes.
+ */
+export async function enforceRefusal(uid: string, reason: string, wpUserId?: number): Promise<void> {
+  const db = getFirestore();
+  const [held, link] = await Promise.all([
+    db.collection('directoryListings').where('ownerUid', '==', uid).limit(1).get(),
+    db.collection('directory').doc(uid).get(),
+  ]);
+  const locked = (link.data() as DirectoryDoc | undefined)?.ownershipLocked === true;
+  if (held.empty && locked) return;
+  if (!held.empty) await releaseDirectoryFrom(uid);
+  await db.collection('directory').doc(uid).set(
+    {
+      ownsListings: false,
+      ownershipLocked: true,
+      ownershipRefusedReason: reason,
+      ownershipRefusedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+  logger.warn('Directory refusal enforced on an account', {
+    uid,
+    wpUserId: wpUserId ?? null,
+    reason,
+    released: !held.empty,
+  });
+}
+
+/** The linked accounts, split by whether they may be handed listings. */
+async function linkedAccounts(): Promise<{ owners: Map<number, string>; barred: Set<string> }> {
   const snapshot = await getFirestore().collection('directory').where('status', '==', 'linked').get();
-  const map = new Map<number, string>();
+  const owners = new Map<number, string>();
+  const barred = new Set<string>();
   for (const doc of snapshot.docs) {
-    const data = doc.data() as DirectoryDoc & { ownsListings?: unknown };
+    const data = doc.data() as DirectoryDoc;
     // The account that manages the directory authored everybody's listings.
     // Linking it is right; handing it the directory is not.
-    //
-    // Both flags, not one: `ownsListings` is the live answer and
-    // `ownershipLocked` is the admin's standing decision, and the whole
-    // point of the second is that it holds when the first is wrong.
-    if (data.ownsListings === false || data.ownershipLocked === true) continue;
+    if (!mayOwnListings(data)) {
+      barred.add(doc.id);
+      continue;
+    }
     const wpUserId = Number(data.wpUserId);
-    if (Number.isFinite(wpUserId) && wpUserId > 0) map.set(wpUserId, doc.id);
+    if (Number.isFinite(wpUserId) && wpUserId > 0) owners.set(wpUserId, doc.id);
   }
-  return map;
+  return { owners, barred };
 }
 
 /**
@@ -1109,7 +1203,7 @@ export async function syncPublicDirectory(
     progress = await beginRun(lookups, options.force ?? false);
   }
 
-  const owners = await linkedOwners();
+  const { owners, barred } = await linkedAccounts();
   const categories = progress.categories ?? {};
   let claimed = progress.claimed ?? 0;
   let processedNow = 0;
@@ -1147,7 +1241,11 @@ export async function syncPublicDirectory(
     for (const [j, record] of records.entries()) {
       if (record.status !== 'publish') continue;
       const was = String((existing[j]?.data() as { ownerUid?: unknown } | undefined)?.ownerUid ?? '');
-      const ownerUid = owners.get(record.wpAuthorId) ?? was;
+      // A claimed owner survives a pass that cannot name them; a barred one
+      // does not. This used to keep whatever was there, so once the
+      // six-hourly sync had written the site account onto a listing, this
+      // pass preserved it on every run after.
+      const ownerUid = owners.get(record.wpAuthorId) ?? (barred.has(was) ? '' : was);
       if (ownerUid) claimed++;
 
       const featured = record.featuredMediaId ? (media[String(record.featuredMediaId)] ?? '') : '';
@@ -1289,10 +1387,25 @@ export async function syncAllDirectoryListings(lookups: Lookups = defaultLookups
   const linked = await db.collection('directory').where('status', '==', 'linked').get();
   let owners = 0;
   for (const doc of linked.docs) {
-    const wpUserId = Number((doc.data() as DirectoryDoc).wpUserId);
+    const data = doc.data() as DirectoryDoc & { wpRoles?: unknown };
+    const wpUserId = Number(data.wpUserId);
     if (!Number.isFinite(wpUserId) || wpUserId <= 0) continue;
     try {
-      const count = await syncListings(doc.id, wpUserId, lookups);
+      // The hole the directory kept coming back through. This path ignored
+      // the lock that the app-launch path and the whole-directory pass both
+      // honour, so an admin's release lasted until the next run, at most six
+      // hours. A barred account is now made to stay clean, not re-mirrored.
+      if (!mayOwnListings(data)) {
+        await enforceRefusal(
+          doc.id,
+          String((data as { ownershipRefusedReason?: unknown }).ownershipRefusedReason ?? '') ||
+            'this account may not own directory listings',
+          wpUserId,
+        );
+        continue;
+      }
+      const roles = Array.isArray(data.wpRoles) ? data.wpRoles.map(String) : [];
+      const count = await syncListings(doc.id, wpUserId, lookups, { roles });
       await doc.ref.set({ listingCount: count, listingsRefreshedAt: FieldValue.serverTimestamp() }, { merge: true });
       owners++;
     } catch (error) {
@@ -1522,6 +1635,7 @@ export async function syncDirectory(
     refusal = listingOwnershipRefusal({
       roles: user.roles,
       listingCount: listingIdsOf(index, user.id).length,
+      wpUserId: user.id,
     });
     if (refusal) {
       logger.error('Refused to give an account the directory', {
@@ -1542,7 +1656,12 @@ export async function syncDirectory(
   // A tap on the button refreshes the owner index too: the person has
   // usually just added a listing on the website.
   const listings =
-    user && !refusal ? await syncListings(uid, user.id, lookups, { force: !auto }) : 0;
+    user && !refusal
+      ? await syncListings(uid, user.id, lookups, { force: !auto, roles: user.roles })
+      : 0;
+  // Whatever an earlier run left under this account goes, and the lock is
+  // set, so no later run of any path can hand it back.
+  if (refusal) await enforceRefusal(uid, refusal, user?.id);
   const note = notes.length ? notes.join(' ') : undefined;
   const found = user !== null || customerId !== null || orders.length > 0;
 
@@ -1567,7 +1686,7 @@ export async function syncDirectory(
       wpEmailLower: emailLower,
       wpUserId: user?.id ?? null,
       // Whether this website account's listings are theirs. False for the
-      // account that manages the directory; read by `linkedOwners` so the
+      // account that manages the directory; read by `linkedAccounts` so the
       // whole-directory sync cannot re-attach what the link refused.
       //
       // Recomputed every refresh, which is exactly why it is not the whole
@@ -1576,6 +1695,10 @@ export async function syncDirectory(
       ...(refusal ? { ownershipRefusedReason: refusal } : {}),
       wpLogin: user?.slug ?? '',
       wpName: user?.name ?? '',
+      // Kept so the six-hourly sync can apply the role check too. It used to
+      // pass no roles at all, which left only the count, which a short index
+      // gets past.
+      wpRoles: user?.roles ?? [],
       wcCustomerId: customerId,
       orderCount: orders.length,
       listingCount: listings,

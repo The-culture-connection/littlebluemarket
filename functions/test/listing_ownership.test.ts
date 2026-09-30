@@ -236,3 +236,21 @@ void test('the boundary is the same wherever it is asked', () => {
   assert.equal(listingOwnershipRefusal({ roles: [], listingCount: MAX_OWNED_LISTINGS }), null);
   assert.ok(listingOwnershipRefusal({ roles: [], listingCount: MAX_OWNED_LISTINGS + 1 }));
 });
+
+// ---- 2026-09-30: the directory kept coming back to the site account daily.
+
+void test('the site account is refused by id, even when the index makes it look small', async () => {
+  const { listingOwnershipRefusal: refuse } = await import('../src/directory.ts');
+  // A short owner index: three listings, and no role known. Before, this
+  // passed both the role and the count check.
+  assert.ok(refuse({ roles: [], listingCount: 3, wpUserId: 6 }));
+  assert.equal(refuse({ roles: [], listingCount: 3, wpUserId: 42 }), null);
+});
+
+void test('one predicate decides for every path that hands out listings', async () => {
+  const { mayOwnListings } = await import('../src/directory.ts');
+  assert.equal(mayOwnListings({ ownershipLocked: true, wpUserId: 42 }), false);
+  assert.equal(mayOwnListings({ ownsListings: false, wpUserId: 42 }), false);
+  assert.equal(mayOwnListings({ wpUserId: 6 }), false);
+  assert.equal(mayOwnListings({ wpUserId: 42 }), true);
+});
