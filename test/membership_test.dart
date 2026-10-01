@@ -89,7 +89,26 @@ void main() {
       await _scrollTo(tester, find.textContaining('Become a member'));
       // The fixture store charges $3.00 and the button repeats it exactly.
       // An app that reformatted this would be inventing an exchange rate.
-      expect(find.textContaining(r'$3.00 a month'), findsOneWidget);
+      expect(find.text(r'Become a member · $3.00 a month'), findsOneWidget);
+    });
+
+    testWidgets('says what App Review requires beside the button', (
+      tester,
+    ) async {
+      // Rejected on 2026-10-01 without these: the subscription's name,
+      // length and price, that it renews, and links to the Terms of Use and
+      // the Privacy Policy.
+      await _pump(tester, billing: FixtureBillingService());
+      await _scrollTo(tester, find.text('Privacy Policy'));
+
+      expect(
+        find.textContaining(
+          r'Monthly member: $3.00 a month. Renews automatically',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Terms of Use'), findsOneWidget);
+      expect(find.text('Privacy Policy'), findsOneWidget);
     });
 
     testWidgets('is not drawn at all when the store has no such product', (

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/repositories/repositories.dart' show RepositoryException;
 import '../../models/formatting.dart';
 import '../../models/funding.dart';
 import '../../state/donation_nudge.dart';
 import '../../data/billing/billing_service.dart';
+import '../../legal_links.dart';
 import '../../state/membership.dart';
 import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
@@ -242,6 +244,17 @@ class _MonthlyCardState extends ConsumerState<_MonthlyCard> {
     }
   }
 
+  Future<void> _openLegal(String url) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final ok = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!ok) {
+      messenger?.showSnackBar(SnackBar(content: Text('Could not open $url')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
@@ -296,10 +309,31 @@ class _MonthlyCardState extends ConsumerState<_MonthlyCard> {
                   child: const Text('I already pay for this'),
                 ),
               ),
+              // What App Review requires beside the button of an
+              // auto-renewing subscription: its name, its length, its price,
+              // that it renews, and working links to the Terms of Use and the
+              // Privacy Policy (Grace, 2026-10-01, after a rejection).
               Text(
-                'Billed by the app store, not by the shop. Not'
+                'Monthly member: ${offer!.price} a month. Renews automatically'
+                ' every month until you cancel it in your App Store or'
+                ' Google Play settings, at least a day before it renews.'
+                ' Billed by the app store, not by the shop. Not'
                 ' tax-deductible.',
-                style: LbmText.pinMeta.copyWith(color: c.ink2),
+                style: LbmText.pinMeta.copyWith(color: c.ink2, height: 1.45),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 4,
+                children: [
+                  TextButton(
+                    onPressed: () => _openLegal(LegalLinks.subscriptionTerms),
+                    child: const Text('Terms of Use'),
+                  ),
+                  TextButton(
+                    onPressed: () => _openLegal(LegalLinks.privacyPolicy),
+                    child: const Text('Privacy Policy'),
+                  ),
+                ],
               ),
             ],
             if (_error != null) ...[

@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 abstract final class LegalLinks {
   static const privacyPolicy =
       'https://littlebluemarket.com/policies/privacy-policy';
+
   /// The **store's** policy: buying, delivery, returns. Not the app's
   /// terms of use, which is why [termsRoute] exists as well.
   static const storeTerms =
@@ -14,6 +15,13 @@ abstract final class LegalLinks {
   /// somebody agreeing to them during sign-up is never shown a spinner or a
   /// 404. See `screens/onboarding/eula_screen.dart`.
   static const termsRoute = '/terms';
+
+  /// Apple's standard Terms of Use (EULA), which govern the monthly
+  /// membership as an App Store subscription. App Review requires a working
+  /// link to it beside the purchase button and on the product page (rejected
+  /// on 2026-10-01 for the product page).
+  static const subscriptionTerms =
+      'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
   /// Where someone asks for their account or their data to be removed. A
   /// route inside the app, so it works on a phone and in a browser; the
