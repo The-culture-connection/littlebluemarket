@@ -216,19 +216,17 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
         final text = query.trim().toLowerCase();
         if (text.isEmpty) return const <DirectoryListing>[];
 
-        // One word from the indexed array, which is the business's name, its
-        // categories and its city. Not a substring match; that is the honest
-        // limit of what Firestore can index, and the same limit the
-        // catalogue's search already lives with.
-        final words = text
-            .split(RegExp('[^a-z0-9]+'))
-            .where((w) => w.isNotEmpty)
-            .toList();
-        final byWord = words.isEmpty
+        // Every spelling of every word, against the indexed array, which is
+        // the business's name, its categories and its city. It used to take
+        // the first word exactly as typed, so "rings" never found "Ring" and
+        // "gift shop" ignored "shop"; it now matches the way the Market's
+        // own search does (Grace, 2026-10-01).
+        final variants = queryVariants(text);
+        final byWord = variants.isEmpty
             ? null
             : await _listings
                   .where('status', isEqualTo: 'publish')
-                  .where('titleWords', arrayContains: words.first)
+                  .where('titleWords', arrayContainsAny: variants)
                   .limit(_searchLimit)
                   .get();
 
@@ -239,7 +237,7 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
             ? await _listings
                   .where('status', isEqualTo: 'publish')
                   .where('titleLower', isGreaterThanOrEqualTo: text)
-                  .where('titleLower', isLessThan: '$text\uf8ff')
+                  .where('titleLower', isLessThan: '$text')
                   .limit(_pageSize)
                   .get()
             : null;
@@ -252,14 +250,7 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
             hits.add(FirestoreMappers.directoryListing(doc.id, doc.data()));
           }
         }
-        // A name that starts with what was typed is the better answer, so it
-        // sorts first; everything else keeps the order it came back in.
-        hits.sort((a, b) {
-          final aStarts = a.title.toLowerCase().startsWith(text) ? 0 : 1;
-          final bStarts = b.title.toLowerCase().startsWith(text) ? 0 : 1;
-          return aStarts.compareTo(bStarts);
-        });
-        return hits;
+        return rankDirectoryHits(hits, text);
       }, operation: 'firestore directoryListings (search)');
   CollectionReference<Map<String, dynamic>> get _products =>
       _db.collection('directoryProducts');

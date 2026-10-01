@@ -568,47 +568,44 @@ class _DirectoryHits extends ConsumerStatefulWidget {
 }
 
 class _DirectoryHitsState extends ConsumerState<_DirectoryHits> {
-  bool _open = false;
+  /// How many businesses show before "Show all". Enough to see that they are
+  /// there; the products above stay the main answer.
+  static const _preview = 3;
+  bool _all = false;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.c;
     final hits = ref.watch(directorySearchProvider(widget.query));
     final listings = hits.value ?? const <DirectoryListing>[];
     if (listings.isEmpty) return const SizedBox.shrink();
+    final shown = _all ? listings : listings.take(_preview).toList();
 
+    // On show, not folded away. They used to sit behind one collapsed row
+    // at the very bottom, "Also 12 businesses on littlebluecart.com", which
+    // nobody opened (Grace, 2026-10-01: "I still want them to show up in
+    // search").
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 10),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: LbmCard(
-            padding: EdgeInsets.zero,
-            child: ListRow(
-              leading: Icon(Icons.public_rounded, size: 20, color: c.ink3),
-              title: Text(
-                listings.length == 1
-                    ? 'Also 1 business on littlebluecart.com'
-                    : 'Also ${listings.length} businesses on '
-                          'littlebluecart.com',
-              ),
-              subtitle: const Text('These sell on their own websites'),
-              trailing: Icon(
-                _open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                size: 22,
-                color: c.ink3,
-              ),
-              onTap: () => setState(() => _open = !_open),
+        SectionHead(
+          listings.length == 1
+              ? '1 business in the directory'
+              : '${listings.length} businesses in the directory',
+        ),
+        for (final listing in shown)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+            child: DirectoryListingCard(listing: listing, showClaim: true),
+          ),
+        if (!_all && listings.length > _preview)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: LbmChip(
+              'Show all ${listings.length}',
+              fontSize: 13,
+              onTap: () => setState(() => _all = true),
             ),
           ),
-        ),
-        if (_open)
-          for (final listing in listings)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-              child: DirectoryListingCard(listing: listing, showClaim: true),
-            ),
       ],
     );
   }

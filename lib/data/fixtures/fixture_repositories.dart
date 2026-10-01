@@ -2174,21 +2174,8 @@ class FixtureDirectoryRepository implements DirectoryRepository {
     await _backend._settle();
     final text = query.trim().toLowerCase();
     if (text.isEmpty) return const [];
-    final words = text
-        .split(RegExp('[^a-z0-9]+'))
-        .where((w) => w.isNotEmpty)
-        .toSet();
-    return [
-      for (final listing in _listings)
-        if (listing.isPublished &&
-            words.any(
-              (word) =>
-                  listing.title.toLowerCase().contains(word) ||
-                  listing.city.toLowerCase().contains(word) ||
-                  listing.categories.any((c) => c.toLowerCase().contains(word)),
-            ))
-          listing,
-    ];
+    // The same matching and order as the live search.
+    return rankDirectoryHits(_listings.where((l) => l.isPublished), text);
   }
 
   @override

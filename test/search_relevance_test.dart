@@ -8,6 +8,8 @@ import 'package:little_blue_market/models/models.dart';
 /// searched a shop that is on the Market and saw two stray listings, and
 /// there were no sorting options at all.
 void main() {
+  directorySearchTests();
+
   Product listing(
     String id, {
     String title = 'A thing',
@@ -217,6 +219,39 @@ void main() {
     test('a hashtag searches hashtags, whatever the chips were left on', () {
       expect(scopeFor('#PlasticFree'), SearchScope.hashtags);
       expect(scopeFor('caramels'), SearchScope.all);
+    });
+  });
+}
+
+DirectoryListing _biz(
+  String id,
+  String title, {
+  List<String> categories = const [],
+}) => DirectoryListing(
+  id: id,
+  ownerUid: '',
+  title: title,
+  status: 'publish',
+  link: '',
+  categories: categories,
+);
+
+void directorySearchTests() {
+  group('directory businesses in search (Grace, 2026-10-01)', () {
+    test('a plural finds the singular, and a hidden word does not count', () {
+      final hits = rankDirectoryHits([
+        _biz('1', 'Golden Ring Jewelers'),
+        _biz('2', 'Spring Garden Florist'),
+      ], 'rings');
+      expect(hits.map((l) => l.id), ['1']);
+    });
+
+    test('the name beats the category', () {
+      final hits = rankDirectoryHits([
+        _biz('cat', 'Maple Studio', categories: ['Candles']),
+        _biz('name', 'Candle Corner'),
+      ], 'candles');
+      expect(hits.map((l) => l.id), ['name', 'cat']);
     });
   });
 }

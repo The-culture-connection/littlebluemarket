@@ -331,3 +331,35 @@ List<String> typeSlugsFor(String query) {
 /// "See website".
 bool isShoppable(Product product) =>
     product.isExternal || product.priceCents > 0;
+
+/// Directory businesses in the order a search shows them, with the ones
+/// that do not really say the query dropped.
+///
+/// The same rule as products (see [searchScore]): the name counts most, then
+/// the categories and tags, then the town. A name that starts with what was
+/// typed breaks a tie, then the name itself, so the list never reshuffles.
+List<DirectoryListing> rankDirectoryHits(
+  Iterable<DirectoryListing> hits,
+  String query,
+) {
+  final text = query.trim().toLowerCase();
+  int score(DirectoryListing l) => searchScore(
+    text,
+    title: l.title,
+    tags: [...l.categories, ...l.tags],
+    description: '${l.city} ${l.state}',
+  );
+  final scored = [
+    for (final l in hits)
+      if (score(l) > 0) (l, score(l)),
+  ];
+  scored.sort((a, b) {
+    final byScore = b.$2 - a.$2;
+    if (byScore != 0) return byScore;
+    final aStarts = a.$1.title.toLowerCase().startsWith(text) ? 0 : 1;
+    final bStarts = b.$1.title.toLowerCase().startsWith(text) ? 0 : 1;
+    if (aStarts != bStarts) return aStarts - bStarts;
+    return a.$1.title.toLowerCase().compareTo(b.$1.title.toLowerCase());
+  });
+  return [for (final (l, _) in scored) l];
+}

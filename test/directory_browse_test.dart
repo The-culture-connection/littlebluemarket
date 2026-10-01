@@ -163,7 +163,7 @@ void main() {
     expect(await repo.searchDirectory('nothingmatchesthis'), isEmpty);
   });
 
-  testWidgets('the search screen folds directory hits away at the bottom', (
+  testWidgets('the search screen shows directory businesses, not folded', (
     tester,
   ) async {
     await _pumpFeed(tester);
@@ -173,14 +173,11 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
 
-    // A business that sells on its own website is the answer of last
-    // resort, so it is named and folded rather than laid out in full.
-    expect(find.text('Also 1 business on littlebluecart.com'), findsOneWidget);
-    expect(find.text('Found House Ceramics'), findsNothing);
-
-    await tester.tap(find.text('Also 1 business on littlebluecart.com'));
-    await tester.pumpAndSettle();
+    // On show, under their own heading. Folded behind one row, nobody
+    // found them (Grace, 2026-10-01).
+    expect(find.text('1 business in the directory'), findsOneWidget);
     expect(find.text('Found House Ceramics'), findsOneWidget);
+    expect(find.text('Also 1 business on littlebluecart.com'), findsNothing);
   });
 
   test('a category with one business says so in the singular', () {
