@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -303,12 +305,34 @@ class ProductGallery extends StatefulWidget {
   State<ProductGallery> createState() => _ProductGalleryState();
 }
 
-class _ProductGalleryState extends State<ProductGallery> {
+class _ProductGalleryState extends State<ProductGallery>
+    with SingleTickerProviderStateMixin {
   final _controller = PageController();
   int _page = 0;
 
+  /// The swipe hint: a nudge or three, then it fades. One run of one
+  /// controller rather than a repeating animation and a timer, so nothing is
+  /// left pending when the page closes early.
+  ///
+  /// A tester did not know there were more photographs to the side (Grace,
+  /// 2026-09-30); the dots under the photo were not enough of a clue.
+  late final AnimationController _hint;
+
+  @override
+  void initState() {
+    super.initState();
+    // Made here, not lazily: a one-photo gallery never touches it, and a
+    // lazy one would then be created in dispose, which Flutter forbids.
+    _hint = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3200),
+    );
+    if (widget.product.imageUrls.length > 1) _hint.forward();
+  }
+
   @override
   void dispose() {
+    _hint.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -335,28 +359,44 @@ class _ProductGalleryState extends State<ProductGallery> {
         // swiped would jump the page under your thumb.
         _NaturalFrame(
           url: widget.natural ? images.first : null,
-          child: ClipRRect(
-            borderRadius: radius,
-            child: PageView.builder(
-              controller: _controller,
-              itemCount: images.length,
-              onPageChanged: (page) => setState(() => _page = page),
-              itemBuilder: (context, i) => GestureDetector(
-                onTap: widget.onTapPhoto == null
-                    ? null
-                    : () => widget.onTapPhoto!(i),
-                child: ColoredBox(
-                  color: context.c.skyWash,
-                  child: ProductPhoto(
-                    url: images[i],
-                    // Inside a frame shaped by the first photograph, the
-                    // others are shown whole rather than cropped to fit it.
-                    fit: widget.natural ? BoxFit.contain : BoxFit.cover,
-                    fallback: ProductArt(widget.product),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: radius,
+                  child: PageView.builder(
+                    controller: _controller,
+                    itemCount: images.length,
+                    onPageChanged: (page) {
+                      // They have found it: the hint has done its job.
+                      if (_hint.isAnimating) _hint.value = 1;
+                      setState(() => _page = page);
+                    },
+                    itemBuilder: (context, i) => GestureDetector(
+                      onTap: widget.onTapPhoto == null
+                          ? null
+                          : () => widget.onTapPhoto!(i),
+                      child: ColoredBox(
+                        color: context.c.skyWash,
+                        child: ProductPhoto(
+                          url: images[i],
+                          // Inside a frame shaped by the first photograph, the
+                          // others are shown whole rather than cropped to fit it.
+                          fit: widget.natural ? BoxFit.contain : BoxFit.cover,
+                          fallback: ProductArt(widget.product),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+              Positioned(
+                right: 10,
+                top: 0,
+                bottom: 0,
+                child: IgnorePointer(child: Center(child: _SwipeHint(_hint))),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 10),
@@ -765,6 +805,47 @@ class _Dots extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// A small arrow at the right edge of a gallery that nudges left a few times
+/// and fades, so it is plain there is more to swipe to. Still, but still
+/// shown, for anyone who has asked their phone for less motion.
+class _SwipeHint extends AnimatedWidget {
+  const _SwipeHint(Animation<double> progress) : super(listenable: progress);
+
+  @override
+  Widget build(BuildContext context) {
+    final t = (listenable as Animation<double>).value;
+    if (t >= 1) return const SizedBox.shrink();
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    // Three nudges, shrinking, then a fade over the last fifth.
+    final nudge = still
+        ? 0.0
+        : -math.sin(t * 3 * 2 * math.pi).abs() * 8 * (1 - t);
+    final opacity = t < 0.8 ? 1.0 : (1 - t) / 0.2;
+    return Opacity(
+      opacity: opacity.clamp(0.0, 1.0),
+      child: Transform.translate(
+        offset: Offset(nudge, 0),
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.9),
+            shape: BoxShape.circle,
+            boxShadow: const [
+              BoxShadow(blurRadius: 6, color: Color(0x33000000)),
+            ],
+          ),
+          child: const Icon(
+            Icons.chevron_left_rounded,
+            size: 22,
+            color: LbmConst.artInk,
+            semanticLabel: 'Swipe for more photos',
+          ),
+        ),
       ),
     );
   }

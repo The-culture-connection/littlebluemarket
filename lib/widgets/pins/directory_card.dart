@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/models.dart';
 import '../../router/nav.dart';
+import '../../state/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../product_art.dart';
@@ -579,21 +580,32 @@ class _VisitButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
+    // An owner who sells on the Market is sent to their shop here, not out
+    // to a website (Grace, 2026-09-30).
+    final shop = ref.watch(marketShopForListingProvider(listing.ownerUid));
     final website = listing.websiteUri;
     final target = website ?? listing.linkUri;
-    if (target == null) return const SizedBox.shrink();
-    final label = website != null ? 'Visit' : 'Listing';
+    if (shop == null && target == null) return const SizedBox.shrink();
+    final label = shop != null
+        ? 'Shop'
+        : website != null
+        ? 'Visit'
+        : 'Listing';
 
     return Semantics(
       button: true,
-      label: website != null
+      label: shop != null
+          ? 'Shop ${listing.title} on the Market'
+          : website != null
           ? 'Visit ${listing.title} website'
           : '${listing.title} on littlebluecart.com',
       excludeSemantics: true,
       child: GestureDetector(
         // Its own tap, so pressing it never also opens the listing page.
         behavior: HitTestBehavior.opaque,
-        onTap: () => _open(context, ref, target),
+        onTap: shop != null
+            ? () => context.goToSeller(shop)
+            : () => _open(context, ref, target!),
         child: Container(
           margin: const EdgeInsets.only(left: 6),
           padding: const EdgeInsets.fromLTRB(10, 4, 8, 4),
@@ -622,7 +634,9 @@ class _VisitButton extends ConsumerWidget {
               ),
               const SizedBox(width: 3),
               Icon(
-                website != null
+                shop != null
+                    ? Icons.storefront_rounded
+                    : website != null
                     ? Icons.arrow_forward_rounded
                     : Icons.north_east_rounded,
                 size: 12,

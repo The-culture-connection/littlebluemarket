@@ -159,7 +159,7 @@ class _Empty extends ConsumerWidget {
         const SizedBox(height: 18),
         Center(
           child: PillButton(
-            'Browse the Market',
+            'Shop the Market',
             style: PillStyle.ghost,
             expand: false,
             onPressed: () => context.goToResults(''),

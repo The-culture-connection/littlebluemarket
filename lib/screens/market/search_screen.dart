@@ -169,10 +169,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           // browse hub, and a hub whose main act is hidden behind a sideways
           // drag is not one (Grace, 2026-09-28). The directory stays a rail;
           // it is the second question, and it has far more than seven.
-          const SectionHead('Browse the Market'),
+          const SectionHead('Shop the Market'),
           const CollectionTiles(),
           const DirectoryRail(),
-          const SectionHead('Popular right now — initiatives'),
+          const SectionHead('Trending tags'),
           LbmAsync<List<TagCount>>(
             tags,
             skeleton: const Padding(
@@ -181,7 +181,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
             onRetry: () => ref.invalidate(popularTagsProvider),
             isEmpty: (tags) => tags.isEmpty,
-            empty: const LbmEmpty(title: 'No hashtags yet', compact: true),
+            empty: const LbmEmpty(
+              title: 'No trending tags yet',
+              body: 'Tags show up here once people post with them.',
+              compact: true,
+            ),
             data: (tags) => _TagGrid(tags: tags),
           ),
           const SectionHead('Recent searches'),

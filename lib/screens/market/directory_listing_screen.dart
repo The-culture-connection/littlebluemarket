@@ -94,6 +94,9 @@ class _Body extends ConsumerWidget {
     final c = context.c;
     final l = listing;
     final me = ref.watch(currentUidProvider);
+    // The owner sells on the Market: send people to their shop here rather
+    // than out to littlebluecart.com (Grace, 2026-09-30).
+    final shop = ref.watch(marketShopForListingProvider(l.ownerUid));
     final category = l.categories.firstOrNull ?? '';
     final place = [l.city, l.state].where((s) => s.isNotEmpty).join(', ');
     final location = place.isNotEmpty
@@ -151,7 +154,22 @@ class _Body extends ConsumerWidget {
                   TagChips(identity, onTap: (tag) => context.goToTag(tag)),
                 ],
                 const SizedBox(height: 16),
-                if (l.websiteUri != null)
+                if (shop != null) ...[
+                  PillButton(
+                    'Shop on the Market',
+                    icon: Icons.storefront_rounded,
+                    onPressed: () => context.goToSeller(shop),
+                  ),
+                  if (l.websiteUri != null) ...[
+                    const SizedBox(height: 10),
+                    PillButton(
+                      'Visit website',
+                      icon: Icons.language_rounded,
+                      style: PillStyle.ghost,
+                      onPressed: () => _open(context, ref, l.websiteUri),
+                    ),
+                  ],
+                ] else if (l.websiteUri != null)
                   PillButton(
                     'Visit website',
                     icon: Icons.language_rounded,

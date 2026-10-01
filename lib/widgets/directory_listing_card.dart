@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/models.dart';
 import '../router/nav.dart';
+import '../state/providers.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'copy_address.dart';
@@ -181,22 +182,10 @@ class DirectoryListingCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 const _ClaimRow(),
               ],
-              if (l.linkUri != null) ...[
-                const SizedBox(height: 10),
-                InkWell(
-                  onTap: () => _open(context, l.linkUri),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      'View on littlebluecart.com',
-                      style: LbmText.xtiny.copyWith(
-                        color: c.ink3,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              _SiteLink(
+                listing: l,
+                onOpenSite: () => _open(context, l.linkUri),
+              ),
             ],
           ),
         ),
@@ -262,6 +251,39 @@ class _ClaimRow extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The line under a card: the owner's Market shop when they sell here,
+/// otherwise the listing's page on littlebluecart.com (Grace, 2026-09-30).
+class _SiteLink extends ConsumerWidget {
+  const _SiteLink({required this.listing, required this.onOpenSite});
+
+  final DirectoryListing listing;
+  final VoidCallback onOpenSite;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final shop = ref.watch(marketShopForListingProvider(listing.ownerUid));
+    if (shop == null && listing.linkUri == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: InkWell(
+        onTap: shop != null ? () => context.goToSeller(shop) : onOpenSite,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text(
+            shop != null ? 'Shop on the Market' : 'View on littlebluecart.com',
+            style: LbmText.xtiny.copyWith(
+              color: shop != null ? c.skyDeep : c.ink3,
+              fontWeight: shop != null ? FontWeight.w800 : null,
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
       ),
     );
   }

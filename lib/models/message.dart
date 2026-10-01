@@ -134,3 +134,19 @@ class ChatMoment {
 
   bool get isQuiet => lastHourCount == 0;
 }
+
+/// What a buyer tapped to start the conversation, beyond "Ask".
+enum DmTopic { shipping, pickup, returns }
+
+/// The question a thread about [title] opens with. Pure.
+///
+/// The product page's Shipping, Pickup and Returns tiles said "Ask the
+/// maker" and did nothing when tapped (Grace, 2026-09-30). Each now opens
+/// the seller's chat with its own question written and the listing
+/// attached, the way "Ask" does.
+String openingQuestion(DmTopic? topic, String title) => switch (topic) {
+  DmTopic.shipping => 'Hi! How does shipping work for the $title?',
+  DmTopic.pickup => 'Hi! Can I pick up the $title?',
+  DmTopic.returns => 'Hi! What is your returns policy for the $title?',
+  null => 'Hi! Is the $title still available?',
+};

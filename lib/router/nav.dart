@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
-import '../models/models.dart' show tagKey;
+import '../models/models.dart' show DmTopic, tagKey;
 
 /// Screens that can be reached from more than one tab — a post, a product, a
 /// seller's feed, a DM — are registered under every branch that leads to them.
@@ -47,9 +47,11 @@ extension LbmNavigation on BuildContext {
   /// question already written and the listing in the first bubble. Asking
   /// "is this still available?" with no way to tell which "this" was the
   /// commonest thing makers had to ask back.
-  void goToDmAbout(String personId, String productId) => _pushInBranch(
-    '/dm/$personId?to=1&about=${Uri.encodeComponent(productId)}',
-  );
+  void goToDmAbout(String personId, String productId, {DmTopic? ask}) =>
+      _pushInBranch(
+        '/dm/$personId?to=1&about=${Uri.encodeComponent(productId)}'
+        '${ask == null ? "" : "&ask=${ask.name}"}',
+      );
 
   void goToCart() => _pushInBranch('/cart');
 

@@ -363,7 +363,7 @@ class CollectionRail extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
                 child: Text(
-                  'Browse the Market',
+                  'Shop the Market',
                   style: LbmText.tiny.copyWith(
                     fontWeight: FontWeight.w800,
                     color: c.ink2,

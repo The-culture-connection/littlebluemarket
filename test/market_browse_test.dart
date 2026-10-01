@@ -97,11 +97,10 @@ void main() {
       expect(marketChildrenOf(''), isEmpty);
     });
 
-    testWidgets('it says Browse the Market, not Browse the shop', (
-      tester,
-    ) async {
+    testWidgets('it says Shop the Market (Grace, 2026-09-30)', (tester) async {
       await _pumpSearch(tester);
-      expect(find.text('Browse the Market'), findsOneWidget);
+      expect(find.text('Shop the Market'), findsOneWidget);
+      expect(find.text('Browse the Market'), findsNothing);
       expect(find.text('Browse the shop'), findsNothing);
     });
 
@@ -232,7 +231,6 @@ void main() {
       final field = tester.widget<TextField>(find.byType(TextField).first);
       expect(field.controller?.text, 'candle');
     });
-
 
     testWidgets('a hashtag tapped on the search screen opens its page', (
       tester,

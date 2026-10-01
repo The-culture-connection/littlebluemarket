@@ -130,7 +130,7 @@ class _Body extends ConsumerWidget {
                   isGuest: isGuest,
                 ),
                 const SizedBox(height: 16),
-                _FactsRow(spec: spec),
+                _FactsRow(spec: spec, seller: seller, product: product),
                 const SizedBox(height: 16),
                 Text(
                   product.description,
@@ -417,13 +417,30 @@ class _ProofLine extends StatelessWidget {
 }
 
 /// Shipping, pickup and returns at a glance, before the description.
-class _FactsRow extends StatelessWidget {
-  const _FactsRow({required this.spec});
+///
+/// Each tile opens a chat with the seller, its question already written and
+/// the listing attached, because "Ask the maker" that did nothing when tapped
+/// was a dead end (Grace, 2026-09-30).
+class _FactsRow extends ConsumerWidget {
+  const _FactsRow({required this.spec, this.seller, required this.product});
 
   final ProductSpec spec;
+  final Person? seller;
+  final Product product;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final me = ref.watch(currentUidProvider);
+    final s = seller;
+    // Nobody to ask, or it is your own listing.
+    VoidCallback? ask(DmTopic topic) => s == null || s.id == me
+        ? null
+        : () => requireProfile(
+            context,
+            ref,
+            () => context.goToDmAbout(s.id, product.id, ask: topic),
+          );
+
     /// The first line of a policy, which is the part that answers the
     /// question; the rest is further down the page.
     String firstLine(String text, String fallback) {
@@ -449,16 +466,18 @@ class _FactsRow extends StatelessWidget {
               icon: Icons.local_shipping_outlined,
               label: 'Shipping',
               value: shipping,
+              onTap: ask(DmTopic.shipping),
             ),
           ),
           const SizedBox(width: 8),
-          const Expanded(
+          Expanded(
             child: _FactTile(
               icon: Icons.storefront_outlined,
               label: 'Pickup',
               // No pickup field exists on a listing, so this asks rather than
               // claiming one way or the other.
               value: 'Ask the maker',
+              onTap: ask(DmTopic.pickup),
             ),
           ),
           const SizedBox(width: 8),
@@ -467,6 +486,7 @@ class _FactsRow extends StatelessWidget {
               icon: Icons.assignment_return_outlined,
               label: 'Returns',
               value: firstLine(spec.returns, 'Ask the maker'),
+              onTap: ask(DmTopic.returns),
             ),
           ),
         ],
@@ -480,16 +500,18 @@ class _FactTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    return Container(
+    final tile = Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
       decoration: BoxDecoration(
         color: c.skyWash,
@@ -518,6 +540,17 @@ class _FactTile extends StatelessWidget {
             style: LbmText.pinMeta.copyWith(fontSize: 11, color: c.ink2),
           ),
         ],
+      ),
+    );
+    if (onTap == null) return tile;
+    return Semantics(
+      button: true,
+      label: '$label: ask the seller',
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: const BorderRadius.all(Radius.circular(14)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(onTap: onTap, child: tile),
       ),
     );
   }

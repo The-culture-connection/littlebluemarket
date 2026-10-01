@@ -179,6 +179,20 @@ class _ComposerBodyState extends State<_ComposerBody> {
   var _sending = false;
 
   @override
+  void didUpdateWidget(_ComposerBody old) {
+    super.didUpdateWidget(old);
+    // The opening question depends on the product it is about, which can
+    // arrive a moment after the thread opens. Read only once, the field
+    // stayed empty whenever it did. Filled in late only if nobody has
+    // started typing.
+    if (old.initialText.isEmpty &&
+        widget.initialText.isNotEmpty &&
+        _controller.text.isEmpty) {
+      _controller.text = widget.initialText;
+    }
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();

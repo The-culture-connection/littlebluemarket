@@ -706,3 +706,18 @@ Duration? lbmRetry(int retryCount, Object error) {
 final addressesProvider = FutureProvider<List<Address>>((ref) {
   return ref.watch(profileRepositoryProvider).addresses();
 });
+
+/// The Market shop a directory listing's owner keeps, or null.
+///
+/// A listing whose owner also sells here sends people to their shop in the
+/// app rather than out to littlebluecart.com (Grace, 2026-09-30). Null for
+/// an unclaimed listing, an owner who does not sell, and while the owner's
+/// profile is still loading, so the website link shows until it is known.
+final marketShopForListingProvider = Provider.family<String?, String>((
+  ref,
+  ownerUid,
+) {
+  if (ownerUid.isEmpty || ownerUid == 'unclaimed') return null;
+  final owner = ref.watch(personProvider(ownerUid)).value;
+  return owner != null && owner.isSeller ? owner.id : null;
+});

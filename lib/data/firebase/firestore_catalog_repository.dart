@@ -236,8 +236,14 @@ class FirestoreCatalogRepository implements CatalogRepository {
   @override
   Future<List<TagCount>> popularTags({int limit = 8}) =>
       guardFirestore(() async {
+        // Only tags somebody has actually posted with. Tags last used on the
+        // automatic product posts, retired on 2026-09-24, kept a postCount
+        // of 0, and with every count tied at zero the list came out in
+        // reverse alphabetical order: #Zombies, #Ziptop, every one "0 posts"
+        // (Grace, 2026-09-30).
         final snapshot = await _db
             .collection('hashtags')
+            .where('postCount', isGreaterThan: 0)
             .orderBy('postCount', descending: true)
             .limit(limit)
             .get();

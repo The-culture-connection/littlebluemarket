@@ -29,6 +29,7 @@ class DmScreen extends ConsumerStatefulWidget {
     this.conversationId,
     this.personId,
     this.aboutProductId,
+    this.ask,
   }) : assert(
          conversationId != null || personId != null,
          'a conversation or a person is required',
@@ -43,6 +44,10 @@ class DmScreen extends ConsumerStatefulWidget {
   /// the question written and the listing attached to it.
   final String? aboutProductId;
 
+  /// Which question the thread opens with, from the product page's
+  /// Shipping, Pickup and Returns tiles.
+  final DmTopic? ask;
+
   @override
   ConsumerState<DmScreen> createState() => _DmScreenState();
 }
@@ -55,6 +60,7 @@ class _DmScreenState extends ConsumerState<DmScreen> {
       return _Conversation(
         conversationId: direct,
         aboutProductId: widget.aboutProductId,
+        ask: widget.ask,
       );
     }
 
@@ -74,16 +80,22 @@ class _DmScreenState extends ConsumerState<DmScreen> {
       data: (id) => _Conversation(
         conversationId: id,
         aboutProductId: widget.aboutProductId,
+        ask: widget.ask,
       ),
     );
   }
 }
 
 class _Conversation extends ConsumerStatefulWidget {
-  const _Conversation({required this.conversationId, this.aboutProductId});
+  const _Conversation({
+    required this.conversationId,
+    this.aboutProductId,
+    this.ask,
+  });
 
   final String conversationId;
   final String? aboutProductId;
+  final DmTopic? ask;
 
   @override
   ConsumerState<_Conversation> createState() => _ConversationState();
@@ -149,7 +161,7 @@ class _ConversationState extends ConsumerState<_Conversation> {
         ],
         initialText: about == null
             ? ''
-            : 'Hi! Is the ${about.title} still available?',
+            : openingQuestion(widget.ask, about.title),
         onSend: (text) => ref
             .read(messagingRepositoryProvider)
             .send(

@@ -83,16 +83,14 @@ void main() {
   testWidgets('it is off the feed, which is photographs now', (tester) async {
     await _pumpFeed(tester);
     expect(find.text('Browse the directory'), findsNothing);
-    expect(find.text('Browse the Market'), findsNothing);
+    expect(find.text('Shop the Market'), findsNothing);
   });
 
   testWidgets('the rail is built from the categories the directory has', (
     tester,
   ) async {
     final container = await _pumpSearch(tester);
-    final categories = await container.read(
-      directoryCategoriesProvider.future,
-    );
+    final categories = await container.read(directoryCategoriesProvider.future);
     final names = categories.map((c) => c.name).toSet();
 
     // The demo directory files businesses under these; the biggest category
@@ -124,9 +122,7 @@ void main() {
     expect(find.text('Claim this listing'), findsNWidgets(2));
   });
 
-  testWidgets('a claimed listing does not offer to be claimed', (
-    tester,
-  ) async {
+  testWidgets('a claimed listing does not offer to be claimed', (tester) async {
     await _pumpSearch(tester);
     await _openCategory(tester, 'Travel');
 

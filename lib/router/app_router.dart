@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/models.dart' show DmTopic;
 import '../screens/community/chatroom_screen.dart';
 import '../screens/community/forum_screen.dart';
 import '../screens/community/forums_screen.dart';
@@ -71,8 +72,7 @@ List<RouteBase> _sharedRoutes() => [
   // A hashtag is a place, reachable from wherever it was tapped.
   GoRoute(
     path: 'tag/:key',
-    builder: (context, state) =>
-        TagScreen(tag: state.pathParameters['key']!),
+    builder: (context, state) => TagScreen(tag: state.pathParameters['key']!),
   ),
   GoRoute(
     path: 'seller/:id',
@@ -92,6 +92,9 @@ List<RouteBase> _sharedRoutes() => [
           : state.pathParameters['id'],
       // Carried from "Ask" on a product page.
       aboutProductId: state.uri.queryParameters['about'],
+      ask: DmTopic.values
+          .where((t) => t.name == state.uri.queryParameters['ask'])
+          .firstOrNull,
     ),
   ),
   GoRoute(
@@ -220,10 +223,7 @@ GoRouter buildRouter(Ref ref) {
       // "Are you…": the seven doors behind Create a Profile. The door rides
       // along as ?intent= through the three routes below.
       // Public on purpose; see the redirect above.
-      GoRoute(
-        path: '/terms',
-        builder: (context, state) => const TermsScreen(),
-      ),
+      GoRoute(path: '/terms', builder: (context, state) => const TermsScreen()),
       GoRoute(
         path: '/delete-account',
         builder: (context, state) => const DeleteAccountScreen(),
