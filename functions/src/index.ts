@@ -93,6 +93,7 @@ import {
   type PromoKind,
 } from './promos.ts';
 import { backfillCatalogPage } from './backfill.ts';
+import { blockDirectoryAccount } from './directory_block.ts';
 import { sweepCatalogPage } from './catalog_sweep.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { isDiagStep, requireDevProject, runDiagStep } from './diagnostics_notify.ts';
@@ -807,6 +808,24 @@ export const adminGeocodeDirectory = onCall(
  *
  * Call with `{ uid, dryRun: true }` first: it counts and writes nothing.
  */
+/**
+ * "Never give this account the directory": a line-by-line report on one
+ * account, and with `apply` the block list and a clean-up. See
+ * `directory_block.ts`.
+ */
+export const adminBlockDirectoryAccount = onCall(
+  { timeoutSeconds: 300, memory: '512MiB' },
+  withLoudErrors('adminBlockDirectoryAccount', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const { uid, apply } = (request.data ?? {}) as { uid?: unknown; apply?: unknown };
+    if (typeof uid !== 'string' || !uid.trim()) {
+      throw new HttpsError('invalid-argument', 'Which account? Paste its id.');
+    }
+    return blockDirectoryAccount(uid.trim(), { apply: apply === true });
+  }),
+);
+
 export const adminReleaseDirectory = onCall(
   { timeoutSeconds: 540, memory: '512MiB' },
   withLoudErrors('adminReleaseDirectory', async (request) => {

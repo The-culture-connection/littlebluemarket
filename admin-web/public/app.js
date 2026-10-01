@@ -786,7 +786,7 @@ renderPromoPreview();
 // Copy for Claude copies the whole log, the way the app's bug button does.
 
 /** Bumped by hand when this file changes, so a stale tab is obvious. */
-const ADMIN_BUILD = '2026-09-14f';
+const ADMIN_BUILD = '2026-09-30a';
 
 const DIR_CALL_TIMEOUT_MS = 560_000;
 const DIR_MAX_CALLS = 60;
@@ -1257,3 +1257,28 @@ async function sweepCatalog(apply) {
 }
 $('sweepCheckBtn').addEventListener('click', () => sweepCatalog(false));
 $('sweepRunBtn').addEventListener('click', () => sweepCatalog(true));
+
+// "Never give this account the directory." The server does the work and
+// hands back its report line by line; this prints it in the directory log so
+// Copy for Claude carries it (Grace, 2026-09-30: run it against Erin's
+// account and see a console log).
+async function blockAccount(apply) {
+  const uid = $('blockUid').value.trim();
+  if (!uid) { dirLog('Paste the app account id first.', true); return; }
+  if (apply && !window.confirm(`Block ${uid} from ever owning directory listings?\n\nAny listings it holds go back to unclaimed and their posts are deleted. Nothing in the app undoes the block.`)) return;
+  $('blockCheckBtn').disabled = true;
+  $('blockRunBtn').disabled = true;
+  try {
+    dirLog(`${apply ? 'Blocking' : 'Checking'} ${uid}…`);
+    const call = httpsCallable(functions, 'adminBlockDirectoryAccount', { timeout: DIR_CALL_TIMEOUT_MS });
+    const { data } = await call({ uid, apply });
+    for (const line of data.log ?? []) dirLog(line);
+  } catch (error) {
+    dirLogError(error);
+  } finally {
+    $('blockCheckBtn').disabled = false;
+    $('blockRunBtn').disabled = false;
+  }
+}
+$('blockCheckBtn').addEventListener('click', () => blockAccount(false));
+$('blockRunBtn').addEventListener('click', () => blockAccount(true));

@@ -288,13 +288,78 @@ export const SITE_WP_USER_IDS: ReadonlySet<number> = new Set([6]);
  * check while the whole-directory pass honoured it, and the one poisoned
  * what the other then preserved.
  */
-export function mayOwnListings(data: {
-  ownsListings?: unknown;
-  ownershipLocked?: unknown;
-  wpUserId?: unknown;
-}): boolean {
+export function mayOwnListings(
+  data: {
+    ownsListings?: unknown;
+    ownershipLocked?: unknown;
+    wpUserId?: unknown;
+    wpEmailLower?: unknown;
+  },
+  blocked: Blocklist = EMPTY_BLOCKLIST,
+  uid = '',
+): boolean {
   if (data.ownsListings === false || data.ownershipLocked === true) return false;
-  return !SITE_WP_USER_IDS.has(Number(data.wpUserId));
+  if (SITE_WP_USER_IDS.has(Number(data.wpUserId))) return false;
+  return !isBlocked(blocked, {
+    uid,
+    emailLower: String(data.wpEmailLower ?? ''),
+    wpUserId: Number(data.wpUserId),
+  });
+}
+
+/**
+ * Accounts an admin has said may never be given directory listings, by any
+ * of the three things that identify them. Kept in Firestore at
+ * `_internal/directoryBlocklist` so adding one is an admin action rather
+ * than a code change, and checked by every path that attributes listings.
+ *
+ * Grace, 2026-09-30, about the site account: "I just do not want them to be
+ * able to be assigned to her. EVER." Nothing in the app removes an entry;
+ * Allow it again lifts a lock but not this.
+ */
+export interface Blocklist {
+  uids: ReadonlySet<string>;
+  emails: ReadonlySet<string>;
+  wpUserIds: ReadonlySet<number>;
+}
+
+export const EMPTY_BLOCKLIST: Blocklist = {
+  uids: new Set(),
+  emails: new Set(),
+  wpUserIds: new Set(),
+};
+
+export const BLOCKLIST_DOC = '_internal/directoryBlocklist';
+
+/** Whether any one of these identifies a blocked account. Pure. */
+export function isBlocked(
+  list: Blocklist,
+  who: { uid?: string; emailLower?: string; wpUserId?: number },
+): boolean {
+  if (who.uid && list.uids.has(who.uid)) return true;
+  const email = (who.emailLower ?? '').trim().toLowerCase();
+  if (email && list.emails.has(email)) return true;
+  return who.wpUserId !== undefined && Number.isFinite(who.wpUserId) && list.wpUserIds.has(who.wpUserId);
+}
+
+/** The block list as stored. Pure, so a malformed document reads as empty. */
+export function blocklistFrom(data: Record<string, unknown> | undefined): Blocklist {
+  const strings = (v: unknown) =>
+    Array.isArray(v) ? v.map((s) => String(s).trim()).filter(Boolean) : [];
+  return {
+    uids: new Set(strings(data?.uids)),
+    emails: new Set(strings(data?.emails).map((e) => e.toLowerCase())),
+    wpUserIds: new Set(
+      (Array.isArray(data?.wpUserIds) ? data.wpUserIds : [])
+        .map(Number)
+        .filter((n) => Number.isFinite(n) && n > 0),
+    ),
+  };
+}
+
+export async function loadBlocklist(): Promise<Blocklist> {
+  const snap = await getFirestore().doc(BLOCKLIST_DOC).get();
+  return blocklistFrom(snap.data());
 }
 
 /**
@@ -326,9 +391,15 @@ export function listingOwnershipRefusal(input: {
   released?: boolean;
   /** The WordPress user the listings were authored by. */
   wpUserId?: number;
+  /** On the admin's block list, by uid, email or website account. */
+  blocked?: boolean;
 }): string | null {
-  // First, because neither is derived from a website that can answer
-  // differently tomorrow. See `ownershipLocked` and `SITE_WP_USER_IDS`.
+  // First, because none is derived from a website that can answer
+  // differently tomorrow. See `Blocklist`, `ownershipLocked` and
+  // `SITE_WP_USER_IDS`.
+  if (input.blocked) {
+    return 'an admin has blocked this account from ever owning directory listings';
+  }
   if (input.released) {
     return 'an admin released these listings from this account';
   }
@@ -676,11 +747,13 @@ export async function syncListings(
   const db = getFirestore();
   // Refused before the index is even read, when the refusal does not depend
   // on it.
+  const blocklist = await loadBlocklist();
   const early = listingOwnershipRefusal({
     roles: options.roles ?? [],
     listingCount: 0,
     released: options.released,
     wpUserId,
+    blocked: isBlocked(blocklist, { uid: ownerUid, wpUserId }),
   });
   if (early) {
     await enforceRefusal(ownerUid, early, wpUserId);
@@ -1104,14 +1177,17 @@ export async function enforceRefusal(uid: string, reason: string, wpUserId?: num
 
 /** The linked accounts, split by whether they may be handed listings. */
 async function linkedAccounts(): Promise<{ owners: Map<number, string>; barred: Set<string> }> {
-  const snapshot = await getFirestore().collection('directory').where('status', '==', 'linked').get();
+  const [snapshot, blocklist] = await Promise.all([
+    getFirestore().collection('directory').where('status', '==', 'linked').get(),
+    loadBlocklist(),
+  ]);
   const owners = new Map<number, string>();
-  const barred = new Set<string>();
+  const barred = new Set<string>(blocklist.uids);
   for (const doc of snapshot.docs) {
     const data = doc.data() as DirectoryDoc;
     // The account that manages the directory authored everybody's listings.
     // Linking it is right; handing it the directory is not.
-    if (!mayOwnListings(data)) {
+    if (!mayOwnListings(data, blocklist, doc.id)) {
       barred.add(doc.id);
       continue;
     }
@@ -1385,6 +1461,7 @@ export async function syncAllDirectoryListings(lookups: Lookups = defaultLookups
   if (!wpConfigured()) return 0;
   const db = getFirestore();
   const linked = await db.collection('directory').where('status', '==', 'linked').get();
+  const blocklist = await loadBlocklist();
   let owners = 0;
   for (const doc of linked.docs) {
     const data = doc.data() as DirectoryDoc & { wpRoles?: unknown };
@@ -1395,7 +1472,7 @@ export async function syncAllDirectoryListings(lookups: Lookups = defaultLookups
       // the lock that the app-launch path and the whole-directory pass both
       // honour, so an admin's release lasted until the next run, at most six
       // hours. A barred account is now made to stay clean, not re-mirrored.
-      if (!mayOwnListings(data)) {
+      if (!mayOwnListings(data, blocklist, doc.id)) {
         await enforceRefusal(
           doc.id,
           String((data as { ownershipRefusedReason?: unknown }).ownershipRefusedReason ?? '') ||
@@ -1628,8 +1705,16 @@ export async function syncDirectory(
   // it is not derived from the answer, so no reply from WordPress can undo
   // it. Everything else here is recomputed on every refresh.
   const released = existing?.ownershipLocked === true;
-  if (released) {
-    refusal = listingOwnershipRefusal({ roles: [], listingCount: 0, released: true });
+  // The block list is checked by the email being linked, the account doing
+  // the linking and the website account found, so changing any one of them
+  // does not get round it.
+  const blocked = isBlocked(await loadBlocklist(), {
+    uid,
+    emailLower,
+    wpUserId: user?.id,
+  });
+  if (blocked || released) {
+    refusal = listingOwnershipRefusal({ roles: [], listingCount: 0, released, blocked });
   } else if (user) {
     const index = await ownerIndex(lookups, { force: !auto });
     refusal = listingOwnershipRefusal({

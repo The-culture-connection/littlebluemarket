@@ -254,3 +254,16 @@ void test('one predicate decides for every path that hands out listings', async 
   assert.equal(mayOwnListings({ wpUserId: 6 }), false);
   assert.equal(mayOwnListings({ wpUserId: 42 }), true);
 });
+
+void test('the block list matches by account, email or website user, and reads junk as empty', async () => {
+  const { blocklistFrom, isBlocked, mayOwnListings } = await import('../src/directory.ts');
+  const list = blocklistFrom({ uids: ['erin'], emails: [' Erin@Example.com '], wpUserIds: [6, 'x'] });
+  assert.ok(isBlocked(list, { uid: 'erin' }));
+  assert.ok(isBlocked(list, { emailLower: 'erin@example.com' }));
+  assert.ok(isBlocked(list, { wpUserId: 6 }));
+  assert.equal(isBlocked(list, { uid: 'biz', emailLower: 'biz@example.com', wpUserId: 42 }), false);
+  // A link whose website email is on the list is barred even with a clean
+  // website account number.
+  assert.equal(mayOwnListings({ wpUserId: 42, wpEmailLower: 'erin@example.com' }, list, 'new'), false);
+  assert.equal(blocklistFrom(undefined).uids.size, 0);
+});

@@ -187,6 +187,15 @@
     </div>
     <div id="relNotice" class="notice" hidden></div>
 
+    <h3 style="margin:22px 0 4px">Never give this account the directory</h3>
+    <p class="hint">For the accounts that run littlebluecart.com, like the one that types in every business's listing. <strong>Check</strong> prints everything about the account in the log below without changing anything. <strong>Block forever</strong> puts the account, its emails and its website account on a permanent block list that every part of the app checks, puts any listings it holds back to unclaimed and deletes their posts. Nothing in the app takes an account off the block list, including <strong>Allow it again</strong>.</p>
+    <label for="blockUid">The app account's id</label>
+    <input id="blockUid" placeholder="d1GMG6NPhUQplgS8p1nWT1ZedQ92">
+    <div class="row" style="margin-top:8px">
+      <div><button id="blockCheckBtn" class="quiet">Check</button></div>
+      <div><button id="blockRunBtn" class="primary">Block forever</button></div>
+    </div>
+
     <h3 style="margin:22px 0 4px">Repair the hashtag pages</h3>
     <p class="hint">Products and posts written before 28 September do not carry the lowercase hashtag key the tag pages search by, so they do not appear on them. This fills it in for both. Safe to run more than once, and it only writes where it is missing. Anything written from now on does it itself.</p>
     <div class="row" style="margin-top:8px">
