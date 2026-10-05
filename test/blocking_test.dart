@@ -43,12 +43,7 @@ Future<ProviderContainer> _signedIn(
   // Riverpod disposes a provider nothing listens to, and a stream backed by
   // a controller then never delivers its first value, so reading .future
   // waits for ever. A screen always has a listener; a test has to say so.
-  for (final provider in [
-    blockedUidsProvider,
-    feedProvider,
-    chatroomProvider,
-    inboxProvider,
-  ]) {
+  for (final provider in [blockedUidsProvider, feedProvider, chatroomProvider, inboxProvider]) {
     container.listen(provider, (_, _) {});
   }
   return container;
@@ -60,10 +55,7 @@ void main() {
     // around it throws, and lbmRetry then retries for ever, which looks
     // exactly like a hang.
     final container = await _signedIn(tester, guest: true);
-    expect(
-      container.read(blockedUidsProvider).value ?? const <String>{},
-      isEmpty,
-    );
+    expect(container.read(blockedUidsProvider).value ?? const <String>{}, isEmpty);
   });
 
   testWidgets('blocking takes their posts out of the feed', (tester) async {
@@ -129,10 +121,7 @@ void main() {
     final repo = container.read(reportRepositoryProvider);
     await repo.blockUser(victim);
     await tester.pumpAndSettle();
-    expect(
-      (await container.read(feedProvider.future)).length,
-      feed.length - howMany,
-    );
+    expect((await container.read(feedProvider.future)).length, feed.length - howMany);
 
     await repo.unblockUser(victim);
     await tester.pumpAndSettle();
@@ -166,9 +155,7 @@ void main() {
     expect(find.textContaining('Unblock '), findsNothing);
 
     final feed = await container.read(feedProvider.future);
-    await container
-        .read(reportRepositoryProvider)
-        .blockUser(feed.first.authorId);
+    await container.read(reportRepositoryProvider).blockUser(feed.first.authorId);
     await tester.pumpAndSettle();
     // The row reads the live set, so it flips without being rebuilt by hand.
     expect(find.textContaining('Unblock '), findsOneWidget);

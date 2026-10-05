@@ -62,7 +62,8 @@ class RoundUpCard extends ConsumerWidget {
             Switch(
               value: on,
               activeThumbColor: c.sage,
-              onChanged: (next) => ref.read(roundUpProvider.notifier).set(next),
+              onChanged: (next) =>
+                  ref.read(roundUpProvider.notifier).set(next),
             ),
           ],
         ),

@@ -34,11 +34,7 @@ final hasDirectoryStorefrontProvider = Provider.family<bool, String>((
 /// The listing's photos, one per mirrored listing, in a horizontal strip.
 /// Nothing at all when there are none.
 class DirectoryPhotoStrip extends ConsumerWidget {
-  const DirectoryPhotoStrip({
-    super.key,
-    required this.ownerUid,
-    this.own = false,
-  });
+  const DirectoryPhotoStrip({super.key, required this.ownerUid, this.own = false});
 
   final String ownerUid;
 
@@ -71,8 +67,11 @@ class DirectoryPhotoStrip extends ConsumerWidget {
             height: 116,
             fit: BoxFit.cover,
             cacheWidth: 312,
-            errorBuilder: (_, _, _) =>
-                Container(width: 156, height: 116, color: c.skyWash),
+            errorBuilder: (_, _, _) => Container(
+              width: 156,
+              height: 116,
+              color: c.skyWash,
+            ),
           ),
         ),
       ),
@@ -136,11 +135,12 @@ class DirectoryProductsGrid extends ConsumerWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   padding: EdgeInsets.zero,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 7,
-                    crossAxisSpacing: 7,
-                  ),
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        mainAxisSpacing: 7,
+                        crossAxisSpacing: 7,
+                      ),
                   itemCount: list.length,
                   itemBuilder: (context, i) => GridCell(
                     product: list[i],
@@ -175,11 +175,7 @@ class DirectoryProductsGrid extends ConsumerWidget {
 /// waiting on littlebluecart.com is not simply missing to the one person
 /// who would wonder where it went.
 class DirectoryListings extends ConsumerWidget {
-  const DirectoryListings({
-    super.key,
-    required this.ownerUid,
-    this.own = false,
-  });
+  const DirectoryListings({super.key, required this.ownerUid, this.own = false});
 
   final String ownerUid;
   final bool own;

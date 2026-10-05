@@ -74,10 +74,9 @@ class FirestorePromoRepository implements PromoRepository {
   /// an error strip over a popup the person is already reading.
   Future<void> _record(String id, String event) async {
     try {
-      await _functions.httpsCallable('promoRecord').call<Map<String, dynamic>>({
-        'id': id,
-        'event': event,
-      });
+      await _functions
+          .httpsCallable('promoRecord')
+          .call<Map<String, dynamic>>({'id': id, 'event': event});
     } catch (_) {
       // Counted nowhere, seen anyway. The number is for Grace, not for the
       // person holding the phone.

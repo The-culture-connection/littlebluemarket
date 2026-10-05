@@ -146,7 +146,10 @@ class _FloatingCircle extends StatelessWidget {
               right: -2,
               child: Container(
                 constraints: const BoxConstraints(minWidth: 17),
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 1,
+                ),
                 decoration: BoxDecoration(
                   color: c.accentDeep,
                   borderRadius: LbmRadius.pillR,
@@ -264,7 +267,10 @@ class DetailSection extends StatelessWidget {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: LbmText.display.copyWith(fontSize: 18, color: c.ink),
+                    style: LbmText.display.copyWith(
+                      fontSize: 18,
+                      color: c.ink,
+                    ),
                   ),
                 ),
                 ?action,

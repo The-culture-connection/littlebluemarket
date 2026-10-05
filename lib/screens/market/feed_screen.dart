@@ -233,7 +233,8 @@ class _GridState extends ConsumerState<_Grid> {
 
   /// True while a finger or a fling is moving the grid.
   bool get _moving =>
-      controller.hasClients && controller.position.isScrollingNotifier.value;
+      controller.hasClients &&
+      controller.position.isScrollingNotifier.value;
 
   @override
   void initState() {

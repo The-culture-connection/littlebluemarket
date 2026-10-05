@@ -136,7 +136,8 @@ class Promo {
   bool showsTo({required bool isSeller, required bool directoryLinked}) =>
       audience.includes(isSeller: isSeller, directoryLinked: directoryLinked);
 
-  String get age => createdAt == null ? '' : Fmt.relative(createdAt!);
+  String get age =>
+      createdAt == null ? '' : Fmt.relative(createdAt!);
 }
 
 /// What the admin website sends.

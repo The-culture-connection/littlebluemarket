@@ -55,7 +55,9 @@ class FirestoreMessagingRepository implements MessagingRepository {
       latest: messages.length <= 2
           ? messages
           : messages.sublist(messages.length - 2),
-      lastHourCount: messages.where((m) => m.createdAt.isAfter(hourAgo)).length,
+      lastHourCount: messages
+          .where((m) => m.createdAt.isAfter(hourAgo))
+          .length,
       // hereNow stays 0: there is no presence anywhere in this system.
     );
   });

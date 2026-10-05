@@ -39,7 +39,10 @@ void main() {
     tester,
   ) async {
     var opened = 0;
-    await pump(tester, GridCell(product: product, onTap: () => opened++));
+    await pump(
+      tester,
+      GridCell(product: product, onTap: () => opened++),
+    );
     expect(find.bySemanticsLabel('Post this to the feed'), findsNothing);
 
     await tester.tap(find.byType(GridCell));
@@ -92,9 +95,7 @@ void main() {
     // The top-left corner is picture, as far from the button as the tile
     // allows. Grace was explicit that the tap must keep its old meaning:
     // "the products will open their product detail page as normal".
-    await tester.tapAt(
-      tester.getTopLeft(find.byType(GridCell)) + const Offset(8, 8),
-    );
+    await tester.tapAt(tester.getTopLeft(find.byType(GridCell)) + const Offset(8, 8));
     await tester.pump();
     expect(opened, 1);
     expect(posted, 0);

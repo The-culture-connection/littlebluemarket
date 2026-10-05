@@ -141,9 +141,7 @@ class _NotificationRow extends ConsumerWidget {
           ? const LbmSkeleton(width: 36, height: 36, radius: 18)
           : Avatar(from.value!, size: AvatarSize.sm),
       title: Text(
-        tagged
-            ? '${notification.title} · $name'
-            : '$name ${notification.headline}',
+        tagged ? '${notification.title} · $name' : '$name ${notification.headline}',
       ),
       subtitle: Text(
         notification.text.isEmpty

@@ -95,9 +95,7 @@ class _DirectoryProductScreenState
       if (picked.isEmpty || !mounted) return;
       final loaded = <_PickedPhoto>[];
       for (final file in picked) {
-        loaded.add(
-          _PickedPhoto(await file.readAsBytes(), pickedContentType(file)),
-        );
+        loaded.add(_PickedPhoto(await file.readAsBytes(), pickedContentType(file)));
       }
       if (!mounted) return;
       setState(() {
@@ -159,9 +157,7 @@ class _DirectoryProductScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _editing
-                ? 'Saved.'
-                : 'Added. It is in the feed and on your profile.',
+            _editing ? 'Saved.' : 'Added. It is in the feed and on your profile.',
           ),
         ),
       );
@@ -230,9 +226,10 @@ class _DirectoryProductScreenState
     // New product: the link starts as the website on the listing.
     if (id == null && _link.text.isEmpty) {
       final listings = ref.watch(myDirectoryListingsProvider).value ?? const [];
-      final site = listings
-          .map((l) => l.website)
-          .firstWhere((w) => w.isNotEmpty, orElse: () => '');
+      final site = listings.map((l) => l.website).firstWhere(
+        (w) => w.isNotEmpty,
+        orElse: () => '',
+      );
       if (site.isNotEmpty) _link.text = site;
     }
 
@@ -308,9 +305,7 @@ class _DirectoryProductScreenState
                 ],
                 const SizedBox(height: 16),
                 PillButton(
-                  _busy
-                      ? _stage
-                      : (_editing ? 'Save changes' : 'Add to my profile'),
+                  _busy ? _stage : (_editing ? 'Save changes' : 'Add to my profile'),
                   onPressed: _busy ? null : _save,
                 ),
                 if (_editing) ...[

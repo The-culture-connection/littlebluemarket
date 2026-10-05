@@ -34,9 +34,7 @@ Future<void> showMoreSheet(
       children: [
         ListRow(
           leading: Icon(Icons.flag_outlined, color: isSelf ? c.ink3 : c.clay),
-          title: Text(
-            postId == null ? 'Report $subjectHandle' : 'Report this post',
-          ),
+          title: Text(postId == null ? 'Report $subjectHandle' : 'Report this post'),
           subtitle: Text(
             isSelf
                 ? 'This is you.'

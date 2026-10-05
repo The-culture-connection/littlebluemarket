@@ -140,39 +140,22 @@ void main() {
 /// A profile is never created without a name (Grace, 2026-09-09): nobody
 /// should appear as "Someone".
 void nameRequiredTests() {
-  testWidgets('Create a profile stays off until a name is typed', (
-    tester,
-  ) async {
+  testWidgets('Create a profile stays off until a name is typed', (tester) async {
     await _pumpAt(tester, '/setup');
     expect(find.text('Set up your profile'), findsOneWidget);
 
     Opacity buttonOpacity() => tester.widget<Opacity>(
-      find
-          .ancestor(
-            of: find.text('Create a profile'),
-            matching: find.byType(Opacity),
-          )
-          .first,
+      find.ancestor(of: find.text('Create a profile'), matching: find.byType(Opacity)).first,
     );
     expect(buttonOpacity().opacity, 0.5, reason: 'disabled with no name');
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'The name people see on your posts'),
-      'G',
-    );
+    await tester.enterText(find.widgetWithText(TextField, 'The name people see on your posts'), 'G');
     await tester.pump();
     expect(buttonOpacity().opacity, 0.5, reason: 'one character is not a name');
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'The name people see on your posts'),
-      'Grace',
-    );
+    await tester.enterText(find.widgetWithText(TextField, 'The name people see on your posts'), 'Grace');
     await tester.pump();
-    expect(
-      buttonOpacity().opacity,
-      1.0,
-      reason: 'enabled once a name is there',
-    );
+    expect(buttonOpacity().opacity, 1.0, reason: 'enabled once a name is there');
   });
 
   // Grace's testers, 2026-09-23: "users cannot get out of the set up profile

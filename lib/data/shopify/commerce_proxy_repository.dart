@@ -167,8 +167,7 @@ class CommerceProxyRepository implements CommerceRepository {
   @override
   Future<CheckoutHandoff> beginCheckout({int? roundUpCents}) async {
     final data = await _call('commerceBeginCheckout', {
-      if (roundUpCents != null && roundUpCents > 0)
-        'roundUpCents': roundUpCents,
+      if (roundUpCents != null && roundUpCents > 0) 'roundUpCents': roundUpCents,
     });
     final url = data['checkoutUrl'];
     if (url is! String) {

@@ -73,8 +73,7 @@ class _LinkedTextState extends State<LinkedText> {
     final linkStyle = base.copyWith(
       color: widget.linkColor ?? Theme.of(context).colorScheme.primary,
       decoration: TextDecoration.underline,
-      decorationColor:
-          widget.linkColor ?? Theme.of(context).colorScheme.primary,
+      decorationColor: widget.linkColor ?? Theme.of(context).colorScheme.primary,
     );
     final spans = <InlineSpan>[];
     var cursor = 0;

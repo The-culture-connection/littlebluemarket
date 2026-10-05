@@ -94,9 +94,7 @@ void main() {
     await tester.enterText(fields.at(1), 'a-good-password');
     await tester.pumpAndSettle();
     expect(
-      tester
-          .widget<InkWell>(find.widgetWithText(InkWell, 'Sign in').first)
-          .onTap,
+      tester.widget<InkWell>(find.widgetWithText(InkWell, 'Sign in').first).onTap,
       isNotNull,
     );
   });

@@ -461,9 +461,11 @@ class _CartPostDetail extends ConsumerWidget {
             onPressed: () => requireProfile(
               context,
               ref,
-              () => addManyToCart(context, ref, [
-                for (final line in post.items) line.productId,
-              ]),
+              () => addManyToCart(
+                context,
+                ref,
+                [for (final line in post.items) line.productId],
+              ),
             ),
           ),
         ),

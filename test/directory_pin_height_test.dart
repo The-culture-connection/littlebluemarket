@@ -67,9 +67,7 @@ Widget _host(Widget child) => ProviderScope(
   child: MaterialApp(
     theme: buildLbmTheme(Brightness.light),
     home: Scaffold(
-      body: Center(
-        child: SizedBox(width: _width, child: child),
-      ),
+      body: Center(child: SizedBox(width: _width, child: child)),
     ),
   ),
 );

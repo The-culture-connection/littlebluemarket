@@ -11,8 +11,9 @@ import 'package:little_blue_market/state/feed_items.dart';
 /// that is ours: what the grid is allowed to do with a new assembly while a
 /// finger is down.
 
-FeedItem _pin(String id) =>
-    NudgeItem(NudgeKind.values[id.hashCode.abs() % NudgeKind.values.length]);
+FeedItem _pin(String id) => NudgeItem(
+  NudgeKind.values[id.hashCode.abs() % NudgeKind.values.length],
+);
 
 void main() {
   group('stableOrder', () {

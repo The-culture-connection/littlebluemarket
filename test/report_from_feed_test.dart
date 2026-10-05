@@ -61,10 +61,7 @@ void main() {
     await tester.tap(find.text('Report this post'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.textContaining('Only Little Blue Market sees this'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Only Little Blue Market sees this'), findsOneWidget);
     expect(find.text('Send report'), findsOneWidget);
   });
 

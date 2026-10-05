@@ -88,9 +88,10 @@ void main() {
     expect(_asset(Fx.gif), findsNothing);
     // Nothing moves: not the artwork, not the buttons under it.
     expect(_rectOf(tester, Fx.still), before);
-    expect([
-      for (final l in _labels) tester.getRect(find.bySemanticsLabel(l)),
-    ], buttonsBefore);
+    expect(
+      [for (final l in _labels) tester.getRect(find.bySemanticsLabel(l))],
+      buttonsBefore,
+    );
   });
 
   testWidgets('the intro is skipped entirely when it is not requested', (

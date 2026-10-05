@@ -271,7 +271,10 @@ void main() {
       };
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('You chipped in this month'), findsOneWidget);
+      expect(
+        find.textContaining('You chipped in this month'),
+        findsOneWidget,
+      );
       expect(find.text('Chip in to Little Blue Market'), findsNothing);
     });
   });

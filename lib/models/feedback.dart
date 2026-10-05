@@ -93,5 +93,6 @@ class NewFeedback {
   final String fromName;
   final bool isGuest;
 
-  bool get isValid => text.trim().isNotEmpty && text.trim().length <= textMax;
+  bool get isValid =>
+      text.trim().isNotEmpty && text.trim().length <= textMax;
 }

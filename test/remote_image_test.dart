@@ -44,10 +44,8 @@ void main() {
 
     test('everything else is left alone, even on the web', () {
       expect(resolveImageUrl('', onWeb: true), '');
-      expect(
-        resolveImageUrl('asset://assets/images/a.jpg', onWeb: true),
-        'asset://assets/images/a.jpg',
-      );
+      expect(resolveImageUrl('asset://assets/images/a.jpg', onWeb: true),
+          'asset://assets/images/a.jpg');
       // Not a url at all: handed back untouched rather than mangled.
       expect(resolveImageUrl('not a url', onWeb: true), 'not a url');
     });

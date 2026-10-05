@@ -49,7 +49,9 @@ void main() {
     });
 
     test('a dot inside a handle is part of it', () {
-      expect(parseMentionHandles('@found.house makes bowls'), ['found.house']);
+      expect(parseMentionHandles('@found.house makes bowls'), [
+        'found.house',
+      ]);
     });
 
     test('plain prose has nothing to pick out', () {
@@ -77,7 +79,11 @@ void main() {
 
     testWidgets('a hashtag comes back with its hash on it', (tester) async {
       String? tag;
-      await _pump(tester, 'On now: #HolidayMarket', onTag: (t) => tag = t);
+      await _pump(
+        tester,
+        'On now: #HolidayMarket',
+        onTag: (t) => tag = t,
+      );
       await tester.tapOnText(find.textRange.ofSubstring('#HolidayMarket'));
       await tester.pumpAndSettle();
       expect(tag, '#HolidayMarket');

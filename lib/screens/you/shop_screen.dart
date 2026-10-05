@@ -92,7 +92,8 @@ class ShopScreen extends ConsumerWidget {
                               product: product,
                             ),
                             proof:
-                                product.saveCount >= ProductItem.proofThreshold,
+                                product.saveCount >=
+                                ProductItem.proofThreshold,
                           ),
                         ),
                     ],
@@ -134,7 +135,10 @@ class _ShopStats extends ConsumerWidget {
         child: Row(
           children: [
             Expanded(
-              child: _Stat(value: person.grossSalesLabel, label: 'Total sales'),
+              child: _Stat(
+                value: person.grossSalesLabel,
+                label: 'Total sales',
+              ),
             ),
             Expanded(
               child: _Stat(
