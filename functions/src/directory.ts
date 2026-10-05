@@ -194,11 +194,14 @@ export function listingMirrorDoc(
     phone: record.phone,
     storeLink: record.storeLink,
     locationLabel: record.locationLabel,
-    street: address?.street ?? '',
+    // Never the street or the full address: a seller's town, state and
+    // zip code are all the app shows (Grace, 2026-10-05). Written as empty
+    // rather than left out, so the merge clears what older syncs stored.
+    street: '',
     city: address?.city ?? '',
     state: address?.state ?? '',
     zip: address?.zip ?? '',
-    address: address?.display ?? '',
+    address: '',
     categories: resolve('vendors_dir_cat', record.categoryIds),
     tags: resolve('vendors_dir_tag', record.tagIds),
     locations: resolve('vendors_loc_loc', record.locationIds),

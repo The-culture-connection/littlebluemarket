@@ -81,27 +81,37 @@ void main() {
 
     test('someone who just gave is thanked, not asked again', () {
       expect(
-        donationNudgeSlot(ctx(chippedInAt: now.subtract(const Duration(days: 3)))),
+        donationNudgeSlot(
+          ctx(chippedInAt: now.subtract(const Duration(days: 3))),
+        ),
         isNull,
       );
       expect(
-        donationNudgeSlot(ctx(chippedInAt: now.subtract(const Duration(days: 29)))),
+        donationNudgeSlot(
+          ctx(chippedInAt: now.subtract(const Duration(days: 29))),
+        ),
         isNull,
       );
       // A month later it is a fair question again.
       expect(
-        donationNudgeSlot(ctx(chippedInAt: now.subtract(const Duration(days: 31)))),
+        donationNudgeSlot(
+          ctx(chippedInAt: now.subtract(const Duration(days: 31))),
+        ),
         isNotNull,
       );
     });
 
     test('a dismissal buys a week', () {
       expect(
-        donationNudgeSlot(ctx(dismissedAt: now.subtract(const Duration(days: 2)))),
+        donationNudgeSlot(
+          ctx(dismissedAt: now.subtract(const Duration(days: 2))),
+        ),
         isNull,
       );
       expect(
-        donationNudgeSlot(ctx(dismissedAt: now.subtract(const Duration(days: 8)))),
+        donationNudgeSlot(
+          ctx(dismissedAt: now.subtract(const Duration(days: 8))),
+        ),
         isNotNull,
       );
     });
@@ -115,7 +125,10 @@ void main() {
       expect(donationNudgeSlot(ctx(dismissals: three)), isNull);
 
       // Two is not three.
-      expect(donationNudgeSlot(ctx(dismissals: three.take(2).toList())), isNotNull);
+      expect(
+        donationNudgeSlot(ctx(dismissals: three.take(2).toList())),
+        isNotNull,
+      );
 
       // And three long ago has expired: the window is ninety days, not for
       // ever, or one bad week would silence it permanently.
@@ -146,7 +159,10 @@ void main() {
       expect(donationNudgeCopy(212), hasLength(4));
       final seen = {
         for (var day = 0; day < 4; day++)
-          donationNudgeLine(DateTime(2026, 9, 29).add(Duration(days: day)), 212),
+          donationNudgeLine(
+            DateTime(2026, 9, 29).add(Duration(days: day)),
+            212,
+          ),
       };
       expect(seen, hasLength(4), reason: 'the same line every day');
     });
@@ -178,7 +194,11 @@ void main() {
       expect(some.progress, closeTo(0.674, 0.01));
 
       // Over target is a full bar, not an overflowing one.
-      const over = Funding(month: '2026-08', raisedCents: 99000, budgetCents: 62000);
+      const over = Funding(
+        month: '2026-08',
+        raisedCents: 99000,
+        budgetCents: 62000,
+      );
       expect(over.progress, 1.0);
     });
   });

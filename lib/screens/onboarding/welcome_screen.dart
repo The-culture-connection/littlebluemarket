@@ -215,7 +215,10 @@ class _WelcomeButton extends StatelessWidget {
         color: outlined ? Colors.transparent : LbmConst.slate,
         borderRadius: LbmRadius.pillR,
         border: outlined
-            ? Border.all(color: LbmConst.onWelcome.withValues(alpha: 0.9), width: 1.6)
+            ? Border.all(
+                color: LbmConst.onWelcome.withValues(alpha: 0.9),
+                width: 1.6,
+              )
             : null,
       ),
       child: Material(
@@ -227,7 +230,10 @@ class _WelcomeButton extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 52),
             child: Center(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 child: Text(
                   label,
                   textAlign: TextAlign.center,

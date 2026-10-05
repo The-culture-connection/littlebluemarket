@@ -39,7 +39,9 @@ Widget _grid() {
   ];
   final wide = [false, false, false, true, false, false, false, false];
   return MaterialApp(
-    home: Scaffold(body: LbmMasonry(wide: wide, children: children)),
+    home: Scaffold(
+      body: LbmMasonry(wide: wide, children: children),
+    ),
   );
 }
 
@@ -112,16 +114,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: LbmMasonry(
-            wide: const [
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-            ],
+            wide: const [false, false, false, false, false, false, false, true],
             children: [
               for (var i = 0; i < 7; i++)
                 Padding(

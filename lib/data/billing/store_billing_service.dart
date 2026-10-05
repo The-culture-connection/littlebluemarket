@@ -24,9 +24,8 @@ class StoreBillingService implements BillingService {
 
   /// 'apple' or 'google'. The server needs to know who to ask, and the phone
   /// is the only one who knows which store it bought from.
-  static String get _store => Platform.isIOS || Platform.isMacOS
-      ? 'apple'
-      : 'google';
+  static String get _store =>
+      Platform.isIOS || Platform.isMacOS ? 'apple' : 'google';
 
   @override
   Future<bool> available() async {

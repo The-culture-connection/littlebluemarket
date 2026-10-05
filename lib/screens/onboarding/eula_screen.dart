@@ -39,8 +39,9 @@ const kTermsSections = <TermsSection>[
   TermsSection('1. Who this is between', [
     'These terms are an agreement between you and The Culture Connection '
         'Technology Solutions, which runs Little Blue Market and Little Blue '
-        'Cart. They are not an agreement with Apple or Google, and neither '
-        'company is responsible for this app or for anything in it.',
+        'Cart. They are not an agreement with the app store you installed it '
+        'from, and that store is not responsible for this app or for '
+        'anything in it.',
     'By creating a profile, or by using the app, you accept these terms. If '
         'you do not accept them, please do not use the app.',
   ]),
@@ -138,7 +139,7 @@ const kTermsSections = <TermsSection>[
         'have paid us in the twelve months before the problem arose.',
   ]),
   TermsSection('11. Support, and reaching a person', [
-    'Support for the app is ours, not Apple\'s or Google\'s. The quickest '
+    'Support for the app is ours, not the app store\'s. The quickest '
         'route is the small bug button inside the app, which sends us what '
         'you were looking at. You can also write to us:',
     LbmLinks.supportEmail,
@@ -149,7 +150,7 @@ const kTermsSections = <TermsSection>[
         'means accepting the new version. A change that matters will be '
         'announced in the app.',
   ]),
-  TermsSection('13. Apple and Google', [
+  TermsSection('13. Apple', [
     'Where you installed this app from Apple, you and we agree that: Apple '
         'has no obligation to provide support for it; Apple is not '
         'responsible for it or for any claim about it, including product '

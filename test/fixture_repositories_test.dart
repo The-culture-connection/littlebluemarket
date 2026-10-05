@@ -25,7 +25,11 @@ void main() {
       expect(await social.watchFollowing('kali').first, isFalse);
       await social.setFollowing('kali', true);
       expect(await social.watchFollowing('kali').first, isTrue);
-      expect(await social.watchFollowing('dee').first, isFalse, reason: 'per person');
+      expect(
+        await social.watchFollowing('dee').first,
+        isFalse,
+        reason: 'per person',
+      );
       await social.setFollowing('kali', false);
       expect(await social.watchFollowing('kali').first, isFalse);
     });
@@ -605,46 +609,75 @@ void reportTests() {
     late FixtureBackend backend;
     setUp(() => backend = FixtureBackend(store: FixtureStore()));
 
-    test('a report lands in the store; a ban removes the posts and closes it', () async {
-      final repo = FixtureReportRepository(backend);
-      final me = backend.uid;
-      final other = backend.store.people.value.keys.firstWhere((id) => id != me);
-      final before = backend.store.posts.value.length;
-      await repo.submit(NewReport(
-        subjectUid: other,
-        subjectName: 'Other',
-        subjectHandle: '@other',
-        kind: ReportKind.user,
-        reason: ReportReason.spam,
-        text: '',
-      ));
-      final report = backend.store.reports.value.single;
-      expect(report.isOpen, isTrue);
-      expect(report.reporterUid, me);
+    test(
+      'a report lands in the store; a ban removes the posts and closes it',
+      () async {
+        final repo = FixtureReportRepository(backend);
+        final me = backend.uid;
+        final other = backend.store.people.value.keys.firstWhere(
+          (id) => id != me,
+        );
+        final before = backend.store.posts.value.length;
+        await repo.submit(
+          NewReport(
+            subjectUid: other,
+            subjectName: 'Other',
+            subjectHandle: '@other',
+            kind: ReportKind.user,
+            reason: ReportReason.spam,
+            text: '',
+          ),
+        );
+        final report = backend.store.reports.value.single;
+        expect(report.isOpen, isTrue);
+        expect(report.reporterUid, me);
 
-      await repo.banUser(other, reportId: report.id);
-      expect(backend.store.banned.value, contains(other));
-      expect(backend.store.posts.value.where((p) => p.authorId == other), isEmpty);
-      expect(backend.store.posts.value.length, lessThanOrEqualTo(before));
-      final after = backend.store.reports.value.single;
-      expect(after.status, ReportStatus.banned);
-      expect(after.subjectBanned, isTrue);
+        await repo.banUser(other, reportId: report.id);
+        expect(backend.store.banned.value, contains(other));
+        expect(
+          backend.store.posts.value.where((p) => p.authorId == other),
+          isEmpty,
+        );
+        expect(backend.store.posts.value.length, lessThanOrEqualTo(before));
+        final after = backend.store.reports.value.single;
+        expect(after.status, ReportStatus.banned);
+        expect(after.subjectBanned, isTrue);
 
-      await repo.unbanUser(other);
-      expect(backend.store.banned.value, isNot(contains(other)));
-      expect(backend.store.reports.value.single.subjectBanned, isFalse);
-    });
+        await repo.unbanUser(other);
+        expect(backend.store.banned.value, isNot(contains(other)));
+        expect(backend.store.reports.value.single.subjectBanned, isFalse);
+      },
+    );
 
-    test('you cannot report yourself, and "Something else" needs words', () async {
-      final repo = FixtureReportRepository(backend);
-      await expectLater(
-        repo.submit(NewReport(subjectUid: backend.uid, subjectName: 'Me', subjectHandle: '@me', kind: ReportKind.user, reason: ReportReason.spam, text: '')),
-        throwsA(isA<ValidationException>()),
-      );
-      expect(
-        const NewReport(subjectUid: 'x', subjectName: 'X', subjectHandle: '@x', kind: ReportKind.user, reason: ReportReason.other, text: '  ').isValid,
-        isFalse,
-      );
-    });
+    test(
+      'you cannot report yourself, and "Something else" needs words',
+      () async {
+        final repo = FixtureReportRepository(backend);
+        await expectLater(
+          repo.submit(
+            NewReport(
+              subjectUid: backend.uid,
+              subjectName: 'Me',
+              subjectHandle: '@me',
+              kind: ReportKind.user,
+              reason: ReportReason.spam,
+              text: '',
+            ),
+          ),
+          throwsA(isA<ValidationException>()),
+        );
+        expect(
+          const NewReport(
+            subjectUid: 'x',
+            subjectName: 'X',
+            subjectHandle: '@x',
+            kind: ReportKind.user,
+            reason: ReportReason.other,
+            text: '  ',
+          ).isValid,
+          isFalse,
+        );
+      },
+    );
   });
 }

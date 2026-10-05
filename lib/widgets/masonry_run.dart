@@ -53,7 +53,10 @@ class MasonryRun extends MultiChildRenderObjectWidget {
 
 class RenderMasonryRun extends RenderBox
     with
-        ContainerRenderObjectMixin<RenderBox, ContainerBoxParentData<RenderBox>>,
+        ContainerRenderObjectMixin<
+          RenderBox,
+          ContainerBoxParentData<RenderBox>
+        >,
         RenderBoxContainerDefaultsMixin<
           RenderBox,
           ContainerBoxParentData<RenderBox>
@@ -109,13 +112,12 @@ class RenderMasonryRun extends RenderBox
       // right-hand column.
       final column = heights[1] < heights[0] ? 1 : 0;
       if (place) {
-        (child.parentData! as ContainerBoxParentData<RenderBox>).offset = Offset(
-          column * (columnWidth + gutter),
-          heights[column],
-        );
+        (child.parentData! as ContainerBoxParentData<RenderBox>).offset =
+            Offset(column * (columnWidth + gutter), heights[column]);
       }
       heights[column] += size.height + rowGap;
-      child = (child.parentData! as ContainerBoxParentData<RenderBox>).nextSibling;
+      child =
+          (child.parentData! as ContainerBoxParentData<RenderBox>).nextSibling;
     }
 
     final tallest = math.max(heights[0], heights[1]);

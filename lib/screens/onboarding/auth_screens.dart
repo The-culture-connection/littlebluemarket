@@ -336,6 +336,7 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
   final _password = TextEditingController();
   bool _valid = false;
   bool _busy = false;
+
   /// Ticked to agree to the terms. Only asked when creating an account, and
   /// the Create button stays dead until it is.
   bool _agreed = false;
@@ -859,7 +860,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      await ref.read(sessionProvider.notifier).leaveOnboarding(asGuest: asGuest);
+      await ref
+          .read(sessionProvider.notifier)
+          .leaveOnboarding(asGuest: asGuest);
       if (!mounted) return;
       context.go(asGuest ? '/market' : '/');
     } finally {
@@ -1003,7 +1006,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         const SizedBox(height: 16),
         _TagPicker(
           selected: _tags,
-          options: ref.watch(popularTagsProvider).value
+          options:
+              ref
+                  .watch(popularTagsProvider)
+                  .value
                   ?.map((t) => t.tag)
                   .toList() ??
               _fallbackTags,
@@ -1145,8 +1151,7 @@ class _AgreeToTerms extends StatefulWidget {
 class _AgreeToTermsState extends State<_AgreeToTerms> {
   // The app's own terms, opened in the app. The store's policy page is
   // about buying and shipping and says nothing about what may be posted.
-  late final _terms = TapGestureRecognizer()
-    ..onTap = () => _openTerms();
+  late final _terms = TapGestureRecognizer()..onTap = () => _openTerms();
   late final _privacy = TapGestureRecognizer()
     ..onTap = () => openLegalLink(LegalLinks.privacyPolicy);
 
@@ -1349,11 +1354,7 @@ class _TagPicker extends StatelessWidget {
 /// A chip on the welcome blue, which is not a themed surface: the palette's
 /// chip colours are drawn for paper and disappear here.
 class _TagChip extends StatelessWidget {
-  const _TagChip({
-    required this.label,
-    required this.on,
-    required this.onTap,
-  });
+  const _TagChip({required this.label, required this.on, required this.onTap});
 
   final String label;
   final bool on;

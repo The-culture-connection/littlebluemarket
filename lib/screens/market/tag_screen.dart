@@ -181,7 +181,10 @@ class _Body extends ConsumerWidget {
                   '${posts.length + products.length == 1 ? 'thing' : 'things'}'
                   ' here · ${people.length} '
                   '${people.length == 1 ? 'maker' : 'makers'}',
-                  style: LbmText.pinMeta.copyWith(fontSize: 12.5, color: c.ink2),
+                  style: LbmText.pinMeta.copyWith(
+                    fontSize: 12.5,
+                    color: c.ink2,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 Row(
@@ -191,11 +194,8 @@ class _Body extends ConsumerWidget {
                         isFollowing ? 'Following' : 'Follow',
                         icon: isFollowing ? Icons.check_rounded : null,
                         style: isFollowing ? PillStyle.quiet : PillStyle.solid,
-                        onPressed: () => _toggleFollow(
-                          context,
-                          ref,
-                          on: !isFollowing,
-                        ),
+                        onPressed: () =>
+                            _toggleFollow(context, ref, on: !isFollowing),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -215,11 +215,7 @@ class _Body extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 14),
-            FilterChips(
-              items: filters,
-              selected: filter,
-              onSelect: onFilter,
-            ),
+            FilterChips(items: filters, selected: filter, onSelect: onFilter),
             const SizedBox(height: 12),
             if (filter == 'maker')
               if (people.isEmpty)
@@ -280,8 +276,14 @@ class _Body extends ConsumerWidget {
 
   /// Posts narrowed to the chip that is on.
   List<Post> _shown(List<Post> all) => switch (filter) {
-    'product' => [for (final p in all) if (p is ListingPost) p],
-    'review' => [for (final p in all) if (p is ReviewPost) p],
+    'product' => [
+      for (final p in all)
+        if (p is ListingPost) p,
+    ],
+    'review' => [
+      for (final p in all)
+        if (p is ReviewPost) p,
+    ],
     'post' => [
       for (final p in all)
         if (p is ShoutoutPost || p is CartPost) p,
@@ -322,15 +324,9 @@ class _Body extends ConsumerWidget {
     return null;
   }
 
-  void _toggleFollow(
-    BuildContext context,
-    WidgetRef ref, {
-    required bool on,
-  }) {
+  void _toggleFollow(BuildContext context, WidgetRef ref, {required bool on}) {
     requireProfile(context, ref, () async {
-      await ref
-          .read(socialRepositoryProvider)
-          .setFollowingTag(tag, on: on);
+      await ref.read(socialRepositoryProvider).setFollowingTag(tag, on: on);
       if (!context.mounted) return;
       if (on) {
         LbmToast.show(
@@ -342,11 +338,7 @@ class _Body extends ConsumerWidget {
     });
   }
 
-  void _toggleNotify(
-    BuildContext context,
-    WidgetRef ref, {
-    required bool on,
-  }) {
+  void _toggleNotify(BuildContext context, WidgetRef ref, {required bool on}) {
     requireProfile(context, ref, () async {
       await ref.read(socialRepositoryProvider).setTagNotify(tag, on: on);
       if (!context.mounted) return;

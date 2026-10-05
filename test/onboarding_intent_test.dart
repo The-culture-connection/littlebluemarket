@@ -25,10 +25,22 @@ void main() {
     expect(OnboardingIntent.newHere.landingRoute, '/market');
     // No accounts on littlebluecart.com: this door lands like "new here".
     expect(OnboardingIntent.directoryCustomer.landingRoute, '/market');
-    expect(OnboardingIntent.marketplaceCustomer.landingRoute, '/you?tab=bought');
-    expect(OnboardingIntent.directorySeller.landingRoute, '/you/directory?auto=1');
+    expect(
+      OnboardingIntent.marketplaceCustomer.landingRoute,
+      '/you?tab=bought',
+    );
+    expect(
+      OnboardingIntent.directorySeller.landingRoute,
+      '/you/directory?auto=1',
+    );
     expect(OnboardingIntent.marketplaceSeller.landingRoute, '/you/sell?auto=1');
-    expect(OnboardingIntent.newDirectorySeller.landingRoute, '/you/directory?add=1');
-    expect(OnboardingIntent.newMarketplaceSeller.landingRoute, '/you/sell?apply=1');
+    expect(
+      OnboardingIntent.newDirectorySeller.landingRoute,
+      '/you/directory?add=1',
+    );
+    expect(
+      OnboardingIntent.newMarketplaceSeller.landingRoute,
+      '/you/sell?apply=1',
+    );
   });
 }

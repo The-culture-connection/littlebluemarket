@@ -50,9 +50,7 @@ class BlockedScreen extends ConsumerWidget {
             ),
             LbmCard(
               child: RowStack(
-                children: [
-                  for (final uid in ids) _BlockedRow(uid: uid),
-                ],
+                children: [for (final uid in ids) _BlockedRow(uid: uid)],
               ),
             ),
           ],

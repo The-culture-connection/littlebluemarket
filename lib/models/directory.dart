@@ -164,8 +164,18 @@ class DirectoryOrder {
   };
 
   static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   /// "Sep 1, 2026".
@@ -175,7 +185,6 @@ class DirectoryOrder {
   /// "Tax the Rich Hoodie · Sticker ×2".
   String get summary => items.map((i) => i.label).join(' · ');
 }
-
 
 /// One of littlebluecart.com's own business categories, with how many
 /// published listings are filed under it.
@@ -201,6 +210,7 @@ class DirectoryCategory {
 
   String get countLabel => count == 1 ? '1 business' : '$count businesses';
 }
+
 /// One business listing on littlebluecart.com, as the public mirror carries
 /// it: what the website already shows to anyone, with term ids already
 /// turned into names.
@@ -217,11 +227,9 @@ class DirectoryListing {
     this.phone = '',
     this.storeLink = '',
     this.locationLabel = '',
-    this.street = '',
     this.city = '',
     this.state = '',
     this.zip = '',
-    this.address = '',
     this.categories = const [],
     this.tags = const [],
     this.locations = const [],
@@ -264,13 +272,13 @@ class DirectoryListing {
 
   /// The directory's own location label, e.g. "*Online/Virtual Business".
   final String locationLabel;
-  final String street;
   final String city;
   final String state;
-  final String zip;
 
-  /// The full address on one line, as the site displays it.
-  final String address;
+  /// The zip code: the closest the app ever gets to where a seller is.
+  /// Never the street or the full address (Grace, 2026-10-05); the server
+  /// does not even send them.
+  final String zip;
   final List<String> categories;
 
   /// Ownership tags: Woman-Owned, BIPOC-Owned, Ally…
@@ -323,12 +331,8 @@ class DirectoryListing {
     return digits.isEmpty ? null : Uri(scheme: 'tel', path: digits);
   }
 
-  Uri? get emailUri => email.isEmpty ? null : Uri(scheme: 'mailto', path: email);
-
-  /// A `geo:` search, which Android hands to whichever maps app is installed.
-  Uri? get directionsUri => address.isEmpty
-      ? null
-      : Uri.parse('geo:0,0?q=${Uri.encodeComponent(address)}');
+  Uri? get emailUri =>
+      email.isEmpty ? null : Uri(scheme: 'mailto', path: email);
 
   Uri? get linkUri => link.isEmpty ? null : Uri.tryParse(link);
 }

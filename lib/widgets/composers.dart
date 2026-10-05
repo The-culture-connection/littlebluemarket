@@ -246,10 +246,7 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
                 if (picked == null) ...[
                   Text(
                     'Which one?',
-                    style: LbmText.display.copyWith(
-                      fontSize: 21,
-                      color: c.ink,
-                    ),
+                    style: LbmText.display.copyWith(fontSize: 21, color: c.ink),
                   ),
                   const SizedBox(height: 14),
                   for (final purchase in reviewable)

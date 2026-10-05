@@ -13,7 +13,7 @@ void main() {
     email: 'Owner@Example.test',
     phone: '(561) 414-0509',
     state: 'FL',
-    address: '1851 Massachusetts Ave NE, St. Petersburg, FL 33703',
+    zip: '33703',
     categories: ['Travel'],
     tags: ['Woman-Owned'],
     locations: ['Online/Virtual'],
@@ -28,27 +28,28 @@ void main() {
     expect(listing.websiteUri.toString(), 'https://www.example.test/advisor');
     expect(listing.callUri.toString(), 'tel:5614140509');
     expect(listing.emailUri.toString(), 'mailto:Owner@Example.test');
-    expect(listing.directionsUri.toString(), startsWith('geo:0,0?q=1851'));
     expect(listing.linkUri, isNotNull);
   });
 
-  test('a pending listing without an address falls back to the directory location', () {
-    const pending = DirectoryListing(
-      id: '2',
-      ownerUid: 'u1',
-      title: 'Pop-Up',
-      status: 'pending',
-      link: '',
-      locationLabel: '*Online/Virtual Business',
-      plan: 'FREE',
-    );
-    expect(pending.statusLabel, 'Under review');
-    expect(pending.stateLabel, 'Online/Virtual Business');
-    expect(pending.planLabel, 'Free');
-    expect(pending.callUri, isNull);
-    expect(pending.directionsUri, isNull);
-    expect(pending.linkUri, isNull);
-  });
+  test(
+    'a pending listing without an address falls back to the directory location',
+    () {
+      const pending = DirectoryListing(
+        id: '2',
+        ownerUid: 'u1',
+        title: 'Pop-Up',
+        status: 'pending',
+        link: '',
+        locationLabel: '*Online/Virtual Business',
+        plan: 'FREE',
+      );
+      expect(pending.statusLabel, 'Under review');
+      expect(pending.stateLabel, 'Online/Virtual Business');
+      expect(pending.planLabel, 'Free');
+      expect(pending.callUri, isNull);
+      expect(pending.linkUri, isNull);
+    },
+  );
 
   test('the mirror document maps back, names already resolved', () {
     final mapped = FirestoreMappers.directoryListing('47494', {

@@ -759,6 +759,7 @@ class ProfileEdit {
   final String? handle;
   final String? bio;
   final List<String>? tags;
+
   /// Which sections of the profile other people may see. Null leaves
   /// them as they were; this edit screen is the only thing that sets them.
   final ProfileSections? profileSections;

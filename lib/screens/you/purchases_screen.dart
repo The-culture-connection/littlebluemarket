@@ -42,8 +42,14 @@ class PurchasesScreen extends ConsumerWidget {
         data: (all) {
           // Waiting ones first: the whole point of the screen is the ones
           // that still have something to say.
-          final waiting = [for (final p in all) if (p.canReview) p];
-          final done = [for (final p in all) if (!p.canReview) p];
+          final waiting = [
+            for (final p in all)
+              if (p.canReview) p,
+          ];
+          final done = [
+            for (final p in all)
+              if (!p.canReview) p,
+          ];
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 24),

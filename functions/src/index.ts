@@ -95,6 +95,7 @@ import {
 import { backfillCatalogPage } from './backfill.ts';
 import { blockDirectoryAccount } from './directory_block.ts';
 import { sweepCatalogPage } from './catalog_sweep.ts';
+import { runStockCheck } from './stock_check.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { isDiagStep, requireDevProject, runDiagStep } from './diagnostics_notify.ts';
 import { claimVendor, reassignVendor, revokeVendor } from './sellers.ts';
@@ -1295,6 +1296,19 @@ export const forumDigestScheduled = onSchedule(
   async () => {
     const tally = await runForumDigest();
     logger.info('Forum digest', tally);
+  },
+);
+
+/**
+ * The weekly stock check: every variant's stock read from the store and
+ * corrected in the mirror where a webhook was missed. Ticks every quarter
+ * hour but only works during a pass, which starts once a week and takes a
+ * few ticks to get through the catalogue. See `stock_check.ts`.
+ */
+export const weeklyStockCheck = onSchedule(
+  { schedule: 'every 15 minutes', secrets: [SHOPIFY_CLIENT_SECRET], timeoutSeconds: 540, memory: '512MiB' },
+  async () => {
+    await runStockCheck();
   },
 );
 

@@ -1,7 +1,7 @@
-﻿name: little_blue_market
+name: little_blue_market
 description: "Little Blue Market - a marketplace for small makers."
 publish_to: 'none'
-version: 0.4.2+15
+version: 0.4.3+16
 
 environment:
   sdk: ^3.11.0
@@ -53,6 +53,7 @@ dev_dependencies:
 # `dart run tool/make_brand_images.dart`; then run `dart run flutter_launcher_icons`.
 # The adaptive foreground is the same cart padded to Android's safe zone, so
 # round and squircle masks never clip the wheels.
+  image: any
 flutter_launcher_icons:
   android: true
   ios: true

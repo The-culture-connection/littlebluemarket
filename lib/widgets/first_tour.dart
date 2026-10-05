@@ -187,9 +187,7 @@ class _TourDialogState extends State<_TourDialog> {
                     width: i == _index ? 18 : 7,
                     height: 7,
                     decoration: BoxDecoration(
-                      color: i == _index
-                          ? c.ink
-                          : c.ink.withValues(alpha: 0.2),
+                      color: i == _index ? c.ink : c.ink.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),

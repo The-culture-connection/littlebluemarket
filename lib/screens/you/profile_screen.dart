@@ -25,6 +25,7 @@ import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
 import '../market/results_screen.dart';
 import 'profile_activity.dart';
+import '../../widgets/member_leaf.dart';
 
 /// Your own profile: the Instagram layout, remapped.
 ///
@@ -246,8 +247,12 @@ class _YouIdentity extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  person.name.isEmpty ? 'Your profile' : person.name,
+                Text.rich(
+                  memberNameSpan(
+                    person,
+                    person.name.isEmpty ? 'Your profile' : person.name,
+                    leafSize: 20,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: LbmText.display.copyWith(fontSize: 22, color: c.ink),

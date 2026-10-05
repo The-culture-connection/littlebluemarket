@@ -19,7 +19,8 @@ class AdminReportsSection extends ConsumerStatefulWidget {
   const AdminReportsSection({super.key});
 
   @override
-  ConsumerState<AdminReportsSection> createState() => _AdminReportsSectionState();
+  ConsumerState<AdminReportsSection> createState() =>
+      _AdminReportsSectionState();
 }
 
 class _AdminReportsSectionState extends ConsumerState<AdminReportsSection> {
@@ -128,8 +129,9 @@ class _AdminReportsSectionState extends ConsumerState<AdminReportsSection> {
                 onBan: () => _ban(r),
                 onUnban: () => _run(
                   'unban-${r.subjectUid}',
-                  () =>
-                      ref.read(reportRepositoryProvider).unbanUser(r.subjectUid),
+                  () => ref
+                      .read(reportRepositoryProvider)
+                      .unbanUser(r.subjectUid),
                   'Unbanned ${r.subjectHandle}.',
                 ),
               ),
@@ -222,14 +224,18 @@ class _ReportCard extends StatelessWidget {
                   style: PillStyle.quiet,
                   small: true,
                   expand: false,
-                  onPressed: busy.contains('resolve-${r.id}') ? null : onResolve,
+                  onPressed: busy.contains('resolve-${r.id}')
+                      ? null
+                      : onResolve,
                 ),
               if (!r.subjectBanned)
                 PillButton(
                   'Ban ${r.subjectHandle}',
                   small: true,
                   expand: false,
-                  onPressed: busy.contains('ban-${r.subjectUid}') ? null : onBan,
+                  onPressed: busy.contains('ban-${r.subjectUid}')
+                      ? null
+                      : onBan,
                 )
               else
                 PillButton(
@@ -237,8 +243,9 @@ class _ReportCard extends StatelessWidget {
                   style: PillStyle.ghost,
                   small: true,
                   expand: false,
-                  onPressed:
-                      busy.contains('unban-${r.subjectUid}') ? null : onUnban,
+                  onPressed: busy.contains('unban-${r.subjectUid}')
+                      ? null
+                      : onUnban,
                 ),
             ],
           ),

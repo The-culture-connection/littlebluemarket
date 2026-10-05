@@ -18,6 +18,7 @@ import 'report_sheet.dart';
 import 'sheets.dart';
 import 'skeleton.dart';
 import 'tips.dart';
+import 'member_leaf.dart';
 
 /// An entry in the feed.
 ///
@@ -700,8 +701,8 @@ class _PostHead extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  author.name,
+                Text.rich(
+                  memberNameSpan(author, author.name, leafSize: 14),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
@@ -855,7 +856,6 @@ class _ActionIcon extends StatelessWidget {
     );
   }
 }
-
 
 /// Someone's cart, posted: a row of what is in it and one tap to add it all.
 class _CartBody extends ConsumerStatefulWidget {
@@ -1093,8 +1093,8 @@ class ReviewRow extends ConsumerWidget {
                         author,
                         skeleton: const LbmSkeleton(width: 90, height: 12),
                         errorBuilder: (_, _) => const SizedBox.shrink(),
-                        data: (person) => Text(
-                          person.name,
+                        data: (person) => Text.rich(
+                          memberNameSpan(person, person.name, leafSize: 13),
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 13.5,
@@ -1123,10 +1123,7 @@ class ReviewRow extends ConsumerWidget {
                 ),
                 if (review.tags.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  TagChips(
-                    review.tags,
-                    onTap: (tag) => context.goToTag(tag),
-                  ),
+                  TagChips(review.tags, onTap: (tag) => context.goToTag(tag)),
                 ],
               ],
             ),

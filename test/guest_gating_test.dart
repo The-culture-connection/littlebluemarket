@@ -10,7 +10,10 @@ import 'package:little_blue_market/state/session.dart';
 
 /// Boots the real app straight into the market, so the tab bar and the gate
 /// under test are the ones the app actually ships.
-Future<ProviderContainer> _pumpApp(WidgetTester tester, {required bool guest}) async {
+Future<ProviderContainer> _pumpApp(
+  WidgetTester tester, {
+  required bool guest,
+}) async {
   // The design targets a phone; the default 800x600 test surface would put
   // half the feed off-screen.
   tester.view.physicalSize = const Size(390, 844);

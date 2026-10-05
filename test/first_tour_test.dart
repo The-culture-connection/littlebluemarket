@@ -51,33 +51,34 @@ Future<void> _acknowledge(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('the tour shows once when requested, pages through, and is remembered', (
-    tester,
-  ) async {
-    final container = await _pumpSignedIn(tester);
-    expect(find.text(kTourPages.first.title), findsNothing);
+  testWidgets(
+    'the tour shows once when requested, pages through, and is remembered',
+    (tester) async {
+      final container = await _pumpSignedIn(tester);
+      expect(find.text(kTourPages.first.title), findsNothing);
 
-    container.read(tourPendingProvider.notifier).request();
-    await tester.pumpAndSettle();
-    expect(find.text(kTourPages.first.title), findsOneWidget);
-    expect(find.text('Skip'), findsOneWidget);
-
-    for (var i = 1; i < kTourPages.length; i++) {
-      await tester.tap(find.text('Next'));
+      container.read(tourPendingProvider.notifier).request();
       await tester.pumpAndSettle();
-      expect(find.text(kTourPages[i].title), findsOneWidget);
-    }
-    expect(find.text('Done'), findsOneWidget);
-    await tester.tap(find.text('Done'));
-    await tester.pumpAndSettle();
+      expect(find.text(kTourPages.first.title), findsOneWidget);
+      expect(find.text('Skip'), findsOneWidget);
 
-    expect(find.text(kTourPages.last.title), findsNothing);
-    // Stage 17: the platform's ask follows the tour, and the phone only
-    // remembers the pair once the ask has been acknowledged.
-    await _acknowledge(tester);
-    expect(container.read(tipsProvider).contains(Tips.firstTour), isTrue);
-    expect(container.read(tourPendingProvider), isFalse);
-  });
+      for (var i = 1; i < kTourPages.length; i++) {
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        expect(find.text(kTourPages[i].title), findsOneWidget);
+      }
+      expect(find.text('Done'), findsOneWidget);
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(kTourPages.last.title), findsNothing);
+      // Stage 17: the platform's ask follows the tour, and the phone only
+      // remembers the pair once the ask has been acknowledged.
+      await _acknowledge(tester);
+      expect(container.read(tipsProvider).contains(Tips.firstTour), isTrue);
+      expect(container.read(tourPendingProvider), isFalse);
+    },
+  );
 
   testWidgets('Skip closes it on the first page, and the ask still follows', (
     tester,

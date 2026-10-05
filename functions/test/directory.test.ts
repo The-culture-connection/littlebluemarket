@@ -174,7 +174,10 @@ test('listingMirrorDoc names the terms it knows and drops the ids it does not', 
   assert.deepEqual(doc.tags, ['Woman-Owned']);
   assert.deepEqual(doc.locations, ['Online/Virtual']);
   assert.equal(doc.state, 'FL');
-  assert.equal(doc.address, '1851 Massachusetts Ave NE, St. Petersburg, FL 33703');
+  // The street never leaves the server; the town, state and zip do.
+  assert.equal(doc.address, '');
+  assert.equal(doc.street, '');
+  assert.equal(doc.zip, '33703');
   assert.equal(doc.imageUrl, 'https://cdn.example.test/img.webp');
   assert.equal(doc.description, 'World traveler, points and miles pro.');
   assert.equal((doc.updatedAt as Timestamp).toDate().toISOString(), '2026-09-05T03:39:37.000Z');

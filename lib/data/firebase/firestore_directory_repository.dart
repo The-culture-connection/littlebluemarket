@@ -156,7 +156,6 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
     return [for (final (_, listing) in found.take(limit)) listing];
   }, operation: 'firestore directoryListings nearby');
 
-
   CollectionReference<Map<String, dynamic>> get _listings =>
       _db.collection('directoryListings');
 

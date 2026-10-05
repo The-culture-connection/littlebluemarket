@@ -77,10 +77,7 @@ class PinCaption extends StatelessWidget {
                       style: LbmText.pinMeta.copyWith(color: c.ink2),
                     ),
                   ),
-                if (trailing != null) ...[
-                  const SizedBox(width: 6),
-                  trailing!,
-                ],
+                if (trailing != null) ...[const SizedBox(width: 6), trailing!],
               ],
             ),
           ],

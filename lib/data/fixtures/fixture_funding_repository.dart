@@ -38,7 +38,12 @@ class FixtureFundingRepository implements FundingRepository {
       // This month has takings but no bill yet, which is the ordinary state
       // mid-month and the one the nudge's live number comes from.
       return _backend.delayed(
-        Funding(month: month, raisedCents: 9300, budgetCents: 62000, donors: 47),
+        Funding(
+          month: month,
+          raisedCents: 9300,
+          budgetCents: 62000,
+          donors: 47,
+        ),
       );
     }
     return _backend.delayed(null);

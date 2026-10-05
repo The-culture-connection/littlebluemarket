@@ -58,10 +58,7 @@ class CartPin extends ConsumerWidget {
                   aspectRatio: 1,
                   child: ColoredBox(
                     color: c.skyMist,
-                    child: _Collage(
-                      items: shown,
-                      hidden: hidden,
-                    ),
+                    child: _Collage(items: shown, hidden: hidden),
                   ),
                 ),
               ),

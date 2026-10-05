@@ -102,11 +102,18 @@ void main() {
       await _scrollTo(tester, find.text('Privacy Policy'));
 
       expect(
-        find.textContaining(
-          r'Monthly member: $3.00 a month. Renews automatically',
-        ),
+        find.textContaining(r'Monthly membership: $3.00 a month. Renews'),
         findsOneWidget,
       );
+      // Rejected again on 2026-10-05 (3.1.2(c)): what the money is for and
+      // what a member gets, said plainly. And no other store named (2.3.10).
+      expect(
+        find.textContaining('a contribution to Little Blue'),
+        findsOneWidget,
+      );
+      expect(find.text('What you get'), findsOneWidget);
+      expect(find.textContaining('sage leaf member badge'), findsOneWidget);
+      expect(find.textContaining('Google'), findsNothing);
       expect(find.text('Terms of Use'), findsOneWidget);
       expect(find.text('Privacy Policy'), findsOneWidget);
     });
@@ -141,7 +148,7 @@ void main() {
       // own record rather than anything this screen decided.
       expect(container.read(isMemberProvider), isTrue);
       expect(find.text('You are a member'), findsOneWidget);
-      expect(find.textContaining('It renews on'), findsOneWidget);
+      expect(find.textContaining('renews on'), findsOneWidget);
     });
 
     testWidgets('backing out of the store is not an error', (tester) async {
@@ -178,10 +185,10 @@ void main() {
     testWidgets('the copy says whose till it is', (tester) async {
       await _pump(tester, billing: FixtureBillingService());
 
-      // The membership is Apple and Google's to bill and the one-time
+      // The membership is the app store's to bill and the one-time
       // amounts are the shop's, and the page has to say which is which.
       await _scrollTo(tester, find.textContaining('Billed by the app store'));
-      expect(find.textContaining('Cancel any time'), findsOneWidget);
+      expect(find.textContaining('until you cancel it'), findsOneWidget);
     });
   });
 }

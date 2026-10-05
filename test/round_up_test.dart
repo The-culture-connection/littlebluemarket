@@ -50,10 +50,8 @@ void main() {
         overrides: [
           if (!configured)
             appConfigProvider.overrideWith(
-              (ref) async => const AppConfig(
-                registrationUrl: '',
-                shipturtleUrl: '',
-              ),
+              (ref) async =>
+                  const AppConfig(registrationUrl: '', shipturtleUrl: ''),
             ),
         ],
       );
@@ -75,9 +73,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Something in the cart, so there is a subtotal to round.
-      await container
-          .read(commerceRepositoryProvider)
-          .addLine(productId: 'p1');
+      await container.read(commerceRepositoryProvider).addLine(productId: 'p1');
       container.read(routerProvider).go('/market/cart');
       await tester.pumpAndSettle();
       return container;

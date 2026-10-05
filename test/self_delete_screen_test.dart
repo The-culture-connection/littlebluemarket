@@ -118,9 +118,7 @@ void main() {
     expect(find.text('Delete my account now'), findsOneWidget);
   });
 
-  testWidgets('it leaves the page, and says so where you land', (
-    tester,
-  ) async {
+  testWidgets('it leaves the page, and says so where you land', (tester) async {
     final container = await _open(tester, signedIn: true);
     await _fillIn(tester);
     await tester.ensureVisible(find.text('Delete my account now'));

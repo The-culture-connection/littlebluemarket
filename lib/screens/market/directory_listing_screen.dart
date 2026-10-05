@@ -8,7 +8,6 @@ import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
-import '../../widgets/copy_address.dart';
 import '../../widgets/detail_sheet.dart';
 import '../../widgets/masonry.dart';
 import '../../widgets/pins/directory_card.dart';
@@ -106,16 +105,9 @@ class _Body extends ConsumerWidget {
     final identity = l.tags
         .where((t) => t.toLowerCase().contains('owned'))
         .toList();
-    final findUs = [
-      l.street,
-      [l.city, l.state, l.zip].where((s) => s.isNotEmpty).join(' '),
-    ].where((s) => s.trim().isNotEmpty).join('\n');
-    final address = findUs.isNotEmpty ? findUs : l.address;
-    // What a maps app's search box wants: the address on one line.
-    final oneLine = address
-        .split('\n')
-        .where((s) => s.trim().isNotEmpty)
-        .join(', ');
+    // The zip code, never the street or the full address (Grace,
+    // 2026-10-05). The town and state are already in [meta] above.
+    final zipLine = l.zip.trim().isEmpty ? '' : 'Zip code ${l.zip.trim()}';
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -181,35 +173,17 @@ class _Body extends ConsumerWidget {
                     icon: Icons.north_east_rounded,
                     onPressed: () => _open(context, ref, l.linkUri),
                   ),
-                if (address.isNotEmpty || canMessage(l, me)) ...[
+                if (canMessage(l, me)) ...[
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      if (address.isNotEmpty)
-                        Expanded(
-                          child: PillButton(
-                            'Copy address',
-                            icon: Icons.content_copy_rounded,
-                            style: PillStyle.ghost,
-                            onPressed: () => copyAddress(context, oneLine),
-                          ),
-                        ),
-                      if (address.isNotEmpty && canMessage(l, me))
-                        const SizedBox(width: 10),
-                      if (canMessage(l, me))
-                        Expanded(
-                          child: PillButton(
-                            'Message',
-                            icon: Icons.chat_bubble_outline_rounded,
-                            style: PillStyle.ghost,
-                            onPressed: () => requireProfile(
-                              context,
-                              ref,
-                              () => context.goToDm(l.ownerUid),
-                            ),
-                          ),
-                        ),
-                    ],
+                  PillButton(
+                    'Message',
+                    icon: Icons.chat_bubble_outline_rounded,
+                    style: PillStyle.ghost,
+                    onPressed: () => requireProfile(
+                      context,
+                      ref,
+                      () => context.goToDm(l.ownerUid),
+                    ),
                   ),
                 ],
                 if (l.description.isNotEmpty) ...[
@@ -221,19 +195,15 @@ class _Body extends ConsumerWidget {
                 ],
               ],
             ),
-            if (address.isNotEmpty || l.callUri != null || l.emailUri != null)
+            if (zipLine.isNotEmpty || l.callUri != null || l.emailUri != null)
               DetailSection(
                 title: 'Find us',
                 child: LbmCard(
                   margin: const EdgeInsets.symmetric(horizontal: 14),
                   child: RowStack(
                     children: [
-                      if (address.isNotEmpty)
-                        _ReachRow(
-                          icon: Icons.place_rounded,
-                          text: address,
-                          onTap: () => copyAddress(context, oneLine),
-                        ),
+                      if (zipLine.isNotEmpty)
+                        _ReachRow(icon: Icons.place_rounded, text: zipLine),
                       if (l.callUri != null)
                         _ReachRow(
                           icon: Icons.call_rounded,
@@ -271,7 +241,7 @@ class _Body extends ConsumerWidget {
   }
 }
 
-/// An address, a phone number or an email, and what tapping it does.
+/// A zip code, a phone number or an email, and what tapping it does.
 class _ReachRow extends StatelessWidget {
   const _ReachRow({required this.icon, required this.text, this.onTap});
 

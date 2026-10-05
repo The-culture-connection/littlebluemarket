@@ -126,8 +126,8 @@ class FirestoreReportRepository implements ReportRepository {
 
   @override
   Future<void> unbanUser(String uid) => guardFirestore(() async {
-    await _functions
-        .httpsCallable('adminUnbanUser')
-        .call<Map<String, dynamic>>({'uid': uid});
+    await _functions.httpsCallable('adminUnbanUser').call<Map<String, dynamic>>(
+      {'uid': uid},
+    );
   }, operation: 'callable adminUnbanUser');
 }

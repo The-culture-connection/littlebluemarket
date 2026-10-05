@@ -260,10 +260,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
             ),
           ],
           const SizedBox(height: 16),
-          _AddListingCard(
-            config: config,
-            onOpen: _open,
-          ),
+          _AddListingCard(config: config, onOpen: _open),
           const SizedBox(height: 16),
           const SectionHead('Orders from littlebluecart.com'),
           const SizedBox(height: 8),
@@ -393,9 +390,7 @@ class _StatusCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            linked
-                ? current!.label
-                : 'Bought or listed on littlebluecart.com?',
+            linked ? current!.label : 'Bought or listed on littlebluecart.com?',
             style: LbmText.display.copyWith(fontSize: 18, color: c.ink),
           ),
           const SizedBox(height: 6),

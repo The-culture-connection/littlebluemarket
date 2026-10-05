@@ -12,7 +12,11 @@ import '../primitives.dart';
 /// Full width because a column of faces at 180 wide is a list, and a list of
 /// people is what the directory already is. Sideways, it is a glance.
 class MakersRail extends StatelessWidget {
-  const MakersRail({super.key, required this.item, this.title = 'Makers near you'});
+  const MakersRail({
+    super.key,
+    required this.item,
+    this.title = 'Makers near you',
+  });
 
   final MakersRailItem item;
 
@@ -32,9 +36,7 @@ class MakersRail extends StatelessWidget {
   /// else: every maker on the live market has a city, and at 2.0 the card
   /// overflowed by 5 pixels, which throws.
   static double heightFor(BuildContext context) {
-    final scale = MediaQuery.textScalerOf(
-      context,
-    ).scale(1.0).clamp(1.0, 1.6);
+    final scale = MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.6);
     const textLines = 22.0;
     return _height + textLines * (scale - 1.0);
   }

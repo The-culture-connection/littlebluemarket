@@ -147,7 +147,8 @@ class _HeroBannerState extends ConsumerState<HeroBanner> {
           id: 'tip:cartIsTheLike',
           kicker: 'From Little Blue Market',
           title: 'No likes here. Just carts.',
-          body: 'Tap the cart on anything you love. Makers see it, and your '
+          body:
+              'Tap the cart on anything you love. Makers see it, and your '
               'cart keeps it.',
           cta: 'Show me',
           onTap: showCartTipOnce,

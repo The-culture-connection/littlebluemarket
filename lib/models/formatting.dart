@@ -86,6 +86,7 @@ abstract final class Fmt {
     final date = '${t.day} ${_months[t.month - 1]}';
     return t.year == year ? date : '$date ${t.year}';
   }
+
   /// `4 mi`, `0.5 mi`. Distances under ten miles keep one decimal, because the
   /// difference between 2 and 2.4 miles matters when you are deciding whether
   /// to walk.

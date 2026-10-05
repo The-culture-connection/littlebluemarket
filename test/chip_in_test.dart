@@ -160,7 +160,7 @@ void main() {
     // are not, and the page has to say which is which: that distinction is
     // the whole reason one is a subscription and the other is a product.
     await _scrollTo(tester, find.textContaining('Billed by the app store'));
-    expect(find.textContaining('Cancel any time'), findsOneWidget);
+    expect(find.textContaining('until you cancel it'), findsOneWidget);
 
     await _scrollTo(
       tester,

@@ -21,6 +21,7 @@ import '../../widgets/screen.dart';
 import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
 import '../you/profile_activity.dart';
+import '../../widgets/member_leaf.dart';
 
 /// The public view of a profile.
 ///
@@ -188,8 +189,8 @@ class _MakerHeader extends ConsumerWidget {
         children: [
           Center(child: Avatar(person, size: AvatarSize.lg)),
           const SizedBox(height: 10),
-          Text(
-            person.name,
+          Text.rich(
+            memberNameSpan(person, person.name, leafSize: 20),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

@@ -8,7 +8,6 @@ import '../router/nav.dart';
 import '../state/providers.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
-import 'copy_address.dart';
 import 'primitives.dart';
 import 'remote_image.dart';
 import 'sheets.dart';
@@ -70,12 +69,6 @@ class DirectoryListingCard extends StatelessWidget {
       ])
         if (uri != null)
           (label: label, icon: icon, onTap: () => _open(context, uri)),
-      if (l.address.isNotEmpty)
-        (
-          label: 'Copy address',
-          icon: Icons.content_copy_rounded,
-          onTap: () => copyAddress(context, l.address),
-        ),
     ];
 
     // RemoteImage rather than a bare Image.network: it routes the picture
@@ -153,10 +146,11 @@ class DirectoryListingCard extends StatelessWidget {
                   ],
                 ),
               ],
-              if (l.address.isNotEmpty) ...[
+              // The zip code, never the street (Grace, 2026-10-05).
+              if (l.zip.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 Text(
-                  l.address,
+                  'Zip code ${l.zip}',
                   style: LbmText.tiny.copyWith(color: c.ink2, height: 1.4),
                 ),
               ],

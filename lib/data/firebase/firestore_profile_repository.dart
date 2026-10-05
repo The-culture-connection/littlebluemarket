@@ -138,7 +138,7 @@ class FirestoreProfileRepository implements ProfileRepository {
         // Naming it is the difference between a message you can act on and
         // one you cannot.
         '${wanted.startsWith('@') ? wanted : '@$wanted'} is already someone '
-            "else's handle. Try another.",
+        "else's handle. Try another.",
         field: 'handle',
       );
     }

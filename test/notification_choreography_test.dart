@@ -499,7 +499,10 @@ void main() {
         FirestoreMappers.notificationPrefs({'messages': false}).messages,
         isFalse,
       );
-      expect(const NotificationPrefs(messages: false).toMap()['messages'], false);
+      expect(
+        const NotificationPrefs(messages: false).toMap()['messages'],
+        false,
+      );
     });
 
     testWidgets('the settings screen shows the window, 10 pm to 8 am', (

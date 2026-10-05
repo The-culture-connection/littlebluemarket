@@ -37,7 +37,9 @@ Widget _framed(Widget child, {Brightness brightness = Brightness.light}) {
   return MaterialApp(
     theme: buildLbmTheme(brightness),
     home: Scaffold(
-      body: Center(child: SizedBox(width: _pinWidth, child: child)),
+      body: Center(
+        child: SizedBox(width: _pinWidth, child: child),
+      ),
     ),
   );
 }
@@ -269,10 +271,7 @@ void main() {
     testWidgets('quotes the review and shows its stars', (tester) async {
       await _pumpPin(tester, ReviewPin.of(review()));
 
-      expect(
-        find.textContaining('Smells like July'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Smells like July'), findsOneWidget);
       expect(find.byType(Stars), findsOneWidget);
       // A review only exists for a recorded purchase, so it can say so.
       expect(find.textContaining('bought it'), findsOneWidget);
@@ -498,9 +497,7 @@ void main() {
     testWidgets('the hero is the one headline on the screen', (tester) async {
       await _pumpPin(
         tester,
-        AnnouncementPin(
-          item: AnnouncementItem(announcement, hero: true),
-        ),
+        AnnouncementPin(item: AnnouncementItem(announcement, hero: true)),
         width: 370,
       );
 
@@ -712,10 +709,7 @@ void main() {
     Color? fillOf(WidgetTester tester, String label) {
       final box = tester.widget<DecoratedBox>(
         find
-            .ancestor(
-              of: find.text(label),
-              matching: find.byType(DecoratedBox),
-            )
+            .ancestor(of: find.text(label), matching: find.byType(DecoratedBox))
             .first,
       );
       return (box.decoration as BoxDecoration).color;
@@ -730,7 +724,9 @@ void main() {
         MaterialApp(
           theme: buildLbmTheme(Brightness.light),
           home: const Scaffold(
-            body: Center(child: LbmChip('#Handmade', style: ChipStyle.initiative)),
+            body: Center(
+              child: LbmChip('#Handmade', style: ChipStyle.initiative),
+            ),
           ),
         ),
       );
@@ -785,10 +781,7 @@ void main() {
             body: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: [
-                  LbmChip('Ask', accent: true),
-                  LbmChip('Pickup'),
-                ],
+                children: [LbmChip('Ask', accent: true), LbmChip('Pickup')],
               ),
             ),
           ),
@@ -869,9 +862,7 @@ void main() {
 
     testWidgets('the action runs and closes it', (tester) async {
       var tapped = 0;
-      await tester.pumpWidget(
-        _toastHost(action: ('View', () => tapped++)),
-      );
+      await tester.pumpWidget(_toastHost(action: ('View', () => tapped++)));
       await tester.tap(find.text('go'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
@@ -946,9 +937,7 @@ void main() {
       // applied to the decoded pixels rather than ignored when they arrive.
       await pumpDecoded(
         tester,
-        _framed(
-          const NaturalPhoto(url: _photo, minAspect: 1, maxAspect: 1),
-        ),
+        _framed(const NaturalPhoto(url: _photo, minAspect: 1, maxAspect: 1)),
       );
       expect(_aspectOf(tester), closeTo(1, 0.001));
 

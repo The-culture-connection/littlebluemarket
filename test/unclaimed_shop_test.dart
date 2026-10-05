@@ -101,7 +101,10 @@ void main() {
       );
       // And says what happens to the message, which is the part that
       // decides whether somebody bothers writing it.
-      expect(find.textContaining('reaches them when they sign up'), findsOneWidget);
+      expect(
+        find.textContaining('reaches them when they sign up'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a real person gets no strip', (tester) async {

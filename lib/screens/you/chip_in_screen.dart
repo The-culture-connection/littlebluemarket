@@ -276,7 +276,7 @@ class _MonthlyCardState extends ConsumerState<_MonthlyCard> {
               children: [
                 Expanded(
                   child: Text(
-                    isMember ? 'You are a member' : 'Every month',
+                    isMember ? 'You are a member' : 'Monthly membership',
                     style: LbmText.display.copyWith(fontSize: 18, color: c.ink),
                   ),
                 ),
@@ -287,13 +287,61 @@ class _MonthlyCardState extends ConsumerState<_MonthlyCard> {
             Text(
               isMember
                   ? (until == null
-                        ? 'Thank you. It renews on its own.'
-                        : 'Thank you. It renews on ${Fmt.day(until)}.')
-                  : 'A standing chip-in that keeps the lights on, and the'
-                        ' sage leaf by your name. Cancel any time in the'
-                        ' app store.',
+                        ? 'Thank you. Your sage leaf is by your name, and it'
+                              ' renews on its own.'
+                        : 'Thank you. Your sage leaf is by your name, and it'
+                              ' renews on ${Fmt.day(until)}.')
+                  // What App Review asked for (3.1.2(c), Grace, 2026-10-05):
+                  // what the money is, and what the subscriber gets for it,
+                  // in plain words, before the button.
+                  : 'The monthly membership is a contribution to Little Blue'
+                        ' Cart, the small company that runs this app. It'
+                        ' helps pay the bills that keep the app running:'
+                        ' hosting, notifications and the business directory.',
               style: TextStyle(fontSize: 13.5, height: 1.5, color: c.ink2),
             ),
+            if (!isMember) ...[
+              const SizedBox(height: 10),
+              Text(
+                'What you get',
+                style: LbmText.tiny.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: c.ink,
+                ),
+              ),
+              const SizedBox(height: 6),
+              for (final line in const [
+                'A sage leaf member badge next to your name, on your'
+                    ' profile, your shop, your posts and your reviews, for'
+                    ' everyone to see.',
+                'The knowledge that you are keeping Little Blue Market'
+                    ' running for the whole community.',
+                'Nothing in the app is locked for people who are not'
+                    ' members. Every feature stays free for everyone.',
+              ])
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2, right: 8),
+                        child: Icon(Icons.eco_rounded, size: 14, color: c.sage),
+                      ),
+                      Expanded(
+                        child: Text(
+                          line,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            height: 1.45,
+                            color: c.ink2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
             if (!isMember) ...[
               const SizedBox(height: 14),
               _SagePill(
@@ -313,12 +361,14 @@ class _MonthlyCardState extends ConsumerState<_MonthlyCard> {
               // auto-renewing subscription: its name, its length, its price,
               // that it renews, and working links to the Terms of Use and the
               // Privacy Policy (Grace, 2026-10-01, after a rejection).
+              // No store is named: an iPhone build that mentions the other
+              // store's name was rejected under 2.3.10 (2026-10-05).
               Text(
-                'Monthly member: ${offer!.price} a month. Renews automatically'
-                ' every month until you cancel it in your App Store or'
-                ' Google Play settings, at least a day before it renews.'
-                ' Billed by the app store, not by the shop. Not'
-                ' tax-deductible.',
+                'Monthly membership: ${offer!.price} a month. Renews'
+                ' automatically every month until you cancel it in your app'
+                ' store account settings, at least a day before it renews.'
+                ' Billed by the app store, not by the shop. A contribution'
+                ' to a company, not a charity, so it is not tax-deductible.',
                 style: LbmText.pinMeta.copyWith(color: c.ink2, height: 1.45),
               ),
               const SizedBox(height: 4),

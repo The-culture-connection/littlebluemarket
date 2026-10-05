@@ -89,8 +89,7 @@ class _ClaimShopScreenState extends ConsumerState<ClaimShopScreen> {
           granted &&
           widget.shopName.trim().isNotEmpty &&
           result.vendorName != null &&
-          _SyncNote._key(result.vendorName!) !=
-              _SyncNote._key(widget.shopName);
+          _SyncNote._key(result.vendorName!) != _SyncNote._key(widget.shopName);
       if (granted && !wrongShop) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -110,7 +109,6 @@ class _ClaimShopScreenState extends ConsumerState<ClaimShopScreen> {
       if (mounted) setState(() => _checking = false);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -163,10 +161,7 @@ class _ClaimShopScreenState extends ConsumerState<ClaimShopScreen> {
                   ],
                   if (_result != null) ...[
                     const SizedBox(height: 12),
-                    _SyncNote(
-                      result: _result!,
-                      shopName: widget.shopName,
-                    ),
+                    _SyncNote(result: _result!, shopName: widget.shopName),
                   ],
                 ],
               ),

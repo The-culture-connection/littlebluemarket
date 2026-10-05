@@ -166,7 +166,12 @@ abstract final class Fx {
   static const products = <String, Product>{
     'p1': Product(
       id: 'p1',
-      collectionHandles: ['bath-beauty-wellness', 'bipoc-owned', 'jewelry', 'woman-owned'],
+      collectionHandles: [
+        'bath-beauty-wellness',
+        'bipoc-owned',
+        'jewelry',
+        'woman-owned',
+      ],
       title: 'Cocoa Mint Lip Balm',
       priceCents: 800,
       sellerId: 'kali',
@@ -186,7 +191,12 @@ abstract final class Fx {
     ),
     'p2': Product(
       id: 'p2',
-      collectionHandles: ['ally-owned', 'art-creative-goods', 'lgbtq-owned', 'stickers'],
+      collectionHandles: [
+        'ally-owned',
+        'art-creative-goods',
+        'lgbtq-owned',
+        'stickers',
+      ],
       title: 'Wildflower Sticker Pack — 5 designs',
       priceCents: 1200,
       sellerId: 'rae',
@@ -207,7 +217,12 @@ abstract final class Fx {
     ),
     'p3': Product(
       id: 'p3',
-      collectionHandles: ['apparel-accessories', 'bags', 'jewelry', 'woman-owned'],
+      collectionHandles: [
+        'apparel-accessories',
+        'bags',
+        'jewelry',
+        'woman-owned',
+      ],
       title: '“What Would Dolly Do?” Dad Hat',
       priceCents: 2800,
       sellerId: 'holler',
