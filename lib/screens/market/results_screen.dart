@@ -51,7 +51,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     // Watched here, not only inside _DirectoryHits, because it decides
     // whether the catalogue's "nothing found" card is honest.
     final directory =
-        ref.watch(directorySearchProvider(widget.query)).value ??
+        ref.watch(directorySearchProvider(directorySearchKey(active))).value ??
         const <DirectoryListing>[];
 
     return LbmScreen(
@@ -132,7 +132,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
           // provider rather than a field on SearchResults: the directory is a
           // separate repository on purpose, and a slow website mirror must
           // not hold up the products.
-          _DirectoryHits(query: widget.query),
+          _DirectoryHits(search: directorySearchKey(active)),
           const Puff(),
           const SizedBox(height: 20),
         ],
@@ -559,9 +559,10 @@ class _Suggestions extends ConsumerWidget {
 /// products must not be spoiled by a red card because the directory mirror
 /// is empty on this project.
 class _DirectoryHits extends ConsumerStatefulWidget {
-  const _DirectoryHits({required this.query});
+  const _DirectoryHits({required this.search});
 
-  final String query;
+  /// The words and, while Near me is on, the place and radius.
+  final ({String query, SearchOrigin? near, double radiusMiles}) search;
 
   @override
   ConsumerState<_DirectoryHits> createState() => _DirectoryHitsState();
@@ -575,7 +576,7 @@ class _DirectoryHitsState extends ConsumerState<_DirectoryHits> {
 
   @override
   Widget build(BuildContext context) {
-    final hits = ref.watch(directorySearchProvider(widget.query));
+    final hits = ref.watch(directorySearchProvider(widget.search));
     final listings = hits.value ?? const <DirectoryListing>[];
     if (listings.isEmpty) return const SizedBox.shrink();
     final shown = _all ? listings : listings.take(_preview).toList();

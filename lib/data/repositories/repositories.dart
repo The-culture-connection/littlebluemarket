@@ -617,7 +617,14 @@ abstract interface class DirectoryRepository {
   /// categories or its city. Deliberately the same shape as the catalogue's
   /// own search (a word in an indexed array, plus a prefix scan for a
   /// phrase), so there is one search scheme in this app and not two.
-  Future<List<DirectoryListing>> searchDirectory(String query);
+  ///
+  /// With [near], only listings within [radiusMiles] of it, nearest first.
+  /// A listing with no point (an online-only business) is not near anyone.
+  Future<List<DirectoryListing>> searchDirectory(
+    String query, {
+    SearchOrigin? near,
+    double radiusMiles = SearchFilters.defaultRadiusMiles,
+  });
 
   /// "Link my directory account", or, with [auto], the silent launch-time
   /// call that reuses a fresher answer and never nags. Idempotent.
@@ -759,6 +766,7 @@ class ProfileEdit {
   final String? handle;
   final String? bio;
   final List<String>? tags;
+
   /// Which sections of the profile other people may see. Null leaves
   /// them as they were; this edit screen is the only thing that sets them.
   final ProfileSections? profileSections;

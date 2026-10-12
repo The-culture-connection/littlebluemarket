@@ -163,6 +163,48 @@ void main() {
     expect(await repo.searchDirectory('nothingmatchesthis'), isEmpty);
   });
 
+  // Grace, 2026-10-12: photographers with Near me on came from everywhere,
+  // because the directory half of the results never saw the toggle.
+  testWidgets('with Near me on, directory hits stay inside the radius', (
+    tester,
+  ) async {
+    final container = await _pumpFeed(tester);
+    final repo = container.read(directoryRepositoryProvider);
+    const detroit = SearchOrigin(lat: 42.33, lng: -83.05, label: 'Detroit');
+    const stPete = SearchOrigin(lat: 27.77, lng: -82.64, label: 'St. Pete');
+
+    expect(
+      (await repo.searchDirectory('travel')).map((l) => l.title),
+      contains('Field Trips Travel & Vacations'),
+    );
+    expect(await repo.searchDirectory('travel', near: detroit), isEmpty);
+    expect(
+      (await repo.searchDirectory('travel', near: stPete)).map((l) => l.title),
+      ['Field Trips Travel & Vacations'],
+    );
+    expect(
+      (await repo.searchDirectory(
+        'ceramics',
+        near: detroit,
+      )).map((l) => l.title),
+      ['Found House Ceramics'],
+    );
+  });
+
+  test(
+    'the directory search key carries the place only while Near me is on',
+    () {
+      const origin = SearchOrigin(lat: 1, lng: 2, label: 'here');
+      const off = SearchFilters(query: 'photographers', origin: origin);
+      expect(directorySearchKey(off).near, isNull);
+      expect(directorySearchKey(off.copyWith(nearMe: true, radiusMiles: 10)), (
+        query: 'photographers',
+        near: origin,
+        radiusMiles: 10.0,
+      ));
+    },
+  );
+
   testWidgets('the search screen shows directory businesses, not folded', (
     tester,
   ) async {

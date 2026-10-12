@@ -156,7 +156,6 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
     return [for (final (_, listing) in found.take(limit)) listing];
   }, operation: 'firestore directoryListings nearby');
 
-
   CollectionReference<Map<String, dynamic>> get _listings =>
       _db.collection('directoryListings');
 
@@ -210,48 +209,83 @@ class FirestoreDirectoryRepository implements DirectoryRepository {
     );
   }, operation: 'firestore directoryListings (category)');
 
+  /// How many listings a Near me search scans around the person before
+  /// matching the words: the catalogue's own geo bound.
+  static const _nearCandidateLimit = 300;
+
   @override
-  Future<List<DirectoryListing>> searchDirectory(String query) =>
-      guardFirestore(() async {
-        final text = query.trim().toLowerCase();
-        if (text.isEmpty) return const <DirectoryListing>[];
+  Future<List<DirectoryListing>> searchDirectory(
+    String query, {
+    SearchOrigin? near,
+    double radiusMiles = SearchFilters.defaultRadiusMiles,
+  }) => guardFirestore(() async {
+    final text = query.trim().toLowerCase();
+    if (text.isEmpty) return const <DirectoryListing>[];
+    final hits = await _searchByWords(text);
+    if (near == null) return hits;
 
-        // Every spelling of every word, against the indexed array, which is
-        // the business's name, its categories and its city. It used to take
-        // the first word exactly as typed, so "rings" never found "Ring" and
-        // "gift shop" ignored "shop"; it now matches the way the Market's
-        // own search does (Grace, 2026-10-01).
-        final variants = queryVariants(text);
-        final byWord = variants.isEmpty
-            ? null
-            : await _listings
-                  .where('status', isEqualTo: 'publish')
-                  .where('titleWords', arrayContainsAny: variants)
-                  .limit(_searchLimit)
-                  .get();
+    // Near me. The word search reads the first sixty matches in the whole
+    // country, so in a big category the nearby ones may not be among them;
+    // a scan of the area, matched with the same ranking, finds those. Both
+    // are then held to the radius, nearest first. Without this, Near me
+    // narrowed the products and left every photographer in the country
+    // listed underneath (Grace, 2026-10-12).
+    final ranges = Geohash.coverRanges(near.lat, near.lng, radiusMiles);
+    final snapshots = await Future.wait([
+      for (final (start, end) in ranges)
+        _listings
+            .where('status', isEqualTo: 'publish')
+            .where('geohash', isGreaterThanOrEqualTo: start)
+            .where('geohash', isLessThan: end)
+            .limit(_nearCandidateLimit ~/ ranges.length + 1)
+            .get(),
+    ]);
+    final around = rankDirectoryHits([
+      for (final snapshot in snapshots)
+        for (final doc in snapshot.docs)
+          FirestoreMappers.directoryListing(doc.id, doc.data()),
+    ], text);
+    return nearestWithin([...hits, ...around], near, radiusMiles);
+  }, operation: 'firestore directoryListings (search)');
 
-        // A multi-word query also takes names that start with the whole
-        // phrase, which one word cannot express ("found house" for
-        // "Found House Ceramics").
-        final byPrefix = text.contains(' ')
-            ? await _listings
-                  .where('status', isEqualTo: 'publish')
-                  .where('titleLower', isGreaterThanOrEqualTo: text)
-                  .where('titleLower', isLessThan: '$text')
-                  .limit(_pageSize)
-                  .get()
-            : null;
+  Future<List<DirectoryListing>> _searchByWords(String text) async {
+    // Every spelling of every word, against the indexed array, which is
+    // the business's name, its categories and its city. It used to take
+    // the first word exactly as typed, so "rings" never found "Ring" and
+    // "gift shop" ignored "shop"; it now matches the way the Market's
+    // own search does (Grace, 2026-10-01).
+    final variants = queryVariants(text);
+    final byWord = variants.isEmpty
+        ? null
+        : await _listings
+              .where('status', isEqualTo: 'publish')
+              .where('titleWords', arrayContainsAny: variants)
+              .limit(_searchLimit)
+              .get();
 
-        final seen = <String>{};
-        final hits = <DirectoryListing>[];
-        for (final snapshot in [byWord, byPrefix]) {
-          for (final doc in snapshot?.docs ?? const []) {
-            if (!seen.add(doc.id)) continue;
-            hits.add(FirestoreMappers.directoryListing(doc.id, doc.data()));
-          }
-        }
-        return rankDirectoryHits(hits, text);
-      }, operation: 'firestore directoryListings (search)');
+    // A multi-word query also takes names that start with the whole
+    // phrase, which one word cannot express ("found house" for
+    // "Found House Ceramics").
+    final byPrefix = text.contains(' ')
+        ? await _listings
+              .where('status', isEqualTo: 'publish')
+              .where('titleLower', isGreaterThanOrEqualTo: text)
+              .where('titleLower', isLessThan: '$text')
+              .limit(_pageSize)
+              .get()
+        : null;
+
+    final seen = <String>{};
+    final hits = <DirectoryListing>[];
+    for (final snapshot in [byWord, byPrefix]) {
+      for (final doc in snapshot?.docs ?? const []) {
+        if (!seen.add(doc.id)) continue;
+        hits.add(FirestoreMappers.directoryListing(doc.id, doc.data()));
+      }
+    }
+    return rankDirectoryHits(hits, text);
+  }
+
   CollectionReference<Map<String, dynamic>> get _products =>
       _db.collection('directoryProducts');
 

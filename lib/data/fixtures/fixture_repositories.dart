@@ -2166,12 +2166,17 @@ class FixtureDirectoryRepository implements DirectoryRepository {
   }
 
   @override
-  Future<List<DirectoryListing>> searchDirectory(String query) async {
+  Future<List<DirectoryListing>> searchDirectory(
+    String query, {
+    SearchOrigin? near,
+    double radiusMiles = SearchFilters.defaultRadiusMiles,
+  }) async {
     await _backend._settle();
     final text = query.trim().toLowerCase();
     if (text.isEmpty) return const [];
     // The same matching and order as the live search.
-    return rankDirectoryHits(_listings.where((l) => l.isPublished), text);
+    final hits = rankDirectoryHits(_listings.where((l) => l.isPublished), text);
+    return near == null ? hits : nearestWithin(hits, near, radiusMiles);
   }
 
   @override

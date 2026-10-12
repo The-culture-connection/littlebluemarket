@@ -338,6 +338,28 @@ bool isShoppable(Product product) =>
 /// The same rule as products (see [searchScore]): the name counts most, then
 /// the categories and tags, then the town. A name that starts with what was
 /// typed breaks a tie, then the name itself, so the list never reshuffles.
+/// The directory businesses within [radiusMiles] of [origin], nearest first,
+/// each once.
+///
+/// A listing with no point is dropped: "Online/Virtual Business" is not near
+/// anyone. Shared by the live and fixture searches so Near me means the same
+/// thing in both.
+List<DirectoryListing> nearestWithin(
+  Iterable<DirectoryListing> listings,
+  SearchOrigin origin,
+  double radiusMiles,
+) {
+  final seen = <String>{};
+  final found = <(double, DirectoryListing)>[];
+  for (final l in listings) {
+    if (!seen.add(l.id) || l.lat == null || l.lng == null) continue;
+    final miles = Geo.milesBetween(origin.lat, origin.lng, l.lat!, l.lng!);
+    if (miles <= radiusMiles) found.add((miles, l));
+  }
+  found.sort((a, b) => a.$1.compareTo(b.$1));
+  return [for (final (_, l) in found) l];
+}
+
 List<DirectoryListing> rankDirectoryHits(
   Iterable<DirectoryListing> hits,
   String query,

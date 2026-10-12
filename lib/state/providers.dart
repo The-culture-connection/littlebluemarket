@@ -414,10 +414,34 @@ final directoryCategoryPageProvider =
     });
 
 /// Directory businesses matching what was typed in the search screen.
+///
+/// Keyed on the words and the place rather than the whole [SearchFilters],
+/// so changing the sort or the scope chips does not refetch the directory.
+/// It used to take the words alone, which is why "photographers" with Near
+/// me on still listed every photographer in the country (Grace, 2026-10-12).
 final directorySearchProvider =
-    FutureProvider.family<List<DirectoryListing>, String>((ref, query) {
-      return ref.watch(directoryRepositoryProvider).searchDirectory(query);
+    FutureProvider.family<
+      List<DirectoryListing>,
+      ({String query, SearchOrigin? near, double radiusMiles})
+    >((ref, key) {
+      return ref
+          .watch(directoryRepositoryProvider)
+          .searchDirectory(
+            key.query,
+            near: key.near,
+            radiusMiles: key.radiusMiles,
+          );
     });
+
+/// The [directorySearchProvider] key for a search as it stands: the place
+/// only while Near me is on.
+({String query, SearchOrigin? near, double radiusMiles}) directorySearchKey(
+  SearchFilters filters,
+) => (
+  query: filters.query,
+  near: filters.isGeoConstrained ? filters.origin : null,
+  radiusMiles: filters.radiusMiles,
+);
 
 /// Orders from littlebluecart.com, newest first.
 final directoryOrdersProvider = StreamProvider<List<DirectoryOrder>>((ref) {
