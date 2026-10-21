@@ -30,7 +30,7 @@ const kTourPages = <TourPage>[
     body:
         'Tap any hashtag to see its collection. Follow one and new posts '
         'under it turn up in your Market; turn on Notify me and we will '
-        'tell you. Near me shows the makers around your city.',
+        'tell you.',
   ),
   TourPage(
     icon: Icons.forum_outlined,

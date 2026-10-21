@@ -585,7 +585,7 @@ void main() {
         width: 370,
       );
 
-      expect(find.text('Makers near you'), findsOneWidget);
+      expect(find.text('Small businesses near you'), findsOneWidget);
       expect(find.text(sellers.first.name), findsOneWidget);
       expect(MakersRailItem(sellers).isWide, isTrue);
     });

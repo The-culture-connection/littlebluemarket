@@ -84,6 +84,9 @@ extension LbmNavigation on BuildContext {
   void replaceWithProduct(String productId) =>
       pushReplacement('${branchPrefix(this)}/product/$productId');
 
+  /// The whole directory, by category: the Directory button in the tab bar.
+  void goToDirectory() => _pushInBranch('/browse-directory');
+
   /// Every published business in one littlebluecart.com category, by slug.
   void goToDirectoryCategory(String slug) =>
       _pushInBranch('/directory-category/$slug');

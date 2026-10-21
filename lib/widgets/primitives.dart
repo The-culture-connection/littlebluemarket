@@ -963,10 +963,15 @@ class SearchPill extends StatelessWidget {
     required this.label,
     this.onTap,
     this.strong = false,
+    this.subtitle,
   });
 
   final String label;
   final VoidCallback? onTap;
+
+  /// A second, quieter line under [label]. The Market's pill carries the
+  /// tagline this way (Grace, 2026-10-21) and still opens the search.
+  final String? subtitle;
 
   /// A committed query renders in ink rather than placeholder grey.
   final bool strong;
@@ -992,16 +997,47 @@ class SearchPill extends StatelessWidget {
                 Icon(Icons.search_rounded, size: 18, color: c.ink3),
                 const SizedBox(width: 9),
                 Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: strong ? FontWeight.w700 : FontWeight.w400,
-                      color: strong ? c.ink : c.ink3,
-                    ),
-                  ),
+                  child: subtitle == null
+                      ? Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: strong
+                                ? FontWeight.w700
+                                : FontWeight.w400,
+                            color: strong ? c.ink : c.ink3,
+                          ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.6,
+                                height: 1.25,
+                                color: c.ink,
+                              ),
+                            ),
+                            Text(
+                              subtitle!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                height: 1.3,
+                                color: c.ink3,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
               ],
             ),

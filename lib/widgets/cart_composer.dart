@@ -10,6 +10,7 @@ import 'async.dart';
 import 'composers.dart';
 import 'primitives.dart';
 import 'sheets.dart';
+import 'haptics.dart';
 
 /// Post the cart as it is right now.
 ///
@@ -73,6 +74,7 @@ class _CartComposerState extends ConsumerState<_CartComposer> {
               mentionedUids: mentioned,
             ),
           );
+      LbmHaptics.done();
       navigator.pop();
       messenger.showSnackBar(const SnackBar(content: Text('Cart posted')));
     } on RepositoryException catch (error) {

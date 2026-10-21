@@ -95,6 +95,7 @@ import {
 import { backfillCatalogPage } from './backfill.ts';
 import { blockDirectoryAccount } from './directory_block.ts';
 import { sweepCatalogPage } from './catalog_sweep.ts';
+import { appSales } from './app_sales.ts';
 import { runStockCheck } from './stock_check.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { isDiagStep, requireDevProject, runDiagStep } from './diagnostics_notify.ts';
@@ -886,10 +887,16 @@ export const adminSendAnnouncement = onCall(
     // Stage 17: an announcement may now carry a photo and a button, which
     // is what the popup draws. Validated BEFORE anything is sent, so a
     // mistyped link cannot leave a push behind with no way to undo it.
+    //
+    // The Adverts and popups card says "fades in as a popup" and sends
+    // popup: true, so its announcements always get one. Before this, one
+    // with words only (no photo, no button) quietly became a push and a
+    // bell line and never a popup (Grace, 2026-10-21: "did not get
+    // announcement popup when opening the app").
     const wantsPopup =
-      Array.isArray(data.imageUrls) && data.imageUrls.length > 0
-        ? true
-        : Boolean(typeof data.ctaUrl === 'string' && data.ctaUrl.trim());
+      data.popup === true ||
+      (Array.isArray(data.imageUrls) && data.imageUrls.length > 0) ||
+      Boolean(typeof data.ctaUrl === 'string' && data.ctaUrl.trim());
     const popup: PromoInput | null = wantsPopup
       ? {
           kind: 'announcement',
@@ -899,6 +906,10 @@ export const adminSendAnnouncement = onCall(
           imageUrls: data.imageUrls,
           ctaLabel: typeof data.ctaLabel === 'string' ? data.ctaLabel : '',
           ctaUrl: typeof data.ctaUrl === 'string' ? data.ctaUrl : '',
+          // The card's Starts and Ends were dropped on this path, so a
+          // scheduled announcement went live at once.
+          startsAt: typeof data.startsAt === 'string' ? data.startsAt : undefined,
+          endsAt: typeof data.endsAt === 'string' ? data.endsAt : undefined,
         }
       : null;
     if (popup) validatePromo(popup);
@@ -1234,6 +1245,21 @@ export const adminSweepCatalog = onCall(
       after: typeof after === 'string' && after ? after : null,
       apply: apply === true,
     });
+  }),
+);
+
+/**
+ * The admin page's App sales card: paid purchases made in the app, and
+ * what they were worth. Sorts up to one page of older orders into app or
+ * website per call by asking Shopify, so it may call the Admin API. See
+ * `app_sales.ts`.
+ */
+export const adminAppSales = onCall(
+  { secrets: [SHOPIFY_CLIENT_SECRET], timeoutSeconds: 60, memory: '512MiB' },
+  withLoudErrors('adminAppSales', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    return appSales();
   }),
 );
 

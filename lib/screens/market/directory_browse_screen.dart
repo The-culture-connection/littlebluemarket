@@ -49,11 +49,13 @@ class DirectoryRail extends ConsumerWidget {
               child: Row(
                 children: [
                   Expanded(
+                    // A heading rather than a caption (Grace, 2026-10-21):
+                    // at 12.5 it read as a footnote to the rail.
                     child: Text(
                       'Browse the directory',
-                      style: LbmText.tiny.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: c.ink2,
+                      style: LbmText.display.copyWith(
+                        fontSize: 18,
+                        color: c.ink,
                       ),
                     ),
                   ),
@@ -193,6 +195,67 @@ class _DirectoryCategoryScreenState
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// The whole directory, a category to a row: where the Directory button in
+/// the tab bar lands (Grace, 2026-10-21).
+///
+/// The same categories as the rail on the feed, in the site's own words and
+/// with the count beside each, so the two never disagree about what is
+/// there. Public data, so a guest gets it too.
+class DirectoryHomeScreen extends ConsumerWidget {
+  const DirectoryHomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final categories = ref.watch(directoryCategoriesProvider);
+
+    return LbmScreen(
+      appBar: const LbmAppBar(title: 'Directory'),
+      child: LbmAsync<List<DirectoryCategory>>(
+        categories,
+        skeleton: const ListRowSkeleton(rows: 6),
+        onRetry: () => ref.invalidate(directoryCategoriesProvider),
+        isEmpty: (items) => items.isEmpty,
+        empty: const LbmEmpty(
+          title: 'The directory is on its way',
+          body:
+              'Businesses listed on littlebluecart.com show up here as soon '
+              'as they are published.',
+        ),
+        data: (items) => ListView(
+          padding: const EdgeInsets.only(top: 4, bottom: 26),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 4, 18, 10),
+              child: Text(
+                'Small businesses from littlebluecart.com, by category.',
+                style: LbmText.tiny.copyWith(color: c.ink2),
+              ),
+            ),
+            LbmCard(
+              margin: const EdgeInsets.symmetric(horizontal: 14),
+              child: RowStack(
+                children: [
+                  for (final category in items)
+                    ListRow(
+                      title: Text(category.name),
+                      subtitle: Text(category.countLabel),
+                      trailing: Icon(
+                        Icons.chevron_right_rounded,
+                        color: c.ink3,
+                      ),
+                      onTap: () => context.goToDirectoryCategory(category.slug),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

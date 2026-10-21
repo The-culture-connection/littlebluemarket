@@ -14,20 +14,47 @@ import '../widgets/primitives.dart';
 /// every time: an opt-in that defaults to on is not an opt-in, and change
 /// taken quietly is the thing people are right to resent about this pattern.
 ///
-/// Hides itself entirely when the round-up product is not configured for
-/// this environment, which is how the whole feature ships dark.
-class RoundUpCard extends ConsumerWidget {
+/// Shown on every cart, empty ones included (Grace, 2026-10-21): with
+/// nothing to round, the switch waits and says what it will do. Hides
+/// itself only when the store has said it has no round-up product, which is
+/// how the whole feature ships dark.
+class RoundUpCard extends ConsumerStatefulWidget {
   const RoundUpCard({super.key, required this.subtotalCents});
 
   final int subtotalCents;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.c;
-    final canRoundUp = ref.watch(appConfigProvider).value?.canRoundUp ?? false;
-    if (!canRoundUp || subtotalCents <= 0) return const SizedBox.shrink();
+  ConsumerState<RoundUpCard> createState() => _RoundUpCardState();
+}
 
-    final on = ref.watch(roundUpProvider);
+class _RoundUpCardState extends ConsumerState<RoundUpCard> {
+  @override
+  void initState() {
+    super.initState();
+    // The config is asked for once per app session and kept. If that one
+    // answer was a failure, or a "no" given while the store was not
+    // answering, the card stayed hidden until the app was closed, which is
+    // why the round-up was only sometimes there. Opening the cart asks again.
+    final config = ref.read(appConfigProvider);
+    if (config.hasError || config.value?.canRoundUp == false) {
+      Future.microtask(() {
+        if (mounted) ref.invalidate(appConfigProvider);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final subtotalCents = widget.subtotalCents;
+    final config = ref.watch(appConfigProvider);
+    // Drawn while the answer is on its way, so it does not pop in late. Only
+    // a settled "no product in this store" hides it.
+    final canRoundUp = config.value?.canRoundUp ?? config.isLoading;
+    if (!canRoundUp) return const SizedBox.shrink();
+
+    final ready = subtotalCents > 0 && config.value?.canRoundUp == true;
+    final on = ready && ref.watch(roundUpProvider);
     final cents = roundUpCentsFor(subtotalCents);
 
     return Padding(
@@ -50,7 +77,10 @@ class RoundUpCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    on
+                    subtotalCents <= 0
+                        ? 'Add something to your cart, then round up to the '
+                              'nearest dollar. The change keeps the app running.'
+                        : on
                         ? '${Fmt.money(cents)} keeps the app member-run.'
                         : 'Round up to the nearest dollar. The change keeps '
                               'the app running.',
@@ -62,8 +92,9 @@ class RoundUpCard extends ConsumerWidget {
             Switch(
               value: on,
               activeThumbColor: c.sage,
-              onChanged: (next) =>
-                  ref.read(roundUpProvider.notifier).set(next),
+              onChanged: ready
+                  ? (next) => ref.read(roundUpProvider.notifier).set(next)
+                  : null,
             ),
           ],
         ),

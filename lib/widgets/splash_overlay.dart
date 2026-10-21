@@ -163,7 +163,14 @@ class _SplashOverlayState extends State<SplashOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_mounted) return widget.child;
+    // The same Stack either way, the splash simply absent. Returning the
+    // bare child once the splash had gone changed the widget at this slot,
+    // which unmounted and rebuilt everything under it: the router survived
+    // on its GlobalKey, but the announcement popup did not, and one that had
+    // just faded in was destroyed while being counted as seen (2026-10-21).
+    if (!_mounted) {
+      return Stack(fit: StackFit.expand, children: [widget.child]);
+    }
     final controller = _controller;
     return Stack(
       fit: StackFit.expand,

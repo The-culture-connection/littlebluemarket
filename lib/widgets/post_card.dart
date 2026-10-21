@@ -19,6 +19,7 @@ import 'sheets.dart';
 import 'skeleton.dart';
 import 'tips.dart';
 import 'member_leaf.dart';
+import 'haptics.dart';
 
 /// An entry in the feed.
 ///
@@ -173,6 +174,7 @@ Future<void> addToCart(
     await ref
         .read(commerceRepositoryProvider)
         .addLine(productId: productId, variantId: variantId);
+    LbmHaptics.done();
     if (announce) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Added to your cart')),
@@ -199,6 +201,7 @@ Future<void> addManyToCart(
         .read(commerceRepositoryProvider)
         .addManyLines(productIds);
     if (!context.mounted) return;
+    if (result.added.isNotEmpty) LbmHaptics.done();
     final skipped = result.skipped.length;
     if (skipped == 0) {
       LbmToast.show(

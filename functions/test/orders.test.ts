@@ -92,11 +92,33 @@ test('an app order is self-identifying', async () => {
     resolve,
   );
   assert.equal(order.buyerUid, 'dee');
+  // What the admin page counts as a sale made in the app.
+  assert.equal(order.source, 'app');
+});
+
+test('a website order is recorded as from the website', async () => {
+  // Even when its email later matches an account, it did not come through
+  // the app, so it must not be counted as an app sale.
+  const order = await normalizeOrder(
+    { ...baseOrder, note_attributes: [{ name: 'gift_note', value: 'hi' }] },
+    resolve,
+  );
+  assert.equal(order.source, 'website');
+});
+
+test('an empty app_uid does not make an app order', async () => {
+  const order = await normalizeOrder(
+    { ...baseOrder, note_attributes: [{ name: 'app_uid', value: '' }] },
+    resolve,
+  );
+  assert.equal(order.source, 'website');
+  assert.equal(order.buyerUid, null);
 });
 
 test('a website order carries no uid and falls back to its email', async () => {
   const order = await normalizeOrder(baseOrder, resolve);
   assert.equal(order.buyerUid, null);
+  assert.equal(order.source, 'website');
   // Kept as sent; the lookup lowercases. This is what makes a purchase made on
   // the website appear on the buyer's app profile.
   assert.equal(order.buyerEmail, 'Dee@Example.com');

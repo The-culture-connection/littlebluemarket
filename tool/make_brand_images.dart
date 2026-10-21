@@ -1,5 +1,6 @@
 // Generates every brand image from one source: the app icon (Grace's
-// "Body (2).png", 1024×1024, the cart on LbmConst.splashBlue).
+// "Body (6).png", the cart with two hearts on LbmConst.splashBlue; 512×512,
+// scaled up to 1024. Was "Body (2).png" until 2026-10-21).
 //
 //   dart run tool/make_brand_images.dart [path/to/source.png]
 //   dart run flutter_launcher_icons      # then regenerate the launcher icons
@@ -31,7 +32,7 @@ const launchIconDp = 200;
 
 void main(List<String> args) {
   final root = Directory.current.path;
-  final srcPath = args.isNotEmpty ? args.first : '$root/../Body (2).png';
+  final srcPath = args.isNotEmpty ? args.first : '$root/../Body (6).png';
   final src = img.decodePng(File(srcPath).readAsBytesSync());
   if (src == null) {
     stderr.writeln('Could not decode $srcPath');

@@ -213,7 +213,7 @@ void main() {
       tester,
     ) async {
       await _pumpFeed(tester);
-      await tester.tap(find.text('Search goods, services, #tags'));
+      await tester.tap(find.text('DISCOVER. SHOP. SUPPORT.'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, 'candle');
       await tester.testTextInput.receiveAction(TextInputAction.search);
@@ -236,7 +236,7 @@ void main() {
       tester,
     ) async {
       final container = await _pumpFeed(tester);
-      await tester.tap(find.text('Search goods, services, #tags'));
+      await tester.tap(find.text('DISCOVER. SHOP. SUPPORT.'));
       await tester.pumpAndSettle();
 
       // A hashtag is a place now rather than a search: it has its own page,

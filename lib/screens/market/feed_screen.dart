@@ -12,6 +12,7 @@ import '../../state/notifications_ui.dart';
 import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/app_shell.dart' show Tabs;
 import '../../widgets/async.dart';
 import '../../widgets/directory_listing_card.dart';
 import '../../widgets/filter_chips.dart';
@@ -151,14 +152,27 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SearchPill(
-              label: 'Search goods, services, #tags',
-              onTap: () => context.push('/market/search'),
+            Row(
+              children: [
+                Expanded(
+                  child: SearchPill(
+                    label: 'DISCOVER. SHOP. SUPPORT.',
+                    subtitle: 'Small businesses. Big impact.',
+                    onTap: () => context.push('/market/search'),
+                  ),
+                ),
+                if (!isGuest) ...[
+                  const SizedBox(width: 10),
+                  const _ProfileButton(),
+                ],
+              ],
             ),
             const SizedBox(height: 4),
             TopTabs(
-              labels: const ['Following', 'For you', 'Near me'],
-              selected: tab.index,
+              labels: ['Following', 'For you', if (kNearMeOffered) 'Near me'],
+              // Near me cannot be on while it is not offered, but a tab
+              // index past the end of the labels must never be asked for.
+              selected: tab.index.clamp(0, kNearMeOffered ? 2 : 1),
               onChanged: _selectTab,
               padding: EdgeInsets.zero,
             ),
@@ -175,6 +189,91 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           FeedTab.following => FollowingGrid(controller: _controller),
           FeedTab.forYou => _Grid(controller: _controller, isGuest: isGuest),
         },
+      ),
+    );
+  }
+}
+
+/// You, beside the search (Grace, 2026-10-21): the profile moved out of
+/// the tab bar, and brought its unread-messages number and delivery dot.
+class _ProfileButton extends ConsumerWidget {
+  const _ProfileButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final me = ref.watch(meProvider);
+    final mail = ref.watch(mailUnreadProvider);
+    final dot = mail == 0 && ref.watch(notificationsUiProvider).youDot;
+    const size = 46.0;
+
+    return Semantics(
+      button: true,
+      label: mail > 0 ? 'Your profile, $mail unread' : 'Your profile',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          ref.read(notificationsUiProvider.notifier).seenYou();
+          final shell = StatefulNavigationShell.maybeOf(context);
+          shell != null ? shell.goBranch(Tabs.you) : context.go('/you');
+        },
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: size,
+              height: size,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: c.surface,
+                shape: BoxShape.circle,
+                boxShadow: c.shadowSoft,
+              ),
+              child: me == null
+                  ? Icon(Icons.person_rounded, size: 24, color: c.ink2)
+                  : Avatar(me, size: AvatarSize.md),
+            ),
+            if (mail > 0)
+              Positioned(
+                top: -3,
+                right: -3,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 18),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: c.accentDeep,
+                    borderRadius: LbmRadius.pillR,
+                  ),
+                  child: Text(
+                    '$mail',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      height: 1.3,
+                      color: c.accentInk,
+                    ),
+                  ),
+                ),
+              )
+            else if (dot)
+              Positioned(
+                top: 1,
+                right: 1,
+                child: Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    color: c.accentDeep,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -233,8 +332,7 @@ class _GridState extends ConsumerState<_Grid> {
 
   /// True while a finger or a fling is moving the grid.
   bool get _moving =>
-      controller.hasClients &&
-      controller.position.isScrollingNotifier.value;
+      controller.hasClients && controller.position.isScrollingNotifier.value;
 
   @override
   void initState() {

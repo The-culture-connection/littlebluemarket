@@ -18,6 +18,7 @@ import 'product_art.dart';
 import 'sheets.dart';
 import 'tag_entry.dart';
 import 'skeleton.dart';
+import 'haptics.dart';
 
 /// The uids of the members a text names with @, looked up by handle. A
 /// handle nobody holds is left as text.
@@ -173,6 +174,7 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
               mentionedUids: mentioned,
             ),
           );
+      LbmHaptics.done();
       // Raised before the sheet closes, so there is still a context to hang
       // it on. The overlay it goes into belongs to the root navigator and
       // outlives the sheet.
@@ -246,10 +248,7 @@ class _ReviewComposerState extends ConsumerState<ReviewComposer> {
                 if (picked == null) ...[
                   Text(
                     'Which one?',
-                    style: LbmText.display.copyWith(
-                      fontSize: 21,
-                      color: c.ink,
-                    ),
+                    style: LbmText.display.copyWith(fontSize: 21, color: c.ink),
                   ),
                   const SizedBox(height: 14),
                   for (final purchase in reviewable)
@@ -553,6 +552,7 @@ class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
           mentionedUids: mentioned,
         ),
       );
+      LbmHaptics.done();
       navigator.pop();
       messenger.showSnackBar(const SnackBar(content: Text('Shoutout posted')));
     } on RepositoryException catch (error) {
@@ -726,6 +726,7 @@ class _ListingComposerState extends ConsumerState<ListingComposer> {
               mentionedUids: mentioned,
             ),
           );
+      LbmHaptics.done();
       navigator.pop();
       messenger.showSnackBar(const SnackBar(content: Text('Posted')));
     } on RepositoryException catch (error) {

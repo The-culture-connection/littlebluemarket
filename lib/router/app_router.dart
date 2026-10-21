@@ -102,6 +102,12 @@ List<RouteBase> _sharedRoutes() => [
     builder: (context, state) =>
         CollectionScreen(handle: state.pathParameters['handle']!),
   ),
+  // Not "directory": the You branch already has a screen there, a
+  // business's own listings.
+  GoRoute(
+    path: 'browse-directory',
+    builder: (context, state) => const DirectoryHomeScreen(),
+  ),
   GoRoute(
     path: 'directory-category/:slug',
     builder: (context, state) =>

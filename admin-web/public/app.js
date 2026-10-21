@@ -192,7 +192,7 @@ function watchRecent() {
 async function refreshGate(user) {
   if (!user) {
     show('signin', true); show('notadmin', false); show('send', false); show('recentCard', false); show('feedbackCard', false); show('reportsCard', false); show('signout', false);
-    show('promoCard', false); show('promoListCard', false); show('announceListCard', false); show('dirCard', false); show('catalogCard', false); show('vendorCard', false);
+    show('promoCard', false); show('promoListCard', false); show('announceListCard', false); show('dirCard', false); show('catalogCard', false); show('vendorCard', false); show('salesCard', false);
     $('who').textContent = '';
     unsubscribeRecent?.(); unsubscribeRecent = null;
     unsubscribeFeedback?.(); unsubscribeFeedback = null;
@@ -217,7 +217,8 @@ async function refreshGate(user) {
   show('dirCard', isAdmin);
   show('catalogCard', isAdmin);
   show('vendorCard', isAdmin);
-  if (isAdmin) { watchRecent(); watchFeedback(); watchReports(); watchPromos(); watchAnnouncements(); }
+  show('salesCard', isAdmin);
+  if (isAdmin) { watchRecent(); watchFeedback(); watchReports(); watchPromos(); watchAnnouncements(); loadAppSales(); }
 }
 $('showDone').addEventListener('change', renderFeedback);
 $('showClosedReports').addEventListener('change', renderReports);
@@ -660,6 +661,7 @@ $('pPostBtn').addEventListener('click', async () => {
       // when it is new — editing one must not push it again.
       await httpsCallable(functions, 'adminSendAnnouncement')({
         title, body: caption, audience, route: '/you/notifications', imageUrls, ctaLabel, ctaUrl,
+        popup: true, startsAt: promoWhen('pStarts'), endsAt: promoWhen('pEnds'),
       });
     } else {
       await httpsCallable(functions, 'adminPromoSave')({
@@ -786,7 +788,7 @@ renderPromoPreview();
 // Copy for Claude copies the whole log, the way the app's bug button does.
 
 /** Bumped by hand when this file changes, so a stale tab is obvious. */
-const ADMIN_BUILD = '2026-09-30a';
+const ADMIN_BUILD = '2026-10-21a';
 
 const DIR_CALL_TIMEOUT_MS = 560_000;
 const DIR_MAX_CALLS = 60;
@@ -1282,3 +1284,101 @@ async function blockAccount(apply) {
 }
 $('blockCheckBtn').addEventListener('click', () => blockAccount(false));
 $('blockRunBtn').addEventListener('click', () => blockAccount(true));
+
+// The App sales card (Grace, 2026-10-21): how many paid purchases were made
+// in the app, and what they were worth. Loaded once after the admin gate and
+// again on Refresh. The server also sorts up to 250 older orders into app or
+// website on each call, so a Refresh can move the numbers the first few times.
+// Money arrives in integer cents and is only turned into dollars here.
+const SALES_CALL_TIMEOUT_MS = 70_000;
+let salesLoading = false;
+
+function dollars(cents) {
+  const sign = cents < 0 ? '-' : '';
+  const abs = Math.abs(Math.round(Number(cents) || 0));
+  const whole = Math.floor(abs / 100).toLocaleString('en-US');
+  return `${sign}$${whole}.${String(abs % 100).padStart(2, '0')}`;
+}
+
+function monthName(key) {
+  const [y, m] = String(key).split('-').map(Number);
+  if (!y || !m) return String(key);
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+
+function salesRow(label, value) {
+  const tr = document.createElement('tr');
+  const th = document.createElement('th');
+  const td = document.createElement('td');
+  th.textContent = label;
+  td.textContent = value;
+  tr.append(th, td);
+  return tr;
+}
+
+function renderAppSales(data) {
+  const { app, website, thisMonth, last30Days } = data;
+  const facts = $('salesFacts');
+  facts.innerHTML = '';
+  facts.append(
+    salesRow('Purchases made in the app', String(app.orders)),
+    salesRow('Value of goods', dollars(app.goodsCents)),
+    salesRow('Items sold', String(app.itemsSold)),
+    salesRow('Round-ups and chip-ins', dollars(app.giftsCents)),
+    salesRow(`This month (${monthName(thisMonth.month)})`,
+      `${thisMonth.orders} ${thisMonth.orders === 1 ? 'purchase' : 'purchases'}, ${dollars(thisMonth.goodsCents)}`),
+    salesRow('Last 30 days',
+      `${last30Days.orders} ${last30Days.orders === 1 ? 'purchase' : 'purchases'}, ${dollars(last30Days.goodsCents)}`),
+  );
+
+  const months = $('salesMonths');
+  months.innerHTML = '';
+  for (const m of data.months ?? []) {
+    const tr = document.createElement('tr');
+    for (const text of [monthName(m.month), String(m.orders), String(m.itemsSold), dollars(m.goodsCents), dollars(m.giftsCents)]) {
+      const td = document.createElement('td');
+      td.textContent = text;
+      tr.appendChild(td);
+    }
+    months.appendChild(tr);
+  }
+
+  $('salesCompare').textContent =
+    `For comparison, on the website: ${website.orders} ${website.orders === 1 ? 'purchase' : 'purchases'}, ` +
+    `${website.itemsSold} ${website.itemsSold === 1 ? 'item' : 'items'}, ${dollars(website.goodsCents)} of goods.`;
+
+  const asOf = data.asOf ? new Date(data.asOf).toLocaleString() : new Date().toLocaleString();
+  $('salesAsOf').textContent = `Counted ${asOf}`;
+
+  // Anything that is not in the numbers is said plainly, in red, so a low
+  // figure is never mistaken for the whole story.
+  const gaps = [];
+  if (data.sortError) {
+    gaps.push(`Shopify did not answer about older orders, so they are not counted yet. Press Refresh to try again. What Shopify said: ${data.sortError}`);
+  }
+  if (data.unsorted > 0) {
+    gaps.push(`${data.unsorted} older ${data.unsorted === 1 ? 'order is' : 'orders are'} not sorted into app or website yet, so ${data.unsorted === 1 ? 'it is' : 'they are'} not in these numbers. Each Refresh sorts up to 250 more.`);
+  }
+  if (data.unknownOrders > 0) {
+    gaps.push(`${data.unknownOrders} ${data.unknownOrders === 1 ? 'order' : 'orders'} could not be looked up in Shopify (deleted, or too old for the app to read), so ${data.unknownOrders === 1 ? 'it is' : 'they are'} counted on neither side.`);
+  }
+  notice('salesNotice', gaps.join(' '), false);
+}
+
+async function loadAppSales() {
+  if (salesLoading) return;
+  salesLoading = true;
+  $('salesRefreshBtn').disabled = true;
+  notice('salesNotice', 'Counting…', true);
+  try {
+    const call = httpsCallable(functions, 'adminAppSales', { timeout: SALES_CALL_TIMEOUT_MS });
+    const { data } = await call({});
+    renderAppSales(data);
+  } catch (error) {
+    notice('salesNotice', `Could not count the app's sales: ${describe(error)}`, false);
+  } finally {
+    salesLoading = false;
+    $('salesRefreshBtn').disabled = false;
+  }
+}
+$('salesRefreshBtn').addEventListener('click', () => loadAppSales());

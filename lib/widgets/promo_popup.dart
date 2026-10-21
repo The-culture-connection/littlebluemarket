@@ -61,19 +61,90 @@ class PromoLayer extends ConsumerStatefulWidget {
   ConsumerState<PromoLayer> createState() => _PromoLayerState();
 }
 
-class _PromoLayerState extends ConsumerState<PromoLayer> {
+class _PromoLayerState extends ConsumerState<PromoLayer>
+    with WidgetsBindingObserver {
   Timer? _arrive;
   Timer? _leave;
+  Timer? _retry;
 
   /// The promo being shown, once its turn has been taken.
   Promo? _showing;
   bool _visible = false;
 
+  /// When the app last went into the background.
+  DateTime? _awaySince;
+
+  /// How long away counts as opening the app again.
+  ///
+  /// On an iPhone, "opening the app" is nearly always a resume, not a fresh
+  /// launch, and the promo was only ever looked up at launch: an
+  /// announcement posted while the app sat in the background never
+  /// appeared (Grace, 2026-10-21). Long enough that answering one message
+  /// and coming back is not a new opening.
+  static const _newOpeningAfter = Duration(minutes: 5);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // The layer sits above the router and was not rebuilt by a change of
+    // screen, so a promo that arrived while the welcome screen was up waited
+    // for some unrelated rebuild that might never come.
+    widget.router.routerDelegate.addListener(_onRouteChanged);
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.router.routerDelegate.removeListener(_onRouteChanged);
     _arrive?.cancel();
     _leave?.cancel();
+    _retry?.cancel();
     super.dispose();
+  }
+
+  /// After the frame, never during it: the router announces a change while
+  /// it is itself being built, and rebuilding this layer then (it is the
+  /// router's parent) is a rebuild in the middle of a build.
+  bool _rebuildQueued = false;
+
+  void _onRouteChanged() {
+    if (kUnderFlutterTest || _rebuildQueued || _showing != null) return;
+    _rebuildQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _rebuildQueued = false;
+      if (mounted && _showing == null) setState(() {});
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _awaySince ??= DateTime.now();
+      return;
+    }
+    if (state != AppLifecycleState.resumed) return;
+    final away = _awaySince;
+    _awaySince = null;
+    if (away == null || _showing != null) return;
+    if (DateTime.now().difference(away) < _newOpeningAfter) return;
+    // A new opening: its turn back, and a fresh look for anything posted
+    // since. Never the same one twice still holds; that list is on disk.
+    _arrive?.cancel();
+    _arrive = null;
+    ref.read(promoTurnTakenProvider.notifier).release();
+    ref.invalidate(promoForThisLaunchProvider);
+  }
+
+  /// A failed lookup was kept for the whole session, so a flaky connection
+  /// at launch meant no popup until the app was closed. Ask again shortly.
+  void _retryLater() {
+    if (_retry != null) return;
+    _retry = Timer(const Duration(seconds: 30), () {
+      _retry = null;
+      if (mounted) ref.invalidate(promoForThisLaunchProvider);
+    });
   }
 
   bool get _onAHiddenScreen {
@@ -202,7 +273,9 @@ class _PromoLayerState extends ConsumerState<PromoLayer> {
       });
     }
 
-    final promo = ref.watch(promoForThisLaunchProvider).value;
+    final lookup = ref.watch(promoForThisLaunchProvider);
+    if (lookup.hasError && !lookup.isLoading) _retryLater();
+    final promo = lookup.value;
     if (forced == null && promo != null && !_onAHiddenScreen) {
       _scheduleFor(promo);
     }

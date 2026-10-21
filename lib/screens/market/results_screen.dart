@@ -97,11 +97,13 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                NearMeButton(
-                  active: active.nearMe,
-                  onTap: () => toggleNearMe(context, ref),
-                ),
+                if (kNearMeOffered) ...[
+                  const SizedBox(width: 10),
+                  NearMeButton(
+                    active: active.nearMe,
+                    onTap: () => toggleNearMe(context, ref),
+                  ),
+                ],
               ],
             ),
           ),

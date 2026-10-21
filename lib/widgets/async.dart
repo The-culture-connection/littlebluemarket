@@ -264,27 +264,36 @@ class LbmEmpty extends StatelessWidget {
         horizontal: 20,
         vertical: compact ? 18 : 40,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: LbmText.display.copyWith(
-              fontSize: compact ? 14.5 : 17,
-              color: c.ink,
-            ),
-          ),
-          if (body != null) ...[
-            const SizedBox(height: 6),
+      // Centred across the screen, not just within its own text. Inside a
+      // start-aligned column (the profile's tabs) the block shrank to its
+      // widest line and sat in the top left corner, away from the cloud
+      // under it (Grace, 2026-10-21). heightFactor 1 keeps it only as tall
+      // as its words.
+      child: Center(
+        heightFactor: 1,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
             Text(
-              body!,
+              title,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, height: 1.55, color: c.ink2),
+              style: LbmText.display.copyWith(
+                fontSize: compact ? 14.5 : 17,
+                color: c.ink,
+              ),
             ),
+            if (body != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                body!,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, height: 1.55, color: c.ink2),
+              ),
+            ],
+            if (action != null) ...[const SizedBox(height: 16), action!],
           ],
-          if (action != null) ...[const SizedBox(height: 16), action!],
-        ],
+        ),
       ),
     );
   }

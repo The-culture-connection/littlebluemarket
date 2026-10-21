@@ -94,6 +94,14 @@ SearchOrigin _origin(Position position) => SearchOrigin(
   fromDevice: true,
 );
 
+/// Whether the app offers Near me at all.
+///
+/// Off for now (Grace, 2026-10-21: "remove the near me search function for
+/// now"). Only the ways in are hidden: the feed tab, and the button on the
+/// search and results screens. The filter, the radius search and their tests
+/// stay, so turning it back on is this one line.
+const kNearMeOffered = false;
+
 /// The Near me toggle, wherever it appears: off is one tap; on needs a place
 /// to measure from, and says so when there is none.
 Future<void> toggleNearMe(BuildContext context, WidgetRef ref) async {

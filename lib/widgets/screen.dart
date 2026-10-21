@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
 import 'primitives.dart';
+import 'haptics.dart';
 
 /// The frame every screen inside the tab shell sits in.
 ///
@@ -206,6 +207,7 @@ class _ComposerBodyState extends State<_ComposerBody> {
     final messenger = ScaffoldMessenger.maybeOf(context);
     try {
       await onSend(text);
+      LbmHaptics.done();
       if (mounted) _controller.clear();
     } catch (error) {
       // The text is still in the field; say why it did not go.

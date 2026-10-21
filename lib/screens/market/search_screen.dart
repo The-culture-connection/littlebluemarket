@@ -119,11 +119,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                NearMeButton(
-                  active: filters.nearMe,
-                  onTap: () => toggleNearMe(context, ref),
-                ),
+                if (kNearMeOffered) ...[
+                  const SizedBox(width: 10),
+                  NearMeButton(
+                    active: filters.nearMe,
+                    onTap: () => toggleNearMe(context, ref),
+                  ),
+                ],
               ],
             ),
           ),

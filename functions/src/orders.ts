@@ -53,8 +53,17 @@ export interface NormalizedLine {
   donation?: boolean;
 }
 
+/**
+ * Which front door an order came through. The app stamps `app_uid` on every
+ * checkout it opens; the website stamps nothing. `buyerUid` cannot answer
+ * this on its own, because a website order is matched to an account by
+ * email too, so the source is recorded separately for the admin sales count.
+ */
+export type OrderSource = 'app' | 'website';
+
 export interface NormalizedOrder {
   id: string;
+  source: OrderSource;
   number: string;
   placedAt: Date;
   status: string;
@@ -139,14 +148,17 @@ export async function normalizeOrder(
     });
   }
 
+  const appUid = attribute(noteAttributes, 'app_uid');
+
   return {
     id: String(payload.id),
+    source: appUid ? 'app' : 'website',
     number: String(payload.name ?? `#${payload.order_number ?? payload.id}`),
     placedAt: payload.created_at ? new Date(payload.created_at) : new Date(),
     status: String(payload.financial_status ?? 'pending'),
     // The app stamps this on the cart at checkout, which is what makes an
     // app-originated order self-identifying.
-    buyerUid: attribute(noteAttributes, 'app_uid') ?? null,
+    buyerUid: appUid ?? null,
     buyNow: attribute(noteAttributes, 'app_buy_now') === 'true',
     buyerEmail: (payload.email ?? payload.contact_email ?? null) as string | null,
     totalCents: toCents(payload.total_price ?? '0'),
@@ -233,6 +245,7 @@ export async function recordPaidOrder(
 
     tx.set(orderRef, {
       number: order.number,
+      source: order.source,
       placedAt: Timestamp.fromDate(order.placedAt),
       status: order.status,
       totalCents: order.totalCents,

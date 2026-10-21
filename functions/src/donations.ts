@@ -206,6 +206,11 @@ export async function donationAvailability(): Promise<{
     logger.warn('Could not ask the store about the donation products', {
       error: String(error),
     });
+    // Not remembered. A hiccup cached as "no" hid the round-up from every
+    // app start for the next five minutes, and the app kept that answer for
+    // the rest of its session, which is why it was only "sometimes" there
+    // (Grace, 2026-10-21). The next start asks again.
+    return has;
   }
   availability = { has, at: Date.now() };
   return has;

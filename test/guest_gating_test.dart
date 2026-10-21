@@ -10,7 +10,10 @@ import 'package:little_blue_market/state/session.dart';
 
 /// Boots the real app straight into the market, so the tab bar and the gate
 /// under test are the ones the app actually ships.
-Future<ProviderContainer> _pumpApp(WidgetTester tester, {required bool guest}) async {
+Future<ProviderContainer> _pumpApp(
+  WidgetTester tester, {
+  required bool guest,
+}) async {
   // The design targets a phone; the default 800x600 test surface would put
   // half the feed off-screen.
   tester.view.physicalSize = const Size(390, 844);
@@ -109,7 +112,8 @@ void main() {
 
     expect(find.text('Market'), findsOneWidget);
     expect(find.text('Community'), findsOneWidget);
-    expect(find.text('You'), findsOneWidget);
+    // You is beside the search now, not in the bar (Grace, 2026-10-21).
+    expect(find.bySemanticsLabel(RegExp('^Your profile')), findsOneWidget);
     expect(find.text('Sign up to unlock'), findsNothing);
     expect(find.textContaining('Looking around as a guest'), findsNothing);
   });
@@ -161,7 +165,7 @@ void main() {
   testWidgets('the You tab shows your own profile', (tester) async {
     await _pumpApp(tester, guest: false);
 
-    await tester.tap(find.text('You'));
+    await tester.tap(find.bySemanticsLabel(RegExp('^Your profile')));
     await tester.pumpAndSettle();
 
     expect(find.text(Fx.me.name), findsOneWidget);
@@ -186,7 +190,7 @@ void main() {
     tester,
   ) async {
     await _pumpApp(tester, guest: false);
-    await tester.tap(find.text('You'));
+    await tester.tap(find.bySemanticsLabel(RegExp('^Your profile')));
     await tester.pumpAndSettle();
 
     // Grace, 2026-09-25: "make it quieter". None of these exist in the

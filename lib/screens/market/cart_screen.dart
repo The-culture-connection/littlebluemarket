@@ -17,6 +17,7 @@ import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/haptics.dart';
 
 /// The cart.
 ///
@@ -59,9 +60,17 @@ class CartScreen extends ConsumerWidget {
                     'Your order shows under Bought & received on your profile '
                     'as soon as the store confirms it, usually within a minute.',
               )
-            : const LbmEmpty(
-                title: 'Your cart is empty',
-                body: 'Add something from the market and it waits here.',
+            // The round-up stays in view on an empty cart (Grace,
+            // 2026-10-21), waiting for something to round.
+            : ListView(
+                padding: EdgeInsets.zero,
+                children: const [
+                  LbmEmpty(
+                    title: 'Your cart is empty',
+                    body: 'Add something from the market and it waits here.',
+                  ),
+                  RoundUpCard(subtotalCents: 0),
+                ],
               ),
         data: (cart) => ListView(
           padding: EdgeInsets.zero,
@@ -76,7 +85,9 @@ class CartScreen extends ConsumerWidget {
                     compact: true,
                   ),
                 ),
-              )
+              ),
+            if (cart.lines.isEmpty)
+              const RoundUpCard(subtotalCents: 0)
             else ...[
               LbmCard(
                 margin: const EdgeInsets.symmetric(horizontal: 14),
@@ -476,6 +487,7 @@ class _SummaryState extends ConsumerState<_Summary> {
           .read(commerceRepositoryProvider)
           .beginCheckout(roundUpCents: roundUp);
       if (!mounted) return;
+      LbmHaptics.done();
       setState(() => _working = false);
       // Nothing here claims the purchase succeeded. The app cannot observe a
       // hosted checkout completing; only the paid webhook is proof.

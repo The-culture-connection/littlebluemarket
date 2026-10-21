@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:little_blue_market/widgets/app_shell.dart' show LbmTabBar;
 import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/data/fixtures/fixture_data.dart';
 import 'package:little_blue_market/models/models.dart';
@@ -103,7 +104,7 @@ void main() {
 
     // Far enough down that both columns have pins in them: the first screen
     // is the hero plus whatever two pins fit under it.
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -400));
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -600));
     await tester.pumpAndSettle();
 
     final pins = find.byType(ProductPin);
@@ -195,7 +196,8 @@ void main() {
     expect(find.byType(TopTabs), findsOneWidget);
     expect(find.text('Following'), findsOneWidget);
     expect(find.text('For you'), findsOneWidget);
-    expect(find.text('Near me'), findsOneWidget);
+    // Near me is switched off for now (Grace, 2026-10-21).
+    expect(find.text('Near me'), findsNothing);
   });
 
   test('you only land on Following if it has something in it', () {
@@ -299,16 +301,30 @@ void main() {
     expect(find.byType(ChatPin), findsNothing);
   });
 
-  testWidgets('the tab bar is Market, Community, post, Cart, You', (
+  // Grace, 2026-10-21: Market moved to the far right, the Directory got a
+  // button, and You moved beside the search.
+  testWidgets('the tab bar is Community, Directory, post, Cart, Market', (
     tester,
   ) async {
     await _pumpFeed(tester);
 
-    expect(find.text('Market'), findsOneWidget);
-    expect(find.text('Community'), findsOneWidget);
-    expect(find.bySemanticsLabel('Post something'), findsOneWidget);
+    final x = (String label) => tester
+        .getCenter(
+          find.descendant(
+            of: find.byType(LbmTabBar),
+            matching: find.text(label),
+          ),
+        )
+        .dx;
+    expect(x('Community'), lessThan(x('Directory')));
+    expect(
+      x('Directory'),
+      lessThan(tester.getCenter(find.bySemanticsLabel('Post something')).dx),
+    );
+    expect(x('Cart'), lessThan(x('Market')));
     expect(find.byIcon(Icons.shopping_bag_outlined), findsOneWidget);
-    expect(find.text('You'), findsOneWidget);
+    expect(find.text('You'), findsNothing);
+    expect(find.bySemanticsLabel(RegExp('^Your profile')), findsOneWidget);
   });
 }
 

@@ -13,6 +13,7 @@ import '../theme/tokens.dart';
 import 'async.dart';
 import 'checkout_launcher.dart';
 import 'primitives.dart';
+import 'haptics.dart';
 
 /// The shared bottom-sheet body: the grip, the soft top radius, and padding.
 class LbmSheet extends StatelessWidget {
@@ -198,6 +199,7 @@ Future<void> showBuySheet(
         .read(commerceRepositoryProvider)
         .buyNow(productId: product.id, variantId: variant?.name);
     if (!context.mounted) return;
+    LbmHaptics.done();
     await showCheckoutHandoff(context, handoff);
   } on RepositoryException catch (error) {
     if (!context.mounted) return;

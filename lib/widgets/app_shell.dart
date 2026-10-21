@@ -199,7 +199,6 @@ class LbmTabBar extends ConsumerWidget {
     final current = navigationShell.currentIndex;
     final ui = ref.watch(notificationsUiProvider);
     final seen = ref.read(notificationsUiProvider.notifier);
-    final mail = ref.watch(mailUnreadProvider);
 
     return Container(
       color: c.paper,
@@ -216,15 +215,12 @@ class LbmTabBar extends ConsumerWidget {
             ),
             child: Padding(
               padding: const EdgeInsets.all(6),
+              // Market sits at the far right and the Directory has its own
+              // button; You moved out of the bar to the button beside the
+              // Market's search (Grace, 2026-10-21). The branches did not
+              // move, only the buttons: Tabs.market is still branch 0.
               child: Row(
                 children: [
-                  _TabButton(
-                    icon: Icons.home_outlined,
-                    activeIcon: Icons.home_rounded,
-                    label: 'Market',
-                    selected: current == Tabs.market,
-                    onTap: () => _goBranch(Tabs.market),
-                  ),
                   if (isGuest)
                     _TabButton(
                       icon: Icons.chat_bubble_outline_rounded,
@@ -249,6 +245,16 @@ class LbmTabBar extends ConsumerWidget {
                         _goBranch(Tabs.community);
                       },
                     ),
+                  // Pushed like the cart rather than a branch of its own,
+                  // so it opens over whichever tab you are on and Back
+                  // returns there.
+                  _TabButton(
+                    icon: Icons.storefront_outlined,
+                    activeIcon: Icons.storefront_rounded,
+                    label: 'Directory',
+                    selected: false,
+                    onTap: context.goToDirectory,
+                  ),
                   // Posting is the middle of the bar rather than a button
                   // floating over the grid, where it covered a pin and moved
                   // as you scrolled. It is the one orchid thing here, for the
@@ -256,20 +262,13 @@ class LbmTabBar extends ConsumerWidget {
                   // photograph: there is exactly one of each.
                   const _ComposeButton(),
                   const _CartTab(),
-                  if (!isGuest)
-                    _TabButton(
-                      icon: Icons.person_outline_rounded,
-                      activeIcon: Icons.person_rounded,
-                      label: 'You',
-                      selected: current == Tabs.you,
-                      // Unread messages as a number; a delivery as a dot.
-                      count: mail,
-                      badge: mail == 0 && ui.youDot,
-                      onTap: () {
-                        seen.seenYou();
-                        _goBranch(Tabs.you);
-                      },
-                    ),
+                  _TabButton(
+                    icon: Icons.home_outlined,
+                    activeIcon: Icons.home_rounded,
+                    label: 'Market',
+                    selected: current == Tabs.market,
+                    onTap: () => _goBranch(Tabs.market),
+                  ),
                 ],
               ),
             ),

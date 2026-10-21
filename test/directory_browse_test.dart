@@ -209,7 +209,7 @@ void main() {
     tester,
   ) async {
     await _pumpFeed(tester);
-    await tester.tap(find.text('Search goods, services, #tags'));
+    await tester.tap(find.text('DISCOVER. SHOP. SUPPORT.'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, 'Found House');
     await tester.testTextInput.receiveAction(TextInputAction.search);

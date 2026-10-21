@@ -73,6 +73,9 @@
   table.facts th { text-align: left; font-weight: 700; color: var(--ink2);
     font-size: 13px; padding: 6px 12px 6px 0; vertical-align: top; width: 38%; }
   table.facts td { font-size: 13px; padding: 6px 0; vertical-align: top; }
+  /* The App sales month table: five columns, so the label column's 38% does not apply. */
+  table.sales-months th, table.sales-months td { width: auto; text-align: right; padding: 6px 0 6px 10px; }
+  table.sales-months th:first-child, table.sales-months td:first-child { text-align: left; padding-left: 0; }
   .yes { color: #1d7a4c; font-weight: 700; }
   .no { color: #b3261e; font-weight: 700; }
   /* What the phone will pick out and make tappable. */
@@ -148,6 +151,23 @@
     </div>
     <div style="margin-top:16px"><button id="sendBtn" class="primary" disabled>Send</button></div>
     <div id="sendNotice" class="notice" hidden></div>
+  </section>
+
+  <section id="salesCard" class="card" hidden>
+    <h2>App sales</h2>
+    <p class="hint">Purchases made in the app and paid for, as Shopify reports them. Orders placed on littlebluecart.com are not in these numbers; they are on the last line, for comparison. Round-ups and chip-ins are gifts to Little Blue Market, so they are shown on their own and are not counted as purchases. Refunded orders are left out.</p>
+    <table class="facts"><tbody id="salesFacts"></tbody></table>
+    <h3 style="margin:16px 0 4px">Month by month, in the app</h3>
+    <table class="facts sales-months">
+      <thead><tr><th>Month</th><th>Purchases</th><th>Items</th><th>Goods</th><th>Round-ups</th></tr></thead>
+      <tbody id="salesMonths"></tbody>
+    </table>
+    <p id="salesCompare" class="hint" style="margin-top:12px"></p>
+    <div class="logrow">
+      <button id="salesRefreshBtn" class="quiet">Refresh</button>
+      <span id="salesAsOf" class="build"></span>
+    </div>
+    <div id="salesNotice" class="notice" hidden></div>
   </section>
 
 
