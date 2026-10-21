@@ -7,6 +7,8 @@ import '../theme/tokens.dart';
 import 'async.dart';
 import 'primitives.dart';
 import 'haptics.dart';
+import 'tag_pickers.dart';
+import '../models/models.dart' show kMaxTaggedProducts;
 
 /// The frame every screen inside the tab shell sits in.
 ///
@@ -122,10 +124,17 @@ class Composer extends StatelessWidget {
     this.onSend,
     this.quickReplies = const [],
     this.initialText = '',
+    this.onSendTagged,
   });
 
   final String hintText;
   final Future<void> Function(String text)? onSend;
+
+  /// In place of [onSend] where products can be tagged (forum replies,
+  /// Grace 2026-10-21): Tag a product and Tag someone sit above the field,
+  /// and the picked products travel with the text.
+  final Future<void> Function(String text, List<String> productIds)?
+  onSendTagged;
 
   /// Ready-made openers, above the field.
   ///
@@ -151,6 +160,7 @@ class Composer extends StatelessWidget {
         colors: c,
         quickReplies: quickReplies,
         initialText: initialText,
+        onSendTagged: onSendTagged,
       ),
     );
   }
@@ -163,6 +173,7 @@ class _ComposerBody extends StatefulWidget {
     required this.colors,
     required this.quickReplies,
     required this.initialText,
+    this.onSendTagged,
   });
 
   final String hintText;
@@ -170,6 +181,8 @@ class _ComposerBody extends StatefulWidget {
   final LbmColors colors;
   final List<String> quickReplies;
   final String initialText;
+  final Future<void> Function(String text, List<String> productIds)?
+  onSendTagged;
 
   @override
   State<_ComposerBody> createState() => _ComposerBodyState();
@@ -178,6 +191,7 @@ class _ComposerBody extends StatefulWidget {
 class _ComposerBodyState extends State<_ComposerBody> {
   late final _controller = TextEditingController(text: widget.initialText);
   var _sending = false;
+  final _products = <String>[];
 
   @override
   void didUpdateWidget(_ComposerBody old) {
@@ -202,13 +216,23 @@ class _ComposerBodyState extends State<_ComposerBody> {
   Future<void> _send() async {
     final text = _controller.text.trim();
     final onSend = widget.onSend;
-    if (text.isEmpty || onSend == null || _sending) return;
+    final onSendTagged = widget.onSendTagged;
+    if (text.isEmpty || (onSend == null && onSendTagged == null) || _sending) {
+      return;
+    }
     setState(() => _sending = true);
     final messenger = ScaffoldMessenger.maybeOf(context);
     try {
-      await onSend(text);
+      if (onSendTagged != null) {
+        await onSendTagged(text, List.of(_products));
+      } else {
+        await onSend!(text);
+      }
       LbmHaptics.done();
-      if (mounted) _controller.clear();
+      if (mounted) {
+        _controller.clear();
+        _products.clear();
+      }
     } catch (error) {
       // The text is still in the field; say why it did not go.
       messenger?.showSnackBar(
@@ -253,6 +277,31 @@ class _ComposerBodyState extends State<_ComposerBody> {
                 },
               ),
             ),
+            const SizedBox(height: 8),
+          ],
+          if (widget.onSendTagged != null) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TagButtons(
+                productsFull: _products.length >= kMaxTaggedProducts,
+                onProduct: (product) => setState(() {
+                  if (!_products.contains(product.id)) {
+                    _products.add(product.id);
+                  }
+                }),
+                onPerson: (person) => insertMention(_controller, person),
+              ),
+            ),
+            if (_products.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TaggedProductChips(
+                  productIds: _products,
+                  onRemove: (id) => setState(() => _products.remove(id)),
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
           ],
           Row(

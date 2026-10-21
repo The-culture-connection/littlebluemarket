@@ -96,6 +96,7 @@ import { backfillCatalogPage } from './backfill.ts';
 import { blockDirectoryAccount } from './directory_block.ts';
 import { sweepCatalogPage } from './catalog_sweep.ts';
 import { appSales } from './app_sales.ts';
+import { seedStarterForums } from './forum_seed.ts';
 import { runStockCheck } from './stock_check.ts';
 import { defaultProbes, projectId, runHealthCheck } from './diagnostics.ts';
 import { isDiagStep, requireDevProject, runDiagStep } from './diagnostics_notify.ts';
@@ -1264,6 +1265,20 @@ export const adminAppSales = onCall(
 );
 
 /**
+ * The starter forums and their threads (Grace, 2026-10-21), posted as the
+ * admin who presses the button. Skips any forum whose title already exists,
+ * so a second press does nothing. See `forum_seed.ts`.
+ */
+export const adminSeedForums = onCall(
+  { timeoutSeconds: 60 },
+  withLoudErrors('adminSeedForums', async (request) => {
+    const uid = requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    return seedStarterForums(uid);
+  }),
+);
+
+/**
  * Stage 8: selling without a code. Every six hours, every Shipturtle vendor
  * user whose email belongs to a verified app account becomes a seller, as
  * the vendor string their company's products carry.
@@ -1856,8 +1871,24 @@ export const onThreadWritten = onDocumentWritten(
     if (delta === 1) {
       const authorId = String(thread?.authorId ?? '');
       const members = await db.collection('forums').doc(forumId).collection('members').select().get();
-      const recipients = forumThreadRecipients(members.docs.map((d) => d.id), authorId);
       const text = String(thread?.title ?? thread?.body ?? '').slice(0, 140);
+      // Grace, 2026-10-21: people can be tagged in the forums. The people
+      // named hear it as a mention, and only as a mention: a member who is
+      // also named gets one buzz, not two.
+      const mentioned = mentionsToNotify(thread, undefined);
+      for (const uid of mentioned) {
+        await notify(uid, {
+          type: 'mention',
+          fromUid: authorId,
+          text,
+          route: `/community/thread/${event.params.threadId}`,
+          forumId,
+          threadId: event.params.threadId,
+        });
+      }
+      const named = new Set(mentioned);
+      const recipients = forumThreadRecipients(members.docs.map((d) => d.id), authorId)
+        .filter((uid) => !named.has(uid));
       for (const uid of recipients) {
         await notify(uid, {
           type: 'forumThread',
@@ -1894,7 +1925,21 @@ export const onThreadCommentWritten = onDocumentWritten(
         replierId,
       );
       const forumId = typeof thread.forumId === 'string' ? thread.forumId : undefined;
+      // Tagged in a reply: told as a mention, once (see onThreadWritten).
+      const mentioned = mentionsToNotify(comment, undefined);
+      for (const uid of mentioned) {
+        await notify(uid, {
+          type: 'mention',
+          fromUid: replierId,
+          text: String(comment?.text ?? '').slice(0, 140),
+          route: `/community/thread/${event.params.threadId}`,
+          forumId,
+          threadId: event.params.threadId,
+        });
+      }
+      const named = new Set(mentioned);
       for (const uid of recipients) {
+        if (named.has(uid)) continue;
         await notify(uid, {
           type: 'forumReply',
           fromUid: replierId,

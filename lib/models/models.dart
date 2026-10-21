@@ -514,6 +514,10 @@ class Forum {
   String get membersLabel => '${Fmt.count(memberCount)} members';
 }
 
+/// The most products one forum thread or reply can carry. Enough to compare
+/// a few, few enough that a reply stays a reply rather than a catalogue.
+const kMaxTaggedProducts = 4;
+
 @immutable
 class ForumThread {
   const ForumThread({
@@ -524,6 +528,7 @@ class ForumThread {
     required this.body,
     required this.commentCount,
     required this.createdAt,
+    this.productIds = const [],
   });
 
   final String id;
@@ -533,6 +538,9 @@ class ForumThread {
   final String body;
   final int commentCount;
   final DateTime createdAt;
+
+  /// Products tagged on the thread, by id.
+  final List<String> productIds;
 
   String get age => Fmt.relative(createdAt);
 }
@@ -544,11 +552,15 @@ class ThreadComment {
     required this.createdAt,
     required this.text,
     required this.depth,
+    this.productIds = const [],
   });
 
   final String authorId;
   final DateTime createdAt;
   final String text;
+
+  /// Products tagged in the reply, by id.
+  final List<String> productIds;
 
   /// One level of nesting only.
   final int depth;

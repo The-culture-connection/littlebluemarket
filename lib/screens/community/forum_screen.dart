@@ -14,6 +14,9 @@ import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/sheets.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/composers.dart' show resolveMentionUids;
+import '../../widgets/haptics.dart';
+import '../../widgets/tag_pickers.dart';
 
 /// Threads inside one forum: a vote column, the title, the author and a
 /// comment count.
@@ -148,6 +151,7 @@ class NewThreadComposer extends ConsumerStatefulWidget {
 class _NewThreadComposerState extends ConsumerState<NewThreadComposer> {
   final _title = TextEditingController();
   final _body = TextEditingController();
+  final _products = <String>[];
   bool _saving = false;
   String? _error;
 
@@ -167,6 +171,10 @@ class _NewThreadComposerState extends ConsumerState<NewThreadComposer> {
 
     final navigator = Navigator.of(context);
     try {
+      final mentioned = await resolveMentionUids(
+        ref,
+        '${_title.text} ${_body.text}',
+      );
       await ref
           .read(socialRepositoryProvider)
           .createThread(
@@ -174,8 +182,11 @@ class _NewThreadComposerState extends ConsumerState<NewThreadComposer> {
               forumId: widget.forumId,
               title: _title.text,
               body: _body.text,
+              productIds: List.of(_products),
+              mentionedUids: mentioned,
             ),
           );
+      LbmHaptics.done();
       navigator.pop();
     } on RepositoryException catch (error) {
       if (!mounted) return;
@@ -204,6 +215,23 @@ class _NewThreadComposerState extends ConsumerState<NewThreadComposer> {
           controller: _body,
           maxLines: 4,
         ),
+        const SizedBox(height: 12),
+        // Grace, 2026-10-21: spotlight a product, or name a shop, from the
+        // forums.
+        TagButtons(
+          productsFull: _products.length >= kMaxTaggedProducts,
+          onProduct: (product) => setState(() {
+            if (!_products.contains(product.id)) _products.add(product.id);
+          }),
+          onPerson: (person) => insertMention(_body, person),
+        ),
+        if (_products.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          TaggedProductChips(
+            productIds: _products,
+            onRemove: (id) => setState(() => _products.remove(id)),
+          ),
+        ],
         if (_error != null) ...[
           const SizedBox(height: 12),
           Text(_error!, style: LbmText.tiny.copyWith(color: c.clay)),

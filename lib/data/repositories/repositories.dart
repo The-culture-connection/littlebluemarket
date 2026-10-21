@@ -373,6 +373,8 @@ abstract interface class SocialRepository {
     required String threadId,
     required String text,
     String? parentId,
+    List<String> productIds = const [],
+    List<String> mentionedUids = const [],
   });
 }
 
@@ -816,9 +818,20 @@ class NewThread {
     required this.forumId,
     required this.title,
     required this.body,
+    this.productIds = const [],
+    this.mentionedUids = const [],
   });
 
   final String forumId;
   final String title;
   final String body;
+
+  /// Products tagged on the thread, drawn as cards under it (Grace,
+  /// 2026-10-21). At most [kMaxTaggedProducts]; ids only, so a price change
+  /// shows the new price.
+  final List<String> productIds;
+
+  /// The people the body names with @, by uid, for the mention alert. The
+  /// same shape posts use.
+  final List<String> mentionedUids;
 }

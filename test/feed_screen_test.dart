@@ -308,7 +308,7 @@ void main() {
   ) async {
     await _pumpFeed(tester);
 
-    final x = (String label) => tester
+    double x(String label) => tester
         .getCenter(
           find.descendant(
             of: find.byType(LbmTabBar),

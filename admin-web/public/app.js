@@ -192,7 +192,7 @@ function watchRecent() {
 async function refreshGate(user) {
   if (!user) {
     show('signin', true); show('notadmin', false); show('send', false); show('recentCard', false); show('feedbackCard', false); show('reportsCard', false); show('signout', false);
-    show('promoCard', false); show('promoListCard', false); show('announceListCard', false); show('dirCard', false); show('catalogCard', false); show('vendorCard', false); show('salesCard', false);
+    show('promoCard', false); show('promoListCard', false); show('announceListCard', false); show('dirCard', false); show('catalogCard', false); show('vendorCard', false); show('salesCard', false); show('forumSeedCard', false);
     $('who').textContent = '';
     unsubscribeRecent?.(); unsubscribeRecent = null;
     unsubscribeFeedback?.(); unsubscribeFeedback = null;
@@ -218,6 +218,7 @@ async function refreshGate(user) {
   show('catalogCard', isAdmin);
   show('vendorCard', isAdmin);
   show('salesCard', isAdmin);
+  show('forumSeedCard', isAdmin);
   if (isAdmin) { watchRecent(); watchFeedback(); watchReports(); watchPromos(); watchAnnouncements(); loadAppSales(); }
 }
 $('showDone').addEventListener('change', renderFeedback);
@@ -788,7 +789,7 @@ renderPromoPreview();
 // Copy for Claude copies the whole log, the way the app's bug button does.
 
 /** Bumped by hand when this file changes, so a stale tab is obvious. */
-const ADMIN_BUILD = '2026-10-21a';
+const ADMIN_BUILD = '2026-10-21b';
 
 const DIR_CALL_TIMEOUT_MS = 560_000;
 const DIR_MAX_CALLS = 60;
@@ -1382,3 +1383,27 @@ async function loadAppSales() {
   }
 }
 $('salesRefreshBtn').addEventListener('click', () => loadAppSales());
+
+// The starter forums (Grace, 2026-10-21). One call; the server skips any
+// forum already there, so a second press is harmless.
+$('forumSeedBtn').addEventListener('click', async () => {
+  if (!window.confirm('Post the six starter forums and their threads under your account?\n\nEveryone using the app will see them in Community.')) return;
+  $('forumSeedBtn').disabled = true;
+  notice('forumSeedNotice', 'Posting…', true);
+  try {
+    const { data } = await httpsCallable(functions, 'adminSeedForums')({});
+    const made = data.created.length;
+    const skipped = data.skipped.length ? ` Already there, so left alone: ${data.skipped.join(', ')}.` : '';
+    notice(
+      'forumSeedNotice',
+      made
+        ? `Done. ${made} forums and ${data.threads} threads posted.${skipped}`
+        : `Nothing to post.${skipped}`,
+      true,
+    );
+  } catch (error) {
+    notice('forumSeedNotice', describe(error), false);
+  } finally {
+    $('forumSeedBtn').disabled = false;
+  }
+});

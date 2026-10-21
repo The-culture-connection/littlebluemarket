@@ -11,6 +11,9 @@ import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/composers.dart' show resolveMentionUids;
+import '../../widgets/message_product_card.dart';
+import '../../widgets/named_text.dart';
 
 /// The original post, then its comments with one level of nesting.
 ///
@@ -32,9 +35,17 @@ class ThreadScreen extends ConsumerWidget {
           : Composer(
               hintText: 'Add a comment…',
               quickReplies: const ["Mine's in too", 'What qualifies?'],
-              onSend: (text) => ref
-                  .read(socialRepositoryProvider)
-                  .addThreadComment(threadId: threadId, text: text),
+              onSendTagged: (text, productIds) async {
+                final mentioned = await resolveMentionUids(ref, text);
+                await ref
+                    .read(socialRepositoryProvider)
+                    .addThreadComment(
+                      threadId: threadId,
+                      text: text,
+                      productIds: productIds,
+                      mentionedUids: mentioned,
+                    );
+              },
             ),
       child: LbmAsync<ForumThread>(
         thread,
@@ -130,12 +141,16 @@ class _ThreadHead extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 9),
-          HashtagText(
+          // NamedText rather than HashtagText: an @name in a thread opens
+          // that profile now that people can be tagged here.
+          NamedText(
             thread.body,
             tagColor: c.skyDeep,
             style: TextStyle(fontSize: 14, height: 1.6, color: c.ink2),
-            onTagTap: (tag) => context.goToTag(tag),
+            onOpenTag: (tag) => context.goToTag(tag),
+            onOpenProfile: (uid) => context.goToSeller(uid),
           ),
+          TaggedProducts(productIds: thread.productIds),
           const SizedBox(height: 13),
           Text(
             '${Fmt.count(thread.commentCount)} comments',
@@ -250,13 +265,40 @@ class _Comment extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
+                NamedText(
                   comment.text,
+                  tagColor: c.skyDeep,
                   style: TextStyle(fontSize: 13.5, height: 1.5, color: c.ink),
+                  onOpenTag: (tag) => context.goToTag(tag),
+                  onOpenProfile: (uid) => context.goToSeller(uid),
                 ),
+                TaggedProducts(productIds: comment.productIds),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The products a thread or a reply tagged, as the same cartable cards a
+/// message carries. Nothing at all when there are none.
+class TaggedProducts extends StatelessWidget {
+  const TaggedProducts({super.key, required this.productIds});
+
+  final List<String> productIds;
+
+  @override
+  Widget build(BuildContext context) {
+    if (productIds.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final id in productIds) MessageProductCard(productId: id),
         ],
       ),
     );

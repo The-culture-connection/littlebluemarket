@@ -609,6 +609,10 @@ class FirestoreSocialRepository implements SocialRepository {
       'body': draft.body.trim(),
       'commentCount': 0,
       'createdAt': FieldValue.serverTimestamp(),
+      if (draft.productIds.isNotEmpty)
+        'productIds': draft.productIds.take(kMaxTaggedProducts).toList(),
+      // `onThreadWritten` tells these people they were named.
+      if (draft.mentionedUids.isNotEmpty) 'mentionedUids': draft.mentionedUids,
     });
     return doc.id;
   });
@@ -632,6 +636,8 @@ class FirestoreSocialRepository implements SocialRepository {
     required String threadId,
     required String text,
     String? parentId,
+    List<String> productIds = const [],
+    List<String> mentionedUids = const [],
   }) => guardFirestore(() async {
     final me = _requireUid;
     final trimmed = text.trim();
@@ -644,6 +650,9 @@ class FirestoreSocialRepository implements SocialRepository {
       'text': trimmed,
       'parentId': ?parentId,
       'createdAt': FieldValue.serverTimestamp(),
+      if (productIds.isNotEmpty)
+        'productIds': productIds.take(kMaxTaggedProducts).toList(),
+      if (mentionedUids.isNotEmpty) 'mentionedUids': mentionedUids,
     });
   });
 

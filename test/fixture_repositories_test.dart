@@ -372,6 +372,28 @@ void main() {
       },
     );
 
+    // Grace, 2026-10-21: products can be tagged in the forums.
+    test('a thread and a reply carry the products tagged in them', () async {
+      final id = await social.createThread(
+        const NewThread(
+          forumId: 'f3',
+          title: 'Spotlight',
+          body: 'Look at this one.',
+          productIds: ['p1'],
+        ),
+      );
+      final thread = await social.watchThread(id).first;
+      expect(thread.productIds, ['p1']);
+
+      await social.addThreadComment(
+        threadId: id,
+        text: 'And this.',
+        productIds: const ['p4'],
+      );
+      final comments = await social.watchThreadComments(id).first;
+      expect(comments.single.productIds, ['p4']);
+    });
+
     test('an unknown forum throws', () {
       expect(
         () => social.watchForum('nope').first,

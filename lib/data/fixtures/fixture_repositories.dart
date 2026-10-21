@@ -1157,6 +1157,7 @@ class FixtureSocialRepository implements SocialRepository {
         body: draft.body.trim(),
         commentCount: 0,
         createdAt: DateTime.now(),
+        productIds: draft.productIds,
       ),
       ..._store.threads.value,
     ];
@@ -1220,6 +1221,8 @@ class FixtureSocialRepository implements SocialRepository {
     required String threadId,
     required String text,
     String? parentId,
+    List<String> productIds = const [],
+    List<String> mentionedUids = const [],
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
@@ -1231,6 +1234,7 @@ class FixtureSocialRepository implements SocialRepository {
         createdAt: DateTime.now(),
         text: trimmed,
         depth: parentId == null ? 0 : 1,
+        productIds: productIds,
       ),
     ];
     _store.threadComments.value = all;

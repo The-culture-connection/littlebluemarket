@@ -517,6 +517,7 @@ abstract final class FirestoreMappers {
         body: str(data['body']),
         commentCount: integer(data['commentCount']),
         createdAt: time(data['createdAt']),
+        productIds: strings(data['productIds']),
       );
 
   static ThreadComment threadComment(Map<String, dynamic> data) =>
@@ -525,6 +526,7 @@ abstract final class FirestoreMappers {
         createdAt: time(data['createdAt']),
         text: str(data['text']),
         depth: data['parentId'] == null ? 0 : 1,
+        productIds: strings(data['productIds']),
       );
 
   // ------------------------------------------------------------ messaging
