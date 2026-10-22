@@ -55,7 +55,28 @@ class PostCardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Three cards are taller than a small phone. Where the space is bounded
+    // (the feed, a directory category) the cards that do not fit are cut
+    // off rather than overflowing: an overflow is an error, and on a slow
+    // load the striped warning sat there for as long as the load took
+    // (QA suite, 2026-10-22, iPhone SE). Inside something that scrolls
+    // already, it is the plain column it always was.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cards = _cards();
+        if (!constraints.hasBoundedHeight) return cards;
+        return SingleChildScrollView(
+          primary: false,
+          physics: const NeverScrollableScrollPhysics(),
+          child: cards,
+        );
+      },
+    );
+  }
+
+  Widget _cards() {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < count; i++)
           Padding(

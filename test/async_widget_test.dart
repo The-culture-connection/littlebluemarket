@@ -182,4 +182,24 @@ void main() {
       expect(find.byType(LbmSkeleton), findsWidgets);
     });
   });
+
+  // QA suite, 2026-10-22: three placeholder cards on an iPhone SE, in the
+  // feed's bounded space, overflowed by hundreds of pixels for as long as
+  // the load took.
+  testWidgets('the post skeleton never overflows a small phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(375, 667);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildLbmTheme(Brightness.light),
+        home: const Scaffold(body: PostCardSkeleton(count: 3)),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.byType(PostCardSkeleton), findsOneWidget);
+  });
 }
