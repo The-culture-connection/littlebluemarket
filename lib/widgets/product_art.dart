@@ -163,6 +163,23 @@ class _Photo extends StatelessWidget {
   }
 }
 
+/// The washes a photo-less product is drawn on: pairs of brand colours,
+/// light enough that the navy line art reads on them.
+const _tilePairs = [
+  (LbmPalette.cream, LbmPalette.sand),
+  (LbmPalette.blueMist, LbmPalette.sky),
+  (LbmPalette.orchidMist, LbmPalette.greyBlue),
+  (LbmPalette.white, LbmPalette.sky),
+];
+
+int _tileIndex(String id) {
+  var hash = 0;
+  for (final unit in id.codeUnits) {
+    hash = (hash * 31 + unit) & 0x7fffffff;
+  }
+  return hash % _tilePairs.length;
+}
+
 class _Tile extends StatelessWidget {
   const _Tile({required this.product});
 
@@ -170,8 +187,10 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final from = Color(product.tileFrom ?? 0xFFDCE9F7);
-    final to = Color(product.tileTo ?? 0xFF9CBFE3);
+    // A product with no photograph gets a soft wash in two brand colours,
+    // picked by its id so it is always the same pair. The pastel pair a
+    // product used to carry is not in the brand guide (2026-10-22).
+    final (from, to) = _tilePairs[_tileIndex(product.id)];
     return DecoratedBox(
       decoration: BoxDecoration(
         // `linear-gradient(150deg, c1, c2)`
@@ -623,7 +642,7 @@ class _PhotoViewerState extends State<PhotoViewer> {
   Widget build(BuildContext context) {
     final images = widget.product.imageUrls;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: LbmPalette.navy,
       body: Stack(
         children: [
           PageView.builder(
@@ -836,7 +855,7 @@ class _SwipeHint extends AnimatedWidget {
             color: Colors.white.withValues(alpha: 0.9),
             shape: BoxShape.circle,
             boxShadow: const [
-              BoxShadow(blurRadius: 6, color: Color(0x33000000)),
+              BoxShadow(blurRadius: 6, color: Color(0x33253856)),
             ],
           ),
           child: const Icon(

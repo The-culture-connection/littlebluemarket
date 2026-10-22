@@ -98,9 +98,13 @@ These exist so Shopify stays removable. Breaking one is a design regression even
 - Reuse the vocabulary in `widgets/primitives.dart` (`LbmCard`, `PillButton`, `LbmChip`, `Avatar`,
   `Stars`, `ListRow`, `RowStack`, `SectionHead`, `LbmField`, `SegmentedTabs`) and
   `widgets/screen.dart` (`LbmScreen`, `LbmAppBar`, `Composer`). Do not hand-roll a new card or button.
-- **The accent contrast split is structural.** `accentDeep` exists only to carry `accentInk` text.
-  White on `accent` is ~3:1 and fails. `test/design_tokens_test.dart` will catch you.
-- Fraunces and Nunito do not carry `★ ◆ → ⋯`. Draw them as icons; never typeset them.
+- **Only the brand guide.** Colours from `LbmPalette` (the guide's eight plus white, their declared
+  tints, any alpha); fonts Playfair Display and Montserrat. `test/brand_guide_test.dart` fails on
+  anything else, in any file under `lib/`.
+- **The button contrast split is structural.** `accentDeep` (navy; sky in dark mode) exists only to
+  carry `accentInk` text. White on orchid `accent` is ~3:1 and fails. `test/design_tokens_test.dart`
+  will catch you.
+- Do not typeset `★ ◆ → ⋯`; draw them as icons.
 - This design came from a fixed 390-wide mockup. Overflow throws in tests. Any new row of text must
   survive `screens_smoke_test.dart` (23 routes × 2 themes) and `text_scaling_test.dart` (2.0 scale).
 - Match the surrounding code: doc comments that explain *why* rather than *what*, the existing

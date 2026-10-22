@@ -1,5 +1,73 @@
 import 'package:flutter/material.dart';
 
+/// The Little Blue Cart brand palette, and nothing else (brand guide,
+/// 2026-10-22: "make sure everything is inline with these guidelines and
+/// nothing is outside of it").
+///
+/// Eight colours from the guide, plus white for cards and type on dark
+/// fills. Every colour in the app is one of these, one of these with
+/// transparency, or one of the [mixes] below, each of which is a guide
+/// colour laid over white or navy at a stated strength (a tint, the way a
+/// printer would make one). `test/design_tokens_test.dart` holds the app
+/// to that, so a stray hex cannot creep back in.
+abstract final class LbmPalette {
+  static const navy = Color(0xFF253856);
+  static const blue = Color(0xFF70A0D2);
+  static const orchid = Color(0xFFD270D1);
+  static const cream = Color(0xFFFAF2C6);
+  static const greyBlue = Color(0xFFB3BDCA);
+  static const gold = Color(0xFFC49919);
+  static const sky = Color(0xFF89C9F4);
+  static const sand = Color(0xFFD3CABC);
+  static const white = Color(0xFFFFFFFF);
+
+  /// The guide's colours, in the guide's order, then white.
+  static const brand = [
+    navy,
+    blue,
+    orchid,
+    cream,
+    greyBlue,
+    gold,
+    sky,
+    sand,
+    white,
+  ];
+
+  /// Blue at 22% on white: chip fills and tints on a white card.
+  static const blueMist = Color(0xFFDFEAF5);
+
+  /// Blue at 8% on white: the faintest inset panel.
+  static const blueWash = Color(0xFFF4F7FB);
+
+  /// Orchid at 18% on white: the selected tab, a highlighted row.
+  static const orchidMist = Color(0xFFF7E5F7);
+
+  /// Blue at 14% on navy: cards and sheets in dark mode, one step up from
+  /// the navy page.
+  static const navyRaised = Color(0xFF304767);
+
+  /// Blue at 28% on navy: chip fills in dark mode.
+  static const navyMist = Color(0xFF3A5579);
+
+  /// Blue at 8% on navy: inset panels in dark mode.
+  static const navyWash = Color(0xFF2B4060);
+
+  /// Orchid at 28% on navy: the selected tab in dark mode.
+  static const orchidOnNavy = Color(0xFF554878);
+
+  /// Every tint above, so the test can tell a tint from a stray colour.
+  static const mixes = [
+    blueMist,
+    blueWash,
+    orchidMist,
+    navyRaised,
+    navyMist,
+    navyWash,
+    orchidOnNavy,
+  ];
+}
+
 /// The prototype's design tokens, carried on [ThemeData] as an extension.
 ///
 /// Every colour in the app comes from here; nothing is hardcoded per-screen.
@@ -110,29 +178,33 @@ class LbmColors extends ThemeExtension<LbmColors> {
   /// `0 10px 28px -10px` — the floating tab bar and raised sheets.
   final List<BoxShadow> shadowLift;
 
+  // Light: navy type on the sky page, white cards, navy buttons with white
+  // labels, orchid for the small bright moments (Grace's choices of
+  // 2026-10-22). Alpha variants are written as literals so the sets stay
+  // const: 0xCC253856 is navy at 80%.
   static const light = LbmColors(
-    paper: Color(0xFF9CBFE3),
-    surface: Color(0xFFFFFFFF),
-    scrim: Color(0xB3222831),
-    ink: Color(0xFF152E52),
-    ink2: Color(0xFF31507B),
-    ink3: Color(0xFF6B87AD),
-    sky: Color(0xFF70A0D0),
-    skyDeep: Color(0xFF2A5992),
-    skyMist: Color(0xFFDCE9F7),
-    skyWash: Color(0xFFF0F5FC),
-    accent: Color(0xFFD56ED1),
-    accentDeep: Color(0xFFA93BA5),
-    accentInk: Color(0xFFFFFFFF),
-    accentMist: Color(0xFFF7E2F6),
-    accentText: Color(0xFF7E2A7A),
-    sage: Color(0xFF4E8A69),
-    sageMist: Color(0xFFDDEDE4),
-    clay: Color(0xFFC4796B),
-    cardStock: Color(0xFFFFFDF8),
+    paper: LbmPalette.sky,
+    surface: LbmPalette.white,
+    scrim: Color(0xB3253856),
+    ink: LbmPalette.navy,
+    ink2: Color(0xCC253856),
+    ink3: Color(0x99253856),
+    sky: LbmPalette.blue,
+    skyDeep: LbmPalette.navy,
+    skyMist: LbmPalette.blueMist,
+    skyWash: LbmPalette.blueWash,
+    accent: LbmPalette.orchid,
+    accentDeep: LbmPalette.navy,
+    accentInk: LbmPalette.white,
+    accentMist: LbmPalette.orchidMist,
+    accentText: LbmPalette.navy,
+    sage: LbmPalette.blue,
+    sageMist: LbmPalette.blueMist,
+    clay: LbmPalette.orchid,
+    cardStock: LbmPalette.cream,
     shadowSoft: [
       BoxShadow(
-        color: Color(0x570D2342),
+        color: Color(0x57253856),
         offset: Offset(0, 3),
         blurRadius: 14,
         spreadRadius: -5,
@@ -140,7 +212,7 @@ class LbmColors extends ThemeExtension<LbmColors> {
     ],
     shadowLift: [
       BoxShadow(
-        color: Color(0x700D2342),
+        color: Color(0x70253856),
         offset: Offset(0, 10),
         blurRadius: 28,
         spreadRadius: -10,
@@ -148,30 +220,32 @@ class LbmColors extends ThemeExtension<LbmColors> {
     ],
   );
 
+  // Dark: the navy page, cards a tint lighter, white and grey-blue type,
+  // sky buttons with navy labels. Navy is the guide's only dark colour, so
+  // the shadows are deep navy rather than black.
   static const dark = LbmColors(
-    paper: Color(0xFF101E38),
-    surface: Color(0xFF1A2C4E),
-    scrim: Color(0xCC05080E),
-    ink: Color(0xFFE8F0FB),
-    ink2: Color(0xFFA6BEDB),
-    ink3: Color(0xFF7A93B5),
-    sky: Color(0xFF70A0D0),
-    skyDeep: Color(0xFF9CC3EC),
-    skyMist: Color(0xFF24406B),
-    skyWash: Color(0xFF16294A),
-    accent: Color(0xFFD56ED1),
-    // On navy the pure accent is light enough to carry a dark plum label.
-    accentDeep: Color(0xFFD56ED1),
-    accentInk: Color(0xFF2A0A28),
-    accentMist: Color(0xFF3B1F3A),
-    accentText: Color(0xFFEFA8EC),
-    sage: Color(0xFF8CC3A2),
-    sageMist: Color(0xFF24422F),
-    clay: Color(0xFFDE9A8C),
-    cardStock: Color(0xFF22314F),
+    paper: LbmPalette.navy,
+    surface: LbmPalette.navyRaised,
+    scrim: Color(0xD9253856),
+    ink: LbmPalette.white,
+    ink2: LbmPalette.greyBlue,
+    ink3: Color(0xB3B3BDCA),
+    sky: LbmPalette.blue,
+    skyDeep: LbmPalette.sky,
+    skyMist: LbmPalette.navyMist,
+    skyWash: LbmPalette.navyWash,
+    accent: LbmPalette.orchid,
+    accentDeep: LbmPalette.sky,
+    accentInk: LbmPalette.navy,
+    accentMist: LbmPalette.orchidOnNavy,
+    accentText: LbmPalette.white,
+    sage: LbmPalette.sky,
+    sageMist: LbmPalette.navyMist,
+    clay: LbmPalette.orchid,
+    cardStock: LbmPalette.navyRaised,
     shadowSoft: [
       BoxShadow(
-        color: Color(0x80000000),
+        color: Color(0xCC253856),
         offset: Offset(0, 3),
         blurRadius: 14,
         spreadRadius: -5,
@@ -179,7 +253,7 @@ class LbmColors extends ThemeExtension<LbmColors> {
     ],
     shadowLift: [
       BoxShadow(
-        color: Color(0x9E000000),
+        color: Color(0xF2253856),
         offset: Offset(0, 10),
         blurRadius: 30,
         spreadRadius: -10,
@@ -187,24 +261,22 @@ class LbmColors extends ThemeExtension<LbmColors> {
     ],
   );
 
-  /// The violet that sits between the orchid and the blue in the hero
-  /// gradient. It is not a token in its own right — nothing else may use it —
-  /// but the gradient cannot be mixed from the palette without it, and a raw
-  /// colour belongs here rather than in a widget.
-  static const _heroMid = Color(0xFF5E2A8F);
-
-  /// Behind the one announcement at the top of the feed.
-  ///
-  /// Derived rather than stored, so it follows the palette in both themes and
-  /// costs nothing in [copyWith] or [lerp].
-  List<Color> get heroGradient => [accentDeep, _heroMid, skyDeep];
+  /// Behind the one announcement at the top of the feed: navy into the
+  /// brand blue. The violet that used to sit in the middle is not in the
+  /// brand guide, so it is gone (2026-10-22). Navy holds most of the way so
+  /// the white type stays on navy.
+  List<Color> get heroGradient => const [
+    LbmPalette.navy,
+    LbmPalette.navy,
+    LbmPalette.blue,
+  ];
 
   /// Where the hero's colours sit along that gradient.
-  static const heroStops = [0.0, 0.7, 1.0];
+  static const heroStops = [0.0, 0.6, 1.0];
 
-  /// Behind a shoutout: the same idea in blue, because a shoutout is about a
-  /// maker rather than about the market.
-  List<Color> get shoutoutGradient => [sky, skyDeep];
+  /// Behind a shoutout: the same idea, blue into navy, because a shoutout is
+  /// about a maker rather than about the market.
+  List<Color> get shoutoutGradient => const [LbmPalette.blue, LbmPalette.navy];
 
   @override
   LbmColors copyWith({
@@ -287,17 +359,17 @@ class LbmColors extends ThemeExtension<LbmColors> {
 /// Tokens that do not change between light and dark.
 abstract final class LbmConst {
   /// The GIF's button fill. Onboarding only — never re-skinned.
-  static const slate = Color(0xFF5F6A82);
+  static const slate = LbmPalette.navy;
 
   /// Line art on the pastel product tiles, fixed across modes.
-  static const artInk = Color(0xFF173257);
+  static const artInk = LbmPalette.navy;
 
   /// The hero blue the welcome animation is painted on. The still and the GIF
   /// letterbox against this, so it must not be themed.
-  static const welcomeBlue = Color(0xFF70A0D0);
+  static const welcomeBlue = LbmPalette.blue;
 
   /// Ink used on top of [welcomeBlue].
-  static const onWelcome = Color(0xFFF3F8FE);
+  static const onWelcome = LbmPalette.white;
 
   /// The open-chat pin's background, fixed across modes.
   ///
@@ -307,37 +379,44 @@ abstract final class LbmConst {
   /// came out near-white and its white type vanished. This is light mode's
   /// ink, held still — dark enough to carry [onGradient] in either theme, and
   /// darker than the white cards around it.
-  static const chatInk = Color(0xFF152E52);
+  static const chatInk = LbmPalette.navy;
 
   /// Type on the hero and shoutout gradients.
   ///
   /// Those gradients are deep in both themes, so their label does not flip
   /// with the palette the way [LbmColors.accentInk] does. A themed ink here
   /// would go dark-on-dark the moment the phone switched to dark mode.
-  static const onGradient = Color(0xFFFFFFFF);
+  static const onGradient = LbmPalette.white;
 
   /// The exact background of the app icon (`assets/images/splash-icon.png`,
   /// sampled), and of the native launch screens on both phones
   /// (`android/.../values/colors.xml` `lbm_splash`, `LaunchScreen.storyboard`).
   /// Keep the three in step or the launch flashes.
-  static const splashBlue = Color(0xFF70A0D1);
+  static const splashBlue = LbmPalette.blue;
 
   /// The avatar tints, for something with initials and no photograph.
   ///
-  /// The same eight `FirestoreMappers.tintFor` hands a person, so a directory
-  /// business with no picture sits in the same family as a maker with none.
-  /// Held here rather than imported from the mapper, which a widget must not
-  /// reach into. Readable under white initials, which is what they carry.
+  /// The guide's eight colours, the same eight `kAvatarTints` (models) hands
+  /// a person, so a directory business with no picture sits in the same
+  /// family as a maker with none. Initials are navy on all of them but navy
+  /// itself, which carries white: see [initialsOn].
   static const makerTints = [
-    Color(0xFF5C8FCB),
-    Color(0xFFA78BC9),
-    Color(0xFFDB93A8),
-    Color(0xFFD96E9B),
-    Color(0xFF6FB5A6),
-    Color(0xFFD69B62),
-    Color(0xFF86B98C),
-    Color(0xFF93A9C4),
+    LbmPalette.blue,
+    LbmPalette.orchid,
+    LbmPalette.gold,
+    LbmPalette.sky,
+    LbmPalette.sand,
+    LbmPalette.greyBlue,
+    LbmPalette.cream,
+    LbmPalette.navy,
   ];
+
+  /// The colour of initials on [tint]: white on navy, navy on everything
+  /// else in the palette, which is readable on all of them.
+  static Color initialsOn(Color tint) =>
+      tint.toARGB32() == LbmPalette.navy.toARGB32()
+      ? LbmPalette.white
+      : LbmPalette.navy;
 
   /// A stable tint for [id], hashed the way `tintFor` hashes a uid.
   static Color makerTintFor(String id) {

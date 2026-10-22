@@ -147,7 +147,8 @@ class _HeroBannerState extends ConsumerState<HeroBanner> {
           id: 'tip:cartIsTheLike',
           kicker: 'From Little Blue Market',
           title: 'No likes here. Just carts.',
-          body: 'Tap the cart on anything you love. Makers see it, and your '
+          body:
+              'Tap the cart on anything you love. Makers see it, and your '
               'cart keeps it.',
           cta: 'Show me',
           onTap: showCartTipOnce,
@@ -266,7 +267,7 @@ class _HeroCardView extends ConsumerWidget {
                         // butting it against the type. Under `dstIn` these
                         // two are an alpha ramp, not colours.
                         shaderCallback: (rect) => const LinearGradient(
-                          colors: [Colors.transparent, Colors.black],
+                          colors: [Colors.transparent, LbmPalette.navy],
                           stops: [0, 0.4],
                         ).createShader(rect),
                         blendMode: BlendMode.dstIn,

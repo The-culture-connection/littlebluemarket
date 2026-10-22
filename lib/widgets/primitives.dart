@@ -50,7 +50,7 @@ class LbmCard extends StatelessWidget {
   }
 }
 
-/// The italic Fraunces label that introduces a group of cards.
+/// The italic Playfair Display label that introduces a group of cards.
 class SectionHead extends StatelessWidget {
   const SectionHead(this.label, {super.key, this.trailing});
 
@@ -748,7 +748,7 @@ class Avatar extends StatelessWidget {
           fontWeight: FontWeight.w700,
           fontSize: size.fontSize,
           height: 1,
-          color: Colors.white,
+          color: LbmConst.initialsOn(Color(person.tint)),
         ),
       ),
     );
@@ -1331,8 +1331,8 @@ class _HashtagTextState extends State<HashtagText> {
 
 /// A "go further" link: a label followed by a drawn arrow.
 ///
-/// The arrow is an icon rather than a `→` character because neither Nunito nor
-/// Fraunces carries that glyph, and relying on the platform's font fallback
+/// The arrow is an icon rather than a `→` character because the brand fonts
+/// cannot be counted on for that glyph, and relying on the platform's font fallback
 /// gets you a mismatched arrow at best and a tofu box at worst.
 class InlineLink extends StatelessWidget {
   const InlineLink(

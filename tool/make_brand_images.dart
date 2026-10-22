@@ -23,7 +23,7 @@ import 'dart:io';
 import 'package:image/image.dart' as img;
 
 /// LbmConst.splashBlue, the icon's own background. Keep in step.
-final splashBlue = img.ColorRgba8(0x70, 0xA0, 0xD1, 0xFF);
+final splashBlue = img.ColorRgba8(0x70, 0xA0, 0xD2, 0xFF);
 
 /// The icon's size on a launch screen, in dp / pt. Big enough that the cart
 /// (about 85% of the icon's width) reads clearly, small enough to sit
@@ -33,10 +33,17 @@ const launchIconDp = 200;
 void main(List<String> args) {
   final root = Directory.current.path;
   final srcPath = args.isNotEmpty ? args.first : '$root/../Body (6).png';
-  final src = img.decodePng(File(srcPath).readAsBytesSync());
-  if (src == null) {
+  final decoded = img.decodePng(File(srcPath).readAsBytesSync());
+  if (decoded == null) {
     stderr.writeln('Could not decode $srcPath');
     exit(1);
+  }
+  // The artwork's background is #70A0D1, one step off the brand guide's
+  // blue #70A0D2 (2026-10-22). Every pixel of exactly that colour is moved
+  // onto the guide's, so the icon, the launch screens and the app agree.
+  final src = decoded.convert(numChannels: 4);
+  for (final px in src) {
+    if (px.r == 0x70 && px.g == 0xA0 && px.b == 0xD1) px.b = 0xD2;
   }
   if (src.width != src.height) {
     stderr.writeln('Source must be square; got ${src.width}×${src.height}');

@@ -2,21 +2,22 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-/// Fraunces — display. Screen titles, prices, wordmark, stat values, thread
-/// titles, and the italic section labels.
-const kDisplayFont = 'Fraunces';
+/// Playfair Display, the brand guide's display face (2026-10-22). Screen
+/// titles, prices, wordmark, stat values, thread titles, and the italic
+/// section labels.
+const kDisplayFont = 'Playfair Display';
 
-/// Nunito — UI and body.
-const kBodyFont = 'Nunito';
+/// Montserrat, the brand guide's text face. UI and body.
+const kBodyFont = 'Montserrat';
 
 /// There is no monospace in this design. Tracking numbers and other figures
-/// that need to line up use Nunito with tabular figures.
+/// that need to line up use Montserrat with tabular figures.
 const kTabularFigures = [FontFeature.tabularFigures()];
 
 /// Text styles named for their role in the prototype rather than for a
 /// Material slot, so screen code reads the way the design does.
 abstract final class LbmText {
-  /// Screen and card titles. `.serif`, Fraunces 700.
+  /// Screen and card titles. Playfair Display 700.
   static const display = TextStyle(
     fontFamily: kDisplayFont,
     fontWeight: FontWeight.w700,
@@ -107,15 +108,16 @@ ThemeData buildLbmTheme(Brightness brightness) {
     primaryContainer: t.accentMist,
     onPrimaryContainer: t.accentText,
     secondary: t.skyDeep,
-    onSecondary: isDark ? const Color(0xFF10233F) : Colors.white,
+    onSecondary: isDark ? LbmPalette.navy : LbmPalette.white,
     secondaryContainer: t.skyMist,
     onSecondaryContainer: t.ink,
     tertiary: t.sage,
-    onTertiary: isDark ? const Color(0xFF10231A) : Colors.white,
+    onTertiary: LbmPalette.navy,
     tertiaryContainer: t.sageMist,
     onTertiaryContainer: t.sage,
     error: t.clay,
-    onError: Colors.white,
+    // Orchid carries navy, not white: white on orchid is only 3:1.
+    onError: LbmPalette.navy,
     errorContainer: t.clay.withValues(alpha: 0.18),
     onErrorContainer: t.clay,
     surface: t.surface,
@@ -128,8 +130,8 @@ ThemeData buildLbmTheme(Brightness brightness) {
     surfaceContainerHighest: t.skyMist,
     outline: t.ink3,
     outlineVariant: t.skyMist,
-    shadow: Colors.black,
-    scrim: const Color(0xFF1D3E68),
+    shadow: LbmPalette.navy,
+    scrim: LbmPalette.navy,
     inverseSurface: t.ink,
     onInverseSurface: t.paper,
     inversePrimary: t.accent,
@@ -185,14 +187,14 @@ ThemeData buildLbmTheme(Brightness brightness) {
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: t.surface,
       surfaceTintColor: Colors.transparent,
-      modalBarrierColor: const Color(0xFF1D3E68).withValues(alpha: 0.4),
+      modalBarrierColor: LbmPalette.navy.withValues(alpha: 0.4),
       shape: const RoundedRectangleBorder(borderRadius: LbmRadius.sheetR),
       showDragHandle: false,
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: t.surface,
       surfaceTintColor: Colors.transparent,
-      barrierColor: const Color(0xFF1D3E68).withValues(alpha: 0.4),
+      barrierColor: LbmPalette.navy.withValues(alpha: 0.4),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(26)),
       ),

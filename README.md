@@ -151,7 +151,7 @@ outside it knows where the data came from.
 ### 1. The welcome handoff
 
 `welcome-still.png` is the GIF's exact resting frame. Both are drawn into the
-same `540 × 623` box on a screen painted `#70A0D0`, so the artwork has no
+same `540 × 623` box on a screen painted the brand blue `#70A0D2`, so the artwork has no
 visible edge and **nothing moves** when the GIF is removed. The three buttons
 (Create a Profile, Sign in, Continue as a guest) are ordinary widgets *below*
 the artwork since 2026-09-08 (Grace's `Body.gif` re-export, which drops the
@@ -175,25 +175,31 @@ Details worth knowing:
 - Reduce-motion skips the animation entirely, as the prototype's
   `prefers-reduced-motion` rule does.
 
-### 2. The accent contrast split
+### 2. The brand guide, and the button contrast split
 
-`#D56ED1` under white is about 3:1 — below the readable threshold. So:
+Since 2026-10-22 everything follows the **Little Blue Cart brand guide**
+(`../Little Blue Cart Brand Guide.pdf`): eight colours (navy `#253856`,
+blue `#70A0D2`, orchid `#D270D1`, cream `#FAF2C6`, grey-blue `#B3BDCA`,
+gold `#C49919`, sky `#89C9F4`, sand `#D3CABC`) plus white, and two fonts
+(Playfair Display for display, Montserrat for everything else). They live in
+`LbmPalette` in `lib/theme/tokens.dart`; a few declared tints of them
+(`LbmPalette.mixes`) and any transparency are allowed, nothing else is.
+`test/brand_guide_test.dart` reads the tokens and every Dart file in `lib/`
+and fails on a colour or a font outside the guide.
 
-- **light mode**: solid fills that carry white text use `accentDeep` (`#A93BA5`);
-  everything else — chips, dots, stars, progress bars — uses the pure `accent`.
-- **dark mode**: `accentDeep` *is* the pure accent, and it carries a dark plum
-  label (`accentInk`, `#2A0A28`) instead.
+Grace's choices within it: the page is sky, cards are white, type is navy,
+**buttons are navy with white labels**, and orchid is for highlights (the
+post button, badges, dots, active states, hashtags). White on orchid is about
+3:1, below the readable threshold, so orchid never carries white text. In dark
+mode the page is navy and buttons are sky with navy labels.
 
-This is structural, not incidental: `accentDeep`/`accentInk` are a pair, and the
-only correct reason to reach for `accentDeep` is that `accentInk` text is going
-on top of it. It is also wired to `ColorScheme.primary`/`onPrimary`, so a stock
-Material button lands in the right place without correction.
-`test/design_tokens_test.dart` measures the actual contrast ratios and fails if
-the split is ever flattened.
+`accentDeep`/`accentInk` are still the pair for any solid fill that carries
+text, wired to `ColorScheme.primary`/`onPrimary` so a stock Material button
+lands right. `test/design_tokens_test.dart` measures the contrast ratios.
 
 ### 3. Glyphs the bundled fonts do not carry
 
-Neither Fraunces nor Nunito has `★`, `◆`, `→`, or `⋯`. Relying on the platform's
+Do not count on Playfair Display or Montserrat for `★`, `◆`, `→`, or `⋯`. Relying on the platform's
 font fallback gets you a mismatched glyph at best and a tofu box at worst, so
 these are drawn instead: stars and arrows are Material icons, the points diamond
 is a rotated square. If you add copy, keep it to characters the two families

@@ -59,7 +59,11 @@ class DonationNudgePin extends ConsumerWidget {
                       onTap: onDismiss,
                       child: Padding(
                         padding: const EdgeInsets.all(4),
-                        child: Icon(Icons.close_rounded, size: 16, color: c.ink3),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: c.ink3,
+                        ),
                       ),
                     ),
                   ),

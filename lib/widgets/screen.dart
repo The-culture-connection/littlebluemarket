@@ -44,7 +44,7 @@ class LbmScreen extends StatelessWidget {
   }
 }
 
-/// The sticky header: an optional back button, a Fraunces title, and actions.
+/// The sticky header: an optional back button, a Playfair Display title, and actions.
 class LbmAppBar extends StatelessWidget {
   const LbmAppBar({
     super.key,

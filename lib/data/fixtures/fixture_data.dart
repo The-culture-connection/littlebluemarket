@@ -55,7 +55,7 @@ abstract final class Fx {
       id: 'maya',
       name: 'Maya Ellison',
       handle: '@mayamakes',
-      tint: 0xFF5C8FCB,
+      tint: 0xFF70A0D2,
       bio:
           'Small-batch skincare · Detroit. Every tube hand-filled, every label '
           'recycled.',
@@ -75,7 +75,7 @@ abstract final class Fx {
       id: 'kali',
       name: 'Kali Brooks',
       handle: '@kalibalm',
-      tint: 0xFFA78BC9,
+      tint: 0xFFD270D1,
       bio:
           'Lip balms and salves in compostable paper tubes. Slow made, small '
           'batch.',
@@ -88,7 +88,7 @@ abstract final class Fx {
       id: 'rae',
       name: 'Rae Ortiz',
       handle: '@raedrawsflowers',
-      tint: 0xFFDB93A8,
+      tint: 0xFFC49919,
       bio:
           'One-line botanical stickers and prints. Drawn on an iPad, cut at my '
           'kitchen table.',
@@ -101,7 +101,7 @@ abstract final class Fx {
       id: 'holler',
       name: 'Holler Goods',
       handle: '@hollergoods',
-      tint: 0xFFD96E9B,
+      tint: 0xFF89C9F4,
       bio:
           'Embroidered caps and tees for people who love a legend. Nashville, '
           'TN.',
@@ -114,7 +114,7 @@ abstract final class Fx {
       id: 'ama',
       name: 'Ama Mensah',
       handle: '@amashoots',
-      tint: 0xFF6FB5A6,
+      tint: 0xFFD3CABC,
       bio: 'Brand photography for small makers. Half-days and full-days.',
       tags: ['#BIPOCOwned', '#WomanOwned', '#Services'],
       grossSalesCents: 1620000,
@@ -125,7 +125,7 @@ abstract final class Fx {
       id: 'torres',
       name: 'Torres Woodshop',
       handle: '@torreswood',
-      tint: 0xFFD69B62,
+      tint: 0xFFB3BDCA,
       bio: 'Hand-turned bowls and boards. Veteran owned, Michigan hardwood.',
       tags: ['#VeteranOwned', '#MadeToOrder'],
       grossSalesCents: 896000,
@@ -136,7 +136,7 @@ abstract final class Fx {
       id: 'juniper',
       name: 'Juniper & Ash',
       handle: '@juniperash',
-      tint: 0xFF86B98C,
+      tint: 0xFFFAF2C6,
       bio: 'Soy candles poured in Ypsilanti. Queer owned, refill program.',
       tags: ['#LGBTQOwned', '#PlasticFree'],
       grossSalesCents: 634000,
@@ -149,7 +149,7 @@ abstract final class Fx {
       id: 'dee',
       name: 'Dee Wells',
       handle: '@deewells',
-      tint: 0xFF93A9C4,
+      tint: 0xFF253856,
       bio: 'Buyer. Mostly stickers.',
       tags: [],
       grossSalesCents: 0,
@@ -274,8 +274,6 @@ abstract final class Fx {
       sellerId: 'ama',
       // A service listing keeps the illustrated tile on purpose.
       glyph: ProductGlyph.camera,
-      tileFrom: 0xFFD5F0E8,
-      tileTo: 0xFFA2D4C8,
       tags: ['#BIPOCOwned', '#WomanOwned', '#Services'],
       rating: 4.9,
       ratingCount: 8,
@@ -760,7 +758,7 @@ abstract final class Fx {
       description: 'The catch-all for people who sell here.',
       memberCount: 312,
       threadCount: 48,
-      tint: 0xFF5C8FCB,
+      tint: 0xFF70A0D2,
     ),
     Forum(
       id: 'f2',
@@ -768,7 +766,7 @@ abstract final class Fx {
       description: 'Cost of goods, margins, and saying the number out loud.',
       memberCount: 244,
       threadCount: 33,
-      tint: 0xFFD69B62,
+      tint: 0xFFB3BDCA,
     ),
     Forum(
       id: 'f3',
@@ -776,7 +774,7 @@ abstract final class Fx {
       description: 'Plastic-free mailers, label printers, dim weight.',
       memberCount: 189,
       threadCount: 27,
-      tint: 0xFF86B98C,
+      tint: 0xFFFAF2C6,
     ),
     Forum(
       id: 'f4',
@@ -784,7 +782,7 @@ abstract final class Fx {
       description: 'Line sheets, terms, and your first stockist.',
       memberCount: 140,
       threadCount: 19,
-      tint: 0xFFA78BC9,
+      tint: 0xFFD270D1,
     ),
     Forum(
       id: 'f5',
@@ -792,7 +790,7 @@ abstract final class Fx {
       description: 'Local handoffs, market days, table shares.',
       memberCount: 96,
       threadCount: 12,
-      tint: 0xFFDB93A8,
+      tint: 0xFFC49919,
     ),
   ];
 

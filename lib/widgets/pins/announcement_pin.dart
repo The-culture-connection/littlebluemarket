@@ -61,7 +61,7 @@ class AnnouncementPin extends StatelessWidget {
                         // two are an alpha ramp, not colours: nothing here is
                         // ever painted black, so no token applies.
                         shaderCallback: (rect) => const LinearGradient(
-                          colors: [Colors.transparent, Colors.black],
+                          colors: [Colors.transparent, LbmPalette.navy],
                           stops: [0, 0.4],
                         ).createShader(rect),
                         blendMode: BlendMode.dstIn,

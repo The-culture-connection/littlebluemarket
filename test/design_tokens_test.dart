@@ -41,16 +41,20 @@ void main() {
       );
     });
 
-    test('dark mode: the pure accent carries a dark plum label readably', () {
+    test('dark mode: a solid button (sky) carries its navy label readably', () {
       expect(
         _contrast(LbmColors.dark.accentDeep, LbmColors.dark.accentInk),
         greaterThanOrEqualTo(4.5),
       );
     });
 
-    test('light and dark resolve accentDeep differently', () {
-      expect(LbmColors.light.accentDeep, isNot(LbmColors.light.accent));
-      expect(LbmColors.dark.accentDeep, LbmColors.dark.accent);
+    // Grace, 2026-10-22: buttons are navy with white labels; orchid is for
+    // highlights. In dark mode the button is sky with a navy label.
+    test('buttons are navy in light mode and sky in dark mode', () {
+      expect(LbmColors.light.accentDeep, LbmPalette.navy);
+      expect(LbmColors.light.accentInk, LbmPalette.white);
+      expect(LbmColors.dark.accentDeep, LbmPalette.sky);
+      expect(LbmColors.dark.accentInk, LbmPalette.navy);
     });
 
     test('accent text on its own tint is readable in both modes', () {
@@ -75,19 +79,23 @@ void main() {
 
     test('secondary ink is readable on surface', () {
       for (final t in [LbmColors.light, LbmColors.dark]) {
-        expect(_contrast(t.surface, t.ink2), greaterThanOrEqualTo(4.5));
+        // ink2 is navy at 80% in light mode, so it is measured as drawn.
+        expect(
+          _contrast(t.surface, Color.alphaBlend(t.ink2, t.surface)),
+          greaterThanOrEqualTo(4.5),
+        );
       }
     });
   });
 
   group('palette values', () {
-    test('the accent itself is the same hue in both modes', () {
-      expect(LbmColors.light.accent, const Color(0xFFD56ED1));
-      expect(LbmColors.dark.accent, const Color(0xFFD56ED1));
+    test('the accent is the brand orchid in both modes', () {
+      expect(LbmColors.light.accent, LbmPalette.orchid);
+      expect(LbmColors.dark.accent, LbmPalette.orchid);
     });
 
-    test('paper in light mode is the welcome screen blue family', () {
-      expect(LbmColors.light.paper, const Color(0xFF9CBFE3));
+    test('paper in light mode is the brand sky (Grace, 2026-10-22)', () {
+      expect(LbmColors.light.paper, LbmPalette.sky);
     });
   });
 }

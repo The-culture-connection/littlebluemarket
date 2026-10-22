@@ -203,7 +203,7 @@ class _Faces extends StatelessWidget {
                     fontSize: 9,
                     height: 1,
                     fontWeight: FontWeight.w900,
-                    color: LbmConst.onGradient,
+                    color: LbmConst.initialsOn(Color(people[i].tint)),
                   ),
                 ),
               ),

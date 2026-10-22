@@ -1072,7 +1072,7 @@ class FixtureSocialRepository implements SocialRepository {
         // You are the first member of a forum you create.
         memberCount: 1,
         threadCount: 0,
-        tint: 0xFF5C8FCB,
+        tint: 0xFF70A0D2,
       ),
       ..._store.forums.value,
     ];

@@ -2,9 +2,9 @@
 <resources>
     <!-- The accent behind the push icon: LbmConst.welcomeBlue in
          lib/theme/tokens.dart. Keep the two in step. -->
-    <color name="lbm_notification">#70A0D0</color>
+    <color name="lbm_notification">#70A0D2</color>
     <!-- The launch screen, the exact background of the splash artwork:
          LbmConst.splashBlue in lib/theme/tokens.dart. Keep in step. -->
-    <color name="lbm_splash">#70A0D1</color>
-	<color name="ic_launcher_background">#70A0D1</color>
+    <color name="lbm_splash">#70A0D2</color>
+	<color name="ic_launcher_background">#70A0D2</color>
 </resources>

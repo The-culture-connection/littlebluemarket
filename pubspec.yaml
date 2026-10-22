@@ -61,13 +61,13 @@ flutter_launcher_icons:
   ios: true
   remove_alpha_ios: true
   image_path: assets/icon/app-icon.png
-  adaptive_icon_background: "#70A0D1"
+  adaptive_icon_background: "#70A0D2"
   adaptive_icon_foreground: assets/icon/app-icon-fg.png
   web:
     generate: true
     image_path: assets/icon/app-icon.png
-    background_color: "#70A0D1"
-    theme_color: "#70A0D1"
+    background_color: "#70A0D2"
+    theme_color: "#70A0D2"
 
 flutter:
   uses-material-design: true
@@ -76,33 +76,53 @@ flutter:
     - assets/images/
     - assets/video/
 
+  # The two brand fonts from the Little Blue Cart brand guide (2026-10-22):
+  # Playfair Display for display type, Montserrat for everything else. Both
+  # SIL Open Font License, from Google Fonts. Nothing else is bundled.
   fonts:
-    - family: Fraunces
+    - family: Playfair Display
       fonts:
-        - asset: assets/fonts/Fraunces-500.ttf
-          weight: 500
-        - asset: assets/fonts/Fraunces-500Italic.ttf
-          weight: 500
-          style: italic
-        - asset: assets/fonts/Fraunces-600.ttf
-          weight: 600
-        - asset: assets/fonts/Fraunces-600Italic.ttf
-          weight: 600
-          style: italic
-        - asset: assets/fonts/Fraunces-700.ttf
-          weight: 700
-    - family: Nunito
-      fonts:
-        - asset: assets/fonts/Nunito-400.ttf
+        - asset: assets/fonts/PlayfairDisplay-400.ttf
           weight: 400
-        - asset: assets/fonts/Nunito-400Italic.ttf
+        - asset: assets/fonts/PlayfairDisplay-400Italic.ttf
           weight: 400
           style: italic
-        - asset: assets/fonts/Nunito-500.ttf
+        - asset: assets/fonts/PlayfairDisplay-500.ttf
           weight: 500
-        - asset: assets/fonts/Nunito-600.ttf
+        - asset: assets/fonts/PlayfairDisplay-500Italic.ttf
+          weight: 500
+          style: italic
+        - asset: assets/fonts/PlayfairDisplay-600.ttf
           weight: 600
-        - asset: assets/fonts/Nunito-700.ttf
+        - asset: assets/fonts/PlayfairDisplay-600Italic.ttf
+          weight: 600
+          style: italic
+        - asset: assets/fonts/PlayfairDisplay-700.ttf
           weight: 700
-        - asset: assets/fonts/Nunito-800.ttf
+        - asset: assets/fonts/PlayfairDisplay-700Italic.ttf
+          weight: 700
+          style: italic
+        - asset: assets/fonts/PlayfairDisplay-800.ttf
           weight: 800
+        - asset: assets/fonts/PlayfairDisplay-900.ttf
+          weight: 900
+    - family: Montserrat
+      fonts:
+        - asset: assets/fonts/Montserrat-400.ttf
+          weight: 400
+        - asset: assets/fonts/Montserrat-400Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/Montserrat-500.ttf
+          weight: 500
+        - asset: assets/fonts/Montserrat-500Italic.ttf
+          weight: 500
+          style: italic
+        - asset: assets/fonts/Montserrat-600.ttf
+          weight: 600
+        - asset: assets/fonts/Montserrat-700.ttf
+          weight: 700
+        - asset: assets/fonts/Montserrat-800.ttf
+          weight: 800
+        - asset: assets/fonts/Montserrat-900.ttf
+          weight: 900

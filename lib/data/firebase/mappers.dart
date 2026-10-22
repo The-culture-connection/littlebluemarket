@@ -85,7 +85,7 @@ abstract final class FirestoreMappers {
     handle: str(data['handle'], '@$id'),
     // Derived rather than stored, so a profile written by any client has a
     // stable, distinct avatar colour without anyone choosing one.
-    tint: integer(data['tint'], tintFor(id)),
+    tint: brandTint(data['tint'] == null ? null : integer(data['tint']), id),
     bio: str(data['bio']),
     tags: strings(data['tags']),
     // The old field name is read until every profile has the new one.
@@ -233,28 +233,9 @@ abstract final class FirestoreMappers {
     clicks: integer(data['clicks']),
   );
 
-  /// A deterministic avatar colour from a uid.
-  ///
-  /// Hue only: saturation and lightness are fixed so every generated tint sits
-  /// in the same family as the hand-picked ones and stays readable under white
-  /// initials.
-  static int tintFor(String id) {
-    var hash = 0;
-    for (final unit in id.codeUnits) {
-      hash = (hash * 31 + unit) & 0x7fffffff;
-    }
-    const palette = [
-      0xFF5C8FCB,
-      0xFFA78BC9,
-      0xFFDB93A8,
-      0xFFD96E9B,
-      0xFF6FB5A6,
-      0xFFD69B62,
-      0xFF86B98C,
-      0xFF93A9C4,
-    ];
-    return palette[hash % palette.length];
-  }
+  /// A deterministic avatar colour from a uid: one of the brand guide's
+  /// eight. Kept as a name here because callers and tests use it.
+  static int tintFor(String id) => avatarTintFor(id);
 
   // -------------------------------------------------------------- catalog
 
@@ -505,7 +486,7 @@ abstract final class FirestoreMappers {
     description: str(data['description']),
     memberCount: integer(data['memberCount']),
     threadCount: integer(data['threadCount']),
-    tint: integer(data['tint'], tintFor(id)),
+    tint: brandTint(data['tint'] == null ? null : integer(data['tint']), id),
   );
 
   static ForumThread thread(String id, Map<String, dynamic> data) =>

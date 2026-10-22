@@ -373,7 +373,7 @@ class ListingInitials extends StatelessWidget {
             fontWeight: FontWeight.w700,
             fontSize: fontSize,
             height: 1,
-            color: LbmConst.onGradient,
+            color: LbmConst.initialsOn(LbmConst.makerTintFor(listing.id)),
           ),
         ),
       ),
@@ -383,7 +383,7 @@ class ListingInitials extends StatelessWidget {
 
 /// The dashed round stamp in the corner of the photo side.
 ///
-/// Drawn with icons rather than the mockup's ♀ ✦ ★: Fraunces and Nunito do
+/// Drawn with icons rather than the mockup's ♀ ✦ ★: the brand fonts do
 /// not carry those, and a missing glyph is a box on somebody's phone.
 class _IdentityStamp extends StatelessWidget {
   const _IdentityStamp({required this.tags});

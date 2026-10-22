@@ -7,6 +7,7 @@ import 'profile_activity.dart';
 // domain vocabulary. The types live in their own files because they group into
 // genuinely separate concerns; this just spares 30 call sites the churn.
 export 'address.dart';
+export 'brand_tints.dart';
 export 'announcement.dart';
 export 'cart.dart';
 export 'collection.dart';
@@ -206,8 +207,6 @@ class Product {
     this.lng,
     this.freeShipping = false,
     this.glyph,
-    this.tileFrom,
-    this.tileTo,
     this.buyUrl,
     this.active = true,
     this.status = 'active',
@@ -284,9 +283,6 @@ class Product {
   /// Line art, for listings without a photograph.
   final ProductGlyph? glyph;
 
-  /// The pastel gradient behind [glyph].
-  final int? tileFrom;
-  final int? tileTo;
 
   bool get hasPhoto => imageUrls.isNotEmpty;
 
@@ -336,8 +332,6 @@ class Product {
     lng: lng,
     freeShipping: freeShipping,
     glyph: glyph,
-    tileFrom: tileFrom,
-    tileTo: tileTo,
     buyUrl: buyUrl,
   );
 }

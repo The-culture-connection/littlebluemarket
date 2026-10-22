@@ -110,7 +110,9 @@ class _ForumCard extends ConsumerWidget {
           gradient: LinearGradient(
             begin: const Alignment(-0.6, -0.8),
             end: const Alignment(0.6, 0.8),
-            colors: [tint, Color.lerp(tint, c.ink, 0.45)!],
+            // Into navy rather than into ink: ink is white in dark mode,
+            // which washed the tile out under its white type.
+            colors: [tint, LbmPalette.navy],
           ),
           boxShadow: c.shadowSoft,
         ),
