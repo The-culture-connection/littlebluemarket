@@ -11,8 +11,10 @@
 # Testers add to carts, post and check out here, and none of that may reach
 # real customers (Grace, 2026-10-22). There is deliberately no LBM_ENV switch.
 
-# Keep in step with the Flutter version used locally (scripts/doctor).
-FROM ghcr.io/cirruslabs/flutter:3.41.6 AS build
+# The same Flutter as the website (Dockerfile.web). Pinned to 3.41.6 like
+# Empower Health, the web compile failed: firebase_core_web needs a newer
+# Dart than that release carries.
+FROM ghcr.io/cirruslabs/flutter:stable AS build
 ARG RAILWAY_GIT_COMMIT_SHA
 ARG RAILWAY_GIT_BRANCH
 WORKDIR /app
