@@ -178,7 +178,7 @@ class _BannerAvatar extends ConsumerWidget {
 /// The floating pill tab bar.
 ///
 /// In guest mode Community and You are not in the bar at all; the second slot
-/// reads "Sign up to unlock" and opens the gate.
+/// reads "Sign up" and opens the gate.
 class LbmTabBar extends ConsumerWidget {
   const LbmTabBar({super.key, required this.navigationShell});
 
@@ -225,7 +225,9 @@ class LbmTabBar extends ConsumerWidget {
                     _TabButton(
                       icon: Icons.chat_bubble_outline_rounded,
                       activeIcon: Icons.chat_bubble_rounded,
-                      label: 'Sign up to unlock',
+                      // Short enough to stay readable in a five-slot bar;
+                      // "Sign up to unlock" shrank to a few pixels.
+                      label: 'Sign up',
                       selected: false,
                       dimmed: true,
                       onTap: () => showGateSheet(context),
@@ -294,7 +296,9 @@ class _ComposeButton extends ConsumerWidget {
         button: true,
         label: 'Post something',
         child: Material(
-          color: c.accentDeep,
+          // Orchid: the post button is one of the bright moments the
+          // brand keeps orchid for. It carries a navy icon, not white.
+          color: c.accent,
           shape: const CircleBorder(),
           child: InkWell(
             customBorder: const CircleBorder(),
@@ -306,7 +310,11 @@ class _ComposeButton extends ConsumerWidget {
             child: SizedBox(
               width: 54,
               height: 54,
-              child: Icon(Icons.add_rounded, size: 28, color: c.accentInk),
+              child: const Icon(
+                Icons.add_rounded,
+                size: 28,
+                color: LbmPalette.navy,
+              ),
             ),
           ),
         ),
@@ -430,7 +438,7 @@ class _TabButton extends StatelessWidget {
                               width: 6,
                               height: 6,
                               decoration: BoxDecoration(
-                                color: c.accentDeep,
+                                color: c.accent,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -450,7 +458,7 @@ class _TabButton extends StatelessWidget {
                                 vertical: 1,
                               ),
                               decoration: BoxDecoration(
-                                color: c.accentDeep,
+                                color: c.accent,
                                 borderRadius: LbmRadius.pillR,
                               ),
                               child: Text(
@@ -460,7 +468,7 @@ class _TabButton extends StatelessWidget {
                                   fontSize: 10,
                                   fontWeight: FontWeight.w900,
                                   height: 1.3,
-                                  color: c.accentInk,
+                                  color: LbmPalette.navy,
                                 ),
                               ),
                             ),

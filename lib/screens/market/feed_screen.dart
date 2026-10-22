@@ -244,7 +244,7 @@ class _ProfileButton extends ConsumerWidget {
                     vertical: 1,
                   ),
                   decoration: BoxDecoration(
-                    color: c.accentDeep,
+                    color: c.accent,
                     borderRadius: LbmRadius.pillR,
                   ),
                   child: Text(
@@ -254,7 +254,7 @@ class _ProfileButton extends ConsumerWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
                       height: 1.3,
-                      color: c.accentInk,
+                      color: LbmPalette.navy,
                     ),
                   ),
                 ),
@@ -267,7 +267,7 @@ class _ProfileButton extends ConsumerWidget {
                   width: 9,
                   height: 9,
                   decoration: BoxDecoration(
-                    color: c.accentDeep,
+                    color: c.accent,
                     shape: BoxShape.circle,
                   ),
                 ),

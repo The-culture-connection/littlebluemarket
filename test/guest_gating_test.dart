@@ -74,7 +74,7 @@ void main() {
     await _pumpApp(tester, guest: true);
 
     expect(find.text('Market'), findsOneWidget);
-    expect(find.text('Sign up to unlock'), findsOneWidget);
+    expect(find.text('Sign up'), findsOneWidget);
     expect(find.text('Community'), findsNothing);
     expect(find.text('You'), findsNothing);
   });
@@ -82,7 +82,7 @@ void main() {
   testWidgets('a guest gets the gate instead of the community', (tester) async {
     await _pumpApp(tester, guest: true);
 
-    await tester.tap(find.text('Sign up to unlock'));
+    await tester.tap(find.text('Sign up'));
     await tester.pumpAndSettle();
 
     expect(find.text('Make a profile to do that'), findsOneWidget);
@@ -114,7 +114,7 @@ void main() {
     expect(find.text('Community'), findsOneWidget);
     // You is beside the search now, not in the bar (Grace, 2026-10-21).
     expect(find.bySemanticsLabel(RegExp('^Your profile')), findsOneWidget);
-    expect(find.text('Sign up to unlock'), findsNothing);
+    expect(find.text('Sign up'), findsNothing);
     expect(find.textContaining('Looking around as a guest'), findsNothing);
   });
 
