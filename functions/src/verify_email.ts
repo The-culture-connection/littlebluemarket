@@ -150,7 +150,7 @@ export function escapeHtml(value: string): string {
  * The template. Tables and inline styles on purpose: mail clients ignore
  * most of a stylesheet. Only the Little Blue Cart brand guide's colours and
  * fonts, as the app maps them (lib/theme/tokens.dart) and as the hosting
- * pages draw them (hosting/lbm.css): the sky page `#89C9F4`, a white card,
+ * pages draw them (hosting/lbm.css): the blue page `#70A0D2`, a white card,
  * navy `#253856` text (at 80% and 60% for the quieter lines, each with a
  * solid navy fallback first for clients that ignore rgba), the navy pill
  * button with white text, a navy underlined link, a blue-mist `#DFEAF5`
@@ -168,9 +168,9 @@ const TEMPLATE = `<!doctype html>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
 <!--[if mso]><style>table,td,p,a{font-family:Arial,sans-serif}h1{font-family:Georgia,serif}</style><![endif]-->
 </head>
-<body style="margin:0;padding:0;background:#89C9F4;">
+<body style="margin:0;padding:0;background:#70A0D2;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:rgba(255,255,255,0);">One tap confirms {{email}} for Little Blue Market.</div>
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#89C9F4;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#70A0D2;">
   <tr>
     <td align="center" style="padding:36px 16px 28px;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:480px;">

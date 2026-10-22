@@ -15,7 +15,7 @@ class MakersRail extends StatelessWidget {
   const MakersRail({
     super.key,
     required this.item,
-    this.title = 'Small businesses near you',
+    this.title = 'Small businesses',
   });
 
   final MakersRailItem item;

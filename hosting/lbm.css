@@ -23,7 +23,7 @@
 html, body {
   margin: 0;
   min-height: 100%;
-  background: var(--sky);
+  background: var(--blue);
   color: var(--navy);
   font-family: var(--body);
   -webkit-font-smoothing: antialiased;

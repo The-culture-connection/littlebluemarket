@@ -103,7 +103,7 @@ test('the message carries the link, the name, the address and the cart', () => {
   // The plain-text twin has the raw link.
   assert.ok(mail.text.includes('https://x.web.app/auth/action?mode=verifyEmail&oobCode=ABC'));
   // The brand colours are in the mail, not a stylesheet the client would drop.
-  assert.ok(mail.html.includes('#89C9F4'));
+  assert.ok(mail.html.includes('#70A0D2'));
   assert.ok(mail.html.includes('#253856'));
 });
 

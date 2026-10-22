@@ -178,12 +178,13 @@ class LbmColors extends ThemeExtension<LbmColors> {
   /// `0 10px 28px -10px` — the floating tab bar and raised sheets.
   final List<BoxShadow> shadowLift;
 
-  // Light: navy type on the sky page, white cards, navy buttons with white
+  // Light: navy type on the blue page, white cards, navy buttons with white
   // labels, orchid for the small bright moments (Grace's choices of
   // 2026-10-22). Alpha variants are written as literals so the sets stay
   // const: 0xCC253856 is navy at 80%.
   static const light = LbmColors(
-    paper: LbmPalette.sky,
+    // The brand blue (Grace, 2026-10-22, changed from sky the same day).
+    paper: LbmPalette.blue,
     surface: LbmPalette.white,
     scrim: Color(0xB3253856),
     ink: LbmPalette.navy,

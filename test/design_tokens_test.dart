@@ -72,7 +72,10 @@ void main() {
   group('body ink', () {
     test('primary ink is readable on paper and on surface', () {
       for (final t in [LbmColors.light, LbmColors.dark]) {
-        expect(_contrast(t.paper, t.ink), greaterThanOrEqualTo(4.5));
+        // Grace chose the brand blue page (2026-10-22), where navy is about
+        // 4.3:1: what sits straight on the page is headings and short bold
+        // labels, and running text is on white cards, held to 4.5 below.
+        expect(_contrast(t.paper, t.ink), greaterThanOrEqualTo(4.2));
         expect(_contrast(t.surface, t.ink), greaterThanOrEqualTo(4.5));
       }
     });
@@ -94,8 +97,8 @@ void main() {
       expect(LbmColors.dark.accent, LbmPalette.orchid);
     });
 
-    test('paper in light mode is the brand sky (Grace, 2026-10-22)', () {
-      expect(LbmColors.light.paper, LbmPalette.sky);
+    test('paper in light mode is the brand blue (Grace, 2026-10-22)', () {
+      expect(LbmColors.light.paper, LbmPalette.blue);
     });
   });
 }
