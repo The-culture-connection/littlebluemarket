@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -400,11 +401,28 @@ class _PromoCardState extends State<PromoCard> {
     // already taken off. The picture is not capped: it fills the card's
     // width whatever shape it is, and this is what stops the card running
     // off the bottom of a short phone when it does. See [_PhotoFrame].
-    final cardHeight =
-        MediaQuery.sizeOf(context).height -
-        MediaQuery.paddingOf(context).vertical -
-        74;
+    //
+    // Measured from the space this card is actually given. It was the
+    // screen height less MediaQuery's padding, but the SafeArea above has
+    // already removed that padding, so it read as zero and the card came
+    // out taller than the room by exactly the notch and the home bar: 20
+    // pixels on an iPhone SE, more on newer phones (QA suite, 2026-10-22).
+    return LayoutBuilder(
+      builder: (context, box) {
+        final cardHeight = math.max(0.0, box.maxHeight - 74);
+        return _card(context, c, promo, isNews, photos, cardHeight);
+      },
+    );
+  }
 
+  Widget _card(
+    BuildContext context,
+    LbmColors c,
+    Promo promo,
+    bool isNews,
+    List<String> photos,
+    double cardHeight,
+  ) {
     return Center(
       // Room for the X above, and never edge to edge on a small phone.
       child: Padding(

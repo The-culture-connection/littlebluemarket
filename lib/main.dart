@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -112,6 +113,15 @@ class LittleBlueMarketApp extends ConsumerWidget {
       title: 'Little Blue Market',
       debugShowCheckedModeBanner: false,
       routerConfig: router,
+      // A mouse drags lists on the web the way a finger does. Flutter leaves
+      // the mouse out by default, so on the website and in the QA suite the
+      // sideways rails would not move and pull-to-refresh did nothing (QA
+      // suite, 2026-10-22). Phones are touch and unaffected.
+      scrollBehavior: kIsWeb
+          ? const MaterialScrollBehavior().copyWith(
+              dragDevices: PointerDeviceKind.values.toSet(),
+            )
+          : null,
       theme: buildLbmTheme(Brightness.light),
       darkTheme: buildLbmTheme(Brightness.dark),
       // Defaults to the system setting, as the prototype does.

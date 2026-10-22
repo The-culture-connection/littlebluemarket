@@ -401,16 +401,21 @@ class _TabButton extends StatelessWidget {
                             color: fg,
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              height: 1.2,
-                              color: fg,
+                          // Shrinks to fit rather than "Communi…": five
+                          // labels share the bar, and at large text sizes
+                          // the longest was cut (QA suite, 2026-10-22).
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              label,
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
+                                color: fg,
+                              ),
                             ),
                           ),
                         ],

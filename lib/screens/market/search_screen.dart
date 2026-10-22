@@ -75,7 +75,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         onBack: () => context.leaveSearch(),
         titleWidget: LbmField(
           controller: _controller,
-          hintText: 'Search goods, services, sellers, #tags',
+          // Short enough to fit an iPhone SE beside the back button; the long
+          // version was cut off with an ellipsis (QA suite, 2026-10-22).
+          hintText: 'Search goods, sellers, #tags',
           pill: true,
           autofocus: true,
           textInputAction: TextInputAction.search,
@@ -171,7 +173,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           // browse hub, and a hub whose main act is hidden behind a sideways
           // drag is not one (Grace, 2026-09-28). The directory stays a rail;
           // it is the second question, and it has far more than seven.
-          const SectionHead('Shop the Market'),
+          // The heading is drawn by the tiles, so a store with none of the
+          // market's collections shows nothing rather than a heading over
+          // empty space (QA suite, 2026-10-22).
           const CollectionTiles(),
           const DirectoryRail(),
           const SectionHead('Trending tags'),

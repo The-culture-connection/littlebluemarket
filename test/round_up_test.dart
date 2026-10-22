@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:little_blue_market/main.dart';
+import 'package:little_blue_market/models/formatting.dart';
 import 'package:little_blue_market/models/seller_sync.dart';
 import 'package:little_blue_market/router/app_router.dart';
 import 'package:little_blue_market/state/providers.dart';
@@ -50,10 +51,8 @@ void main() {
         overrides: [
           if (!configured)
             appConfigProvider.overrideWith(
-              (ref) async => const AppConfig(
-                registrationUrl: '',
-                shipturtleUrl: '',
-              ),
+              (ref) async =>
+                  const AppConfig(registrationUrl: '', shipturtleUrl: ''),
             ),
         ],
       );
@@ -75,9 +74,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Something in the cart, so there is a subtotal to round.
-      await container
-          .read(commerceRepositoryProvider)
-          .addLine(productId: 'p1');
+      await container.read(commerceRepositoryProvider).addLine(productId: 'p1');
       container.read(routerProvider).go('/market/cart');
       await tester.pumpAndSettle();
       return container;
@@ -101,6 +98,23 @@ void main() {
       expect(container.read(roundUpProvider), isTrue);
       expect(find.text('Round-up'), findsOneWidget);
       expect(find.textContaining('keeps the app member-run'), findsOneWidget);
+    });
+
+    // QA suite, 2026-10-22: the line said $1 and the total did not move.
+    testWidgets('the total includes the round-up once it is on', (
+      tester,
+    ) async {
+      final container = await pumpCart(tester);
+      final cart = container.read(cartProvider).value!;
+      final rounded = Fmt.money(
+        cart.subtotalCents + roundUpCentsFor(cart.subtotalCents),
+      );
+      expect(find.text(rounded), findsNothing);
+
+      await tester.tap(find.byType(Switch));
+      await tester.pumpAndSettle();
+
+      expect(find.text(rounded), findsOneWidget);
     });
 
     testWidgets('the checkout is asked for the amount that was shown', (

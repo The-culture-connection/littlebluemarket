@@ -45,6 +45,21 @@ class _ChipInScreenState extends ConsumerState<ChipInScreen> {
   /// this list and Shopify can be compared by reading them.
   static const _amounts = [200, 500, 1000, 2000];
 
+  @override
+  void initState() {
+    super.initState();
+    // The config is asked for once per app session and kept, so one failed
+    // answer hid the amounts until the app was closed (QA suite,
+    // 2026-10-22). Opening this screen asks again, as the cart does for
+    // the round-up.
+    final config = ref.read(appConfigProvider);
+    if (config.hasError || config.value?.canChipIn == false) {
+      Future.microtask(() {
+        if (mounted) ref.invalidate(appConfigProvider);
+      });
+    }
+  }
+
   int _selected = 500;
   bool _busy = false;
 

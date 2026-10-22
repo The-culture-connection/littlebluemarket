@@ -238,19 +238,25 @@ class CollectionTiles extends ConsumerWidget {
         ];
         if (items.isEmpty) return const SizedBox.shrink();
 
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-          child: GridView.count(
-            crossAxisCount: 3,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              for (final collection in items)
-                _CategoryTile(collection: collection),
-            ],
-          ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SectionHead('Shop the Market'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: GridView.count(
+                crossAxisCount: 3,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  for (final collection in items)
+                    _CategoryTile(collection: collection),
+                ],
+              ),
+            ),
+          ],
         );
       },
     );

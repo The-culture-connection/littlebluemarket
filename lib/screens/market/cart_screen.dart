@@ -505,6 +505,13 @@ class _SummaryState extends ConsumerState<_Summary> {
   Widget build(BuildContext context) {
     final c = context.c;
     final cart = widget.cart;
+    // The round-up is its own line and part of the total. The total had
+    // left it out, so turning it on showed "$1" and a total that did not
+    // move (QA suite, 2026-10-22).
+    final canRoundUp = ref.watch(appConfigProvider).value?.canRoundUp ?? false;
+    final roundUpCents = canRoundUp && ref.watch(roundUpProvider)
+        ? roundUpCentsFor(cart.subtotalCents)
+        : 0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
@@ -531,15 +538,15 @@ class _SummaryState extends ConsumerState<_Summary> {
             ),
             _Line(
               label: cart.totalCents == null ? 'Total so far' : 'Total',
-              value: cart.totalCents == null
-                  ? cart.subtotal
-                  : Fmt.money(cart.totalCents!),
+              value: Fmt.money(
+                (cart.totalCents ?? cart.subtotalCents) + roundUpCents,
+              ),
               strong: true,
             ),
             if (cart.sellerIds.length > 1) ...[
               const SizedBox(height: 10),
               Text(
-                'From ${cart.sellerIds.length} sellers — each ships separately.',
+                'From ${cart.sellerIds.length} sellers. Each ships separately.',
                 style: LbmText.xtiny.copyWith(color: c.ink2, height: 1.5),
               ),
             ],
