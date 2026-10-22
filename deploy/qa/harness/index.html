@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LBM QA Suite</title>
+<style>
+  :root {
+    --bg: #f4f3f7; --panel: #ffffff; --line: #e4e1ea; --text: #1f1b2d; --muted: #6b6578;
+    --brand: #663399; --brand-soft: #efe7f7; --p0: #d93036; --p0-soft: #fdecec;
+    --p1: #b76e00; --p1-soft: #fff4e0; --p2: #4b5563; --p2-soft: #eef0f3;
+    --pass: #1a7f4b; --pass-soft: #e5f5ec; --info: #2f6fdd; --info-soft: #e8f0fd;
+    --bug: #b4236c; --bug-soft: #fbe8f1;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --stage: #e9e6ef;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 13px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); flex: none; }
+  header h1 { font-size: 14px; margin: 0; font-weight: 650; white-space: nowrap; }
+  header .build { color: var(--muted); font-family: var(--mono); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  header .spacer { flex: 1; }
+  .btn { border: 1px solid var(--line); background: var(--panel); border-radius: 7px; padding: 5px 10px; white-space: nowrap; }
+  .btn:hover { border-color: #c9c3d4; }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600; }
+  .btn.primary:hover { background: #57298a; }
+  .btn.bug { background: var(--bug); border-color: var(--bug); color: #fff; font-weight: 600; }
+  .btn.bug:hover { background: #9a1d5c; }
+  .btn.on { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); font-weight: 600; }
+  .btn.small { padding: 2px 8px; font-size: 12px; border-radius: 6px; }
+  .btn.danger { color: var(--p0); }
+  a.link { color: var(--brand); text-decoration: none; white-space: nowrap; }
+
+  main { flex: 1; display: grid; grid-template-columns: 380px minmax(0, 1fr) 400px; min-height: 0; }
+  section.panel { background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+  #todos { border-right: 1px solid var(--line); }
+  #console { border-left: 1px solid var(--line); }
+  .panel-head { padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; flex: none; }
+  .panel-head h2 { margin: 0; font-size: 13px; font-weight: 650; }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .scroll { overflow: auto; flex: 1; min-height: 0; }
+  .hint { color: var(--muted); font-size: 12px; }
+  .sync { font-size: 11.5px; color: var(--muted); }
+  .sync.err { color: var(--p0); }
+
+  /* Checklist */
+  .progress { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--p2-soft); }
+  .progress > span { display: block; height: 100%; }
+  .counts { color: var(--muted); font-size: 12px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .seg button { border: 0; background: none; padding: 3px 8px; font-size: 12px; }
+  .seg button.on { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+  input[type=search], input[type=text], .field textarea, .field select { width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; background: #fbfafc; }
+  .namebox { display: flex; align-items: center; gap: 6px; }
+  .namebox input { flex: 1; }
+  .group { border-bottom: 1px solid var(--line); }
+  .group-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; width: 100%; border: 0; text-align: left; padding: 8px 12px; background: #faf9fc; border-bottom: 1px solid var(--line); }
+  .group-head .gname { font-weight: 650; font-size: 12.5px; flex: 1; }
+  .group-head .gcount { font-size: 11.5px; color: var(--muted); }
+  .caret { display: inline-block; width: 10px; color: var(--muted); transition: transform .15s; }
+  .collapsed > .group-head .caret, .todo:not(.open) > .trow .caret { transform: rotate(-90deg); }
+  .todo { border-bottom: 1px solid #f0eef3; }
+  .todo:last-child { border-bottom: 0; }
+  .trow { display: flex; gap: 7px; align-items: flex-start; width: 100%; border: 0; background: none; text-align: left; padding: 8px 12px; }
+  .trow:hover { background: #faf8fd; }
+  .todo.open > .trow { background: #f7f3fc; }
+  .dot { flex: none; width: 9px; height: 9px; border-radius: 50%; margin-top: 4px; background: #cfcad8; }
+  .dot.pass { background: var(--pass); } .dot.fail { background: var(--p0); } .dot.na { background: #9a94a6; }
+  .ttitle { flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .todo.open .ttitle { display: block; }
+  .meta { flex: none; display: flex; gap: 6px; color: var(--muted); font-size: 11px; margin-top: 1px; }
+  .chip { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap; line-height: 1.6; flex: none; }
+  .chip.P0 { background: var(--p0-soft); color: var(--p0); }
+  .chip.P1 { background: var(--p1-soft); color: var(--p1); }
+  .chip.P2 { background: var(--p2-soft); color: var(--p2); }
+  .chip.tag { background: var(--info-soft); color: var(--info); }
+  .chip.bugtag { background: var(--bug-soft); color: var(--bug); }
+  .tbody { padding: 4px 12px 12px 28px; display: flex; flex-direction: column; gap: 9px; background: #fdfcfe; }
+  .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .shot { border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #fff; padding: 0; cursor: zoom-in; display: flex; flex-direction: column; }
+  .shot img { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; object-position: top; display: block; }
+  .shot span { font-size: 10.5px; color: var(--muted); padding: 3px 5px; text-align: left; line-height: 1.3; }
+  .status { display: flex; gap: 4px; flex-wrap: wrap; }
+  .status button { border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 2px 9px; font-size: 12px; }
+  .status button.sel-pass { background: var(--pass-soft); border-color: var(--pass); color: var(--pass); font-weight: 600; }
+  .status button.sel-fail { background: var(--p0-soft); border-color: var(--p0); color: var(--p0); font-weight: 600; }
+  .status button.sel-na { background: var(--p2-soft); border-color: var(--p2); font-weight: 600; }
+  .byline { font-size: 11.5px; color: var(--muted); }
+  .bugbox { border-left: 3px solid var(--bug); padding: 6px 9px; background: var(--bug-soft); border-radius: 0 6px 6px 0; font-size: 12.5px; white-space: pre-wrap; }
+  .notes { display: flex; flex-direction: column; gap: 6px; }
+  .note { background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; font-size: 12.5px; }
+  .note .nh { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .note .nt { white-space: pre-wrap; word-break: break-word; }
+  .note .shot { width: 96px; margin-top: 6px; }
+  .note .del { border: 0; background: none; color: var(--muted); font-size: 11px; padding: 0; }
+  .addnote textarea { width: 100%; min-height: 54px; resize: vertical; border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px; font-size: 12.5px; background: #fff; }
+  .addnote label { font-size: 12px; color: var(--muted); display: inline-flex; gap: 5px; align-items: center; }
+  .section-label { font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+
+  /* Stage */
+  #stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--stage); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .toolbar label { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 12px; }
+  .toolbar select { border: 1px solid var(--line); border-radius: 7px; padding: 4px 6px; background: #fff; color: var(--text); }
+  #viewport { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: flex-start; overflow: hidden; padding: 18px 0; position: relative; }
+  #scaler { transform-origin: top center; }
+  .device { position: relative; background: #111; border-radius: 46px; padding: 12px; box-shadow: 0 18px 50px rgba(30, 20, 50, .28); }
+  .screen { position: relative; overflow: hidden; border-radius: 36px; background: #fff; }
+  .screen iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+  .statusbar { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; font: 600 14px system-ui, -apple-system, sans-serif; color: #111; pointer-events: none; z-index: 2; }
+  .island { position: absolute; left: 50%; transform: translateX(-50%); background: #000; border-radius: 20px; z-index: 2; }
+  .homebar { position: absolute; left: 50%; bottom: 8px; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: rgba(0,0,0,.75); pointer-events: none; z-index: 3; }
+  .keyboard { position: absolute; left: 0; right: 0; bottom: 0; background: #d1d3d9; z-index: 2; pointer-events: none; display: flex; flex-direction: column; gap: 9px; padding: 8px 4px; }
+  .keyboard .sugg { height: 30px; border-bottom: 1px solid #bfc2c8; display: flex; justify-content: space-around; align-items: center; color: #555; font-size: 14px; }
+  .keyboard .krow { display: flex; gap: 6px; justify-content: center; }
+  .keyboard .k { flex: 0 0 8.6%; height: 40px; background: #fff; border-radius: 5px; box-shadow: 0 1px 0 #8a8d93; }
+  .keyboard .k.wide { flex: 0 0 48%; }
+  .keyboard .note { position: absolute; top: 6px; right: 8px; font-size: 10px; color: #6b6e75; border: 0; background: none; padding: 0; }
+  .metrics { text-align: center; color: var(--muted); font-family: var(--mono); font-size: 11.5px; padding: 6px 12px; background: var(--panel); border-top: 1px solid var(--line); }
+  .waiting { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; background: #fff; z-index: 4; text-align: center; padding: 20px; }
+
+  /* Console */
+  .tabs { display: flex; border-bottom: 1px solid var(--line); flex: none; }
+  .tabs button { flex: 1; border: 0; background: none; padding: 8px 4px; font-size: 12.5px; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs button.on { color: var(--brand); border-bottom-color: var(--brand); font-weight: 650; }
+  .badge { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--p2-soft); color: var(--p2); font-size: 11px; font-weight: 700; margin-left: 4px; }
+  .badge.err { background: var(--p0-soft); color: var(--p0); }
+  .pane { display: none; }
+  .pane.on { display: block; }
+  .issue { padding: 9px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .issue:hover { background: #faf8fd; }
+  .issue .msg { font-weight: 550; }
+  .loc { font-family: var(--mono); font-size: 11.5px; color: var(--brand); word-break: break-all; }
+  .snippet { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .empty { padding: 24px 16px; color: var(--muted); text-align: center; }
+  .log { padding: 4px 12px; border-bottom: 1px solid #f1eff4; font-family: var(--mono); font-size: 11.5px; white-space: pre-wrap; word-break: break-word; }
+  .log.error { background: #fff6f6; color: #9b1c20; cursor: pointer; }
+  .log.warn { background: #fffaf0; color: #7a4d00; }
+  .log .t { color: #a59fb0; margin-right: 6px; }
+  .log details pre { margin: 6px 0 2px; white-space: pre-wrap; color: #5d1114; font-size: 11px; }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 10px; padding: 12px; font-size: 12.5px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; word-break: break-word; }
+  table.anc { width: calc(100% - 24px); margin: 0 12px 12px; border-collapse: collapse; font-size: 11.5px; }
+  table.anc th, table.anc td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.anc td { font-family: var(--mono); }
+  .nav { padding: 6px 12px; border-bottom: 1px solid #f1eff4; font-size: 12px; }
+
+  /* Dialogs */
+  .backdrop { position: fixed; inset: 0; background: rgba(25, 18, 40, .55); z-index: 20; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .dialog { background: var(--panel); border-radius: 12px; width: min(820px, 100%); max-height: calc(100vh - 48px); display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,.3); }
+  .dialog header { border-radius: 12px 12px 0 0; }
+  .dialog .body { display: grid; grid-template-columns: 240px 1fr; gap: 16px; padding: 16px; overflow: auto; }
+  .dialog .preview { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #f6f5f8; align-self: start; }
+  .dialog .preview img { width: 100%; display: block; }
+  .dialog .preview .ph { padding: 60px 12px; text-align: center; color: var(--muted); }
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .field > span { font-size: 12px; font-weight: 600; }
+  .field textarea { min-height: 110px; resize: vertical; }
+  .dialog footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--line); }
+  .lightbox { position: fixed; inset: 0; background: rgba(15, 10, 25, .86); z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; cursor: zoom-out; }
+  .lightbox img { max-width: 100%; max-height: calc(100vh - 90px); border-radius: 8px; background: #fff; }
+  .lightbox .cap { color: #eee; font-size: 13px; text-align: center; max-width: 720px; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #1f1b2d; color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 40; }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 1300px) { main { grid-template-columns: 330px minmax(0, 1fr) 340px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Little Blue Market · QA suite</h1>
+  <span class="build" id="build">loading build…</span>
+  <span class="spacer"></span>
+  <a class="link" id="openApp" href="/app/" target="_blank" rel="noopener">Open app alone ↗</a>
+  <button class="btn bug" id="reportBug" title="Screenshot the app and add a bug to the checklist">🐞 Report bug</button>
+  <button class="btn primary" id="copyClaude" title="Copy a report of open bugs, failing checks, layout issues, errors and the inspected element, ready to paste into Claude">Copy for Claude</button>
+</header>
+
+<main>
+  <!-- Left: checklist -->
+  <section class="panel" id="todos">
+    <div class="panel-head">
+      <div class="row" style="justify-content:space-between"><h2>Checklist by screen</h2><span class="counts" id="counts"></span></div>
+      <div class="progress" id="progress"></div>
+      <div class="seg" id="todoFilter">
+        <button data-f="all" class="on">All</button><button data-f="open">Not tested</button><button data-f="fail">Failing</button><button data-f="pass">Passed</button><button data-f="bugs">Bugs</button>
+      </div>
+      <input type="search" id="todoSearch" placeholder="Search checks, bugs and notes…">
+      <div class="namebox"><span class="hint">You:</span><input type="text" id="tester" placeholder="Your name (shown on notes and results)"></div>
+    </div>
+    <div class="scroll" id="todoList"></div>
+    <div class="panel-head" style="border-top:1px solid var(--line);border-bottom:0">
+      <div class="row" style="justify-content:space-between">
+        <span class="sync" id="sync">connecting…</span>
+        <span class="row"><button class="btn small" id="expandAll">Expand all</button><button class="btn small primary" id="exportReport" title="Download the whole checklist as a Markdown report: open bugs, unfinished checks, notes and screenshot links. Attach it in a message to Claude.">Download report</button><button class="btn small" id="exportTodos" title="Raw data backup (JSON)">JSON</button></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Center: app -->
+  <section id="stage">
+    <div class="toolbar">
+      <label>Device <select id="device"></select></label>
+      <label>Text size <select id="textSize"></select></label>
+      <button class="btn small" id="bold" title="iOS Settings → Accessibility → Bold Text">Bold Text</button>
+      <button class="btn small" id="keyboard" title="Simulates the on-screen keyboard (viewInsets.bottom)">Keyboard</button>
+      <label>Platform <select id="platform"><option value="ios">iOS</option><option value="android">Android</option></select></label>
+      <label>Zoom <select id="zoom"><option value="fit">Fit</option><option value="1">100%</option><option value="0.75">75%</option></select></label>
+      <button class="btn small" id="reload">Reload app</button>
+    </div>
+    <div id="viewport">
+      <div id="scaler">
+        <div class="device" id="deviceFrame">
+          <div class="screen" id="screen">
+            <iframe id="app" title="Little Blue Market app"></iframe>
+            <div class="statusbar" id="statusbar"><span id="clock">9:41</span><span>●●● ▮</span></div>
+            <div class="island" id="island"></div>
+            <div class="keyboard" id="kbd" hidden></div>
+            <div class="homebar" id="homebar"></div>
+            <div class="waiting" id="waiting">Loading the app (debug build: first load can take 20–30s)…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="metrics" id="metrics">waiting for app…</div>
+  </section>
+
+  <!-- Right: console -->
+  <section class="panel" id="console">
+    <div class="panel-head">
+      <div class="row">
+        <button class="btn small" id="runAudit">Run layout audit</button>
+        <button class="btn small" id="highlight" title="Outline every issue on the device">Highlight issues</button>
+        <button class="btn small" id="inspect" title="Tap anything in the app to see its geometry and source location">Inspect</button>
+        <button class="btn small" id="clear">Clear</button>
+      </div>
+    </div>
+    <div class="tabs" id="tabs">
+      <button data-t="issues" class="on">Layout<span class="badge" id="bIssues">0</span></button>
+      <button data-t="logs">Console<span class="badge" id="bLogs">0</span></button>
+      <button data-t="inspector">Inspector</button>
+      <button data-t="nav">Navigation</button>
+    </div>
+    <div class="scroll">
+      <div class="pane on" id="p-issues"></div>
+      <div class="pane" id="p-logs"></div>
+      <div class="pane" id="p-inspector"><div class="empty">Turn on <b>Inspect</b>, then tap any text or control in the app.</div></div>
+      <div class="pane" id="p-nav"></div>
+    </div>
+  </section>
+</main>
+
+<!-- Report bug dialog -->
+<div class="backdrop" id="bugDialog" hidden>
+  <div class="dialog" role="dialog" aria-labelledby="bugTitleLabel">
+    <header><h1 id="bugTitleLabel">Report a bug</h1><span class="spacer"></span><span class="hint" id="bugContext"></span></header>
+    <div class="body">
+      <div>
+        <div class="preview" id="bugPreview"><div class="ph">Capturing the screen…</div></div>
+        <div class="row" style="margin-top:6px"><button class="btn small" id="bugRetake">Retake screenshot</button></div>
+      </div>
+      <div>
+        <label class="field"><span>Title</span><input type="text" id="bugTitle" maxlength="200" placeholder="e.g. Provider name wraps one letter per line"></label>
+        <label class="field"><span>What's wrong, and what should happen instead?</span><textarea id="bugComment" placeholder="Steps, what you expected, anything that helps the fix"></textarea></label>
+        <div class="row" style="gap:12px;align-items:flex-start">
+          <label class="field" style="flex:1"><span>Priority</span><select id="bugPri"><option value="P0">P0: blocks launch</option><option value="P1" selected>P1: fix before promotion</option><option value="P2">P2: polish</option></select></label>
+          <label class="field" style="flex:1"><span>Screen</span><select id="bugGroup"></select></label>
+        </div>
+        <label class="hint" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="bugIssues" checked> <span id="bugIssuesLabel">Include layout findings on this screen</span></label>
+      </div>
+    </div>
+    <footer><button class="btn" id="bugCancel">Cancel</button><button class="btn bug" id="bugSubmit">Add to checklist</button></footer>
+  </div>
+</div>
+<div class="lightbox" id="lightbox" hidden><img id="lightImg" alt=""><div class="cap" id="lightCap"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  // ---------- Devices ----------
+  const DEVICES = {
+    se:     { name: 'iPhone SE (3rd gen)', w: 375, h: 667, top: 20, bottom: 0, kb: 260, island: null, platform: 'ios' },
+    mini:   { name: 'iPhone 13 mini', w: 375, h: 812, top: 50, bottom: 34, kb: 336, island: { w: 126, h: 32, y: 6 }, platform: 'ios' },
+    i15:    { name: 'iPhone 15', w: 393, h: 852, top: 59, bottom: 34, kb: 336, island: { w: 124, h: 36, y: 11 }, platform: 'ios' },
+    promax: { name: 'iPhone 15 Pro Max', w: 430, h: 932, top: 59, bottom: 34, kb: 346, island: { w: 124, h: 36, y: 11 }, platform: 'ios' },
+    pixel:  { name: 'Pixel 7', w: 412, h: 915, top: 24, bottom: 24, kb: 320, island: { w: 12, h: 12, y: 8 }, platform: 'android' },
+  };
+  // iOS Dynamic Type steps relative to the default (Large = 17pt).
+  const TEXT_SIZES = [
+    { id: 'm', label: 'Medium (0.94×)', v: 0.94 },
+    { id: 'l', label: 'Large, the default (1.0×)', v: 1.0 },
+    { id: 'xl', label: 'xLarge (1.12×)', v: 1.12 },
+    { id: 'xxl', label: 'xxLarge (1.24×)', v: 1.24 },
+    { id: 'xxxl', label: 'xxxLarge (1.35×, the most the app allows)', v: 1.35 },
+  ];
+  const STRESS = { device: 'se', text: 'xxxl', bold: true };
+
+  // ---------- Screens ----------
+  // Checklist groups, and the app address that opens each one.
+  const GROUPS = [
+    { name: 'Market', nav: { route: '/market' } },
+    { name: 'Search', nav: { route: '/market/search' } },
+    { name: 'Directory', nav: { route: '/market/browse-directory' } },
+    { name: 'Cart and checkout', nav: { route: '/market/cart' } },
+    { name: 'Community and forums', nav: { route: '/community' } },
+    { name: 'You and profile', nav: { route: '/you' } },
+    { name: 'Messages and notifications', nav: { route: '/you/messages' } },
+    { name: 'Selling', nav: { route: '/you/sell' } },
+    { name: 'Sign up and welcome', nav: null },
+    { name: 'All screens', nav: null },
+    { name: 'Other screens', nav: null },
+  ];
+  const groupNav = (name) => (GROUPS.find((g) => g.name === name) || {}).nav || null;
+  // Widget class of the visible screen -> checklist group.
+  function groupForScreens(screens, tab) {
+    const s = [...(screens || [])].reverse().join(' ');
+    if (/Welcome|Orient|SignIn|Verify|Setup|Terms/.test(s)) return 'Sign up and welcome';
+    if (/Cart|ChipIn/.test(s)) return 'Cart and checkout';
+    if (/Directory/.test(s)) return 'Directory';
+    if (/Search|Results|Tag|Collection/.test(s)) return 'Search';
+    if (/Forum|Thread|Chatroom/.test(s)) return 'Community and forums';
+    if (/Dm|Messages|Notification/.test(s)) return 'Messages and notifications';
+    if (/Sell|AddProduct|Shop|ClaimShop/.test(s)) return 'Selling';
+    if (/Profile|Purchases|Admin|Diagnostics|Blocked|DeleteAccount/.test(s)) return 'You and profile';
+    if (/Feed|Post|Product|Reviews|Seller/.test(s)) return 'Market';
+    return ['Market', 'Community and forums', 'You and profile'][tab] || 'Other screens';
+  }
+
+  // No screenshots from a review document yet. Add entries here as
+  // key: ['file.png', 'caption'] and put the files in harness/review/.
+  const SHOT = {};
+
+  // [pri, owner, text, hint, setup, shots, nav override]
+  // Owner: FE is the app, BE is the server (Cloud Functions, rules), QA is a
+  // walk-through. Grace's asks of 21 October are first in each group.
+  const TODOS = [
+    ['All screens', [
+      ['P1','FE','No text runs off the screen or breaks in the middle of a word on any tab.','Run the layout audit on each tab at iPhone SE, xxxLarge text and Bold.',STRESS,[]],
+      ['P1','FE','Every empty message ("Nothing here yet", "You have not written a review yet") sits in the middle of the screen, not the top left.','You tab, then each of the chips under your profile.',null,[],{route:'/you'}],
+      ['P1','FE','A short buzz on adding to cart, sending a comment or message, posting, reviewing and starting checkout.','Phones only: the web cannot vibrate. Check on a real phone and mark it here.',null,[]],
+      ['P2','QA','One full pass of every group on one small and one large phone.','iPhone SE and iPhone 15 Pro Max.',null,[]],
+    ]],
+    ['Market', [
+      ['P1','FE','The search bar reads "DISCOVER. SHOP. SUPPORT." with "Small businesses. Big impact." under it.','',null,[]],
+      ['P1','FE','Your profile picture sits to the right of the search bar and opens your profile. Unread messages show as a number on it.','',null,[]],
+      ['P1','FE','Only two tabs above the grid: Following and For you. No Near me anywhere.','',null,[]],
+      ['P1','FE','The tab bar reads Community, Directory, the post button, Cart, Market. Market is on the far right.','',null,[]],
+      ['P1','FE','"Browse the directory" is a heading, clearly bigger than the words around it.','Scroll down the For you grid to the directory rail.',null,[]],
+      ['P1','FE','The rail of people is titled "Small businesses near you".','',null,[]],
+      ['P1','FE','Tapping a listing opens its product page with the price, photos and Add to cart.','',null,[]],
+      ['P2','FE','Pull down to refresh brings in new posts without jumping the grid.','',null,[]],
+    ]],
+    ['Search', [
+      ['P1','FE','Searching a word shows products, shops and directory businesses, with no Near me button beside the filters.','Try "candle" and "photographer".',null,[]],
+      ['P1','FE',"Tapping a hashtag opens that tag's own page, and Back returns to where you were.",'',null,[]],
+      ['P2','FE','The search field and results survive xxxLarge text without anything cut off.','',STRESS,[]],
+    ]],
+    ['Directory', [
+      ['P1','FE','The Directory button in the tab bar opens a list of every category with how many businesses are in each.','',null,[]],
+      ['P1','FE','A category opens its businesses; a business opens its own page with photos, contact and Claim.','',null,[]],
+      ['P2','FE','A business photo that fails to load leaves no empty gap.','',null,[]],
+    ]],
+    ['Cart and checkout', [
+      ['P0','FE','The "Round up for Little Blue Market" card shows on the cart every time, including when the cart is empty.','Empty the cart, then open it. The switch waits until something is in the cart.',null,[]],
+      ['P1','FE','With items in the cart, turning on Round up adds a Round-up line to the totals, rounding to the next dollar.','',null,[]],
+      ['P1','FE',"Checkout opens the store's checkout with the right items and, if on, the round-up.",'Test card 4242 4242 4242 4242 on the dev shop.',null,[]],
+      ['P2','FE','Saved for later items are not in the total and can be moved back.','',null,[]],
+    ]],
+    ['Community and forums', [
+      ['P0','FE','Start a thread shows "Tag a product" and "Tag someone". A tagged product appears as a card under the thread; a tagged person shows as a tappable @name.','Community, Forums, any forum, Start a thread.',null,[],{route:'/community/forums'}],
+      ['P0','FE','A reply in a thread can tag a product and a person the same way, and the product card can be tapped and added to the cart.','',null,[],{route:'/community/forums'}],
+      ['P1','BE','A person tagged in a thread or reply gets a "mentioned" notification, once.','Tag a second test account and check its bell.',null,[]],
+      ['P1','FE','The six starter forums are there: Getting Started Selling, Photos and Listings, Small Business Finds, Marketing and the Holiday Season, Shipping and Packaging, Wins and Shoutouts.','Post them from the staging admin portal first if they are missing.',null,[],{route:'/community/forums'}],
+      ['P2','FE','The open chat sends and shows messages in order.','',null,[]],
+    ]],
+    ['You and profile', [
+      ['P1','FE','Reached from the picture beside the Market search, not from the tab bar.','',null,[]],
+      ['P1','FE','Each profile chip (Products, Bought, Reviews, Posts, Carts) shows its content or a centred empty message.','',null,[]],
+      ['P2','FE','Edit profile saves name, photo, bio and City, State.','',null,[],{route:'/you/edit'}],
+      ['P2','FE','Chip in to Little Blue Market opens and shows the amounts.','',null,[],{route:'/you/chip-in'}],
+    ]],
+    ['Messages and notifications', [
+      ['P1','FE','Messages lists conversations; a conversation sends and shows a listing card when one is attached.','',null,[]],
+      ['P1','FE','An announcement with words only fades in as a popup when the app is opened after five minutes away.','Post one from the staging admin portal, Adverts and popups card. On the web, reload the app frame.',null,[]],
+      ['P2','FE','The bell lists notifications and each one opens the right screen.','',null,[],{route:'/you/notifications'}],
+    ]],
+    ['Selling', [
+      ['P1','FE','A seller can add a product with a photo, price and quantity, and sees it Under review.','Needs a seller test account.',null,[],{route:'/you/add-product'}],
+      ['P2','FE','Sell with us offers Apply on our website and Check my seller status.','',null,[]],
+    ]],
+    ['Sign up and welcome', [
+      ['P1','FE','Create a Profile, confirm the email, then set up the profile with a name, handle and photo.','Use a new grace-s+qaN@ address. The mail lands in Spam.',null,[]],
+      ['P1','FE','Browsing as a guest shows the Market, Directory and Cart, and asks you to sign up for the rest.','Sign out first.',null,[]],
+    ]],
+  ];
+  // Stable ids from the text, so reordering the list keeps saved results.
+  const hashId = (s) => { let h = 5381; for (const c of s) h = ((h << 5) + h + c.charCodeAt(0)) >>> 0; return 'rv-' + h.toString(36); };
+  const builtins = [];
+  TODOS.forEach(([group, list]) => list.forEach(([pri, owner, text, hint, setup, shots, nav]) => {
+    builtins.push({
+      id: hashId(text), group, pri, owner, text, hint, setup,
+      nav: nav || groupNav(group),
+      shots: (shots || []).map((k) => ({ src: '/review/' + SHOT[k][0], caption: SHOT[k][1] })),
+    });
+  }));
+
+  // ---------- Local preferences (per browser) ----------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  };
+  const settings = Object.assign({ device: 'se', text: 'l', bold: false, keyboard: false, platform: 'ios', zoom: 'fit' }, store.get('lbm-qa-v1-settings', {}));
+
+  // ---------- State ----------
+  const $ = (id) => document.getElementById(id);
+  const state = {
+    ready: false, metrics: null, issues: [], route: '/', screens: [], logs: [], errors: 0, nav: [], inspected: null,
+    highlight: false, inspect: false, todoFilter: 'all', search: '',
+    server: { results: {}, notes: {}, bugs: [] }, online: false, lastJson: '',
+    expanded: new Set(), collapsedGroups: new Set(store.get('lbm-qa-v1-collapsed', [])), drafts: {}, attach: {},
+    tester: store.get('lbm-qa-v1-name', ''), pendingRender: false, build: '',
+  };
+
+  // ---------- Helpers ----------
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const toast = (msg) => { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200); };
+  const time = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const when = (iso) => { try { return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return ''; } };
+  const textSize = () => TEXT_SIZES.find((t) => t.id === settings.text) || TEXT_SIZES[1];
+  const device = () => DEVICES[settings.device] || DEVICES.se;
+  const author = () => state.tester || 'Tester';
+  const abs = (src) => (src && src.startsWith('/') ? location.origin + src : src);
+
+  function deviceConfig() {
+    const d = device();
+    return { device: d.name, textScale: textSize().v, boldText: settings.bold, safeTop: d.top, safeBottom: d.bottom, keyboard: settings.keyboard, keyboardHeight: d.kb, platform: settings.platform };
+  }
+  function send(msg) {
+    const w = $('app').contentWindow;
+    if (w) w.postMessage(JSON.stringify({ ...msg, source: 'lbm-qa-host' }), location.origin);
+  }
+
+  // ---------- Shared storage (server API) ----------
+  async function api(path, options = {}, retried = false) {
+    const res = await fetch(path, { credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, ...options });
+    if (res.status === 401 && !retried) {
+      const code = prompt('This QA suite is protected. Enter the team passcode:');
+      if (code) { document.cookie = `qa_pass=${encodeURIComponent(code)}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax; Secure`; return api(path, options, true); }
+    }
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
+    return res.json();
+  }
+  async function loadState() {
+    try {
+      const data = await api('/api/state');
+      state.online = true;
+      setSync(`Shared · synced ${time()}`);
+      const json = JSON.stringify(data);
+      if (json !== state.lastJson) { state.lastJson = json; state.server = data; requestRender(); }
+    } catch (e) {
+      state.online = false;
+      setSync('Shared storage unavailable: changes won\'t be saved', true);
+    }
+  }
+  function setSync(text, err) { const s = $('sync'); s.textContent = text; s.classList.toggle('err', !!err); }
+  async function mutate(fn, okMsg) {
+    try { await fn(); await loadState(); if (okMsg) toast(okMsg); } catch (e) { toast('Could not save: ' + e.message); }
+  }
+
+  // ---------- Screenshots from the app ----------
+  const shotRequests = new Map();
+  function captureApp() {
+    if (!state.ready) return Promise.reject(new Error('the app has not loaded yet'));
+    const requestId = Math.random().toString(36).slice(2);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { shotRequests.delete(requestId); reject(new Error('screenshot timed out')); }, 15000);
+      shotRequests.set(requestId, (m) => { clearTimeout(timer); m.error ? reject(new Error(m.error)) : resolve(m); });
+      send({ type: 'screenshot', requestId });
+    });
+  }
+  // PNG from Flutter -> JPEG (much smaller) for upload.
+  function toJpeg(pngBase64) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0);
+        resolve(c.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => reject(new Error('could not read screenshot'));
+      img.src = 'data:image/png;base64,' + pngBase64;
+    });
+  }
+
+  // ---------- Device ----------
+  function initToolbar() {
+    $('device').innerHTML = Object.entries(DEVICES).map(([k, d]) => `<option value="${k}">${esc(d.name)} · ${d.w}×${d.h}</option>`).join('');
+    $('textSize').innerHTML = TEXT_SIZES.map((t) => `<option value="${t.id}">${esc(t.label)}</option>`).join('');
+    $('device').value = settings.device; $('textSize').value = settings.text; $('platform').value = settings.platform; $('zoom').value = settings.zoom;
+    $('device').onchange = (e) => { settings.device = e.target.value; settings.platform = device().platform; $('platform').value = settings.platform; applySettings(); };
+    $('textSize').onchange = (e) => { settings.text = e.target.value; applySettings(); };
+    $('platform').onchange = (e) => { settings.platform = e.target.value; applySettings(); };
+    $('zoom').onchange = (e) => { settings.zoom = e.target.value; applySettings(); };
+    $('bold').onclick = () => { settings.bold = !settings.bold; applySettings(); };
+    $('keyboard').onclick = () => { settings.keyboard = !settings.keyboard; applySettings(); };
+    $('reload').onclick = () => loadApp();
+  }
+  function layoutDevice() {
+    const d = device();
+    const frame = $('deviceFrame'), screen = $('screen');
+    screen.style.width = d.w + 'px'; screen.style.height = d.h + 'px';
+    const se = settings.device === 'se';
+    screen.style.borderRadius = se ? '6px' : '';
+    frame.style.borderRadius = se ? '30px' : '';
+    frame.style.padding = se ? '56px 14px' : '';
+    const sb = $('statusbar'); sb.style.height = d.top + 'px'; sb.style.padding = se ? '0 10px' : '0 28px'; sb.style.fontSize = se ? '12px' : '14px';
+    const isl = $('island');
+    if (d.island) { isl.hidden = false; Object.assign(isl.style, { width: d.island.w + 'px', height: d.island.h + 'px', top: d.island.y + 'px', borderRadius: d.island.h / 2 + 'px' }); } else isl.hidden = true;
+    $('homebar').hidden = d.bottom === 0 || settings.keyboard;
+    const kbd = $('kbd');
+    kbd.hidden = !settings.keyboard; kbd.style.height = d.kb + 'px';
+    if (!kbd.childElementCount) {
+      kbd.innerHTML = '<span class="note">simulated keyboard</span><div class="sugg"><span>I</span><span>the</span><span>I\'m</span></div>' +
+        [10, 9, 9].map((n) => '<div class="krow">' + '<span class="k"></span>'.repeat(n) + '</div>').join('') +
+        '<div class="krow"><span class="k"></span><span class="k wide"></span><span class="k"></span></div>';
+    }
+    $('bold').classList.toggle('on', settings.bold);
+    $('keyboard').classList.toggle('on', settings.keyboard);
+    fitZoom();
+  }
+  function fitZoom() {
+    const vp = $('viewport'), scaler = $('scaler'), frame = $('deviceFrame');
+    scaler.style.transform = 'none';
+    const fw = frame.offsetWidth, fh = frame.offsetHeight;
+    let s = settings.zoom === 'fit' ? Math.min(1, (vp.clientHeight - 36) / fh, (vp.clientWidth - 24) / fw) : Number(settings.zoom);
+    s = Math.max(0.3, s);
+    scaler.style.transform = `scale(${s})`;
+    scaler.style.height = fh * s + 'px';
+  }
+  function applySettings() {
+    store.set('lbm-qa-v1-settings', settings);
+    layoutDevice();
+    if (state.ready) send({ type: 'config', config: deviceConfig() });
+  }
+  function appUrl() {
+    const c = deviceConfig();
+    const q = new URLSearchParams({ device: c.device, ts: c.textScale, bold: c.boldText, top: c.safeTop, bottom: c.safeBottom, kb: c.keyboard, kbh: c.keyboardHeight, platform: c.platform });
+    return '/app/?' + q.toString();
+  }
+  function loadApp() {
+    state.ready = false;
+    $('waiting').hidden = false;
+    $('metrics').textContent = 'waiting for app…';
+    $('app').src = appUrl();
+    clearInterval(loadApp._ping);
+    loadApp._ping = setInterval(() => { if (state.ready) clearInterval(loadApp._ping); else send({ type: 'ping' }); }, 1000);
+  }
+  function openScreen(nav) {
+    if (!nav) return;
+    if (!state.ready) { toast('The app is still loading'); return; }
+    send({ type: 'navigate', target: nav });
+  }
+
+  // ---------- Messages from the app ----------
+  window.addEventListener('message', (e) => {
+    if (e.source !== $('app').contentWindow || typeof e.data !== 'string') return;
+    let m; try { m = JSON.parse(e.data); } catch { return; }
+    if (m.source !== 'lbm-qa') return;
+    switch (m.type) {
+      case 'ready':
+        if (!state.ready) { state.ready = true; $('waiting').hidden = true; addLog('info', 'App connected'); send({ type: 'config', config: deviceConfig() }); if (state.highlight) send({ type: 'highlight', on: true }); if (state.inspect) send({ type: 'inspect', on: true }); }
+        break;
+      case 'metrics': state.metrics = m; state.route = m.route || state.route; renderMetrics(); break;
+      case 'log': addLog(m.level === 'warn' ? 'warn' : 'log', m.message); if (m.level === 'warn') toast(m.message); break;
+      case 'error': addError(m); break;
+      case 'nav': state.route = m.route; state.screens = m.screens || []; state.nav.unshift({ t: time(), ...m }); state.nav.length = Math.min(state.nav.length, 200); renderNav(); renderMetrics(); break;
+      case 'audit': state.issues = m.issues || []; state.route = m.route || state.route; state.screens = m.screens || state.screens; renderIssues(); renderMetrics(); break;
+      case 'inspect': state.inspected = { ...m.info, route: m.route }; renderInspector(); showTab('inspector'); break;
+      case 'screenshot': { const cb = shotRequests.get(m.requestId); if (cb) { shotRequests.delete(m.requestId); cb(m); } break; }
+    }
+  });
+
+  function renderMetrics() {
+    const m = state.metrics; if (!m) return;
+    const eff = Number(m.textScaleEffective).toFixed(2), req = Number(m.textScale).toFixed(2);
+    $('metrics').textContent = `${Math.round(m.width)}×${Math.round(m.height)} logical px · text ${req}×${req !== eff ? ` → ${eff}× (app clamp)` : ''} · Bold ${m.boldText ? 'on' : 'off'} · safe area ${m.safeTop}/${m.safeBottom}` +
+      `${m.keyboard ? ` · keyboard ${m.keyboard}px` : ''} · ${m.platform === 'android' ? 'Android' : 'iOS'} mode · browser DPR ${Number(m.dpr).toFixed(2)} (phone is 3×; layout is unaffected)` +
+      ` · screen: ${state.screens.join(', ') || state.route}`;
+  }
+
+  // ---------- Console panes ----------
+  function addLog(level, message) {
+    state.logs.push({ t: time(), level, message: String(message) });
+    if (state.logs.length > 800) state.logs.shift();
+    renderLogs();
+  }
+  function addError(m) {
+    state.errors++;
+    state.logs.push({ t: time(), level: 'error', message: m.summary, detail: m.detail, route: m.route });
+    if (state.logs.length > 800) state.logs.shift();
+    renderLogs();
+  }
+  function renderLogs() {
+    $('bLogs').textContent = state.errors || state.logs.length;
+    $('bLogs').classList.toggle('err', state.errors > 0);
+    const pane = $('p-logs');
+    if (!pane.classList.contains('on')) return;
+    if (!state.logs.length) { pane.innerHTML = '<div class="empty">No console output yet.</div>'; return; }
+    pane.innerHTML = state.logs.slice(-400).map((l) => l.level === 'error'
+      ? `<div class="log error"><details><summary><span class="t">${l.t}</span>${esc(l.message)}</summary><pre>${esc(l.detail || '')}</pre></details></div>`
+      : `<div class="log ${l.level === 'warn' ? 'warn' : ''}"><span class="t">${l.t}</span>${esc(l.message)}</div>`).join('');
+    pane.parentElement.scrollTop = pane.parentElement.scrollHeight;
+  }
+  function renderIssues() {
+    $('bIssues').textContent = state.issues.length;
+    $('bIssues').classList.toggle('err', state.issues.some((i) => i.severity === 'P0'));
+    const pane = $('p-issues');
+    const head = `<div class="hint" style="padding:8px 12px;border-bottom:1px solid var(--line)">Visible screen: <b>${esc(state.screens.join(', ') || state.route)}</b> · re-checked automatically after the screen settles.</div>`;
+    if (!state.issues.length) { pane.innerHTML = head + '<div class="empty">No layout issues on the visible screen. Try iPhone SE + xxxLarge + Bold Text.</div>'; return; }
+    pane.innerHTML = head + state.issues.map((i, n) => `
+      <div class="issue" data-n="${n}">
+        <div class="row"><b>${n + 1}.</b><span class="chip ${esc(i.severity)}">${esc(i.severity)}</span><span class="chip tag">${esc(i.kind)}</span></div>
+        <div class="msg">${esc(i.message)}</div>
+        ${i.text ? `<div class="snippet">“${esc(i.text)}”</div>` : ''}
+        ${i.location ? `<div class="loc">${esc(i.location)}${i.widget ? ' · ' + esc(i.widget) : ''}</div>` : '<div class="hint">No source location found.</div>'}
+      </div>`).join('');
+    pane.querySelectorAll('.issue').forEach((el) => el.onclick = () => send({ type: 'flash', rect: state.issues[Number(el.dataset.n)].rect }));
+  }
+  function renderInspector() {
+    const i = state.inspected; if (!i) return;
+    const r = i.rect || {};
+    const row = (k, v) => v === undefined || v === null || v === '' ? '' : `<dt>${k}</dt><dd>${v}</dd>`;
+    $('p-inspector').innerHTML = `<dl class="kv">
+      ${row('Element', esc(i.type))}
+      ${row('Text', i.text ? '“' + esc(i.text) + '”' : '')}
+      ${row('Source', i.location ? `<span class="loc">${esc(i.location)}</span>${i.widget ? ' · ' + esc(i.widget) : ''}` : '<span class="hint">not available</span>')}
+      ${row('Position', `x ${r.x}, y ${r.y}`)}
+      ${row('Size', `${r.w} × ${r.h}`)}
+      ${row('Constraints', esc(i.constraints))}
+      ${row('Font', i.fontSize ? esc(`${i.fontSize}${i.fontWeight ? ' · ' + i.fontWeight : ''}${i.fontFamily ? ' · ' + i.fontFamily : ''}`) : '')}
+      ${row('Lines', i.lines != null ? `${i.lines}${i.maxLines ? ' (maxLines ' + i.maxLines + ')' : ''}${i.truncated ? ' · <b style="color:var(--p0)">truncated</b>' : ''}` : '')}
+      ${row('Issues', i.issues && i.issues.length ? i.issues.map(esc).join('<br>') : (i.text ? 'none' : ''))}
+    </dl>
+    <table class="anc"><tr><th>Parent</th><th>Size</th><th>Constraints</th></tr>
+      ${(i.ancestors || []).map((a) => `<tr><td>${esc(a.type)}${a.location ? `<div class="loc">${esc(a.location)}</div>` : ''}</td><td>${esc(a.size)}</td><td>${esc(a.constraints)}</td></tr>`).join('')}
+    </table>`;
+  }
+  function renderNav() {
+    $('p-nav').innerHTML = state.nav.length ? state.nav.map((n) => `<div class="nav"><span style="color:#a59fb0;font-family:var(--mono)">${n.t}</span> <b>${esc(n.action)}</b> ${esc(n.route)}${n.screens && n.screens.length ? ` <span class="hint">· ${esc(n.screens.join(', '))}</span>` : ''}</div>`).join('') : '<div class="empty">Navigation events appear here.</div>';
+  }
+  function showTab(t) {
+    document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
+    document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('on', p.id === 'p-' + t));
+    if (t === 'logs') renderLogs();
+  }
+  function initConsole() {
+    document.querySelectorAll('#tabs button').forEach((b) => b.onclick = () => showTab(b.dataset.t));
+    $('runAudit').onclick = () => { send({ type: 'audit' }); toast('Layout audit requested'); };
+    $('highlight').onclick = () => { state.highlight = !state.highlight; $('highlight').classList.toggle('on', state.highlight); send({ type: 'highlight', on: state.highlight }); };
+    $('inspect').onclick = () => { state.inspect = !state.inspect; $('inspect').classList.toggle('on', state.inspect); send({ type: 'inspect', on: state.inspect }); if (state.inspect) showTab('inspector'); };
+    $('clear').onclick = () => { state.logs = []; state.errors = 0; state.nav = []; renderLogs(); renderNav(); };
+    renderIssues(); renderNav();
+  }
+
+  // ---------- Checklist ----------
+  function allItems() {
+    const bugs = (state.server.bugs || []).map((b) => ({
+      id: b.id, group: b.group || 'Other screens', pri: b.pri, owner: 'Bug', bug: b, text: b.title, hint: '',
+      setup: null, nav: b.nav && (b.nav.tab != null || b.nav.route) ? b.nav : groupNav(b.group),
+      shots: b.shot ? [{ src: b.shot, caption: `Reported by ${b.author} · ${when(b.at)}` }] : [],
+    }));
+    return [...builtins, ...bugs];
+  }
+  const statusOf = (id) => state.server.results?.[id]?.status;
+  const notesOf = (id) => state.server.notes?.[id] || [];
+  function matches(item) {
+    const s = statusOf(item.id), f = state.todoFilter;
+    if (f === 'open' && s) return false;
+    if (f === 'fail' && s !== 'fail') return false;
+    if (f === 'pass' && s !== 'pass') return false;
+    if (f === 'bugs' && !item.bug) return false;
+    const q = state.search.trim().toLowerCase();
+    if (!q) return true;
+    const hay = [item.text, item.group, item.hint, item.bug?.comment, item.bug?.author, ...notesOf(item.id).map((n) => n.text + ' ' + n.author)].join(' ').toLowerCase();
+    return hay.includes(q);
+  }
+  function renderCounts(items) {
+    const c = { pass: 0, fail: 0, na: 0 };
+    items.forEach((i) => { const s = statusOf(i.id); if (s) c[s]++; });
+    const open = items.length - c.pass - c.fail - c.na;
+    const bugs = items.filter((i) => i.bug).length;
+    $('counts').textContent = `${c.pass} pass · ${c.fail} fail · ${open} open${bugs ? ` · ${bugs} bug${bugs > 1 ? 's' : ''}` : ''}`;
+    const pct = (n) => (items.length ? n / items.length * 100 : 0) + '%';
+    $('progress').innerHTML = `<span style="width:${pct(c.pass)};background:var(--pass)"></span><span style="width:${pct(c.fail)};background:var(--p0)"></span><span style="width:${pct(c.na)};background:#b9b3c4"></span>`;
+  }
+  function requestRender() {
+    // Don't rebuild the list under someone who is typing a note.
+    const active = document.activeElement;
+    if (active && active.closest && active.closest('#todoList') && active.tagName === 'TEXTAREA') { state.pendingRender = true; return; }
+    renderTodos();
+  }
+  function renderTodos() {
+    state.pendingRender = false;
+    const items = allItems();
+    renderCounts(items);
+    const visible = items.filter(matches);
+    const scroll = $('todoList').scrollTop;
+    const html = GROUPS.map((g) => {
+      const list = visible.filter((i) => i.group === g.name);
+      if (!list.length) return '';
+      const all = items.filter((i) => i.group === g.name);
+      const fail = all.filter((i) => statusOf(i.id) === 'fail').length;
+      const open = all.filter((i) => !statusOf(i.id)).length;
+      const bugs = all.filter((i) => i.bug).length;
+      const counts = [fail && `${fail} fail`, open && `${open} open`, bugs && `${bugs} bug${bugs > 1 ? 's' : ''}`].filter(Boolean).join(' · ') || 'all done';
+      const collapsed = state.collapsedGroups.has(g.name);
+      return `<div class="group ${collapsed ? 'collapsed' : ''}" data-group="${esc(g.name)}">
+        <button class="group-head" data-act="group"><span class="caret">▾</span><span class="gname">${esc(g.name)}</span><span class="gcount">${counts}</span></button>
+        ${collapsed ? '' : list.map(todoHtml).join('')}
+      </div>`;
+    }).join('');
+    $('todoList').innerHTML = html || '<div class="empty">Nothing matches.</div>';
+    $('todoList').scrollTop = scroll;
+    bindTodos(items);
+  }
+  function todoHtml(i) {
+    const r = state.server.results?.[i.id] || {};
+    const notes = notesOf(i.id);
+    const open = state.expanded.has(i.id);
+    const shotCount = i.shots.length + notes.filter((n) => n.shot).length;
+    const row = `<button class="trow" data-act="toggle" title="${i.nav ? 'Expand and open this screen in the app' : 'Expand'}">
+        <span class="caret" style="margin-top:2px">▾</span><span class="dot ${r.status || ''}"></span>
+        <span class="chip ${i.pri}">${i.pri}</span>${i.bug ? '<span class="chip bugtag">Bug</span>' : ''}
+        <span class="ttitle">${esc(i.text)}</span>
+        <span class="meta">${shotCount ? `<span title="screenshots">📷${shotCount}</span>` : ''}${notes.length ? `<span title="notes">💬${notes.length}</span>` : ''}</span>
+      </button>`;
+    if (!open) return `<div class="todo" data-id="${esc(i.id)}">${row}</div>`;
+    const b = i.bug;
+    const shots = [...i.shots, ...notes.filter((n) => n.shot).map((n) => ({ src: n.shot, caption: `Note by ${n.author} · ${when(n.at)}` }))];
+    return `<div class="todo open" data-id="${esc(i.id)}">${row}
+      <div class="tbody">
+        <div class="row"><span class="chip tag">${esc(i.owner)}</span>${i.hint ? `<span class="hint">${esc(i.hint)}</span>` : ''}</div>
+        ${b ? `<div class="byline">Reported by <b>${esc(b.author)}</b> · ${when(b.at)}${b.screens?.length ? ` · ${esc(b.screens.join(', '))}` : ''}${b.device?.device ? ` · ${esc(b.device.device)}, text ${b.device.textScale}×${b.device.boldText ? ', Bold' : ''}${b.device.keyboard ? ', keyboard' : ''}` : ''}</div>
+          ${b.comment ? `<div class="bugbox">${esc(b.comment)}</div>` : ''}
+          ${b.issues?.length ? `<div class="hint">Layout findings at capture: ${b.issues.slice(0, 4).map((x) => esc(`${x.severity} ${x.kind}: ${x.message}`)).join('; ')}${b.issues.length > 4 ? ` (+${b.issues.length - 4} more)` : ''}</div>` : ''}` : ''}
+        ${shots.length ? `<div><div class="section-label">Screenshots</div><div class="shots">${shots.map((s) => `<button class="shot" data-act="zoom" data-src="${esc(s.src)}" data-cap="${esc(s.caption)}"><img loading="lazy" src="${esc(s.src)}" alt=""><span>${esc(s.caption)}</span></button>`).join('')}</div></div>` : ''}
+        <div class="status">
+          <button data-act="pass" class="${r.status === 'pass' ? 'sel-pass' : ''}">✓ Pass</button>
+          <button data-act="fail" class="${r.status === 'fail' ? 'sel-fail' : ''}">✗ Fail</button>
+          <button data-act="na" class="${r.status === 'na' ? 'sel-na' : ''}">N/A</button>
+          ${i.nav ? '<button data-act="open">Open screen</button>' : ''}
+          ${i.setup ? '<button data-act="setup" title="Apply the suggested device settings">Apply test setup</button>' : ''}
+          <button data-act="copy" title="Copy this item for Claude">Copy for Claude</button>
+          ${b ? '<button data-act="delbug" class="danger" title="Remove this bug report">Delete</button>' : ''}
+        </div>
+        ${r.status ? `<div class="byline">Marked ${r.status === 'na' ? 'N/A' : r.status} by ${esc(r.by)} · ${when(r.at)}</div>` : ''}
+        <div class="notes">
+          ${notes.length ? '<div class="section-label">Notes</div>' : ''}
+          ${notes.map((n) => `<div class="note"><div class="nh"><span><b>${esc(n.author)}</b> · ${when(n.at)}</span><button class="del" data-act="delnote" data-note="${esc(n.id)}" title="Delete note">✕</button></div>${n.text ? `<div class="nt">${esc(n.text)}</div>` : ''}${n.shot ? `<button class="shot" data-act="zoom" data-src="${esc(n.shot)}" data-cap="${esc(`Note by ${n.author}`)}"><img loading="lazy" src="${esc(n.shot)}" alt=""></button>` : ''}</div>`).join('')}
+        </div>
+        <div class="addnote">
+          <textarea data-draft placeholder="Add a note: what you saw, steps, device…">${esc(state.drafts[i.id] || '')}</textarea>
+          <div class="row" style="justify-content:space-between;margin-top:4px">
+            <label><input type="checkbox" data-attach ${state.attach[i.id] ? 'checked' : ''}> Attach a screenshot of the current app screen</label>
+            <button class="btn small primary" data-act="note">Add note</button>
+          </div>
+        </div>
+      </div></div>`;
+  }
+  function bindTodos(items) {
+    const byId = new Map(items.map((i) => [i.id, i]));
+    $('todoList').querySelectorAll('[data-act]').forEach((el) => el.onclick = (ev) => {
+      const act = el.dataset.act;
+      if (act === 'group') {
+        const g = el.closest('.group').dataset.group;
+        state.collapsedGroups.has(g) ? state.collapsedGroups.delete(g) : state.collapsedGroups.add(g);
+        store.set('lbm-qa-v1-collapsed', [...state.collapsedGroups]);
+        return renderTodos();
+      }
+      ev.stopPropagation();
+      const item = byId.get(el.closest('.todo').dataset.id);
+      if (!item) return;
+      switch (act) {
+        case 'toggle':
+          if (state.expanded.has(item.id)) state.expanded.delete(item.id);
+          else { state.expanded.add(item.id); openScreen(item.nav); }
+          return renderTodos();
+        case 'open': return openScreen(item.nav);
+        case 'setup': return applySetup(item);
+        case 'zoom': return showLightbox(el.dataset.src, el.dataset.cap);
+        case 'copy': return copyText(itemReport(item), 'Copied: paste it into Claude');
+        case 'pass': case 'fail': case 'na': {
+          const next = statusOf(item.id) === act ? null : act;
+          return mutate(() => api('/api/status', { method: 'POST', body: JSON.stringify({ id: item.id, status: next, author: author() }) }));
+        }
+        case 'note': return addNote(item);
+        case 'delnote':
+          if (!confirm('Delete this note for everyone?')) return;
+          return mutate(() => api(`/api/notes/${encodeURIComponent(item.id)}/${encodeURIComponent(el.dataset.note)}`, { method: 'DELETE' }), 'Note deleted');
+        case 'delbug':
+          if (!confirm('Delete this bug report, its notes and screenshot for everyone?')) return;
+          state.expanded.delete(item.id);
+          return mutate(() => api(`/api/bugs/${encodeURIComponent(item.id)}`, { method: 'DELETE' }), 'Bug report deleted');
+      }
+    });
+    $('todoList').querySelectorAll('textarea[data-draft]').forEach((ta) => {
+      ta.oninput = () => { state.drafts[ta.closest('.todo').dataset.id] = ta.value; };
+      ta.onblur = () => { if (state.pendingRender) setTimeout(() => { if (!document.activeElement || document.activeElement.tagName !== 'TEXTAREA') renderTodos(); }, 150); };
+    });
+    $('todoList').querySelectorAll('input[data-attach]').forEach((cb) => cb.onchange = () => { state.attach[cb.closest('.todo').dataset.id] = cb.checked; });
+  }
+  async function addNote(item) {
+    const text = (state.drafts[item.id] || '').trim();
+    const attach = !!state.attach[item.id];
+    if (!text && !attach) { toast('Write a note or attach a screenshot'); return; }
+    let shot = null;
+    if (attach) {
+      try { shot = await toJpeg((await captureApp()).png); } catch (e) { toast('Screenshot failed: ' + e.message); return; }
+    }
+    await mutate(async () => {
+      await api('/api/notes', { method: 'POST', body: JSON.stringify({ id: item.id, text, author: author(), shot }) });
+      state.drafts[item.id] = ''; state.attach[item.id] = false;
+    }, 'Note added');
+  }
+  function applySetup(item) {
+    const s = item.setup || {};
+    if (s.device) { settings.device = s.device; settings.platform = DEVICES[s.device].platform; }
+    if (s.text) settings.text = s.text;
+    if ('bold' in s) settings.bold = s.bold;
+    settings.keyboard = !!s.keyboard;
+    $('device').value = settings.device; $('textSize').value = settings.text; $('platform').value = settings.platform;
+    applySettings();
+    toast(`Applied: ${device().name}, ${textSize().label}${settings.bold ? ', Bold Text' : ''}${settings.keyboard ? ', keyboard' : ''}`);
+  }
+  function initTodos() {
+    document.querySelectorAll('#todoFilter button').forEach((b) => b.onclick = () => {
+      state.todoFilter = b.dataset.f;
+      document.querySelectorAll('#todoFilter button').forEach((x) => x.classList.toggle('on', x === b));
+      renderTodos();
+    });
+    $('todoSearch').oninput = (e) => { state.search = e.target.value; renderTodos(); };
+    $('tester').value = state.tester;
+    $('tester').oninput = (e) => { state.tester = e.target.value.trim(); store.set('lbm-qa-v1-name', state.tester); };
+    $('expandAll').onclick = () => {
+      const visible = allItems().filter(matches);
+      const allOpen = visible.every((i) => state.expanded.has(i.id));
+      visible.forEach((i) => allOpen ? state.expanded.delete(i.id) : state.expanded.add(i.id));
+      state.collapsedGroups.clear();
+      $('expandAll').textContent = allOpen ? 'Expand all' : 'Collapse all';
+      renderTodos();
+    };
+    const download = (text, type, name) => {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); URL.revokeObjectURL(a.href);
+    };
+    const stamp = () => new Date().toISOString().slice(0, 10);
+    $('exportTodos').onclick = () => download(JSON.stringify({ exportedAt: new Date().toISOString(), checklist: builtins, ...state.server }, null, 2), 'application/json', `lbm-qa-data-${stamp()}.json`);
+    $('exportReport').onclick = async () => {
+      await loadState();
+      download(exportReport(), 'text/markdown', `lbm-qa-report-${stamp()}.md`);
+      toast('Report downloaded. Attach it in a message to Claude.');
+    };
+    renderTodos();
+  }
+
+  // ---------- Report bug ----------
+  const bug = { shot: null, capture: null };
+  function openBugDialog() {
+    if (!state.ready) { toast('Wait for the app to load first'); return; }
+    $('bugGroup').innerHTML = GROUPS.map((g) => `<option>${esc(g.name)}</option>`).join('');
+    $('bugTitle').value = ''; $('bugComment').value = ''; $('bugPri').value = 'P1';
+    $('bugDialog').hidden = false;
+    $('bugTitle').focus();
+    takeBugShot();
+  }
+  async function takeBugShot() {
+    bug.shot = null; bug.capture = null;
+    $('bugPreview').innerHTML = '<div class="ph">Capturing the screen…</div>';
+    $('bugSubmit').disabled = true;
+    try {
+      const cap = await captureApp();
+      bug.capture = cap;
+      bug.shot = await toJpeg(cap.png);
+      $('bugPreview').innerHTML = `<img src="${bug.shot}" alt="Screenshot of the app">`;
+      $('bugGroup').value = groupForScreens(cap.screens, cap.tab);
+      const n = (cap.issues || []).length;
+      $('bugIssuesLabel').textContent = n ? `Include the ${n} layout finding${n > 1 ? 's' : ''} on this screen` : 'No layout findings on this screen';
+      $('bugIssues').disabled = !n;
+      $('bugContext').textContent = `${(cap.screens || []).join(' › ') || cap.route || ''} · ${device().name}`;
+    } catch (e) {
+      $('bugPreview').innerHTML = `<div class="ph">Screenshot failed: ${esc(e.message)}. You can still file the bug.</div>`;
+    }
+    $('bugSubmit').disabled = false;
+  }
+  async function submitBug() {
+    const title = $('bugTitle').value.trim();
+    if (!title) { $('bugTitle').focus(); toast('Add a short title'); return; }
+    const cap = bug.capture || {};
+    const body = {
+      title, comment: $('bugComment').value.trim(), pri: $('bugPri').value, group: $('bugGroup').value,
+      screens: cap.screens || state.screens, nav: { tab: Number.isInteger(cap.tab) ? cap.tab : undefined, route: cap.route && cap.route !== '/' ? cap.route : undefined },
+      device: { ...deviceConfig(), width: cap.width, height: cap.height },
+      issues: $('bugIssues').checked ? (cap.issues || []) : [], author: author(), shot: bug.shot,
+    };
+    $('bugSubmit').disabled = true;
+    try {
+      const res = await api('/api/bugs', { method: 'POST', body: JSON.stringify(body) });
+      $('bugDialog').hidden = true;
+      state.expanded.add(res.bug.id);
+      state.collapsedGroups.delete(res.bug.group);
+      await loadState();
+      renderTodos();
+      const el = document.querySelector(`.todo[data-id="${CSS.escape(res.bug.id)}"]`);
+      if (el) el.scrollIntoView({ block: 'nearest' });
+      toast('Bug added to the checklist');
+    } catch (e) { toast('Could not save the bug: ' + e.message); }
+    $('bugSubmit').disabled = false;
+  }
+  function initBugDialog() {
+    $('reportBug').onclick = openBugDialog;
+    $('bugCancel').onclick = () => { $('bugDialog').hidden = true; };
+    $('bugRetake').onclick = takeBugShot;
+    $('bugSubmit').onclick = submitBug;
+    $('bugDialog').addEventListener('click', (e) => { if (e.target === $('bugDialog')) $('bugDialog').hidden = true; });
+  }
+
+  // ---------- Lightbox ----------
+  function showLightbox(src, cap) { $('lightImg').src = src; $('lightCap').textContent = cap || ''; $('lightbox').hidden = false; }
+  $('lightbox').onclick = () => { $('lightbox').hidden = true; };
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    $('lightbox').hidden = true;
+    $('bugDialog').hidden = true;
+  });
+
+  // ---------- Copy for Claude ----------
+  function contextLines() {
+    const m = state.metrics, c = deviceConfig();
+    return [
+      `- Build: ${state.build || 'unknown'} · ${location.origin}/app/`,
+      `- Device: ${c.device} (${device().w}×${device().h} logical px), safe area top ${c.safeTop} / bottom ${c.safeBottom}, ${c.platform === 'android' ? 'Android' : 'iOS'} mode`,
+      `- Text size: ${textSize().label}${m ? `, effective ${Number(m.textScaleEffective).toFixed(2)}× after the app's clamp` : ''} · Bold Text ${c.boldText ? 'on' : 'off'} · keyboard ${c.keyboard ? `shown (${c.keyboardHeight}px)` : 'hidden'}`,
+      `- Visible screen: ${state.screens.join(', ') || state.route} (route ${state.route})`,
+    ];
+  }
+  function issueLines(list) {
+    return list.map((i, n) => `${n + 1}. **${i.severity} ${i.kind}**: ${i.message}` +
+      (i.text ? `\n   Text: "${i.text}"` : '') +
+      (i.location ? `\n   Source: \`${i.location}\`${i.widget ? ` (${i.widget})` : ''}` : '') +
+      (i.rect ? `\n   Rect: x ${i.rect.x}, y ${i.rect.y}, ${i.rect.w}×${i.rect.h}` : ''));
+  }
+  function errorLines(limit) {
+    return state.logs.filter((l) => l.level === 'error').slice(-limit).map((l) => {
+      const detail = (l.detail || '').split('\n').filter(Boolean).slice(0, 14).join('\n');
+      return `- ${l.message}${l.route ? ` (route ${l.route})` : ''}\n\n\`\`\`text\n${detail}\n\`\`\``;
+    });
+  }
+  function inspectedLines() {
+    const i = state.inspected; if (!i) return [];
+    return [
+      `- ${i.type}${i.text ? ` "${i.text.slice(0, 120)}"` : ''}`,
+      i.location ? `- Source: \`${i.location}\`${i.widget ? ` (${i.widget})` : ''}` : null,
+      `- Rect: x ${i.rect.x}, y ${i.rect.y}, ${i.rect.w}×${i.rect.h} · constraints ${i.constraints}`,
+      i.fontSize ? `- Font: ${i.fontSize}${i.fontWeight ? ', ' + i.fontWeight : ''}${i.lines != null ? ` · ${i.lines} lines` : ''}${i.truncated ? ' · truncated' : ''}` : null,
+      ...(i.ancestors || []).slice(0, 5).map((a) => `  - parent ${a.type} ${a.size} (${a.constraints})${a.location ? ` \`${a.location}\`` : ''}`),
+    ].filter(Boolean);
+  }
+  // One checklist item, with screenshots, notes and any captured findings.
+  function itemBlock(i) {
+    const r = state.server.results?.[i.id] || {};
+    const b = i.bug;
+    const lines = [`### [${i.pri} · ${i.owner}] ${i.group}: ${i.text}`, `Status: ${r.status ? `${r.status} (by ${r.by})` : 'not tested'}`];
+    if (b) {
+      lines.push(`Reported by ${b.author} on ${when(b.at)}${b.screens?.length ? ` · screen ${b.screens.join(' › ')}` : ''}${b.nav?.route ? ` · route ${b.nav.route}` : ''}`);
+      if (b.device?.device) lines.push(`Device at report: ${b.device.device}, text ${b.device.textScale}×, Bold ${b.device.boldText ? 'on' : 'off'}, keyboard ${b.device.keyboard ? 'shown' : 'hidden'}`);
+      if (b.comment) lines.push('', b.comment);
+    }
+    if (i.hint) lines.push(`How to check: ${i.hint}`);
+    const shots = [...i.shots, ...notesOf(i.id).filter((n) => n.shot).map((n) => ({ src: n.shot, caption: `note by ${n.author}` }))];
+    if (shots.length) lines.push('Screenshots:', ...shots.map((s) => `- ${s.caption}: ${abs(s.src)}`));
+    const notes = notesOf(i.id).filter((n) => n.text);
+    if (notes.length) lines.push('Tester notes:', ...notes.map((n) => `- ${n.author} (${when(n.at)}): ${n.text}`));
+    if (b?.issues?.length) lines.push('Layout findings when reported:', ...issueLines(b.issues).map((l) => '  ' + l));
+    return lines.join('\n');
+  }
+  const PREAMBLE = 'Context: Little Blue Market is a Flutter app. These findings come from the web QA harness, which runs the debug web build in a phone-sized viewport with simulated iOS text size, Bold Text, safe areas and keyboard. Source paths are relative to the repo root; screenshot links need the QA suite to be reachable. Please fix the open bugs and failing checks without redesigning the screens. No em dashes in any copy.';
+  function fullReport() {
+    const items = allItems();
+    const openBugs = items.filter((i) => i.bug && !['pass', 'na'].includes(statusOf(i.id)));
+    const failing = items.filter((i) => !i.bug && statusOf(i.id) === 'fail');
+    const noted = items.filter((i) => !i.bug && statusOf(i.id) !== 'fail' && notesOf(i.id).some((n) => n.text));
+    const c = { pass: 0, fail: 0, na: 0 }; items.forEach((i) => { const s = statusOf(i.id); if (s) c[s]++; });
+    const out = ['# Little Blue Market: web QA report', '', PREAMBLE, '', ...contextLines(),
+      `- Checklist: ${c.pass} pass · ${c.fail} fail · ${items.length - c.pass - c.fail - c.na} open · ${openBugs.length} open bug reports`, ''];
+    out.push(`## Open bug reports (${openBugs.length})`, '', ...(openBugs.length ? openBugs.map(itemBlock).join('\n\n').split('\n') : ['None.']), '');
+    out.push(`## Failing checks (${failing.length})`, '', ...(failing.length ? failing.map(itemBlock).join('\n\n').split('\n') : ['None marked as failing.']), '');
+    if (noted.length) out.push('## Other checks with notes', '', ...noted.map(itemBlock).join('\n\n').split('\n'), '');
+    out.push(`## Layout issues on the visible screen (${state.issues.length})`, '', ...(state.issues.length ? issueLines(state.issues) : ['None found by the audit.']), '');
+    const errs = errorLines(8);
+    out.push(`## Recent errors (${errs.length})`, '', ...(errs.length ? errs : ['None.']), '');
+    const ins = inspectedLines();
+    if (ins.length) out.push('## Inspected element', '', ...ins, '');
+    return out.join('\n');
+  }
+  // The whole checklist, for sending as a file: everything still to do in full,
+  // then a one-line list of what passed.
+  function exportReport() {
+    const items = allItems();
+    const order = (i) => ({ P0: 0, P1: 1, P2: 2 }[i.pri] ?? 3);
+    const byScreen = (a, b) => GROUPS.findIndex((g) => g.name === a.group) - GROUPS.findIndex((g) => g.name === b.group) || order(a) - order(b);
+    const done = (i) => ['pass', 'na'].includes(statusOf(i.id));
+    const todo = items.filter((i) => !done(i)).sort(byScreen);
+    const passed = items.filter(done).sort(byScreen);
+    const c = { pass: 0, fail: 0, na: 0 }; items.forEach((i) => { const s = statusOf(i.id); if (s) c[s]++; });
+    const out = ['# Little Blue Market: QA checklist export', '', PREAMBLE, '',
+      `- Exported: ${new Date().toLocaleString()} by ${author()}`,
+      `- Build: ${state.build || 'unknown'} · ${location.origin}`,
+      `- Totals: ${items.length} items · ${c.pass} pass · ${c.fail} fail · ${c.na} N/A · ${items.length - c.pass - c.fail - c.na} not tested · ${items.filter((i) => i.bug).length} bug reports`, ''];
+    out.push(`## Still to do (${todo.length})`, '');
+    for (const g of GROUPS) {
+      const list = todo.filter((i) => i.group === g.name);
+      if (list.length) out.push(`### ${g.name} (${list.length})`, '', ...list.map((i) => itemBlock(i).replace(/^### /, '#### ')).join('\n\n').split('\n'), '');
+    }
+    out.push(`## Passed or N/A (${passed.length})`, '', ...passed.map((i) => `- [${statusOf(i.id) === 'na' ? 'N/A' : 'pass'}] ${i.group}: ${i.text}${i.bug ? ' (bug report)' : ''}`), '');
+    return out.join('\n');
+  }
+  function itemReport(item) {
+    const out = ['# Little Blue Market: QA item', '', PREAMBLE, '', itemBlock(item), '', '## Current harness state', ...contextLines(), ''];
+    if (state.issues.length) out.push('## Layout issues on the visible screen', '', ...issueLines(state.issues), '');
+    const ins = inspectedLines(); if (ins.length) out.push('## Inspected element', '', ...ins, '');
+    return out.join('\n');
+  }
+  async function copyText(text, done) {
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch {} ta.remove();
+    }
+    toast(done);
+  }
+
+  // ---------- Boot ----------
+  $('copyClaude').onclick = () => copyText(fullReport(), 'Report copied: paste it into Claude');
+  setInterval(() => { const d = new Date(); $('clock').textContent = `${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`; }, 15000);
+  window.addEventListener('resize', fitZoom);
+  fetch('/build.json', { cache: 'no-store' }).then((r) => r.ok ? r.json() : null).then((b) => {
+    state.build = b && b.commit ? `${b.branch || '?'} @ ${String(b.commit).slice(0, 9)}` : 'local build';
+    $('build').textContent = state.build;
+  }).catch(() => { state.build = 'local build'; $('build').textContent = state.build; });
+  initToolbar(); initTodos(); initConsole(); initBugDialog(); layoutDevice(); loadApp();
+  loadState();
+  setInterval(() => { if (document.visibilityState === 'visible') loadState(); }, 10000);
+})();
+</script>
+</body>
+</html>

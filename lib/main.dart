@@ -12,6 +12,7 @@ import 'data/firebase/firebase_bootstrap.dart';
 import 'data/firebase/firebase_push_service.dart';
 import 'data/repositories/dev_error_sink.dart';
 import 'platform/url_strategy.dart';
+import 'qa/qa_harness.dart';
 import 'router/app_router.dart';
 import 'state/providers.dart';
 import 'state/push_coordinator.dart';
@@ -22,7 +23,11 @@ import 'widgets/phone_frame.dart';
 import 'widgets/promo_popup.dart';
 import 'widgets/splash_overlay.dart';
 
-Future<void> main() async {
+// QaHarness.run is a pass-through unless built with QA_HARNESS=true, the
+// Railway QA suite's build (deploy/qa/Dockerfile).
+void main() => QaHarness.run(_appMain);
+
+Future<void> _appMain() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
 
   // Developer builds (LBM_DEV=true) keep every raw failure, so the dev strip
@@ -97,6 +102,7 @@ class LittleBlueMarketApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    QaHarness.attachRouter(router);
     final override = ref.watch(themeModeProvider);
     // Registers the phone for push once a member is signed in and opens
     // the route a tapped banner names. No UI of its own.
@@ -114,14 +120,18 @@ class LittleBlueMarketApp extends ConsumerWidget {
         Brightness.dark => ThemeMode.dark,
         null => ThemeMode.system,
       },
-      builder: (context, child) {
+      // The QA suite's simulated phone (text size, Bold Text, safe areas,
+      // keyboard) is applied first, so the clamp below sees it as a phone's
+      // own setting. Outside the QA build wrapApp passes straight through.
+      builder: (context, child) => QaHarness.wrapApp(context, (mediaQuery) {
         // Respect the reader's text size, but keep it inside a range the pill
         // tab bar and the fixed-height chrome can actually hold.
-        final scale = MediaQuery.textScalerOf(
-          context,
-        ).clamp(minScaleFactor: 0.85, maxScaleFactor: 1.35);
+        final scale = mediaQuery.textScaler.clamp(
+          minScaleFactor: 0.85,
+          maxScaleFactor: 1.35,
+        );
         return MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: scale),
+          data: mediaQuery.copyWith(textScaler: scale),
           // Both dev overlays render nothing in release and under test. The
           // splash artwork holds for a moment on launch; the cart floats
           // over every screen.
@@ -158,7 +168,7 @@ class LittleBlueMarketApp extends ConsumerWidget {
             ),
           ),
         );
-      },
+      }),
     );
   }
 }

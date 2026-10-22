@@ -37,6 +37,9 @@ dependencies:
   in_app_purchase: ^3.2.0
   # Plays the launch animation on the splash. See widgets/splash_overlay.dart.
   video_player: ^2.10.0
+  # The QA suite's web bridge (lib/qa/qa_bridge_web.dart) talks to the page
+  # hosting the app. Already in the build through Flutter's web plugins.
+  web: ^1.1.1
   # The two-column grid the feed is laid out on. A plain GridView gives every
   # cell the same aspect ratio; here the photo sets the height, so the two
   # columns have to fill independently. See widgets/masonry.dart.

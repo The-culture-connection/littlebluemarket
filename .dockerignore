@@ -10,6 +10,8 @@ hosting
 Planning
 scripts
 tool
+# The QA suite (deploy/qa/Dockerfile) regenerates its screen index with this.
+!tool/gen_qa_widget_index.dart
 test
 node_modules
 **/node_modules
