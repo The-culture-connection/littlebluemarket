@@ -275,7 +275,7 @@ export async function sendPushToUid(
     data: payload.data ?? {},
     android: {
       priority: 'high',
-      notification: { channelId: 'lbm_default', icon: 'ic_stat_lbm', color: '#70A0D0' },
+      notification: { channelId: 'lbm_default', icon: 'ic_stat_lbm', color: '#70A0D2' },
     },
     apns: { payload: { aps: { sound: 'default' } } },
   });
@@ -407,7 +407,7 @@ export function announcementMessage(
     data: { route: a.route, type: 'announcement', announcementId: a.announcementId },
     android: {
       priority: 'high',
-      notification: { channelId: 'lbm_default', icon: 'ic_stat_lbm', color: '#70A0D0' },
+      notification: { channelId: 'lbm_default', icon: 'ic_stat_lbm', color: '#70A0D2' },
     },
     apns: { payload: { aps: { sound: 'default' } } },
   } as Message;
@@ -523,8 +523,8 @@ export function tagsToFanOut(keys: Iterable<string>, cap = 5): string[] {
  * gets a bounded fan-out per post.
  *
  * [exclude] is everyone already being notified about this post for another
- * reason — the author, the people it mentions, the seller of a shoutout,
- * the author's own followers — so somebody who follows both the person and
+ * reason (the author, the people it mentions, the seller of a shoutout,
+ * the author's own followers), so somebody who follows both the person and
  * the tag hears about it once rather than twice.
  */
 export async function tagSubscribers(

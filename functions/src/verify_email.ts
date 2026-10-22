@@ -148,10 +148,15 @@ export function escapeHtml(value: string): string {
 
 /**
  * The template. Tables and inline styles on purpose: mail clients ignore
- * most of a stylesheet. The colours are the app's tokens: the welcome blue
- * `#70A0D0`, ink `#152E52` / `#31507B`, the onboarding slate button
- * `#5F6A82` with `#F3F8FE` text. The type falls back from Fraunces and
- * Nunito to what the client has, since bundled fonts do not travel by mail.
+ * most of a stylesheet. Only the Little Blue Cart brand guide's colours and
+ * fonts, as the app maps them (lib/theme/tokens.dart) and as the hosting
+ * pages draw them (hosting/lbm.css): the sky page `#89C9F4`, a white card,
+ * navy `#253856` text (at 80% and 60% for the quieter lines, each with a
+ * solid navy fallback first for clients that ignore rgba), the navy pill
+ * button with white text, a navy underlined link, a blue-mist `#DFEAF5`
+ * rule. Playfair Display for the heading and Montserrat for the rest, asked
+ * for from Google Fonts; clients that will not load them fall back down
+ * each stack, and Outlook gets plain generic faces.
  */
 const TEMPLATE = `<!doctype html>
 <html lang="en">
@@ -160,11 +165,12 @@ const TEMPLATE = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
 <title>{{subject}}</title>
-<!--[if mso]><style>table,td{font-family:Georgia,serif}</style><![endif]-->
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+<!--[if mso]><style>table,td,p,a{font-family:Arial,sans-serif}h1{font-family:Georgia,serif}</style><![endif]-->
 </head>
-<body style="margin:0;padding:0;background:#70A0D0;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">One tap confirms {{email}} for Little Blue Market.</div>
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#70A0D0;">
+<body style="margin:0;padding:0;background:#89C9F4;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:rgba(255,255,255,0);">One tap confirms {{email}} for Little Blue Market.</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#89C9F4;">
   <tr>
     <td align="center" style="padding:36px 16px 28px;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:480px;">
@@ -175,26 +181,26 @@ const TEMPLATE = `<!doctype html>
         </tr>
         <tr>
           <td style="background:#FFFFFF;border-radius:22px;padding:34px 30px 30px;">
-            <h1 style="margin:0 0 10px;font-family:Fraunces,Georgia,'Times New Roman',serif;font-size:27px;line-height:1.15;font-weight:700;color:#152E52;text-align:center;">Confirm your email</h1>
-            <p style="margin:0 0 22px;font-family:Nunito,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#31507B;text-align:center;">Hi {{displayName}}, one tap and your Little Blue Market profile is confirmed. That is what lets your shop orders, and your shop if you sell, be linked to it.</p>
+            <h1 style="margin:0 0 10px;font-family:'Playfair Display',Georgia,serif;font-size:27px;line-height:1.15;font-weight:700;color:#253856;text-align:center;">Confirm your email</h1>
+            <p style="margin:0 0 22px;font-family:'Montserrat','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#253856;color:rgba(37,56,86,.8);text-align:center;">Hi {{displayName}}, one tap and your Little Blue Market profile is confirmed. That is what lets your shop orders, and your shop if you sell, be linked to it.</p>
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto 24px;">
               <tr>
-                <td align="center" style="background:#5F6A82;border-radius:999px;">
-                  <a href="{{link}}" style="display:inline-block;padding:14px 30px;font-family:Nunito,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;font-weight:800;line-height:1;color:#F3F8FE;text-decoration:none;border-radius:999px;">Confirm my email</a>
+                <td align="center" style="background:#253856;border-radius:999px;">
+                  <a href="{{link}}" style="display:inline-block;padding:14px 30px;font-family:'Montserrat','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;line-height:1;color:#FFFFFF;text-decoration:none;border-radius:999px;">Confirm my email</a>
                 </td>
               </tr>
             </table>
-            <p style="margin:0 0 6px;font-family:Nunito,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12.5px;line-height:1.5;color:#6B87AD;text-align:center;">If the button does not open, copy this into your browser:</p>
-            <p style="margin:0 0 24px;font-family:Nunito,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;text-align:center;word-break:break-all;"><a href="{{link}}" style="color:#2A5992;text-decoration:underline;">{{link}}</a></p>
+            <p style="margin:0 0 6px;font-family:'Montserrat','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12.5px;line-height:1.5;color:#253856;color:rgba(37,56,86,.6);text-align:center;">If the button does not open, copy this into your browser:</p>
+            <p style="margin:0 0 24px;font-family:'Montserrat','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;text-align:center;word-break:break-all;"><a href="{{link}}" style="color:#253856;text-decoration:underline;">{{link}}</a></p>
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-              <tr><td style="border-top:1px solid #DCE9F7;font-size:0;line-height:0;">&nbsp;</td></tr>
+              <tr><td style="border-top:1px solid #DFEAF5;font-size:0;line-height:0;">&nbsp;</td></tr>
             </table>
-            <p style="margin:16px 0 0;font-family:Nunito,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12.5px;line-height:1.5;color:#6B87AD;text-align:center;">This link works for a day. You are getting it because {{email}} was used to create a profile in the Little Blue Market app. If that was not you, ignore this and nothing happens.</p>
+            <p style="margin:16px 0 0;font-family:'Montserrat','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12.5px;line-height:1.5;color:#253856;color:rgba(37,56,86,.6);text-align:center;">This link works for a day. You are getting it because {{email}} was used to create a profile in the Little Blue Market app. If that was not you, ignore this and nothing happens.</p>
           </td>
         </tr>
         <tr>
-          <td align="center" style="padding:18px 8px 0;font-family:Nunito,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#F3F8FE;">
-            Little Blue Market &middot; <a href="https://littlebluecart.com" style="color:#F3F8FE;text-decoration:underline;">littlebluecart.com</a>
+          <td align="center" style="padding:18px 8px 0;font-family:'Montserrat','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#253856;">
+            Little Blue Market &middot; <a href="https://littlebluecart.com" style="color:#253856;text-decoration:underline;">littlebluecart.com</a>
           </td>
         </tr>
       </table>

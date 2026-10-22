@@ -6,66 +6,80 @@
 <title>Delete your account or your data · Little Blue Market</title>
 <meta name="description" content="Ask Little Blue Market to delete your account, or the data held about you.">
 <meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
 <style>
-  /* Everything is inline on purpose. This page is the address the app stores
-     are given, so it must render even when the app itself will not: no
-     scripts to download, no fonts to fetch, nothing that a stale cache or a
-     slow connection can take away. */
+  /* Everything else is inline on purpose. This page is the address the app
+     stores are given, so it must render even when the app itself will not:
+     no scripts to download, nothing that a stale cache or a slow connection
+     can take away. The brand fonts are the one thing fetched, and they swap
+     in when they arrive; until then, or if they never do, the fallbacks in
+     each stack draw the page. Colours and fonts are the Little Blue Cart
+     brand guide's only. */
   :root {
-    --blue: #70a0d1;
-    --deep: #3f6fa3;
-    --ink: #1f2a37;
-    --ink2: #55627a;
-    --line: #d6e2f0;
-    --paper: #ffffff;
-    --ground: #dfe9f3;
+    --sky: #89C9F4;
+    --navy: #253856;
+    --navy-80: rgba(37, 56, 86, 0.8);
+    --blue: #70A0D2;
+    --orchid: #D270D1;
+    --white: #FFFFFF;
+    --blue-mist: #DFEAF5;
+    --blue-wash: #F4F7FB;
+    --orchid-mist: #F7E5F7;
+    --display: 'Playfair Display', Georgia, serif;
+    --body: 'Montserrat', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     padding: 24px 16px 48px;
-    background: var(--ground);
-    color: var(--ink);
-    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--sky);
+    color: var(--navy);
+    font: 16px/1.55 var(--body);
   }
   main { max-width: 640px; margin: 0 auto; }
   .card {
-    background: var(--paper);
+    background: var(--white);
     border-radius: 18px;
     padding: 24px;
-    box-shadow: 0 10px 30px rgba(31, 42, 55, 0.08);
+    box-shadow: 0 10px 30px rgba(37, 56, 86, 0.12);
   }
-  h1 { font-size: 25px; line-height: 1.25; margin: 0 0 6px; }
-  h2 { font-size: 18px; margin: 28px 0 8px; }
-  p { margin: 0 0 14px; color: var(--ink2); }
-  .brand { font-weight: 700; color: var(--deep); margin: 0 0 18px; letter-spacing: 0.02em; }
+  h1 { font-family: var(--display); font-size: 25px; line-height: 1.25; margin: 0 0 6px; }
+  h2 { font-family: var(--display); font-size: 18px; margin: 28px 0 8px; }
+  p { margin: 0 0 14px; color: var(--navy-80); }
+  .brand { font-family: var(--display); font-weight: 700; color: var(--navy); margin: 0 0 18px; letter-spacing: 0.02em; }
   fieldset { border: 0; margin: 0 0 18px; padding: 0; }
-  legend { font-weight: 700; color: var(--ink); padding: 0 0 8px; }
+  legend { font-weight: 700; color: var(--navy); padding: 0 0 8px; }
   .choice {
     display: flex; gap: 12px; align-items: flex-start;
-    border: 1px solid var(--line); border-radius: 14px;
+    border: 1px solid var(--blue-mist); border-radius: 14px;
     padding: 14px; margin-bottom: 10px; cursor: pointer;
   }
-  .choice:focus-within, .choice.on { border-color: var(--deep); background: #f2f7fc; }
-  .choice input { margin: 3px 0 0; width: 18px; height: 18px; accent-color: var(--deep); }
+  .choice:focus-within, .choice.on { border-color: var(--navy); background: var(--blue-wash); }
+  .choice input { margin: 3px 0 0; width: 18px; height: 18px; accent-color: var(--navy); }
   .choice b { display: block; }
-  .choice span { color: var(--ink2); font-size: 14px; }
+  .choice span { color: var(--navy-80); font-size: 14px; }
   label.field { display: block; font-weight: 700; margin: 0 0 6px; }
   input[type=email], textarea {
     width: 100%; font: inherit; color: inherit;
-    border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fbfdff;
+    border: 1px solid var(--blue-mist); border-radius: 12px; padding: 12px 14px; background: var(--blue-wash);
   }
-  input[type=email]:focus, textarea:focus { outline: 2px solid var(--deep); outline-offset: 1px; }
-  .hint { font-size: 13.5px; color: var(--ink2); margin: 6px 0 18px; }
+  input[type=email]:focus, textarea:focus { outline: 2px solid var(--navy); outline-offset: 1px; }
+  .hint { font-size: 13.5px; color: var(--navy-80); margin: 6px 0 18px; }
   button {
-    font: inherit; font-weight: 700; color: #fff; background: var(--deep);
+    font: inherit; font-weight: 700; color: var(--white); background: var(--navy);
     border: 0; border-radius: 999px; padding: 14px 22px; cursor: pointer; width: 100%;
   }
   button[disabled] { opacity: 0.6; cursor: default; }
-  a { color: var(--deep); }
-  .note { font-size: 14px; color: var(--ink2); }
-  .error { color: #a33a3a; font-weight: 600; margin: 12px 0 0; }
-  .done { background: #eaf4ec; border-radius: 14px; padding: 18px; }
+  a { color: var(--navy); text-decoration: underline; }
+  .note { font-size: 14px; color: var(--navy-80); }
+  .error {
+    color: var(--navy); font-weight: 600; margin: 12px 0 0;
+    background: var(--orchid-mist); border: 1.5px solid var(--orchid);
+    border-radius: 12px; padding: 10px 12px;
+  }
+  .done { background: var(--blue-mist); border: 1.5px solid var(--blue); border-radius: 14px; padding: 18px; }
   .done h2 { margin-top: 0; }
   [hidden] { display: none !important; }
 </style>

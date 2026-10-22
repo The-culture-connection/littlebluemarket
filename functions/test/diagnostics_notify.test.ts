@@ -29,7 +29,7 @@ test('an announcement on the wire is exactly the shape real announcements have a
     data: { route: '/community', type: 'announcement', announcementId: 'a1' },
     android: {
       priority: 'high',
-      notification: { channelId: 'lbm_default', icon: 'ic_stat_lbm', color: '#70A0D0' },
+      notification: { channelId: 'lbm_default', icon: 'ic_stat_lbm', color: '#70A0D2' },
     },
     apns: { payload: { aps: { sound: 'default' } } },
   });

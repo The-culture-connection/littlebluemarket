@@ -5,95 +5,115 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Little Blue Market · Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
 <style>
-  :root { --blue: #70A0D0; --ink: #1f2a3a; --ink2: #5a6577; --mist: #eef4fb; --clay: #b5533c; --sage: #3f7d5c; }
+  /* Only the Little Blue Cart brand guide's colours and fonts, mapped the
+     way the app maps them (lib/theme/tokens.dart): sky page, white cards,
+     navy text and buttons, blue for success, orchid for errors and accents
+     (never under white text). */
+  :root {
+    --navy: #253856; --navy-80: rgba(37,56,86,.8); --navy-60: rgba(37,56,86,.6);
+    --blue: #70A0D2; --orchid: #D270D1; --gold: #C49919; --sky: #89C9F4; --grey-blue: #B3BDCA; --white: #FFFFFF;
+    --blue-mist: #DFEAF5; --blue-wash: #F4F7FB; --orchid-mist: #F7E5F7;
+    --display: 'Playfair Display', Georgia, serif;
+    --body: 'Montserrat', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
   * { box-sizing: border-box; }
-  body { margin: 0; font: 15px/1.5 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #f7f9fc; }
-  header { background: var(--blue); color: #fff; padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; }
-  header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+  body { margin: 0; font: 15px/1.5 var(--body); color: var(--navy); background: var(--sky); }
+  header { background: var(--navy); color: var(--white); padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { margin: 0; font-family: var(--display); font-size: 19px; font-weight: 700; }
   main { max-width: 640px; margin: 24px auto; padding: 0 16px; }
-  .card { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 18px; }
-  h2 { margin: 0 0 6px; font-size: 17px; }
-  p.hint { margin: 0 0 14px; color: var(--ink2); font-size: 13.5px; }
-  label { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink2); margin: 12px 0 4px; }
-  input, textarea, select { width: 100%; font: inherit; padding: 10px 12px; border: 1px solid #d5dde8; border-radius: 10px; background: #fff; }
+  .card { background: var(--white); border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(37,56,86,.12); margin-bottom: 18px; }
+  h2 { margin: 0 0 6px; font-family: var(--display); font-size: 19px; }
+  h3 { font-family: var(--display); }
+  p.hint { margin: 0 0 14px; color: var(--navy-80); font-size: 13.5px; }
+  label { display: block; font-size: 12.5px; font-weight: 700; color: var(--navy-80); margin: 12px 0 4px; }
+  input, textarea, select { width: 100%; font: inherit; color: var(--navy); padding: 10px 12px; border: 1px solid var(--grey-blue); border-radius: 10px; background: var(--white); }
+  input::placeholder, textarea::placeholder { color: var(--navy-60); }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--navy); outline-offset: 1px; }
   textarea { min-height: 84px; resize: vertical; }
   .row { display: flex; gap: 10px; }
   .row > div { flex: 1; }
   button { font: inherit; font-weight: 700; padding: 11px 16px; border-radius: 999px; border: 0; cursor: pointer; }
-  button.primary { background: #2d5f9e; color: #fff; }
-  button.quiet { background: var(--mist); color: var(--ink); }
+  button.primary { background: var(--navy); color: var(--white); }
+  button.quiet { background: var(--blue-mist); color: var(--navy); }
   button:disabled { opacity: .5; cursor: default; }
-  .count { font-size: 12px; color: var(--ink2); text-align: right; }
-  .notice { margin-top: 12px; font-size: 13.5px; font-weight: 700; }
-  .notice.ok { color: var(--sage); } .notice.bad { color: var(--clay); }
+  .count { font-size: 12px; color: var(--navy-60); text-align: right; }
+  .notice { margin-top: 12px; font-size: 13.5px; font-weight: 700; color: var(--navy); padding: 8px 12px; border-radius: 10px; border: 1.5px solid var(--blue-mist); }
+  .notice.ok { background: var(--blue-mist); border-color: var(--blue); }
+  .notice.bad { background: var(--orchid-mist); border-color: var(--orchid); }
   ul.recent { list-style: none; padding: 0; margin: 0; }
-  ul.recent li { padding: 10px 0; border-top: 1px solid #edf1f6; }
+  ul.recent li { padding: 10px 0; border-top: 1px solid var(--blue-mist); }
   ul.recent li:first-child { border-top: 0; }
-  ul.recent .meta { font-size: 12px; color: var(--ink2); }
+  ul.recent .meta { font-size: 12px; color: var(--navy-60); }
   ul.recent li.fb { display: flex; gap: 12px; align-items: flex-start; }
-  ul.recent li.fb img { width: 64px; height: 114px; object-fit: cover; border-radius: 8px; border: 1px solid #e3e9f1; cursor: zoom-in; flex: none; }
+  ul.recent li.fb img { width: 64px; height: 114px; object-fit: cover; border-radius: 8px; border: 1px solid var(--blue-mist); cursor: zoom-in; flex: none; }
   ul.recent li.fb .body { flex: 1; min-width: 0; }
   ul.recent li.fb .text { white-space: pre-wrap; word-break: break-word; margin: 4px 0 6px; }
-  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--mist); color: var(--ink); margin-right: 6px; }
-  .tag.bug { background: #fbe9e4; color: var(--clay); }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--blue-mist); color: var(--navy); margin-right: 6px; }
+  .tag.bug { background: var(--orchid-mist); color: var(--navy); box-shadow: inset 0 0 0 1px var(--orchid); }
   button.tiny { padding: 6px 12px; font-size: 12.5px; margin-top: 6px; }
   .who { font-size: 13px; opacity: .9; }
   /* Stage 17: the advert form, its thumbnails, and a preview of the popup
      as the phone draws it (the same order, the same words, near enough the
      same proportions). */
-  input[type=file] { padding: 8px; background: var(--mist); border-style: dashed; }
+  input[type=file] { padding: 8px; background: var(--blue-wash); border-style: dashed; }
   ul.thumbs { list-style: none; display: flex; gap: 8px; padding: 0; margin: 10px 0 0; flex-wrap: wrap; }
   ul.thumbs li { position: relative; }
-  ul.thumbs img { width: 72px; height: 54px; object-fit: cover; border-radius: 8px; border: 1px solid #e3e9f1; display: block; }
-  ul.thumbs .rm { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 999px; border: 0; background: var(--ink); color: #fff; font-size: 13px; line-height: 20px; padding: 0; cursor: pointer; }
+  ul.thumbs img { width: 72px; height: 54px; object-fit: cover; border-radius: 8px; border: 1px solid var(--blue-mist); display: block; }
+  ul.thumbs .rm { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 999px; border: 0; background: var(--navy); color: var(--white); font-size: 13px; line-height: 20px; padding: 0; cursor: pointer; }
   ul.thumbs .pending { opacity: .45; }
-  /* The app, greyed down, with the popup over it: the same arrangement the
+  /* The app, dimmed down, with the popup over it: the same arrangement the
      phone draws, so what Grace approves here is what people get. */
-  .phone { background: #4b5566; border-radius: 16px; padding: 20px 16px; margin-top: 4px; }
-  .promo { background: #fff; border-radius: 20px; box-shadow: 0 10px 30px rgba(15,22,33,.35); overflow: hidden; max-width: 320px; margin: 0 auto; }
+  .phone { background: rgba(37,56,86,.6); border-radius: 16px; padding: 20px 16px; margin-top: 4px; }
+  .promo { background: var(--white); border-radius: 20px; box-shadow: 0 10px 30px rgba(37,56,86,.35); overflow: hidden; max-width: 320px; margin: 0 auto; }
   /* The phone gives the picture the card's full width and the picture's
      own height, cropping nothing and padding nothing. The preview has to
      do the same or it lies about the result: no max-height, no object-fit,
      because either one puts space here that the phone will not have. */
-  .promo img { width: 100%; height: auto; display: block; background: var(--mist); }
+  .promo img { width: 100%; height: auto; display: block; background: var(--blue-mist); }
   .promo-body { padding: 15px 17px 18px; }
   .promo-row { display: flex; align-items: center; justify-content: flex-end; max-width: 320px; margin: 0 auto 9px; }
-  .promo-from { font-size: 10.5px; font-weight: 800; letter-spacing: .7px; color: var(--ink2); }
-  .promo-x { width: 32px; height: 32px; border-radius: 999px; background: #fff; color: var(--ink); font-size: 18px; line-height: 32px; text-align: center; box-shadow: 0 2px 8px rgba(15,22,33,.25); }
-  .promo-title { font-size: 21px; font-weight: 700; line-height: 1.15; margin-top: 6px; color: var(--ink); }
-  .promo-caption { font-size: 14px; line-height: 1.5; color: var(--ink2); margin-top: 7px; white-space: pre-wrap; }
-  .promo-cta { display: block; text-align: center; margin-top: 16px; background: #2d5f9e; color: #fff; font-size: 14px; font-weight: 700; padding: 11px 16px; border-radius: 999px; }
+  .promo-from { font-size: 10.5px; font-weight: 800; letter-spacing: .7px; color: var(--navy-80); }
+  .promo-x { width: 32px; height: 32px; border-radius: 999px; background: var(--white); color: var(--navy); font-size: 18px; line-height: 32px; text-align: center; box-shadow: 0 2px 8px rgba(37,56,86,.25); }
+  .promo-title { font-family: var(--display); font-size: 21px; font-weight: 700; line-height: 1.15; margin-top: 6px; color: var(--navy); }
+  .promo-caption { font-size: 14px; line-height: 1.5; color: var(--navy-80); margin-top: 7px; white-space: pre-wrap; }
+  .promo-cta { display: block; text-align: center; margin-top: 16px; background: var(--navy); color: var(--white); font-size: 14px; font-weight: 700; padding: 11px 16px; border-radius: 999px; }
   .promo-dots { display: flex; gap: 5px; justify-content: center; margin-top: -22px; position: relative; }
-  .promo-dots i { width: 7px; height: 7px; border-radius: 4px; background: rgba(255,255,255,.6); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-  .promo-dots i.on { width: 18px; background: #fff; }
-  .promo-empty { color: var(--ink2); font-style: italic; }
+  .promo-dots i { width: 7px; height: 7px; border-radius: 4px; background: rgba(255,255,255,.6); box-shadow: 0 1px 3px rgba(37,56,86,.3); }
+  .promo-dots i.on { width: 18px; background: var(--white); }
+  .promo-empty { color: var(--navy-60); font-style: italic; }
   /* The vendor facts table: a label and a value per row, nothing clever. */
   table.facts { width: 100%; border-collapse: collapse; margin: 12px 0 4px; }
-  table.facts th { text-align: left; font-weight: 700; color: var(--ink2);
+  table.facts th { text-align: left; font-weight: 700; color: var(--navy-80);
     font-size: 13px; padding: 6px 12px 6px 0; vertical-align: top; width: 38%; }
   table.facts td { font-size: 13px; padding: 6px 0; vertical-align: top; }
   /* The App sales month table: five columns, so the label column's 38% does not apply. */
   table.sales-months th, table.sales-months td { width: auto; text-align: right; padding: 6px 0 6px 10px; }
   table.sales-months th:first-child, table.sales-months td:first-child { text-align: left; padding-left: 0; }
-  .yes { color: #1d7a4c; font-weight: 700; }
-  .no { color: #b3261e; font-weight: 700; }
+  /* Yes and no read by their tint as well as the word: blue for yes,
+     orchid for no, navy words on both so they stay readable. */
+  .yes { color: var(--navy); font-weight: 700; background: var(--blue-mist); padding: 0 6px; border-radius: 6px; }
+  .no { color: var(--navy); font-weight: 700; background: var(--orchid-mist); padding: 0 6px; border-radius: 6px; }
   /* What the phone will pick out and make tappable. */
-  .named { font-weight: 800; color: #2f6fb5; }
-  .named-preview { margin: 8px 0 0; font-size: 13px; color: var(--ink2); }
+  .named { font-weight: 800; color: var(--navy); text-decoration: underline; text-decoration-color: var(--orchid); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+  .named-preview { margin: 8px 0 0; font-size: 13px; color: var(--navy-80); }
   .named-preview .named { margin-right: 6px; display: inline-block; }
   /* The directory pull's running log: what it is doing, line by line, and
-     the whole of any error. Grace saw a two-word red code and could not
-     tell whether anything had happened at all (2026-09-14). */
-  pre.log { background: #1f2a3a; color: #dbe6f3; border-radius: 10px; padding: 12px 14px; font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow-y: auto; margin: 12px 0 0; }
-  pre.log .bad { color: #ffb3a0; }
+     the whole of any error. Grace saw a two-word code and could not tell
+     whether anything had happened at all (2026-09-14). */
+  pre.log { background: var(--navy); color: var(--blue-mist); border-radius: 10px; padding: 12px 14px; font: 12px/1.6 var(--body); white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow-y: auto; margin: 12px 0 0; }
+  pre.log .bad { color: var(--orchid-mist); font-weight: 700; background: rgba(210,112,209,.3); }
   pre.log:empty { display: none; }
   .logrow { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
-  .build { font-size: 11px; color: var(--ink2); opacity: .8; }
+  .build { font-size: 11px; color: var(--navy-60); }
   /* Which project the console is pointed at. Staging must never be mistaken
-     for production: an announcement here goes to real phones. */
-  .envtag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .5px; padding: 3px 9px; border-radius: 999px; vertical-align: middle; margin-left: 8px; background: #fff; color: var(--clay); }
-  .envtag.live { background: rgba(255,255,255,.22); color: #fff; }
+     for production: an announcement here goes to real phones. LIVE is an
+     orchid pill, STAGING a gold one, both with navy words on the navy bar. */
+  .envtag { display: inline-block; font-family: var(--body); font-size: 12px; font-weight: 800; letter-spacing: .5px; padding: 3px 9px; border-radius: 999px; vertical-align: middle; margin-left: 8px; background: var(--gold); color: var(--navy); }
+  .envtag.live { background: var(--orchid); color: var(--navy); }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -342,7 +362,7 @@
 
   <section id="promoListCard" class="card" hidden>
     <h2>Adverts, live and past</h2>
-    <p class="hint">Every advert and announcement popup ever posted, newest first, whether it is running or not — each one says <strong>live</strong> or <strong>paused</strong>. <strong>Seen</strong> is how many phones it faded in on; <strong>tapped</strong> is how many tapped the button. <strong>Edit</strong> changes the wording on every phone at once and keeps the numbers. <strong>Pause</strong> takes it out of the app without deleting it. Only what is live and inside its dates appears on the feed.</p>
+    <p class="hint">Every advert and announcement popup ever posted, newest first, whether it is running or not: each one says <strong>live</strong> or <strong>paused</strong>. <strong>Seen</strong> is how many phones it faded in on; <strong>tapped</strong> is how many tapped the button. <strong>Edit</strong> changes the wording on every phone at once and keeps the numbers. <strong>Pause</strong> takes it out of the app without deleting it. Only what is live and inside its dates appears on the feed.</p>
     <ul id="promos" class="recent"></ul>
   </section>
 
