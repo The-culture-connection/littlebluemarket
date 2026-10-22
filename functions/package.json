@@ -32,6 +32,7 @@
     "publish-to-app": "node scripts/publish-to-app.mjs --project dev",
     "publish-to-app:prod": "node scripts/publish-to-app.mjs --project prod",
     "seed": "node scripts/seed.mjs",
+    "seed:dev-demo": "node scripts/seed-dev-demo.mjs",
     "verify:security": "firebase emulators:exec --only firestore \"node scripts/verify-security.mjs\"",
     "claim-code": "node scripts/claim-code-hash.mjs",
     "probe:shipturtle": "node scripts/shipturtle-probe.mjs --project dev",
