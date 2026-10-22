@@ -506,7 +506,7 @@ void main() {
 
       expect(find.text(announcement.title), findsOneWidget);
       expect(find.text(announcement.body), findsOneWidget);
-      expect(find.text('LITTLE BLUE MARKET'), findsOneWidget);
+      expect(find.text('LITTLE BLUE CART'), findsOneWidget);
 
       final title = tester.widget<Text>(find.text(announcement.title));
       expect(title.style?.fontSize, LbmText.headline.fontSize);

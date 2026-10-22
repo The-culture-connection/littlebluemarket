@@ -10,7 +10,7 @@
          screen, never at launch. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
-        android:label="Little Blue Market"
+        android:label="Little Blue Cart"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <!-- Where a push lands when the app is not running, and how it looks.

@@ -487,7 +487,7 @@ class _PromoCardState extends State<PromoCard> {
                                   children: [
                                     Text(
                                       isNews
-                                          ? 'FROM LITTLE BLUE MARKET'
+                                          ? 'FROM LITTLE BLUE CART'
                                           : 'SPONSORED',
                                       style: LbmText.tiny.copyWith(
                                         fontSize: 10.5,

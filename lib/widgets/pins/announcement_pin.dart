@@ -96,7 +96,7 @@ class AnnouncementPin extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'LITTLE BLUE MARKET',
+                        'LITTLE BLUE CART',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: LbmText.pinMeta.copyWith(

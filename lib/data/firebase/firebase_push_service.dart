@@ -51,7 +51,7 @@ class FirebasePushService implements PushService {
 
   static const _channel = AndroidNotificationChannel(
     kPushChannelId,
-    'Little Blue Market',
+    'Little Blue Cart',
     description: 'Mentions, replies, reviews, new products and announcements.',
     importance: Importance.high,
   );
@@ -294,7 +294,7 @@ class FirebasePushService implements PushService {
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             kPushChannelId,
-            'Little Blue Market',
+            'Little Blue Cart',
             importance: Importance.high,
             priority: Priority.high,
             icon: 'ic_stat_lbm',

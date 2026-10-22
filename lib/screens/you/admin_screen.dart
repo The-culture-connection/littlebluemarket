@@ -136,7 +136,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         child: LbmEmpty(
           title: 'Admins only',
           body:
-              'This screen is for the Little Blue Market account. If that is '
+              'This screen is for the Little Blue Cart account. If that is '
               'you, claim admin from Diagnostics first.',
         ),
       );
@@ -171,7 +171,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                 LbmField(
                   label: 'Title',
                   controller: _title,
-                  hintText: 'Hello from Little Blue Market',
+                  hintText: 'Hello from Little Blue Cart',
                   helper: titleLeft < 0
                       ? '${-titleLeft} over'
                       : '$titleLeft left',

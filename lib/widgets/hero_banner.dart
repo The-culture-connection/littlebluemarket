@@ -145,7 +145,7 @@ class _HeroBannerState extends ConsumerState<HeroBanner> {
       return [
         HeroCard(
           id: 'tip:cartIsTheLike',
-          kicker: 'From Little Blue Market',
+          kicker: 'From Little Blue Cart',
           title: 'No likes here. Just carts.',
           body:
               'Tap the cart on anything you love. Makers see it, and your '
@@ -188,7 +188,7 @@ class _HeroBannerState extends ConsumerState<HeroBanner> {
           HeroCard(
             id: 'p:${promo.id}',
             kicker: promo.kind == PromoKind.announcement
-                ? 'From Little Blue Market'
+                ? 'From Little Blue Cart'
                 : 'Today in the market',
             title: promo.title,
             body: promo.caption,
@@ -216,7 +216,7 @@ class HeroCardPreview extends StatelessWidget {
     return _HeroCardView(
       card: HeroCard(
         id: 'preview',
-        kicker: 'From Little Blue Market',
+        kicker: 'From Little Blue Cart',
         title: title,
         body: body,
         cta: 'Take a look',

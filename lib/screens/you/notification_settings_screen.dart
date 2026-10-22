@@ -56,7 +56,7 @@ class _NotificationSettingsScreenState
         PushPermission.granted => 'Notifications are on for this phone.',
         PushPermission.denied =>
           'Turned off for this app. Allow it in the phone\'s Settings → Apps → '
-              'Little Blue Market → Notifications, then come back.',
+              'Little Blue Cart → Notifications, then come back.',
         PushPermission.notDetermined => 'Not decided yet.',
         PushPermission.unsupported => 'This device cannot show notifications.',
       };
@@ -232,7 +232,7 @@ class _NotificationSettingsScreenState
                   ),
                   _Switch(
                     title: 'Announcements',
-                    subtitle: 'News from Little Blue Market',
+                    subtitle: 'News from Little Blue Cart',
                     value: p.announcements,
                     onChanged: (v) => _save(p.copyWith(announcements: v)),
                   ),

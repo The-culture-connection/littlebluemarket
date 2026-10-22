@@ -17,7 +17,7 @@ class TourPage {
 const kTourPages = <TourPage>[
   TourPage(
     icon: Icons.grid_view_rounded,
-    title: 'Welcome to Little Blue Market',
+    title: 'Welcome to Little Blue Cart',
     body:
         'The Market is a grid of photographs from small makers and local '
         'businesses. Tap the pink cart on any picture to put it in yours. '

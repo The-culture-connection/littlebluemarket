@@ -141,7 +141,7 @@ void main() {
       expect(find.text('SPONSORED'), findsOneWidget);
 
       await _pumpCard(tester, _promo(kind: PromoKind.announcement));
-      expect(find.text('FROM LITTLE BLUE MARKET'), findsOneWidget);
+      expect(find.text('FROM LITTLE BLUE CART'), findsOneWidget);
       expect(find.text('SPONSORED'), findsNothing);
     });
 

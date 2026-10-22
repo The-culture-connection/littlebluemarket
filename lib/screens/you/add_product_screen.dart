@@ -408,7 +408,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             _editing
                 ? 'Changes go straight to the product on the store. Photos '
                       'cannot be changed here yet.'
-                : 'It goes to Little Blue Market for approval first, then '
+                : 'It goes to Little Blue Cart for approval first, then '
                       'appears in your shop. Photos, a title and a price are '
                       'all it needs.',
             style: LbmText.tiny.copyWith(color: c.ink2),
@@ -674,7 +674,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           Text(
             _editing
                 ? 'Price and stock change on the store right away.'
-                : 'Nothing is public until Little Blue Market approves it.',
+                : 'Nothing is public until Little Blue Cart approves it.',
             textAlign: TextAlign.center,
             style: LbmText.xtiny.copyWith(color: c.ink3),
           ),
@@ -866,7 +866,7 @@ Future<void> showUnderReviewDialog(
           style: LbmText.display.copyWith(fontSize: 21, color: c.ink),
         ),
         content: Text(
-          '"$title" has been sent to Little Blue Market for approval. '
+          '"$title" has been sent to Little Blue Cart for approval. '
           "You'll see it in your shop as soon as it's approved, usually "
           "within a day or two. We'll let you know."
           '${stockSet ? '' : '\n\nStock could not be set yet; the store will '

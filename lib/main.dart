@@ -110,7 +110,7 @@ class LittleBlueMarketApp extends ConsumerWidget {
     ref.watch(pushCoordinatorProvider);
 
     return MaterialApp.router(
-      title: 'Little Blue Market',
+      title: 'Little Blue Cart',
       debugShowCheckedModeBanner: false,
       routerConfig: router,
       // A mouse drags lists on the web the way a finger does. Flutter leaves

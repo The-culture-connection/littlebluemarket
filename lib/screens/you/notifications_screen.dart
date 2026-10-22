@@ -102,7 +102,7 @@ class _NotificationRow extends ConsumerWidget {
             ? null
             : c.accentMist.withValues(alpha: 0.4),
         leading: Icon(Icons.campaign_outlined, color: c.accentText),
-        title: Text(notification.title ?? 'Little Blue Market'),
+        title: Text(notification.title ?? 'Little Blue Cart'),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

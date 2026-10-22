@@ -182,7 +182,7 @@ class OrientScreen extends StatelessWidget {
               onTap: () => _go(context, OnboardingIntent.directoryCustomer),
             ),
             _Door(
-              "I've bought on Little Blue Market",
+              "I've bought on Little Blue Cart",
               onTap: () => _go(context, OnboardingIntent.marketplaceCustomer),
             ),
           ],
@@ -196,7 +196,7 @@ class OrientScreen extends StatelessWidget {
               onTap: () => _go(context, OnboardingIntent.directorySeller),
             ),
             _Door(
-              'I sell on Little Blue Market',
+              'I sell on Little Blue Cart',
               onTap: () => _go(context, OnboardingIntent.marketplaceSeller),
             ),
             _Door(
@@ -204,7 +204,7 @@ class OrientScreen extends StatelessWidget {
               onTap: () => _go(context, OnboardingIntent.newDirectorySeller),
             ),
             _Door(
-              'I want to sell on Little Blue Market',
+              'I want to sell on Little Blue Cart',
               onTap: () => _go(context, OnboardingIntent.newMarketplaceSeller),
             ),
           ],

@@ -97,7 +97,7 @@ class _ChipInScreenState extends ConsumerState<ChipInScreen> {
         padding: const EdgeInsets.fromLTRB(14, 4, 14, 32),
         children: [
           Text(
-            'Little Blue Market is member-run',
+            'Little Blue Cart is member-run',
             style: LbmText.display.copyWith(fontSize: 22, color: c.ink),
           ),
           const SizedBox(height: 6),
@@ -329,7 +329,7 @@ class _MonthlyCardState extends ConsumerState<_MonthlyCard> {
                 'A sage leaf member badge next to your name, on your'
                     ' profile, your shop, your posts and your reviews, for'
                     ' everyone to see.',
-                'The knowledge that you are keeping Little Blue Market'
+                'The knowledge that you are keeping Little Blue Cart'
                     ' running for the whole community.',
                 'Nothing in the app is locked for people who are not'
                     ' members. Every feature stays free for everyone.',

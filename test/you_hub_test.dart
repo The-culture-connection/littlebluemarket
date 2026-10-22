@@ -260,7 +260,7 @@ void main() {
       // and somebody who has already given should find gratitude here rather
       // than the same request again (phase 9, A3).
       final container = await _pump(tester);
-      expect(find.text('Chip in to Little Blue Market'), findsOneWidget);
+      expect(find.text('Chip in to Little Blue Cart'), findsOneWidget);
       expect(find.text(r'From $2'), findsOneWidget);
 
       // A gift this month flips the row and the feed stops asking.
@@ -275,7 +275,7 @@ void main() {
         find.textContaining('You chipped in this month'),
         findsOneWidget,
       );
-      expect(find.text('Chip in to Little Blue Market'), findsNothing);
+      expect(find.text('Chip in to Little Blue Cart'), findsNothing);
     });
   });
 }

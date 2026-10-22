@@ -85,7 +85,7 @@ Future<void> showUnclaimedShopSheet(
         ),
         const SizedBox(height: 12),
         Text(
-          '${person.name} sells on Little Blue Market, but nobody has signed '
+          '${person.name} sells on Little Blue Cart, but nobody has signed '
           'up for the shop on the app yet.',
           style: LbmText.tiny.copyWith(color: c.ink2, height: 1.55),
         ),

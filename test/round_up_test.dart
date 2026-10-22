@@ -83,7 +83,7 @@ void main() {
     testWidgets('off until it is turned on', (tester) async {
       final container = await pumpCart(tester);
 
-      expect(find.text('Round up for Little Blue Market'), findsOneWidget);
+      expect(find.text('Round up for Little Blue Cart'), findsOneWidget);
       expect(container.read(roundUpProvider), isFalse);
       // No line in the totals while it is off.
       expect(find.text('Round-up'), findsNothing);
@@ -148,7 +148,7 @@ void main() {
       // environment there is nothing to explain and nothing to switch.
       await pumpCart(tester, configured: false);
 
-      expect(find.text('Round up for Little Blue Market'), findsNothing);
+      expect(find.text('Round up for Little Blue Cart'), findsNothing);
       expect(find.byType(Switch), findsNothing);
     });
   });

@@ -14,7 +14,7 @@ import 'sheets.dart';
 
 const _cartTipTitle = '♡ is now 🛒';
 const _cartTipBody =
-    'On Little Blue Market, adding something to your cart is how you show a '
+    'On Little Blue Cart, adding something to your cart is how you show a '
     'maker you love their work. There is no separate like. Your cart is a '
     'wishlist you can act on, and you can post it whenever you want.';
 

@@ -161,7 +161,7 @@ class _SellWithUsScreenState extends ConsumerState<SellWithUsScreen> {
             // granted against it.
             const UnverifiedBanner(),
             _Card(
-              title: 'Already a Little Blue Market vendor?',
+              title: 'Already a Little Blue Cart vendor?',
               body:
                   'If you sell with us through Shipturtle under this email, '
                   'tap below. The app checks our vendor list and switches '
@@ -223,7 +223,7 @@ class _SellWithUsScreenState extends ConsumerState<SellWithUsScreen> {
             LbmCard(
               child: ListRow(
                 title: const Text('I have a claim code'),
-                subtitle: const Text('Sent by Little Blue Market'),
+                subtitle: const Text('Sent by Little Blue Cart'),
                 trailing: Icon(
                   Icons.chevron_right_rounded,
                   size: 22,

@@ -29,7 +29,7 @@ class FixtureBillingService implements BillingService {
     return MembershipOffer(
       productId: productId,
       price: r'$3.00',
-      title: 'Little Blue Market member',
+      title: 'Little Blue Cart member',
       description: 'A month of keeping the lights on.',
     );
   }

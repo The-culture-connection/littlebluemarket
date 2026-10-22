@@ -69,7 +69,7 @@ class _RoundUpCardState extends ConsumerState<RoundUpCard> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Round up for Little Blue Market',
+                    'Round up for Little Blue Cart',
                     style: LbmText.pinTitle.copyWith(
                       fontSize: 14,
                       color: c.ink,

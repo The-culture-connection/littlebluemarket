@@ -126,7 +126,7 @@ class _World {
   Future<void> sendTest() async {
     if (channelWorks) {
       _push(
-        'Little Blue Market',
+        'Little Blue Cart',
         'This phone is set up for notifications.',
         type: 'test',
       );

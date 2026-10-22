@@ -38,7 +38,7 @@ Future<void> showMoreSheet(
           subtitle: Text(
             isSelf
                 ? 'This is you.'
-                : 'Tell Little Blue Market about spam, harassment, a fake shop '
+                : 'Tell Little Blue Cart about spam, harassment, a fake shop '
                       'or anything else that should not be here.',
           ),
           onTap: isSelf
@@ -149,7 +149,7 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
       Navigator.of(context).pop();
       messenger?.showSnackBar(
         const SnackBar(
-          content: Text('Reported. Thank you; Little Blue Market will look.'),
+          content: Text('Reported. Thank you; Little Blue Cart will look.'),
         ),
       );
     } on RepositoryException catch (error) {
@@ -176,7 +176,7 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Only Little Blue Market sees this. ${widget.subjectName} is not told '
+          'Only Little Blue Cart sees this. ${widget.subjectName} is not told '
           'who reported them.',
           style: LbmText.tiny.copyWith(color: c.ink2, height: 1.5),
         ),

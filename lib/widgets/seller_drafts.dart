@@ -190,7 +190,7 @@ class _DraftRowState extends ConsumerState<_DraftRow> {
                 ),
                 title: const Text('Under review'),
                 content: Text(
-                  '"${listing.title}" is with Little Blue Market for approval. '
+                  '"${listing.title}" is with Little Blue Cart for approval. '
                   'It appears in your shop as soon as it is approved.',
                 ),
                 actions: [

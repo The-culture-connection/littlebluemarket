@@ -138,7 +138,7 @@ class _ClaimShopScreenState extends ConsumerState<ClaimShopScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'If you sell with Little Blue Market through Shipturtle, '
+                    'If you sell with Little Blue Cart through Shipturtle, '
                     'use the same email here as on your vendor account. '
                     'Confirm it and tap below: we check the vendor list and '
                     'connect your shop, with its products and sales, to this '
@@ -250,13 +250,13 @@ class _SyncNote extends StatelessWidget {
         '$shop is not your shop. It is connected by the email on its '
             'Shipturtle vendor account, and this profile\'s email is not that '
             'address. If $shop really is yours, sign in with the email on the '
-            'vendor account, or get in touch with Little Blue Market.',
+            'vendor account, or get in touch with Little Blue Cart.',
       SellerSyncStatus.undecided when result.note != null =>
         'We could not connect $shop to this profile, because ${result.note}. '
-            'Get in touch with Little Blue Market and we will sort it out.',
+            'Get in touch with Little Blue Cart and we will sort it out.',
       SellerSyncStatus.undecided =>
         'We could not connect $shop to this profile on its own. Get in touch '
-            'with Little Blue Market and we will sort it out.',
+            'with Little Blue Cart and we will sort it out.',
     };
   }
 
@@ -287,15 +287,15 @@ class _SyncNote extends StatelessWidget {
       SellerSyncStatus.notFound =>
         'We could not find a vendor account with this email. It has to be '
             'the same address as on your Shipturtle vendor account. If it is, '
-            'get in touch with Little Blue Market and we will connect it.',
+            'get in touch with Little Blue Cart and we will connect it.',
       SellerSyncStatus.undecided =>
         result.note == null
             ? 'We found your vendor account, but could not connect the shop '
-                  'on its own. Get in touch with Little Blue Market and we '
+                  'on its own. Get in touch with Little Blue Cart and we '
                   'will do it for you.'
             : 'We found your vendor account, but could not connect the shop '
                   'on its own, because ${result.note}. Get in touch with '
-                  'Little Blue Market and we will do it for you.',
+                  'Little Blue Cart and we will do it for you.',
     };
     return Text(
       text,

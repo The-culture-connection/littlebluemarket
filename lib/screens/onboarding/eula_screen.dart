@@ -38,8 +38,8 @@ class TermsSection {
 const kTermsSections = <TermsSection>[
   TermsSection('1. Who this is between', [
     'These terms are an agreement between you and The Culture Connection '
-        'Technology Solutions, which runs Little Blue Market and Little Blue '
-        'Cart. They are not an agreement with the app store you installed it '
+        'Technology Solutions, which runs Little Blue Cart. They are not an '
+        'agreement with the app store you installed it '
         'from, and that store is not responsible for this app or for '
         'anything in it.',
     'By creating a profile, or by using the app, you accept these terms. If '
@@ -191,7 +191,7 @@ class TermsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Little Blue Market',
+                    'Little Blue Cart',
                     style: LbmText.display.copyWith(fontSize: 20, color: c.ink),
                   ),
                   const SizedBox(height: 4),

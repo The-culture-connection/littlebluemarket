@@ -116,7 +116,7 @@ List<String> donationNudgeCopy(int? donorsThisMonth) {
   final n = donorsThisMonth;
   if (n == null || n <= 0) {
     return const [
-      'Little Blue Market is member-run. No ads, no investors.',
+      'Little Blue Cart is member-run. No ads, no investors.',
       'This app is paid for by the people using it.',
       'No ads here, and none coming. Members keep it that way.',
       'Member-run, and the bill is published every month.',

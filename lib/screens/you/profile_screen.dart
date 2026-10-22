@@ -720,7 +720,7 @@ class _ChipInRow extends ConsumerWidget {
       icon: gave ? Icons.favorite_rounded : Icons.eco_outlined,
       title: gave
           ? 'You chipped in this month — thank you'
-          : 'Chip in to Little Blue Market',
+          : 'Chip in to Little Blue Cart',
       subtitle: gave ? 'See the bill' : r'From $2',
       onTap: () => context.push('/you/chip-in'),
     );
