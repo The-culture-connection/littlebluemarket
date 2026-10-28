@@ -210,6 +210,7 @@
       <label>Device <select id="device"></select></label>
       <label>Text size <select id="textSize"></select></label>
       <button class="btn small" id="bold" title="iOS Settings → Accessibility → Bold Text">Bold Text</button>
+      <button class="btn small" id="dark" title="The phone in dark mode (Settings → Display → Dark)">Dark mode</button>
       <button class="btn small" id="keyboard" title="Simulates the on-screen keyboard (viewInsets.bottom)">Keyboard</button>
       <label>Platform <select id="platform"><option value="ios">iOS</option><option value="android">Android</option></select></label>
       <label>Zoom <select id="zoom"><option value="fit">Fit</option><option value="1">100%</option><option value="0.75">75%</option></select></label>
@@ -416,7 +417,7 @@
     get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
   };
-  const settings = Object.assign({ device: 'se', text: 'l', bold: false, keyboard: false, platform: 'ios', zoom: 'fit' }, store.get('lbm-qa-v1-settings', {}));
+  const settings = Object.assign({ device: 'se', text: 'l', bold: false, dark: false, keyboard: false, platform: 'ios', zoom: 'fit' }, store.get('lbm-qa-v1-settings', {}));
 
   // ---------- State ----------
   const $ = (id) => document.getElementById(id);
@@ -440,7 +441,7 @@
 
   function deviceConfig() {
     const d = device();
-    return { device: d.name, textScale: textSize().v, boldText: settings.bold, safeTop: d.top, safeBottom: d.bottom, keyboard: settings.keyboard, keyboardHeight: d.kb, platform: settings.platform };
+    return { device: d.name, textScale: textSize().v, boldText: settings.bold, safeTop: d.top, safeBottom: d.bottom, keyboard: settings.keyboard, keyboardHeight: d.kb, platform: settings.platform, dark: settings.dark };
   }
   function send(msg) {
     const w = $('app').contentWindow;
@@ -509,6 +510,7 @@
     $('platform').onchange = (e) => { settings.platform = e.target.value; applySettings(); };
     $('zoom').onchange = (e) => { settings.zoom = e.target.value; applySettings(); };
     $('bold').onclick = () => { settings.bold = !settings.bold; applySettings(); };
+    $('dark').onclick = () => { settings.dark = !settings.dark; applySettings(); };
     $('keyboard').onclick = () => { settings.keyboard = !settings.keyboard; applySettings(); };
     $('reload').onclick = () => loadApp();
   }
@@ -532,6 +534,7 @@
         '<div class="krow"><span class="k"></span><span class="k wide"></span><span class="k"></span></div>';
     }
     $('bold').classList.toggle('on', settings.bold);
+    $('dark').classList.toggle('on', settings.dark);
     $('keyboard').classList.toggle('on', settings.keyboard);
     fitZoom();
   }
@@ -551,7 +554,7 @@
   }
   function appUrl() {
     const c = deviceConfig();
-    const q = new URLSearchParams({ device: c.device, ts: c.textScale, bold: c.boldText, top: c.safeTop, bottom: c.safeBottom, kb: c.keyboard, kbh: c.keyboardHeight, platform: c.platform });
+    const q = new URLSearchParams({ device: c.device, ts: c.textScale, bold: c.boldText, top: c.safeTop, bottom: c.safeBottom, kb: c.keyboard, kbh: c.keyboardHeight, platform: c.platform, dark: c.dark });
     return '/app/?' + q.toString();
   }
   function loadApp() {
@@ -590,7 +593,7 @@
   function renderMetrics() {
     const m = state.metrics; if (!m) return;
     const eff = Number(m.textScaleEffective).toFixed(2), req = Number(m.textScale).toFixed(2);
-    $('metrics').textContent = `${Math.round(m.width)}×${Math.round(m.height)} logical px · text ${req}×${req !== eff ? ` → ${eff}× (app clamp)` : ''} · Bold ${m.boldText ? 'on' : 'off'} · safe area ${m.safeTop}/${m.safeBottom}` +
+    $('metrics').textContent = `${Math.round(m.width)}×${Math.round(m.height)} logical px · text ${req}×${req !== eff ? ` → ${eff}× (app clamp)` : ''} · Bold ${m.boldText ? 'on' : 'off'} · ${m.dark ? 'Dark' : 'Light'} · safe area ${m.safeTop}/${m.safeBottom}` +
       `${m.keyboard ? ` · keyboard ${m.keyboard}px` : ''} · ${m.platform === 'android' ? 'Android' : 'iOS'} mode · browser DPR ${Number(m.dpr).toFixed(2)} (phone is 3×; layout is unaffected)` +
       ` · screen: ${state.screens.join(', ') || state.route}`;
   }
@@ -747,7 +750,7 @@
     return `<div class="todo open" data-id="${esc(i.id)}">${row}
       <div class="tbody">
         <div class="row"><span class="chip tag">${esc(i.owner)}</span>${i.hint ? `<span class="hint">${esc(i.hint)}</span>` : ''}</div>
-        ${b ? `<div class="byline">Reported by <b>${esc(b.author)}</b> · ${when(b.at)}${b.screens?.length ? ` · ${esc(b.screens.join(', '))}` : ''}${b.device?.device ? ` · ${esc(b.device.device)}, text ${b.device.textScale}×${b.device.boldText ? ', Bold' : ''}${b.device.keyboard ? ', keyboard' : ''}` : ''}</div>
+        ${b ? `<div class="byline">Reported by <b>${esc(b.author)}</b> · ${when(b.at)}${b.screens?.length ? ` · ${esc(b.screens.join(', '))}` : ''}${b.device?.device ? ` · ${esc(b.device.device)}, text ${b.device.textScale}×${b.device.boldText ? ', Bold' : ''}${b.device.dark ? ', Dark' : ''}${b.device.keyboard ? ', keyboard' : ''}` : ''}</div>
           ${b.comment ? `<div class="bugbox">${esc(b.comment)}</div>` : ''}
           ${b.issues?.length ? `<div class="hint">Layout findings at capture: ${b.issues.slice(0, 4).map((x) => esc(`${x.severity} ${x.kind}: ${x.message}`)).join('; ')}${b.issues.length > 4 ? ` (+${b.issues.length - 4} more)` : ''}</div>` : ''}` : ''}
         ${shots.length ? `<div><div class="section-label">Screenshots</div><div class="shots">${shots.map((s) => `<button class="shot" data-act="zoom" data-src="${esc(s.src)}" data-cap="${esc(s.caption)}"><img loading="lazy" src="${esc(s.src)}" alt=""><span>${esc(s.caption)}</span></button>`).join('')}</div></div>` : ''}
@@ -945,7 +948,7 @@
     return [
       `- Build: ${state.build || 'unknown'} · ${location.origin}/app/`,
       `- Device: ${c.device} (${device().w}×${device().h} logical px), safe area top ${c.safeTop} / bottom ${c.safeBottom}, ${c.platform === 'android' ? 'Android' : 'iOS'} mode`,
-      `- Text size: ${textSize().label}${m ? `, effective ${Number(m.textScaleEffective).toFixed(2)}× after the app's clamp` : ''} · Bold Text ${c.boldText ? 'on' : 'off'} · keyboard ${c.keyboard ? `shown (${c.keyboardHeight}px)` : 'hidden'}`,
+      `- Text size: ${textSize().label}${m ? `, effective ${Number(m.textScaleEffective).toFixed(2)}× after the app's clamp` : ''} · Bold Text ${c.boldText ? 'on' : 'off'} · ${c.dark ? 'Dark' : 'Light'} mode · keyboard ${c.keyboard ? `shown (${c.keyboardHeight}px)` : 'hidden'}`,
       `- Visible screen: ${state.screens.join(', ') || state.route} (route ${state.route})`,
     ];
   }

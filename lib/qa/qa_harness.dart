@@ -38,6 +38,7 @@ class QaDeviceConfig {
     this.keyboard = false,
     this.keyboardHeight = 336,
     this.platform = TargetPlatform.iOS,
+    this.dark = false,
   });
 
   final String device;
@@ -48,6 +49,11 @@ class QaDeviceConfig {
   final bool keyboard;
   final double keyboardHeight;
   final TargetPlatform platform;
+
+  /// The phone in dark mode (Grace, 2026-10-28). Applied as the app's own
+  /// theme choice rather than through MediaQuery, because MaterialApp picks
+  /// its theme above the point where the simulated device is applied.
+  final bool dark;
 
   static TargetPlatform _platform(Object? v) =>
       v == 'android' ? TargetPlatform.android : TargetPlatform.iOS;
@@ -68,6 +74,7 @@ class QaDeviceConfig {
     keyboard: _bool(m['keyboard'] ?? m['kb']),
     keyboardHeight: _num(m['keyboardHeight'] ?? m['kbh'], 336),
     platform: _platform(m['platform']),
+    dark: _bool(m['dark']),
   );
 
   /// Initial config from the iframe URL so the first frame is already right.
@@ -287,6 +294,7 @@ class QaHarness {
       'safeBottom': c.safeBottom,
       'keyboard': c.keyboard ? c.keyboardHeight : 0,
       'platform': c.platform == TargetPlatform.android ? 'android' : 'ios',
+      'dark': c.dark,
       'route': _route,
     });
   }
@@ -353,6 +361,20 @@ class QaHarness {
     final tab = _currentTab();
     if (tab != null) names.insert(0, '${_tabNames[tab]} tab');
     return names;
+  }
+
+  /// The theme the app is drawn in: the QA page's Dark mode switch when the
+  /// harness is on, otherwise whatever the app chose for itself.
+  static Widget themed(
+    ThemeMode appMode,
+    Widget Function(ThemeMode mode) build,
+  ) {
+    if (!enabled) return build(appMode);
+    return ValueListenableBuilder<QaDeviceConfig>(
+      valueListenable: config,
+      builder: (context, c, _) =>
+          build(c.dark ? ThemeMode.dark : ThemeMode.light),
+    );
   }
 
   /// Wraps the app below MaterialApp: applies the simulated device to

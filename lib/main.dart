@@ -109,76 +109,81 @@ class LittleBlueMarketApp extends ConsumerWidget {
     // the route a tapped banner names. No UI of its own.
     ref.watch(pushCoordinatorProvider);
 
-    return MaterialApp.router(
-      title: 'Little Blue Cart',
-      debugShowCheckedModeBanner: false,
-      routerConfig: router,
-      // A mouse drags lists on the web the way a finger does. Flutter leaves
-      // the mouse out by default, so on the website and in the QA suite the
-      // sideways rails would not move and pull-to-refresh did nothing (QA
-      // suite, 2026-10-22). Phones are touch and unaffected.
-      scrollBehavior: kIsWeb
-          ? const MaterialScrollBehavior().copyWith(
-              dragDevices: PointerDeviceKind.values.toSet(),
-            )
-          : null,
-      theme: buildLbmTheme(Brightness.light),
-      darkTheme: buildLbmTheme(Brightness.dark),
-      // Defaults to the system setting, as the prototype does.
-      themeMode: switch (override) {
-        Brightness.light => ThemeMode.light,
-        Brightness.dark => ThemeMode.dark,
-        null => ThemeMode.system,
-      },
-      // The QA suite's simulated phone (text size, Bold Text, safe areas,
-      // keyboard) is applied first, so the clamp below sees it as a phone's
-      // own setting. Outside the QA build wrapApp passes straight through.
-      builder: (context, child) => QaHarness.wrapApp(context, (mediaQuery) {
-        // Respect the reader's text size, but keep it inside a range the pill
-        // tab bar and the fixed-height chrome can actually hold.
-        final scale = mediaQuery.textScaler.clamp(
-          minScaleFactor: 0.85,
-          maxScaleFactor: 1.35,
-        );
-        return MediaQuery(
-          data: mediaQuery.copyWith(textScaler: scale),
-          // Both dev overlays render nothing in release and under test. The
-          // splash artwork holds for a moment on launch; the cart floats
-          // over every screen.
-          // On the web the whole app sits inside a phone-sized frame.
-          child: PhoneFrame(
-            child: SplashOverlay(
-              child: DevErrorSurface(
-                child: Stack(
-                  children: [
-                    // A tap anywhere outside a text field puts the keyboard
-                    // away. iPhones have no back button to do it with, and
-                    // without this every form kept the keyboard up until the
-                    // person found somewhere to scroll.
-                    GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onTap: () {
-                        final focus = FocusManager.instance.primaryFocus;
-                        if (focus != null && focus.context != null) {
-                          focus.unfocus();
-                        }
-                      },
-                      // The floating cart used to live here, above
-                      // everything. The tab bar carries it now, with its
-                      // count on it, on every screen the floating one
-                      // appeared on: two carts on one screen is one too many,
-                      // and the floating one was the one that kept landing on
-                      // other people's buttons.
-                      child: PromoLayer(router: router, child: child!),
-                    ),
-                    const DevBackendBadge(),
-                  ],
+    // The QA suite's Dark mode switch decides when it is on; otherwise the
+    // app follows the phone, as the prototype does.
+    final appMode = switch (override) {
+      Brightness.light => ThemeMode.light,
+      Brightness.dark => ThemeMode.dark,
+      null => ThemeMode.system,
+    };
+    return QaHarness.themed(
+      appMode,
+      (mode) => MaterialApp.router(
+        title: 'Little Blue Cart',
+        debugShowCheckedModeBanner: false,
+        routerConfig: router,
+        // A mouse drags lists on the web the way a finger does. Flutter leaves
+        // the mouse out by default, so on the website and in the QA suite the
+        // sideways rails would not move and pull-to-refresh did nothing (QA
+        // suite, 2026-10-22). Phones are touch and unaffected.
+        scrollBehavior: kIsWeb
+            ? const MaterialScrollBehavior().copyWith(
+                dragDevices: PointerDeviceKind.values.toSet(),
+              )
+            : null,
+        theme: buildLbmTheme(Brightness.light),
+        darkTheme: buildLbmTheme(Brightness.dark),
+        themeMode: mode,
+        // The QA suite's simulated phone (text size, Bold Text, safe areas,
+        // keyboard) is applied first, so the clamp below sees it as a phone's
+        // own setting. Outside the QA build wrapApp passes straight through.
+        builder: (context, child) => QaHarness.wrapApp(context, (mediaQuery) {
+          // Respect the reader's text size, but keep it inside a range the pill
+          // tab bar and the fixed-height chrome can actually hold.
+          final scale = mediaQuery.textScaler.clamp(
+            minScaleFactor: 0.85,
+            maxScaleFactor: 1.35,
+          );
+          return MediaQuery(
+            data: mediaQuery.copyWith(textScaler: scale),
+            // Both dev overlays render nothing in release and under test. The
+            // splash artwork holds for a moment on launch; the cart floats
+            // over every screen.
+            // On the web the whole app sits inside a phone-sized frame.
+            child: PhoneFrame(
+              child: SplashOverlay(
+                child: DevErrorSurface(
+                  child: Stack(
+                    children: [
+                      // A tap anywhere outside a text field puts the keyboard
+                      // away. iPhones have no back button to do it with, and
+                      // without this every form kept the keyboard up until the
+                      // person found somewhere to scroll.
+                      GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () {
+                          final focus = FocusManager.instance.primaryFocus;
+                          if (focus != null && focus.context != null) {
+                            focus.unfocus();
+                          }
+                        },
+                        // The floating cart used to live here, above
+                        // everything. The tab bar carries it now, with its
+                        // count on it, on every screen the floating one
+                        // appeared on: two carts on one screen is one too many,
+                        // and the floating one was the one that kept landing on
+                        // other people's buttons.
+                        child: PromoLayer(router: router, child: child!),
+                      ),
+                      const DevBackendBadge(),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      }),
+          );
+        }),
+      ),
     );
   }
 }
