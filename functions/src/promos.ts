@@ -43,6 +43,29 @@ export const PROMO_SCREENS = ['search', 'home', 'market', 'directory', 'communit
  */
 export const PROMO_BUTTON_COLORS = ['navy', 'blue', 'sky', 'orchid', 'gold', 'cream', 'white'] as const;
 
+/**
+ * A brand colour by name, or any colour code as `#rrggbb` (Grace,
+ * 2026-10-28, from the QA suite: "I would like to be able to put hex numbers
+ * to change the color of advert buttons"). Codes are stored as `#` and six
+ * lowercase digits, the three-digit shorthand expanded, so the phone has one
+ * shape to read. The phone picks navy or white words for whichever reads.
+ */
+export function cleanButtonColor(raw: unknown): string {
+  const text = String(raw ?? '').trim().toLowerCase();
+  if (!text) return '';
+  if ((PROMO_BUTTON_COLORS as readonly string[]).includes(text)) return text;
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/.exec(text);
+  if (!m) {
+    throw new HttpsError(
+      'invalid-argument',
+      `The button colour has to be one of ${PROMO_BUTTON_COLORS.join(', ')}, or a colour code like #1A7F5A. Got ${text}`,
+    );
+  }
+  const code = m[1] ?? '';
+  const digits = code.length === 3 ? [...code].map((d) => d + d).join('') : code;
+  return `#${digits}`;
+}
+
 export function isPromoKind(value: unknown): value is PromoKind {
   return typeof value === 'string' && (PROMO_KINDS as readonly string[]).includes(value);
 }
@@ -155,13 +178,7 @@ export function validatePromo(input: PromoInput): CleanPromo {
     );
   }
 
-  const ctaColor = String(input.ctaColor ?? '').trim().toLowerCase();
-  if (ctaColor && !(PROMO_BUTTON_COLORS as readonly string[]).includes(ctaColor)) {
-    throw new HttpsError(
-      'invalid-argument',
-      `The button colour has to be one of ${PROMO_BUTTON_COLORS.join(', ')}. Got ${ctaColor}`,
-    );
-  }
+  const ctaColor = cleanButtonColor(input.ctaColor);
 
   const startsAt = cleanTime(input.startsAt, 'The start date');
   const endsAt = cleanTime(input.endsAt, 'The end date');

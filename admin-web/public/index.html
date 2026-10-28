@@ -350,6 +350,11 @@
           <option value="cream">Cream</option>
           <option value="white">White</option>
         </select>
+        <label for="pCtaHex" style="margin-top:8px">Or any colour code</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="pCtaHex" placeholder="#1A7F5A" maxlength="7" style="flex:1">
+          <input id="pCtaPick" type="color" value="#253856" title="Pick a colour" style="width:44px;height:38px;padding:2px">
+        </div>
       </div>
     </div>
     <p class="hint" style="margin:6px 0 0">Both or neither: a button with no link goes nowhere, and a link with no button is invisible. The button can go four places. Type <strong>@handle</strong> on its own to open that shop or person in the app, <strong>#Hashtag</strong> on its own to run that search, a web address, which has to be https, or pick a screen in the app from the list (it fills in the link as <strong>app:search</strong> and so on). Screens in the app need the app update from October 28; on an older app the button is hidden. A handle that matches nobody is refused here rather than becoming a dead button on every phone.</p>
@@ -393,6 +398,26 @@
     <h2>Adverts, live and past</h2>
     <p class="hint">Every advert and announcement popup ever posted, newest first, whether it is running or not: each one says <strong>live</strong> or <strong>paused</strong>. <strong>Seen</strong> is how many phones it faded in on; <strong>tapped</strong> is how many tapped the button. <strong>Edit</strong> changes the wording on every phone at once and keeps the numbers. <strong>Pause</strong> takes it out of the app without deleting it. Only what is live and inside its dates appears on the feed.</p>
     <ul id="promos" class="recent"></ul>
+  </section>
+
+  <section id="storePageCard" class="card" hidden>
+    <h2>Store pages on the For you feed</h2>
+    <p class="hint">Post one of Little Blue Market's own pages (a gift guide, a creator's picks, the FAQs) as a card in everybody's <strong>For you</strong> feed. Tapping the card opens the page inside the app. The newest two posted show near the top of the feed. <strong>Hide</strong> takes one off every phone without deleting it.</p>
+    <button id="spLoadBtn" class="quiet">Load pages from the store</button>
+    <div id="spForm" hidden>
+      <label for="spPick">Page</label>
+      <select id="spPick"></select>
+      <label for="spTitle">Title on the card</label>
+      <input id="spTitle" maxlength="80">
+      <label for="spBlurb">One line about it (optional)</label>
+      <textarea id="spBlurb" maxlength="180"></textarea>
+      <label for="spImage">Picture address (optional; filled in from the page)</label>
+      <input id="spImage" placeholder="https://...">
+      <img id="spImagePreview" alt="" hidden style="max-width:220px;border-radius:12px;margin-top:8px">
+      <div style="margin-top:14px"><button id="spPostBtn" class="primary">Post to the feed</button></div>
+    </div>
+    <div id="spNotice" class="notice" hidden></div>
+    <ul id="storePages" class="recent"></ul>
   </section>
 
   <section id="announceListCard" class="card" hidden>

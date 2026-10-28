@@ -562,6 +562,10 @@ abstract interface class PromoRepository {
   /// `allow write: if false` like every other function-owned collection.
   Future<void> recordSeen(String id);
   Future<void> recordTap(String id);
+
+  /// Little Blue Market's own pages posted to the For you feed, newest
+  /// first, only the ones switched on. Written by the admin website.
+  Stream<List<StorePage>> watchStorePages({int limit = 5});
 }
 
 /// littlebluecart.com, the directory: this account's link to a WordPress

@@ -120,6 +120,13 @@ final allPromosProvider = StreamProvider<List<Promo>>((ref) {
   return ref.watch(promoRepositoryProvider).watchLive(limit: 50);
 });
 
+/// Little Blue Market's own pages posted to the For you feed (Grace,
+/// 2026-10-28). A stream, so hiding one on the admin website takes it off
+/// a feed somebody is already looking at.
+final storePagesProvider = StreamProvider<List<StorePage>>((ref) {
+  return ref.watch(promoRepositoryProvider).watchStorePages();
+});
+
 /// A promo somebody tapped on, to open as the full popup with every photo
 /// to swipe through (Grace, 2026-10-28: "Allow to click on announcements to
 /// show pop up version and slide through images").

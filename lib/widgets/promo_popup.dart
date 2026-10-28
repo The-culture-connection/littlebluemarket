@@ -840,19 +840,45 @@ class _PhotoFrameState extends State<_PhotoFrame> {
 }
 
 /// The fill and label colours for an advert's button, or null for the
-/// usual one. Every pair is from the brand guide, and the label is whichever
-/// of navy and white reads on the fill: white on orchid is 3:1, so orchid
-/// carries navy, the same rule as the post button.
-(Color, Color)? promoButtonTint(PromoButtonColor? color) => switch (color) {
-  null => null,
-  PromoButtonColor.navy => (LbmPalette.navy, LbmPalette.white),
-  PromoButtonColor.blue => (LbmPalette.blue, LbmPalette.navy),
-  PromoButtonColor.sky => (LbmPalette.sky, LbmPalette.navy),
-  PromoButtonColor.orchid => (LbmPalette.orchid, LbmPalette.navy),
-  PromoButtonColor.gold => (LbmPalette.gold, LbmPalette.navy),
-  PromoButtonColor.cream => (LbmPalette.cream, LbmPalette.navy),
-  PromoButtonColor.white => (LbmPalette.white, LbmPalette.navy),
-};
+/// usual one.
+///
+/// A brand colour by name, or any colour code (Grace, 2026-10-28). The label
+/// is never chosen: it is whichever of navy and white reads better on the
+/// fill, so no colour Grace picks can leave the button's words unreadable,
+/// which is the bug the dark-mode banner had.
+(Color, Color)? promoButtonTint(String raw) {
+  final named = switch (PromoButtonColor.fromValue(raw)) {
+    null => null,
+    PromoButtonColor.navy => LbmPalette.navy,
+    PromoButtonColor.blue => LbmPalette.blue,
+    PromoButtonColor.sky => LbmPalette.sky,
+    PromoButtonColor.orchid => LbmPalette.orchid,
+    PromoButtonColor.gold => LbmPalette.gold,
+    PromoButtonColor.cream => LbmPalette.cream,
+    PromoButtonColor.white => LbmPalette.white,
+  };
+  final hex = promoButtonHex(raw);
+  final fill =
+      named ??
+      (hex == null
+          ? null
+          : Color.fromARGB(255, hex >> 16 & 0xFF, hex >> 8 & 0xFF, hex & 0xFF));
+  if (fill == null) return null;
+  return (fill, readableOn(fill));
+}
+
+/// Navy or white, whichever has the higher contrast against [fill].
+Color readableOn(Color fill) {
+  double contrast(Color a, Color b) {
+    final la = a.computeLuminance();
+    final lb = b.computeLuminance();
+    return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
+  }
+
+  return contrast(fill, LbmPalette.navy) >= contrast(fill, LbmPalette.white)
+      ? LbmPalette.navy
+      : LbmPalette.white;
+}
 
 /// Sends a promo's button where the promo says it goes.
 ///

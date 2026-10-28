@@ -443,6 +443,18 @@ describe('selling is a grant, not a client write', () => {
     await assertFails(member('maya').doc('promos/p1').set({ impressions: 9999 }));
     await assertFails(adminUser('grace').doc('promos/p1').delete());
 
+    // Store pages on the For you feed (2026-10-28): the same arrangement.
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await admin.firestore().doc('storePages/s1').set({ title: 'About us', url: 'https://littlebluemarket.com/pages/about', active: true });
+      await admin.firestore().doc('storePages/s2').set({ title: 'Hidden', url: 'https://littlebluemarket.com/pages/faqs', active: false });
+    });
+    await assertSucceeds(guest().collection('storePages').where('active', '==', true).get());
+    await assertSucceeds(member('kali').doc('storePages/s1').get());
+    await assertFails(member('kali').doc('storePages/s2').get());
+    await assertSucceeds(adminUser('grace').collection('storePages').get());
+    await assertFails(adminUser('grace').doc('storePages/s3').set({ title: 'From a client', active: true }));
+    await assertFails(member('maya').doc('storePages/s1').set({ url: 'https://example.com' }));
+
     // The owner's own list and the public list are both answerable queries.
     await assertSucceeds(member('maya').collection('directoryListings').where('ownerUid', '==', 'maya').get());
     await assertSucceeds(

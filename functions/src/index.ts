@@ -93,6 +93,14 @@ import {
   type PromoKind,
 } from './promos.ts';
 import { backfillCatalogPage } from './backfill.ts';
+import {
+  deleteStorePage,
+  listStorePages,
+  postStorePage,
+  previewStorePage,
+  setStorePageActive,
+  type StorePageInput,
+} from './store_pages.ts';
 import { blockDirectoryAccount } from './directory_block.ts';
 import { sweepCatalogPage } from './catalog_sweep.ts';
 import { appSales } from './app_sales.ts';
@@ -978,6 +986,53 @@ export const adminPromoDelete = onCall(
     requireAdmin(request.auth?.token);
     const data = (request.data ?? {}) as Record<string, unknown>;
     return deletePromo(String(data.id ?? ''));
+  }),
+);
+
+/**
+ * Little Blue Market's own pages on the For you feed (Grace, 2026-10-28).
+ * The list is read from the store's public sitemap; see store_pages.ts.
+ */
+export const adminStorePagesList = onCall(
+  withLoudErrors('adminStorePagesList', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    return { pages: await listStorePages() };
+  }),
+);
+
+export const adminStorePagePreview = onCall(
+  withLoudErrors('adminStorePagePreview', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    return previewStorePage(String(data.url ?? ''));
+  }),
+);
+
+export const adminStorePagePost = onCall(
+  withLoudErrors('adminStorePagePost', async (request) => {
+    const uid = requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    return postStorePage((request.data ?? {}) as StorePageInput, uid);
+  }),
+);
+
+export const adminStorePageSetActive = onCall(
+  withLoudErrors('adminStorePageSetActive', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    return setStorePageActive(String(data.id ?? ''), data.active === true);
+  }),
+);
+
+export const adminStorePageDelete = onCall(
+  withLoudErrors('adminStorePageDelete', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    return deleteStorePage(String(data.id ?? ''));
   }),
 );
 

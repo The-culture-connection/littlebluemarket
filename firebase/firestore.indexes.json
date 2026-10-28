@@ -48,6 +48,21 @@
       ]
     },
     {
+      "_comment": "2026-10-28: store pages posted to the For you feed, newest first.",
+      "collectionGroup": "storePages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "active",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "_comment": "Stage 17: the live adverts and announcements a popup picks from, newest first.",
       "collectionGroup": "promos",
       "queryScope": "COLLECTION",

@@ -217,6 +217,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Little Blue Market's own pages on the For you feed (2026-10-28).
+    // Written only by the admin callables in store_pages.ts; a hidden one
+    // is read only by an admin.
+    match /storePages/{id} {
+      allow read: if resource.data.active == true || admin();
+      allow write: if false;
+    }
+
     // Products a directory business sells on its own website. Everyone reads
     // them; only the two callables write them, and only for an account that
     // holds the directory link.

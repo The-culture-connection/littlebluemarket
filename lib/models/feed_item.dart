@@ -124,6 +124,16 @@ final class ChatItem extends FeedItem {
   String get key => 'chat';
 }
 
+/// One of Little Blue Market's own pages, posted from the admin website.
+final class StorePageItem extends FeedItem {
+  const StorePageItem(this.page);
+
+  final StorePage page;
+
+  @override
+  String get key => 'page_${page.id}';
+}
+
 /// News from Little Blue Market.
 final class AnnouncementItem extends FeedItem {
   const AnnouncementItem(this.announcement, {this.promo, this.hero = false});

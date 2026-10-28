@@ -78,7 +78,23 @@ enum PromoButtonColor {
 
   /// Null for empty or unknown, which means the usual button.
   static PromoButtonColor? fromValue(String? value) =>
-      values.where((c) => c.value == value).firstOrNull;
+      values.where((c) => c.value == value?.trim().toLowerCase()).firstOrNull;
+}
+
+/// A colour code for a button, as 0xRRGGBB, or null when [raw] is not one.
+///
+/// Grace, 2026-10-28 (QA suite): "I would like to be able to put hex numbers
+/// to change the color of advert buttons". Six digits, with or without the
+/// '#', or the three-digit shorthand. The brand names still work; this is
+/// for anything else.
+int? promoButtonHex(String raw) {
+  final m = RegExp(
+    r'^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$',
+  ).firstMatch(raw.trim());
+  if (m == null) return null;
+  var digits = m.group(1)!;
+  if (digits.length == 3) digits = digits.split('').map((d) => '$d$d').join();
+  return int.parse(digits, radix: 16);
 }
 
 /// One card that fades in over whatever is on screen. Written only by the
@@ -101,11 +117,12 @@ class Promo {
     this.impressions = 0,
     this.clicks = 0,
     this.mentions = const {},
-    this.ctaColor,
+    this.ctaColor = '',
   });
 
-  /// The button's colour, or null for the usual one.
-  final PromoButtonColor? ctaColor;
+  /// The button's colour: a brand colour's name, a colour code like
+  /// `#1A7F5A`, or empty for the usual button.
+  final String ctaColor;
 
   /// The `@handles` the copy names, lowercased, each with the uid it meant
   /// when it was written. See [MentionedProfiles].
@@ -148,12 +165,15 @@ class Promo {
           ctaScreen != null ||
           ctaUri != null);
 
-  /// An advert is its photograph and nothing else: no title, no caption
-  /// (Grace, 2026-10-28: "Change advertisements to only show photo banner
-  /// and no caption"). One without a photograph still needs its words, or
-  /// there would be nothing on the card at all. Announcements keep theirs:
-  /// they are news, and news has to say something.
-  bool get photoOnly => kind == PromoKind.ad && hasPhoto;
+  /// Anything with a photograph is the photograph and its button, nothing
+  /// else: no title, no caption, no "From Little Blue Cart" (Grace,
+  /// 2026-10-28: "Change advertisements to only show photo banner and no
+  /// caption", and from the QA suite the same day, about an announcement
+  /// with a photo: "it should only show the advertisement image and the
+  /// button"). One without a photograph still needs its words, or there
+  /// would be nothing on the card at all. An announcement's words still go
+  /// to the bell and the push.
+  bool get photoOnly => hasPhoto;
 
   /// The screen in the app the button opens, or null.
   PromoScreen? get ctaScreen => PromoScreen.fromLink(ctaUrl);
@@ -229,7 +249,7 @@ class NewPromo {
     this.imageUrls = const [],
     this.ctaLabel = '',
     this.ctaUrl = '',
-    this.ctaColor,
+    this.ctaColor = '',
   });
 
   static const titleMax = 60;
@@ -244,7 +264,7 @@ class NewPromo {
   final List<String> imageUrls;
   final String ctaLabel;
   final String ctaUrl;
-  final PromoButtonColor? ctaColor;
+  final String ctaColor;
 
   bool get isValid =>
       title.trim().isNotEmpty &&
@@ -268,6 +288,6 @@ class NewPromo {
     'imageUrls': imageUrls,
     'ctaLabel': ctaLabel.trim(),
     'ctaUrl': ctaUrl.trim(),
-    'ctaColor': ctaColor?.value ?? '',
+    'ctaColor': ctaColor.trim(),
   };
 }

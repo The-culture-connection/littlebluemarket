@@ -65,6 +65,21 @@ class FirestorePromoRepository implements PromoRepository {
       .guarded(operation: 'firestore promos live');
 
   @override
+  Stream<List<StorePage>> watchStorePages({int limit = 5}) => _db
+      .collection('storePages')
+      .where('active', isEqualTo: true)
+      .orderBy('createdAt', descending: true)
+      .limit(limit)
+      .snapshots()
+      .map(
+        (snapshot) => [
+          for (final doc in snapshot.docs)
+            FirestoreMappers.storePage(doc.id, doc.data()),
+        ],
+      )
+      .guarded(operation: 'firestore storePages');
+
+  @override
   Future<void> recordSeen(String id) => _record(id, 'seen');
 
   @override
@@ -74,9 +89,10 @@ class FirestorePromoRepository implements PromoRepository {
   /// an error strip over a popup the person is already reading.
   Future<void> _record(String id, String event) async {
     try {
-      await _functions
-          .httpsCallable('promoRecord')
-          .call<Map<String, dynamic>>({'id': id, 'event': event});
+      await _functions.httpsCallable('promoRecord').call<Map<String, dynamic>>({
+        'id': id,
+        'event': event,
+      });
     } catch (_) {
       // Counted nowhere, seen anyway. The number is for Grace, not for the
       // person holding the phone.

@@ -56,7 +56,13 @@ class FeedInputs {
     this.dismissedNudges = const {},
     this.filter = FeedFilter.all,
     this.localListingIds = const {},
+    this.storePages = const [],
   });
+
+  /// Little Blue Market's own pages posted from the admin website, newest
+  /// first. They go into the first gaps between posts, so a page posted
+  /// today is near the top of For you rather than buried.
+  final List<StorePage> storePages;
 
   /// Directory listings in the same state as the person, whose business
   /// cards go first when there are more cards than room for them.
@@ -115,6 +121,9 @@ const _postsBetweenBreaks = 3;
 /// Threads are the most interruptive thing in the grid; more than a few per
 /// page and the Market stops being the Market.
 const _maxThreadsPerPage = 3;
+
+/// Store pages are an editor's pick; more than two at once is a noticeboard.
+const _maxStorePagesPerPage = 2;
 
 /// A directory business card for at most every this many items.
 ///
@@ -265,6 +274,12 @@ List<FeedItem> _interleaved(FeedInputs input) {
 
   final nudge = _nudge(input);
   if (nudge != null) queue.add(nudge);
+
+  // The market's own pages, newest first, ahead of the community: posted
+  // on purpose, today, by the people who run the market.
+  for (final page in input.storePages.take(_maxStorePagesPerPage)) {
+    queue.add(StorePageItem(page));
+  }
 
   // Guests are bounced off every community route, so a thread or a chat pin
   // would be an invitation to a locked door.
@@ -595,6 +610,7 @@ final feedItemsProvider = Provider<AsyncValue<List<FeedItem>>>((ref) {
         dismissedNudges: ref.watch(dismissedNudgesProvider),
         filter: ref.watch(feedFilterProvider),
         localListingIds: _localListingIds(ref, all, me),
+        storePages: ref.watch(storePagesProvider).value ?? const [],
       ),
     );
     return assembled;

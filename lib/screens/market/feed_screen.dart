@@ -29,6 +29,7 @@ import '../../widgets/pins/nudge_pin.dart';
 import '../../widgets/pins/product_pin.dart';
 import '../../widgets/pins/review_pin.dart';
 import '../../widgets/pins/shoutout_pin.dart';
+import '../../widgets/pins/store_page_pin.dart';
 import '../../widgets/pins/thread_pin.dart';
 import '../../widgets/post_card.dart' show addManyToCart;
 import '../../widgets/primitives.dart';
@@ -519,6 +520,7 @@ Widget _pinFor(
     },
   ),
   ChatItem i => ChatPin(key: ValueKey(i.key), item: i),
+  StorePageItem i => StorePagePin(key: ValueKey(i.key), item: i),
   // Announcements are the banner above the grid, never a pin in it.
   AnnouncementItem i => AnnouncementPin(key: ValueKey(i.key), item: i),
   // The chip-in nudge is its own pin: sage, and it carries a number read

@@ -171,6 +171,10 @@ test('the button colour is one of the brand colours, or none', () => {
   assert.equal(validatePromo({ ...good }).ctaColor, '');
   assert.equal(validatePromo({ ...good, ctaColor: 'Orchid' }).ctaColor, 'orchid');
   assert.throws(() => validatePromo({ ...good, ctaColor: 'red' }), /button colour/);
+  // Any colour code too, stored one way (QA suite, 2026-10-28).
+  assert.equal(validatePromo({ ...good, ctaColor: '#1A7F5A' }).ctaColor, '#1a7f5a');
+  assert.equal(validatePromo({ ...good, ctaColor: 'FfF' }).ctaColor, '#ffffff');
+  assert.throws(() => validatePromo({ ...good, ctaColor: '#12345' }), /colour code/);
 });
 
 test('an advert with a photo needs no caption; everything else still does', () => {

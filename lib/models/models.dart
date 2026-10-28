@@ -29,6 +29,7 @@ export 'post.dart';
 export 'promo.dart';
 export 'report.dart';
 export 'search.dart';
+export 'store_page.dart';
 export 'seller_sync.dart';
 
 /// A person — seller, buyer, or both. The prototype's `U`.

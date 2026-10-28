@@ -68,6 +68,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
           // replaces these results rather than stacking on top of them.
           onTap: () => context.replaceWithSearch(widget.query),
         ),
+        actions: const [HomeButton()],
       ),
       child: ListView(
         padding: EdgeInsets.zero,

@@ -8,7 +8,11 @@ import 'package:little_blue_market/screens/market/cart_screen.dart';
 import 'package:little_blue_market/screens/market/feed_screen.dart';
 import 'package:little_blue_market/screens/market/market_screen.dart';
 import 'package:little_blue_market/router/nav.dart';
+import 'package:little_blue_market/models/feed_item.dart';
+import 'package:little_blue_market/screens/market/search_screen.dart';
+import 'package:little_blue_market/state/feed_items.dart';
 import 'package:little_blue_market/state/providers.dart';
+import 'package:little_blue_market/widgets/pins/store_page_pin.dart';
 import 'package:little_blue_market/state/session.dart';
 import 'package:little_blue_market/theme/app_theme.dart';
 import 'package:little_blue_market/theme/tokens.dart';
@@ -47,7 +51,7 @@ Promo _promo({
   List<String> imageUrls = const [],
   String ctaLabel = '',
   String ctaUrl = '',
-  PromoButtonColor? ctaColor,
+  String ctaColor = '',
 }) => Promo(
   id: 'p28',
   kind: kind,
@@ -139,31 +143,42 @@ void main() {
     });
 
     test('a colour is a brand colour, and the label always reads on it', () {
-      expect(promoButtonTint(null), isNull);
+      expect(promoButtonTint(''), isNull);
+      expect(promoButtonTint('red'), isNull);
       for (final color in PromoButtonColor.values) {
-        final (bg, fg) = promoButtonTint(color)!;
+        final (bg, fg) = promoButtonTint(color.value)!;
         expect(LbmPalette.brand, contains(bg));
         expect([LbmPalette.navy, LbmPalette.white], contains(fg));
         expect(bg == fg, isFalse);
       }
       // White on orchid is 3:1, so orchid carries navy.
-      expect(promoButtonTint(PromoButtonColor.orchid)!.$2, LbmPalette.navy);
+      expect(promoButtonTint('orchid')!.$2, LbmPalette.navy);
     });
 
-    test(
-      'an advert with a photo is only its photo; without one, its words',
-      () {
-        expect(_promo(imageUrls: const ['a.jpg']).photoOnly, isTrue);
-        expect(_promo().photoOnly, isFalse);
-        expect(
-          _promo(
-            kind: PromoKind.announcement,
-            imageUrls: const ['a.jpg'],
-          ).photoOnly,
-          isFalse,
-        );
-      },
-    );
+    // Grace, 2026-10-28 (QA suite): hex codes for the button.
+    test('a colour code works, and the words pick the side that reads', () {
+      expect(promoButtonHex('#1A7F5A'), 0x1A7F5A);
+      expect(promoButtonHex('fff'), 0xFFFFFF);
+      expect(promoButtonHex('#12345'), isNull);
+      expect(promoButtonHex('orchid'), isNull);
+      final (darkFill, onDark) = promoButtonTint('#102030')!;
+      expect(darkFill.toARGB32() & 0xFFFFFF, 0x102030);
+      expect(onDark, LbmPalette.white);
+      expect(promoButtonTint('#FFE680')!.$2, LbmPalette.navy);
+    });
+
+    test('anything with a photo is only its photo; without one, its words', () {
+      expect(_promo(imageUrls: const ['a.jpg']).photoOnly, isTrue);
+      expect(_promo().photoOnly, isFalse);
+      expect(
+        _promo(
+          kind: PromoKind.announcement,
+          imageUrls: const ['a.jpg'],
+        ).photoOnly,
+        // An announcement with a photo too (QA suite, 2026-10-28).
+        isTrue,
+      );
+    });
 
     test('a photo advert needs no caption to be posted', () {
       const base = NewPromo(
@@ -198,7 +213,7 @@ void main() {
                 imageUrls: const ['https://example.com/a.jpg'],
                 ctaLabel: 'Shop now',
                 ctaUrl: 'app:search',
-                ctaColor: PromoButtonColor.orchid,
+                ctaColor: 'orchid',
               ),
               onDismiss: () {},
               onCta: () {},
@@ -241,5 +256,71 @@ void main() {
     await tester.pump();
     final label = tester.widget<Text>(find.text('Take a look'));
     expect(label.style?.color, LbmPalette.navy);
+  });
+
+  // From the QA suite, 2026-10-28.
+  group('QA suite fixes', () {
+    testWidgets('Search has a HOME button', (tester) async {
+      await _pumpMember(tester);
+      await tester.tap(find.text('DISCOVER. SHOP. SUPPORT.'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchScreen), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.home_rounded));
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchScreen), findsNothing);
+    });
+
+    test('store pages go near the top of For you, two at most', () {
+      StorePage page(String id) => StorePage(
+        id: id,
+        url: 'https://littlebluemarket.com/pages/$id',
+        title: id,
+      );
+      final items = assembleFeed(
+        FeedInputs(storePages: [page('a'), page('b'), page('c')]),
+      );
+      final pages = items.whereType<StorePageItem>().toList();
+      expect(pages.map((i) => i.page.id), ['a', 'b']);
+      // Only under All: a filter for products is a filter for products.
+      final products = assembleFeed(
+        FeedInputs(storePages: [page('a')], filter: FeedFilter.product),
+      );
+      expect(products.whereType<StorePageItem>(), isEmpty);
+    });
+
+    testWidgets('a store page card fits a narrow column', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildLbmTheme(Brightness.light),
+          home: const Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 170,
+                child: StorePagePin(
+                  item: StorePageItem(
+                    StorePage(
+                      id: 'p',
+                      url:
+                          'https://littlebluemarket.com/pages/holiday-gift-guide',
+                      title: 'Holiday gift guide for everyone on your list',
+                      blurb:
+                          'Forty makers, one guide, and something for the '
+                          'person who has everything.',
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(find.text('LITTLE BLUE MARKET'), findsOneWidget);
+    });
   });
 }

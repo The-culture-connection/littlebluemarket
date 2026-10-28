@@ -192,7 +192,7 @@ function watchRecent() {
 async function refreshGate(user) {
   if (!user) {
     show('signin', true); show('notadmin', false); show('send', false); show('recentCard', false); show('feedbackCard', false); show('reportsCard', false); show('signout', false);
-    show('promoCard', false); show('promoListCard', false); show('announceListCard', false); show('dirCard', false); show('catalogCard', false); show('vendorCard', false); show('salesCard', false); show('forumSeedCard', false);
+    show('promoCard', false); show('promoListCard', false); show('storePageCard', false); show('announceListCard', false); show('dirCard', false); show('catalogCard', false); show('vendorCard', false); show('salesCard', false); show('forumSeedCard', false);
     $('who').textContent = '';
     unsubscribeRecent?.(); unsubscribeRecent = null;
     unsubscribeFeedback?.(); unsubscribeFeedback = null;
@@ -213,13 +213,14 @@ async function refreshGate(user) {
   show('reportsCard', isAdmin);
   show('promoCard', isAdmin);
   show('promoListCard', isAdmin);
+  show('storePageCard', isAdmin);
   show('announceListCard', isAdmin);
   show('dirCard', isAdmin);
   show('catalogCard', isAdmin);
   show('vendorCard', isAdmin);
   show('salesCard', isAdmin);
   show('forumSeedCard', isAdmin);
-  if (isAdmin) { watchRecent(); watchFeedback(); watchReports(); watchPromos(); watchAnnouncements(); loadAppSales(); }
+  if (isAdmin) { watchRecent(); watchFeedback(); watchReports(); watchPromos(); watchStorePages(); watchAnnouncements(); loadAppSales(); }
 }
 $('showDone').addEventListener('change', renderFeedback);
 $('showClosedReports').addEventListener('change', renderReports);
@@ -402,6 +403,33 @@ const PROMO_BUTTON_COLORS = {
   white: ['#FFFFFF', '#253856'],
 };
 
+// A colour code typed or picked, as #rrggbb, or "" when the box is empty or
+// not a code. Wins over the named colours when filled in.
+function promoHex() {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec($('pCtaHex').value.trim());
+  if (!m) return '';
+  const d = m[1].length === 3 ? [...m[1]].map((c) => c + c).join('') : m[1];
+  return `#${d.toLowerCase()}`;
+}
+
+// What goes to the backend: the code if there is one, else the named colour.
+function promoColorValue() {
+  return promoHex() || $('pCtaColor').value;
+}
+
+// Navy or white words, whichever reads better on the fill: the same rule the
+// phone uses, so the preview is what people will see.
+function readableOn(hex) {
+  const lum = (h) => {
+    const ch = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255)
+      .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  };
+  const contrast = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  const l = lum(hex);
+  return contrast(l, lum('#253856')) >= contrast(l, 1) ? '#253856' : '#FFFFFF';
+}
+
 function ctaWhere(target) {
   if (!target) return '';
   if (/^app:/i.test(target)) {
@@ -447,16 +475,22 @@ function renderPromoPreview() {
   const cta = $('pPreviewCta');
   cta.textContent = ctaLabel;
   cta.hidden = !ctaLabel;
-  const tint = PROMO_BUTTON_COLORS[$('pCtaColor').value];
+  const hex = promoHex();
+  const tint = hex ? [hex, readableOn(hex)] : PROMO_BUTTON_COLORS[$('pCtaColor').value];
+  $('pCtaHex').style.borderColor = $('pCtaHex').value.trim() && !hex ? '#D270D1' : '';
   cta.style.background = tint ? tint[0] : '';
   cta.style.color = tint ? tint[1] : '';
   // An advert with a photo is the photo and its button, nothing else
   // (Grace, 2026-10-28), so the preview hides the words the phone hides.
-  const photoOnly = kind === 'ad' && Boolean(photo);
+  // Any card with a photo, announcement too (QA suite, 2026-10-28).
+  const photoOnly = Boolean(photo);
   $('pPreviewFrom').hidden = photoOnly;
   $('pPreviewTitle').hidden = photoOnly;
   $('pPreviewCaption').hidden = photoOnly;
   $('pCaptionOptional').hidden = !photoOnly;
+  $('pCaptionOptional').textContent = kind === 'announcement'
+    ? '(not on the card, which is just the photo; it is what the push and the bell say)'
+    : '(optional: an advert with a photo is just the photo)';
   // Where the button goes, in words. The three destinations look alike in
   // a text box, and getting one wrong is only visible once the advert is
   // live on everybody's phone (Grace asked for in-app links, 2026-09-24).
@@ -510,7 +544,7 @@ function stopEditingPromo() {
   $('pCancelEditBtn').hidden = true;
   $('pTitle').value = ''; $('pCaption').value = '';
   $('pCtaLabel').value = ''; $('pCtaUrl').value = '';
-  $('pCtaScreen').value = ''; $('pCtaColor').value = '';
+  $('pCtaScreen').value = ''; $('pCtaColor').value = ''; $('pCtaHex').value = '';
   $('pStarts').value = ''; $('pEnds').value = '';
   promoPhotos = [];
   renderPromoThumbs();
@@ -537,7 +571,9 @@ function editPromo(id, p) {
   $('pCtaLabel').value = p.ctaLabel || '';
   $('pCtaUrl').value = p.ctaUrl || '';
   $('pCtaScreen').value = /^app:/.test(p.ctaUrl || '') ? p.ctaUrl.slice(4) : '';
-  $('pCtaColor').value = p.ctaColor || '';
+  const saved = p.ctaColor || '';
+  $('pCtaColor').value = saved.startsWith('#') ? '' : saved;
+  $('pCtaHex').value = saved.startsWith('#') ? saved.toUpperCase() : '';
   $('pStarts').value = promoLocalValue(p.startsAt);
   $('pEnds').value = promoLocalValue(p.endsAt);
   promoPhotos = (Array.isArray(p.imageUrls) ? p.imageUrls : []).map((url) => ({ url, pending: false }));
@@ -675,7 +711,14 @@ $('pCtaUrl').addEventListener('input', () => {
   if (!/^app:/i.test($('pCtaUrl').value.trim())) $('pCtaScreen').value = '';
 });
 
-for (const id of ['pKind', 'pTitle', 'pCaption', 'pCtaLabel', 'pCtaUrl', 'pCtaColor']) {
+// The picker fills the code box; picking a named colour clears it.
+$('pCtaPick').addEventListener('input', () => {
+  $('pCtaHex').value = $('pCtaPick').value.toUpperCase();
+  renderPromoPreview();
+});
+$('pCtaColor').addEventListener('change', () => { $('pCtaHex').value = ''; });
+
+for (const id of ['pKind', 'pTitle', 'pCaption', 'pCtaLabel', 'pCtaUrl', 'pCtaColor', 'pCtaHex']) {
   $(id).addEventListener('input', renderPromoPreview);
   $(id).addEventListener('change', renderPromoPreview);
 }
@@ -688,7 +731,7 @@ $('pPostBtn').addEventListener('click', async () => {
   const who = $('pAudience').selectedOptions[0].textContent.toLowerCase();
   const ctaLabel = $('pCtaLabel').value.trim();
   const ctaUrl = $('pCtaUrl').value.trim();
-  const ctaColor = $('pCtaColor').value;
+  const ctaColor = promoColorValue();
   const imageUrls = promoPhotos.filter((p) => !p.pending).map((p) => p.url);
   const what = promoEditingId
     // Editing never re-announces: a push already went out when it was
@@ -735,6 +778,135 @@ $('pPostBtn').addEventListener('click', async () => {
     renderPromoPreview();
   }
 });
+
+// ----------------------------------------------- store pages on the feed
+//
+// Grace, 2026-10-28 (QA suite): "Add something to the admin portal to select
+// pages from shopify and post them on the for you feed". The list comes from
+// the store's sitemap; picking one fills the form from the page's own
+// link-preview tags, and every field can be changed before posting.
+
+let unsubscribeStorePages = null;
+
+function spShowImage() {
+  const url = $('spImage').value.trim();
+  const img = $('spImagePreview');
+  if (url.startsWith('https://')) { img.src = url; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
+}
+
+async function spPreview() {
+  const url = $('spPick').value;
+  if (!url) return;
+  notice('spNotice', 'Reading the page…', true);
+  try {
+    const { data } = await httpsCallable(functions, 'adminStorePagePreview')({ url });
+    $('spTitle').value = data.title || '';
+    $('spBlurb').value = data.blurb || '';
+    $('spImage').value = data.imageUrl || '';
+    spShowImage();
+    $('spNotice').hidden = true;
+  } catch (error) {
+    notice('spNotice', describe(error), false);
+  }
+}
+
+$('spLoadBtn').addEventListener('click', async () => {
+  $('spLoadBtn').disabled = true;
+  notice('spNotice', 'Asking the store for its pages…', true);
+  try {
+    const { data } = await httpsCallable(functions, 'adminStorePagesList')({});
+    const pick = $('spPick');
+    pick.innerHTML = '';
+    for (const p of data.pages || []) {
+      const o = document.createElement('option');
+      o.value = p.url;
+      o.textContent = p.title;
+      pick.appendChild(o);
+    }
+    $('spForm').hidden = false;
+    $('spNotice').hidden = true;
+    await spPreview();
+  } catch (error) {
+    notice('spNotice', describe(error), false);
+  } finally {
+    $('spLoadBtn').disabled = false;
+  }
+});
+
+$('spPick').addEventListener('change', spPreview);
+$('spImage').addEventListener('input', spShowImage);
+
+$('spPostBtn').addEventListener('click', async () => {
+  const title = $('spTitle').value.trim();
+  if (!window.confirm(`Post "${title}" to everybody's For you feed?`)) return;
+  $('spPostBtn').disabled = true;
+  try {
+    await httpsCallable(functions, 'adminStorePagePost')({
+      url: $('spPick').value,
+      title,
+      blurb: $('spBlurb').value.trim(),
+      imageUrl: $('spImage').value.trim(),
+    });
+    notice('spNotice', 'Posted. It is on the For you feed now.', true);
+  } catch (error) {
+    notice('spNotice', describe(error), false);
+  } finally {
+    $('spPostBtn').disabled = false;
+  }
+});
+
+function watchStorePages() {
+  unsubscribeStorePages?.();
+  const q = query(collection(db, 'storePages'), orderBy('createdAt', 'desc'), limit(30));
+  unsubscribeStorePages = onSnapshot(q, (snap) => {
+    const list = $('storePages');
+    list.innerHTML = '';
+    if (snap.empty) { list.innerHTML = '<li class="meta">No store pages posted yet.</li>'; return; }
+    for (const d of snap.docs) {
+      const p = d.data();
+      const active = p.active !== false;
+      const li = document.createElement('li');
+      li.className = 'fb';
+      const body = document.createElement('div');
+      body.className = 'body';
+      const head = document.createElement('div');
+      const tag = document.createElement('span');
+      tag.className = `tag ${active ? '' : 'bug'}`;
+      tag.textContent = active ? 'on the feed' : 'hidden';
+      const strong = document.createElement('strong');
+      strong.textContent = p.title || '';
+      head.append(tag, strong);
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = [p.url, p.createdAt?.toDate ? p.createdAt.toDate().toLocaleString() : ''].filter(Boolean).join(' · ');
+      const actions = document.createElement('div');
+      const mk = (label, fn) => {
+        const b = document.createElement('button');
+        b.className = 'quiet tiny';
+        b.textContent = label;
+        b.style.marginRight = '6px';
+        b.addEventListener('click', async () => {
+          b.disabled = true;
+          try { await fn(); } catch (e) { window.alert(describe(e)); b.disabled = false; }
+        });
+        return b;
+      };
+      actions.appendChild(mk(active ? 'Hide' : 'Show again', () =>
+        httpsCallable(functions, 'adminStorePageSetActive')({ id: d.id, active: !active })));
+      actions.appendChild(mk('Delete', async () => {
+        if (!window.confirm(`Delete "${p.title || 'this page'}" from the feed for good?
+
+Hide takes it off without deleting it.`)) return;
+        await httpsCallable(functions, 'adminStorePageDelete')({ id: d.id });
+      }));
+      body.append(head, meta, actions);
+      li.appendChild(body);
+      list.appendChild(li);
+    }
+  }, (error) => {
+    $('storePages').innerHTML = `<li class="meta">${escapeHtml(describe(error))}</li>`;
+  });
+}
 
 function watchPromos() {
   unsubscribePromos?.();

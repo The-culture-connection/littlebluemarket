@@ -83,6 +83,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           textInputAction: TextInputAction.search,
           onSubmitted: _submit,
         ),
+        // Grace, 2026-10-28 (QA suite): "no home button".
+        actions: const [HomeButton()],
       ),
       child: ListView(
         padding: EdgeInsets.zero,

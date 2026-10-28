@@ -224,7 +224,7 @@ abstract final class FirestoreMappers {
     imageUrls: strings(data['imageUrls']),
     ctaLabel: str(data['ctaLabel']),
     ctaUrl: str(data['ctaUrl']),
-    ctaColor: PromoButtonColor.fromValue(str(data['ctaColor'])),
+    ctaColor: str(data['ctaColor']),
     mentions: stringMap(data['mentions']),
     active: boolean(data['active'], true),
     createdAt: timeOrNull(data['createdAt']),
@@ -232,6 +232,15 @@ abstract final class FirestoreMappers {
     endsAt: timeOrNull(data['endsAt']),
     impressions: integer(data['impressions']),
     clicks: integer(data['clicks']),
+  );
+
+  static StorePage storePage(String id, Map<String, dynamic> data) => StorePage(
+    id: id,
+    url: str(data['url']),
+    title: str(data['title']),
+    blurb: str(data['blurb']),
+    imageUrl: str(data['imageUrl']),
+    createdAt: timeOrNull(data['createdAt']),
   );
 
   /// A deterministic avatar colour from a uid: one of the brand guide's

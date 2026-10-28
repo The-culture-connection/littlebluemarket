@@ -2769,6 +2769,12 @@ class FixturePromoRepository implements PromoRepository {
         ].take(limit).toList(),
       );
 
+  /// None in the demo data: the feed tests count what is on a page, and a
+  /// store page is posted by hand on the admin website, not seeded.
+  @override
+  Stream<List<StorePage>> watchStorePages({int limit = 5}) =>
+      Stream.value(const []);
+
   @override
   Future<void> recordSeen(String id) => _bump(id, seen: true);
 
