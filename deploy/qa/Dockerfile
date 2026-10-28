@@ -1,5 +1,5 @@
-# The QA suite for Railway (service: lbm-qa, staging environment), ported
-# from the Empower Health suite on 2026-10-22. Railway uses this file via
+# The QA suite for Railway (services: lbm-qa in staging, lbm-qa-live in
+# production), ported from the Empower Health suite on 2026-10-22. Railway uses this file via
 # RAILWAY_DOCKERFILE_PATH=deploy/qa/Dockerfile, building from the repo root.
 #   /        the QA page (deploy/qa/harness): checklist, phone frame, console
 #   /app/    the app under test
@@ -7,9 +7,14 @@
 #            volume mounted at /data
 #   /img     the app's picture pass-through, as on the web app
 #
-# Always the TEST backend: the dev Firebase project and the dev Shopify shop.
-# Testers add to carts, post and check out here, and none of that may reach
-# real customers (Grace, 2026-10-22). There is deliberately no LBM_ENV switch.
+# Which backend is the Railway variable LBM_ENV, read here as a build arg:
+#   dev  (the default, and staging's lbm-qa) the dev Firebase project and the
+#        dev Shopify shop. Testers add to carts, post and check out, and none
+#        of it reaches real customers (Grace, 2026-10-22).
+#   prod (production's lbm-qa-live) the LIVE project and the real shop, so
+#        the suite shows exactly what customers see (Grace, 2026-10-28). Here
+#        every post, message and order a tester makes is real.
+# Anything else fails the build rather than guessing.
 
 # The same Flutter as the website (Dockerfile.web). Pinned to 3.41.6 like
 # Empower Health, the web compile failed: firebase_core_web needs a newer
@@ -17,12 +22,14 @@
 FROM ghcr.io/cirruslabs/flutter:stable AS build
 ARG RAILWAY_GIT_COMMIT_SHA
 ARG RAILWAY_GIT_BRANCH
+ARG LBM_ENV=dev
 WORKDIR /app
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 COPY . .
-# The dev project's Firebase settings, over whichever were last swapped in.
-RUN cp firebase/config/dev/firebase_options.dart lib/firebase_options.dart && \
+# That project's Firebase settings, over whichever were last swapped in.
+RUN case "$LBM_ENV" in dev|prod) ;; *) echo "LBM_ENV must be dev or prod, got '$LBM_ENV'" >&2; exit 1;; esac && \
+    cp "firebase/config/$LBM_ENV/firebase_options.dart" lib/firebase_options.dart && \
     grep -m1 "projectId:" lib/firebase_options.dart
 # Map widget classes to source for layout findings (web has no creation
 # tracking).
