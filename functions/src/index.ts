@@ -98,6 +98,7 @@ import {
   listStorePages,
   postStorePage,
   previewStorePage,
+  readStorePageOnce,
   refreshStorePage,
   setStorePageActive,
   type StorePageInput,
@@ -1043,6 +1044,18 @@ export const adminStorePageDelete = onCall(
     requireAdmin(request.auth?.token);
     const data = (request.data ?? {}) as Record<string, unknown>;
     return deleteStorePage(String(data.id ?? ''));
+  }),
+);
+
+/**
+ * A phone opened a posted store page that has nothing to draw yet. Any
+ * signed-in caller; the store is read at most once an hour per page.
+ */
+export const storePageRead = onCall(
+  withLoudErrors('storePageRead', async (request) => {
+    requireUid(request.auth);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    return readStorePageOnce(String(data.id ?? ''));
   }),
 );
 

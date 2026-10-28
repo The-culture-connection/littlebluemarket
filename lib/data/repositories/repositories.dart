@@ -566,6 +566,11 @@ abstract interface class PromoRepository {
   /// Little Blue Market's own pages posted to the For you feed, newest
   /// first, only the ones switched on. Written by the admin website.
   Stream<List<StorePage>> watchStorePages({int limit = 5});
+
+  /// Asks the backend to read a posted page that has nothing to draw yet,
+  /// and answers how many parts it found. The words themselves arrive on
+  /// [watchStorePages], because the backend keeps them with the post.
+  Future<int> readStorePage(String id);
 }
 
 /// littlebluecart.com, the directory: this account's link to a WordPress

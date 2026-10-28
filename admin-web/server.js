@@ -52,6 +52,12 @@ app.get('/firebase-config.js', (req, res) => {
 
 app.use(express.static(join(here, 'public'), { extensions: ['html'] }));
 app.get('/healthz', (req, res) => res.send(`ok (${env})`));
+// Which build this is, so an open tab can tell it is out of date.
+const version = process.env.RAILWAY_DEPLOYMENT_ID ?? process.env.RAILWAY_GIT_COMMIT_SHA ?? '';
+app.get('/version', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.type('text/plain').send(version);
+});
 
 const port = Number(process.env.PORT ?? 3000);
 app.listen(port, () =>

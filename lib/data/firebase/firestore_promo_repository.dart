@@ -80,6 +80,14 @@ class FirestorePromoRepository implements PromoRepository {
       .guarded(operation: 'firestore storePages');
 
   @override
+  Future<int> readStorePage(String id) => guardFirestore(() async {
+    final result = await _functions
+        .httpsCallable('storePageRead')
+        .call<Map<String, dynamic>>({'id': id});
+    return (result.data['blockCount'] as num?)?.toInt() ?? 0;
+  }, operation: 'storePageRead');
+
+  @override
   Future<void> recordSeen(String id) => _record(id, 'seen');
 
   @override

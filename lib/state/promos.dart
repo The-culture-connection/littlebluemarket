@@ -127,6 +127,12 @@ final storePagesProvider = StreamProvider<List<StorePage>>((ref) {
   return ref.watch(promoRepositoryProvider).watchStorePages();
 });
 
+/// A posted page with nothing to draw, read on the spot when it is opened.
+/// See [PromoRepository.readStorePage].
+final storePageReadProvider = FutureProvider.family<int, String>((ref, id) {
+  return ref.watch(promoRepositoryProvider).readStorePage(id);
+});
+
 /// A promo somebody tapped on, to open as the full popup with every photo
 /// to swipe through (Grace, 2026-10-28: "Allow to click on announcements to
 /// show pop up version and slide through images").

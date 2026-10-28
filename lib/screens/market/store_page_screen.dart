@@ -43,8 +43,40 @@ class StorePageScreen extends ConsumerWidget {
           title: 'This page is no longer posted',
           body: 'It may have been taken down from the feed.',
         ),
-        (_, final StorePage page) => _PageBody(page: page),
+        (_, final StorePage page) when page.readsInApp => _PageBody(page: page),
+        (_, final StorePage page) => _Unread(page: page),
       },
+    );
+  }
+}
+
+/// A posted page with nothing to draw yet: the backend reads it now, and
+/// the words arrive on the same listener that drew the card. Only when the
+/// page has no words at all (a lookup form) does it offer the website, and
+/// then only on a tap.
+class _Unread extends ConsumerWidget {
+  const _Unread({required this.page});
+
+  final StorePage page;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final read = ref.watch(storePageReadProvider(page.id));
+    final nothing = read.hasError || (read.value ?? 1) == 0;
+    if (!nothing) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return LbmEmpty(
+      title: 'This page is best seen on the website',
+      body:
+          'It is a form or a tool rather than something to read, so the app '
+          'cannot show it on its own screen.',
+      action: PillButton(
+        'Open littlebluemarket.com',
+        icon: Icons.open_in_new_rounded,
+        expand: false,
+        onPressed: () => openStorePageLink(context, page.url),
+      ),
     );
   }
 }

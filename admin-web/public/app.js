@@ -742,10 +742,14 @@ $('pCtaUrl').addEventListener('input', () => {
 });
 
 // The picker fills the code box; picking a named colour clears it.
-$('pCtaPick').addEventListener('input', () => {
-  $('pCtaHex').value = $('pCtaPick').value.toUpperCase();
-  renderPromoPreview();
-});
+// Both events: some browsers only report the picked colour when the picker
+// closes, and a picker that changed nothing in the box saved no colour.
+for (const event of ['input', 'change']) {
+  $('pCtaPick').addEventListener(event, () => {
+    $('pCtaHex').value = $('pCtaPick').value.toUpperCase();
+    renderPromoPreview();
+  });
+}
 $('pCtaColor').addEventListener('change', () => { $('pCtaHex').value = ''; });
 
 for (const id of ['pKind', 'pTitle', 'pCaption', 'pCtaLabel', 'pCtaUrl', 'pCtaColor', 'pCtaHex']) {
@@ -797,13 +801,18 @@ $('pPostBtn').addEventListener('click', async () => {
         startsAt: promoWhen('pStarts'), endsAt: promoWhen('pEnds'),
       });
     }
+    // Says which colour went, so "it did not change" can be told apart from
+    // "it was never sent" (Grace, 2026-10-28).
+    const colourNote = ctaLabel
+      ? ` Button colour: ${ctaColor || 'white (the usual)'}.`
+      : '';
     notice(
       'pNotice',
-      promoEditingId
+      (promoEditingId
         ? 'Saved. Every phone has the new wording.'
         : kind === 'announcement'
         ? `Announced to ${who}.`
-        : `Advert is live for ${who}.`,
+        : `Advert is live for ${who}.`) + colourNote,
       true,
     );
     stopEditingPromo();
@@ -1681,3 +1690,34 @@ $('forumSeedBtn').addEventListener('click', async () => {
     $('forumSeedBtn').disabled = false;
   }
 });
+
+// ------------------------------------------------- a newer admin site
+//
+// A tab left open keeps running the script it loaded, so a fix deployed
+// since is not in it. That has bitten twice: an old error after a fix
+// (2026-09-14), and advert colours still not saving after the colour box was
+// mended (2026-10-28). The server says which version it is serving; when
+// that is no longer the one this tab loaded, say so at the top.
+(async () => {
+  const served = async () => {
+    try {
+      const r = await fetch('/version', { cache: 'no-store' });
+      return r.ok ? (await r.text()).trim() : '';
+    } catch {
+      return '';
+    }
+  };
+  const mine = await served();
+  if (!mine) return;
+  setInterval(async () => {
+    const now = await served();
+    if (!now || now === mine || document.getElementById('newerSite')) return;
+    const bar = document.createElement('div');
+    bar.id = 'newerSite';
+    bar.className = 'notice ok';
+    bar.style.cssText = 'position:sticky;top:0;z-index:50;margin:0;text-align:center;cursor:pointer';
+    bar.textContent = 'A newer version of this admin site is ready. Click here to reload before you save anything.';
+    bar.addEventListener('click', () => window.location.reload());
+    document.body.prepend(bar);
+  }, 60_000);
+})();

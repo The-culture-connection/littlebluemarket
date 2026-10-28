@@ -405,6 +405,46 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets(
+      'a page with nothing saved still opens the app screen, never a tab',
+      (tester) async {
+        // Grace, 2026-10-28: "the page opened a new tab when clicked". The
+        // About post predates pages being read; the screen asks the backend
+        // to read it, and offers the website only if there is nothing to read.
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        const unread = StorePage(
+          id: 'old1',
+          url: 'https://littlebluemarket.com/pages/track-your-order',
+          title: 'Track your order',
+        );
+        final container = ProviderContainer(
+          retry: lbmRetry,
+          overrides: [
+            storePagesProvider.overrideWith((ref) => Stream.value([unread])),
+          ],
+        );
+        addTearDown(container.dispose);
+        container.read(sessionProvider.notifier).signIn();
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const LittleBlueMarketApp(),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byType(StorePagePin));
+        await tester.pumpAndSettle();
+        expect(find.byType(StorePageScreen), findsOneWidget);
+        // The fixture backend finds nothing to read on this one.
+        expect(
+          find.text('This page is best seen on the website'),
+          findsOneWidget,
+        );
+      },
+    );
+
     testWidgets('the page screen draws in dark mode without overflowing', (
       tester,
     ) async {

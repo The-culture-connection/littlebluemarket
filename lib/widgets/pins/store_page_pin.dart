@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../legal_links.dart';
 import '../../models/feed_item.dart';
 import '../../router/nav.dart';
 import '../../theme/app_theme.dart';
@@ -12,9 +11,9 @@ import '../product_art.dart';
 ///
 /// The newest one is drawn [wide] at the top of For you, above the grid
 /// ("When posted should go to the top of the feed"); any other is column
-/// width in the grid, like a forum thread. Tapping opens the page on the
-/// app's own screen when it was read at posting, and over the app as the
-/// web page when it could not be.
+/// width in the grid, like a forum thread. Tapping always opens the app's
+/// own page screen, never a browser tab (Grace, 2026-10-28: "the page opened
+/// a new tab when clicked"); that screen reads the page if it has to.
 class StorePagePin extends StatelessWidget {
   const StorePagePin({super.key, required this.item, this.wide = false});
 
@@ -23,18 +22,7 @@ class StorePagePin extends StatelessWidget {
   /// Full width, at the top of the feed.
   final bool wide;
 
-  Future<void> _open(BuildContext context) async {
-    if (item.page.readsInApp) {
-      context.goToStorePage(item.page.id);
-      return;
-    }
-    final messenger = ScaffoldMessenger.of(context);
-    if (!await openInApp(item.page.url)) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Could not open ${item.page.url}')),
-      );
-    }
-  }
+  void _open(BuildContext context) => context.goToStorePage(item.page.id);
 
   @override
   Widget build(BuildContext context) {

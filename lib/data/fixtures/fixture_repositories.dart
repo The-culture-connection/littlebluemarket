@@ -2776,6 +2776,9 @@ class FixturePromoRepository implements PromoRepository {
       Stream.value(const []);
 
   @override
+  Future<int> readStorePage(String id) async => 0;
+
+  @override
   Future<void> recordSeen(String id) => _bump(id, seen: true);
 
   @override

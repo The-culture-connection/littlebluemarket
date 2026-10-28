@@ -1,7 +1,14 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { previewOf, sitemapLocs, STORE_SITE, validateStorePage } from '../src/store_pages.ts';
+import {
+  needsReading,
+  previewOf,
+  sitemapLocs,
+  STORE_PAGE_RETRY_MS,
+  STORE_SITE,
+  validateStorePage,
+} from '../src/store_pages.ts';
 
 // Grace, 2026-10-28 (QA suite): store pages posted to the For you feed.
 
@@ -39,4 +46,15 @@ test('only the store\'s own pages can be posted', () => {
     () => validateStorePage({ url: `${STORE_SITE}/pages/about`, title: 'x', imageUrl: 'http://a/b.jpg' }),
     /https/,
   );
+});
+
+test('a page is read when a phone opens it with nothing to draw, at most hourly', () => {
+  const now = 10 * STORE_PAGE_RETRY_MS;
+  // Posted before pages were read: no blocks field at all.
+  assert.equal(needsReading(undefined, null, now), true);
+  // Already has words: left to Refresh on the admin website.
+  assert.equal(needsReading([{ kind: 'text', text: 'Hi' }], now, now), false);
+  // Read and found nothing: not again within the hour, then once more.
+  assert.equal(needsReading([], now - 60_000, now), false);
+  assert.equal(needsReading([], now - STORE_PAGE_RETRY_MS, now), true);
 });

@@ -204,6 +204,7 @@ export async function postStorePage(input: StorePageInput, byUid: string): Promi
   await ref.set({
     ...clean,
     blocks,
+    blocksReadAt: FieldValue.serverTimestamp(),
     active: true,
     createdAt: FieldValue.serverTimestamp(),
     postedBy: byUid,
@@ -223,8 +224,52 @@ export async function refreshStorePage(id: string): Promise<{ id: string; blockC
   const snap = await ref.get();
   if (!snap.exists) throw new HttpsError('not-found', `There is no posted page with the id ${id}.`);
   const blocks = await readBlocks(String(snap.get('url') ?? ''));
-  await ref.set({ blocks, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  await ref.set(
+    { blocks, blocksReadAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
   return { id, blockCount: blocks.length };
+}
+
+/** How long a page that could not be read is left before trying again. */
+export const STORE_PAGE_RETRY_MS = 60 * 60 * 1000;
+
+/**
+ * Whether a phone opening this page should have it read now. Pure.
+ *
+ * Yes when it has never been read (posted before pages opened in the app),
+ * or when the last read found nothing over an hour ago. Never when it
+ * already has words: those are renewed by Refresh on the admin website.
+ */
+export function needsReading(blocks: unknown, readAtMs: number | null, nowMs: number): boolean {
+  if (Array.isArray(blocks) && blocks.length > 0) return false;
+  if (!Array.isArray(blocks) || readAtMs === null) return true;
+  return nowMs - readAtMs >= STORE_PAGE_RETRY_MS;
+}
+
+/**
+ * Any phone opening a posted page that has nothing to draw yet: reads it
+ * once and keeps it, so every phone after gets it from the post (Grace,
+ * 2026-10-28: "the page opened a new tab when clicked", the About page,
+ * posted before the app could read pages). The phone's own listener picks
+ * the words up; this answers how many there were.
+ */
+export async function readStorePageOnce(id: string): Promise<{ id: string; blockCount: number }> {
+  if (!id) throw new HttpsError('invalid-argument', 'Which page?');
+  const ref = getFirestore().collection('storePages').doc(id);
+  const snap = await ref.get();
+  if (!snap.exists || snap.get('active') !== true) {
+    throw new HttpsError('not-found', 'This page is no longer posted.');
+  }
+  const blocks: unknown = snap.get('blocks');
+  const readAt = snap.get('blocksReadAt');
+  const readAtMs = typeof readAt?.toMillis === 'function' ? (readAt.toMillis() as number) : null;
+  if (!needsReading(blocks, readAtMs, Date.now())) {
+    return { id, blockCount: Array.isArray(blocks) ? blocks.length : 0 };
+  }
+  const fresh = await readBlocks(String(snap.get('url') ?? ''));
+  await ref.set({ blocks: fresh, blocksReadAt: FieldValue.serverTimestamp() }, { merge: true });
+  return { id, blockCount: fresh.length };
 }
 
 export async function setStorePageActive(id: string, active: boolean): Promise<{ id: string; active: boolean }> {

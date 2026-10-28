@@ -227,7 +227,16 @@ export async function savePromo(
     },
     { merge: true },
   );
-  logger.info('Promo saved', { id: ref.id, kind: clean.kind, audience: clean.audience, edit: Boolean(id) });
+  // The colour too: "button colors are not changing" (Grace, 2026-10-28)
+  // could not be told apart from a colour never sent until it was logged.
+  logger.info('Promo saved', {
+    id: ref.id,
+    kind: clean.kind,
+    audience: clean.audience,
+    edit: Boolean(id),
+    ctaColor: clean.ctaColor,
+    sentColor: String(input.ctaColor ?? ''),
+  });
   return { id: ref.id };
 }
 
