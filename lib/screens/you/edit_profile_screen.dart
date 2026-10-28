@@ -289,6 +289,50 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 12),
           if (me.isSeller) const _SellerRows() else const _BuyerRows(),
           const SizedBox(height: 12),
+          // Little Blue Market's own pages, read without leaving the app
+          // (Grace, 2026-10-28).
+          LbmCard(
+            child: RowStack(
+              children: [
+                _PolicyRow(
+                  icon: Icons.info_outline_rounded,
+                  title: 'About Little Blue Market',
+                  url: MarketPages.about,
+                ),
+                _PolicyRow(
+                  icon: Icons.help_outline_rounded,
+                  title: 'Shopper FAQs',
+                  url: MarketPages.shopperFaqs,
+                ),
+                _PolicyRow(
+                  icon: Icons.local_shipping_outlined,
+                  title: 'Track your order',
+                  url: MarketPages.trackOrder,
+                ),
+                _PolicyRow(
+                  icon: Icons.assignment_return_outlined,
+                  title: 'Returns and refunds',
+                  url: MarketPages.refunds,
+                ),
+                _PolicyRow(
+                  icon: Icons.groups_outlined,
+                  title: 'Community guidelines',
+                  url: MarketPages.communityGuidelines,
+                ),
+                _PolicyRow(
+                  icon: Icons.accessibility_new_rounded,
+                  title: 'Accessibility',
+                  url: MarketPages.accessibility,
+                ),
+                _PolicyRow(
+                  icon: Icons.mail_outline_rounded,
+                  title: 'Contact us',
+                  url: MarketPages.contact,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           // The store's policies, on littlebluemarket.com. App review asks
           // that both be reachable from inside the app.
           LbmCard(
@@ -311,7 +355,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   onTap: () => context.push(LegalLinks.termsRoute),
                 ),
                 _PolicyRow(
-                  icon: Icons.local_shipping_outlined,
+                  icon: Icons.storefront_outlined,
                   title: 'Store policy',
                   url: LegalLinks.storeTerms,
                 ),
@@ -474,7 +518,10 @@ class _DirectoryRow extends ConsumerWidget {
           ),
         ListRow(
           title: const Text('Little Blue Cart directory'),
-          subtitle: const Text('Your website orders and your business listing'),
+          // No orders here: nothing is sold on littlebluecart.com
+          // (Grace, 2026-10-28). This is where a directory business links
+          // and looks after its listing.
+          subtitle: const Text('Link and manage your business listing'),
           trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
           onTap: () => context.push('/you/directory'),
         ),
@@ -612,10 +659,12 @@ class _PolicyRow extends StatelessWidget {
       leading: Icon(icon, color: c.ink3),
       title: Text(title),
       subtitle: const Text('littlebluemarket.com'),
-      trailing: Icon(Icons.open_in_new_rounded, size: 18, color: c.ink3),
+      trailing: Icon(Icons.chevron_right_rounded, size: 22, color: c.ink3),
+      // Over the app rather than out to the browser: they are pages of
+      // the store this app is, and Done should land back here.
       onTap: () async {
         final messenger = ScaffoldMessenger.of(context);
-        if (!await openLegalLink(url)) {
+        if (!await openInApp(url)) {
           messenger.showSnackBar(
             SnackBar(content: Text('Could not open $url')),
           );

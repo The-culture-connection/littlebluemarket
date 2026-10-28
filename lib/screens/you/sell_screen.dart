@@ -161,16 +161,17 @@ class _SellWithUsScreenState extends ConsumerState<SellWithUsScreen> {
             // granted against it.
             const UnverifiedBanner(),
             _Card(
-              title: 'Already a Little Blue Cart vendor?',
+              // Grace's words, 2026-10-28.
+              title: 'Already a Little Blue Market seller?',
               body:
-                  'If you sell with us through Shipturtle under this email, '
-                  'tap below. The app checks our vendor list and switches '
-                  'your profile to a storefront.',
+                  'When you sign into the app with the same email you used '
+                  'to register on Little Blue Market, tap below to connect '
+                  'your profile to your Market products.',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   PillButton(
-                    _checking ? 'Checking…' : 'Check my seller status',
+                    _checking ? 'Checking…' : 'Connect my Market account',
                     onPressed: !verified || _checking ? null : _check,
                   ),
                   if (!verified) ...[
@@ -202,8 +203,8 @@ class _SellWithUsScreenState extends ConsumerState<SellWithUsScreen> {
               title: 'New here? Apply to sell',
               body:
                   'Tell us about your shop on our website. Once Little Blue '
-                  'Market approves you, come back here and tap Check my '
-                  'seller status.',
+                  'Market approves you, come back here and tap Connect my '
+                  'Market account.',
               child: LbmAsync<AppConfig>(
                 config,
                 skeleton: const SizedBox(height: 40),

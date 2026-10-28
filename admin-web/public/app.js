@@ -386,8 +386,28 @@ function namedTokens(...texts) {
  * what decides, and if those three ever disagree the preview is the one
  * that lies to whoever is writing the advert.
  */
+// The screens an app: link can name. Must match PROMO_SCREENS in
+// functions/src/promos.ts and PromoScreen in lib/models/promo.dart.
+const PROMO_SCREEN_NAMES = {
+  search: 'Search', home: 'Home feed', market: 'Market', directory: 'Directory',
+  community: 'Community chat', forums: 'Forums', cart: 'Check out', donate: 'Chip in',
+};
+
+// The brand colours a button can be, with the label colour that reads on
+// each (orchid carries navy, as on the phone). Must match
+// PROMO_BUTTON_COLORS in functions/src/promos.ts.
+const PROMO_BUTTON_COLORS = {
+  navy: ['#253856', '#FFFFFF'], blue: ['#70A0D2', '#253856'], sky: ['#89C9F4', '#253856'],
+  orchid: ['#D270D1', '#253856'], gold: ['#C49919', '#253856'], cream: ['#FAF2C6', '#253856'],
+  white: ['#FFFFFF', '#253856'],
+};
+
 function ctaWhere(target) {
   if (!target) return '';
+  if (/^app:/i.test(target)) {
+    const name = PROMO_SCREEN_NAMES[target.slice(4).trim().toLowerCase()];
+    return name ? `Opens the ${name} screen in the app.` : 'There is no app screen by that name; pick one from the list.';
+  }
   if (target.startsWith('@')) {
     return `Opens ${target} in the app. Refused when it posts if nobody has that handle.`;
   }
@@ -427,6 +447,16 @@ function renderPromoPreview() {
   const cta = $('pPreviewCta');
   cta.textContent = ctaLabel;
   cta.hidden = !ctaLabel;
+  const tint = PROMO_BUTTON_COLORS[$('pCtaColor').value];
+  cta.style.background = tint ? tint[0] : '';
+  cta.style.color = tint ? tint[1] : '';
+  // An advert with a photo is the photo and its button, nothing else
+  // (Grace, 2026-10-28), so the preview hides the words the phone hides.
+  const photoOnly = kind === 'ad' && Boolean(photo);
+  $('pPreviewFrom').hidden = photoOnly;
+  $('pPreviewTitle').hidden = photoOnly;
+  $('pPreviewCaption').hidden = photoOnly;
+  $('pCaptionOptional').hidden = !photoOnly;
   // Where the button goes, in words. The three destinations look alike in
   // a text box, and getting one wrong is only visible once the advert is
   // live on everybody's phone (Grace asked for in-app links, 2026-09-24).
@@ -454,7 +484,8 @@ function renderPromoPreview() {
 
   const ctaUrl = $('pCtaUrl').value.trim();
   const buttonHalfDone = Boolean(ctaLabel) !== Boolean(ctaUrl);
-  $('pPostBtn').disabled = !(title && caption) || buttonHalfDone || promoUploading > 0;
+  const needsCaption = !(kind === 'ad' && promoPhotos.some((p) => !p.pending));
+  $('pPostBtn').disabled = !title || (needsCaption && !caption) || buttonHalfDone || promoUploading > 0;
   $('pPostBtn').textContent = promoUploading > 0
     ? 'Waiting for the photo…'
     : promoEditingId
@@ -479,6 +510,7 @@ function stopEditingPromo() {
   $('pCancelEditBtn').hidden = true;
   $('pTitle').value = ''; $('pCaption').value = '';
   $('pCtaLabel').value = ''; $('pCtaUrl').value = '';
+  $('pCtaScreen').value = ''; $('pCtaColor').value = '';
   $('pStarts').value = ''; $('pEnds').value = '';
   promoPhotos = [];
   renderPromoThumbs();
@@ -504,6 +536,8 @@ function editPromo(id, p) {
   $('pCaption').value = p.caption || '';
   $('pCtaLabel').value = p.ctaLabel || '';
   $('pCtaUrl').value = p.ctaUrl || '';
+  $('pCtaScreen').value = /^app:/.test(p.ctaUrl || '') ? p.ctaUrl.slice(4) : '';
+  $('pCtaColor').value = p.ctaColor || '';
   $('pStarts').value = promoLocalValue(p.startsAt);
   $('pEnds').value = promoLocalValue(p.endsAt);
   promoPhotos = (Array.isArray(p.imageUrls) ? p.imageUrls : []).map((url) => ({ url, pending: false }));
@@ -628,7 +662,20 @@ $('pPhoto').addEventListener('change', async (event) => {
   }
 });
 
-for (const id of ['pKind', 'pTitle', 'pCaption', 'pCtaLabel', 'pCtaUrl']) {
+// Picking a screen writes its link, so the link box always says where the
+// button goes and the backend sees one field either way.
+$('pCtaScreen').addEventListener('change', () => {
+  const screen = $('pCtaScreen').value;
+  if (screen) $('pCtaUrl').value = `app:${screen}`;
+  renderPromoPreview();
+});
+
+// Typing a link by hand unpicks the screen, so the two never disagree.
+$('pCtaUrl').addEventListener('input', () => {
+  if (!/^app:/i.test($('pCtaUrl').value.trim())) $('pCtaScreen').value = '';
+});
+
+for (const id of ['pKind', 'pTitle', 'pCaption', 'pCtaLabel', 'pCtaUrl', 'pCtaColor']) {
   $(id).addEventListener('input', renderPromoPreview);
   $(id).addEventListener('change', renderPromoPreview);
 }
@@ -641,6 +688,7 @@ $('pPostBtn').addEventListener('click', async () => {
   const who = $('pAudience').selectedOptions[0].textContent.toLowerCase();
   const ctaLabel = $('pCtaLabel').value.trim();
   const ctaUrl = $('pCtaUrl').value.trim();
+  const ctaColor = $('pCtaColor').value;
   const imageUrls = promoPhotos.filter((p) => !p.pending).map((p) => p.url);
   const what = promoEditingId
     // Editing never re-announces: a push already went out when it was
@@ -661,13 +709,13 @@ $('pPostBtn').addEventListener('click', async () => {
       // The announcement path: push, bell, and the popup in one call. Only
       // when it is new — editing one must not push it again.
       await httpsCallable(functions, 'adminSendAnnouncement')({
-        title, body: caption, audience, route: '/you/notifications', imageUrls, ctaLabel, ctaUrl,
+        title, body: caption, audience, route: '/you/notifications', imageUrls, ctaLabel, ctaUrl, ctaColor,
         popup: true, startsAt: promoWhen('pStarts'), endsAt: promoWhen('pEnds'),
       });
     } else {
       await httpsCallable(functions, 'adminPromoSave')({
         id: promoEditingId ?? undefined,
-        kind, title, caption, audience, imageUrls, ctaLabel, ctaUrl,
+        kind, title, caption, audience, imageUrls, ctaLabel, ctaUrl, ctaColor,
         startsAt: promoWhen('pStarts'), endsAt: promoWhen('pEnds'),
       });
     }

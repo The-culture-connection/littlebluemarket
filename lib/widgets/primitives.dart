@@ -215,11 +215,16 @@ class PillButton extends StatelessWidget {
     this.small = false,
     this.icon,
     this.expand = true,
+    this.tint,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final PillStyle style;
+
+  /// A fill and a label colour chosen elsewhere, in place of [style]'s:
+  /// an advert's button in the colour picked for it on the admin website.
+  final (Color, Color)? tint;
 
   /// `.btn.sm` — tighter padding, smaller type, and sized to its content.
   final bool small;
@@ -231,7 +236,9 @@ class PillButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
+    final custom = tint;
     final (Color bg, Color fg, Border? ring) = switch (style) {
+      _ when custom != null => (custom.$1, custom.$2, null),
       PillStyle.solid => (c.accentDeep, c.accentInk, null),
       PillStyle.ghost => (
         c.surface,

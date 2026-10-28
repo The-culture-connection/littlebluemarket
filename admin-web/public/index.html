@@ -303,7 +303,7 @@
     <input id="pTitle" maxlength="60" placeholder="Holiday market, December 14">
     <div class="count"><span id="pTitleLeft">60</span> left</div>
 
-    <label for="pCaption">Caption</label>
+    <label for="pCaption">Caption <span id="pCaptionOptional" hidden>(not shown: an advert with a photo is just the photo)</span></label>
     <textarea id="pCaption" maxlength="180" placeholder="Forty makers, one room, all day. Free entry. Makers include @foundhouse. #HolidayMarket"></textarea>
     <div class="count"><span id="pCaptionLeft">180</span> left</div>
     <p class="hint" style="margin:6px 0 0">Type <strong>@handle</strong> to name a shop and <strong>#Hashtag</strong> to point at a search, in the title or the caption. Both become tappable on the phone: a shop opens its page, a hashtag runs the search. A handle that matches nobody is refused when you post, with the spelling it could not find.</p>
@@ -323,7 +323,36 @@
         <input id="pCtaUrl" placeholder="@polly-politics, #WomenOwned, or littlebluecart.com/market-day">
       </div>
     </div>
-    <p class="hint" style="margin:6px 0 0">Both or neither: a button with no link goes nowhere, and a link with no button is invisible. The button can go three places. Type <strong>@handle</strong> on its own to open that shop or person in the app, <strong>#Hashtag</strong> on its own to run that search, or a web address, which has to be https. A handle that matches nobody is refused here rather than becoming a dead button on every phone.</p>
+    <div class="row">
+      <div>
+        <label for="pCtaScreen">Or open a screen in the app</label>
+        <select id="pCtaScreen">
+          <option value="">Choose a screen…</option>
+          <option value="search">Search</option>
+          <option value="home">Home feed</option>
+          <option value="market">Market</option>
+          <option value="directory">Directory</option>
+          <option value="community">Community chat</option>
+          <option value="forums">Forums</option>
+          <option value="cart">Check out</option>
+          <option value="donate">Chip in</option>
+        </select>
+      </div>
+      <div>
+        <label for="pCtaColor">Button colour</label>
+        <select id="pCtaColor">
+          <option value="">Usual (navy)</option>
+          <option value="navy">Navy</option>
+          <option value="blue">Blue</option>
+          <option value="sky">Sky</option>
+          <option value="orchid">Orchid</option>
+          <option value="gold">Gold</option>
+          <option value="cream">Cream</option>
+          <option value="white">White</option>
+        </select>
+      </div>
+    </div>
+    <p class="hint" style="margin:6px 0 0">Both or neither: a button with no link goes nowhere, and a link with no button is invisible. The button can go four places. Type <strong>@handle</strong> on its own to open that shop or person in the app, <strong>#Hashtag</strong> on its own to run that search, a web address, which has to be https, or pick a screen in the app from the list (it fills in the link as <strong>app:search</strong> and so on). Screens in the app need the app update from October 28; on an older app the button is hidden. A handle that matches nobody is refused here rather than becoming a dead button on every phone.</p>
     <p class="hint" id="pCtaWhere" hidden></p>
 
     <div class="row">

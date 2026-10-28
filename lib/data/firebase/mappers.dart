@@ -224,6 +224,7 @@ abstract final class FirestoreMappers {
     imageUrls: strings(data['imageUrls']),
     ctaLabel: str(data['ctaLabel']),
     ctaUrl: str(data['ctaUrl']),
+    ctaColor: PromoButtonColor.fromValue(str(data['ctaColor'])),
     mentions: stringMap(data['mentions']),
     active: boolean(data['active'], true),
     createdAt: timeOrNull(data['createdAt']),

@@ -140,7 +140,10 @@ class _DirectoryCategoryScreenState
     }
 
     return LbmScreen(
-      appBar: LbmAppBar(title: category?.name ?? 'Directory'),
+      appBar: LbmAppBar(
+        title: category?.name ?? 'Directory',
+        actions: const [HomeButton()],
+      ),
       child: RefreshIndicator(
         onRefresh: () async {
           setState(() {
@@ -216,7 +219,7 @@ class DirectoryHomeScreen extends ConsumerWidget {
     final categories = ref.watch(directoryCategoriesProvider);
 
     return LbmScreen(
-      appBar: const LbmAppBar(title: 'Directory'),
+      appBar: const LbmAppBar(title: 'Directory', actions: [HomeButton()]),
       child: LbmAsync<List<DirectoryCategory>>(
         categories,
         skeleton: const ListRowSkeleton(rows: 6),

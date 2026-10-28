@@ -56,6 +56,13 @@ class PromoLayer extends ConsumerStatefulWidget {
   static const dwell = Duration(seconds: 12);
 
   static const fadeIn = Duration(milliseconds: 420);
+
+  /// Lets a test drive the real timers. Off by default, because every test
+  /// would otherwise inherit two pending timers from the app's own builder.
+  @visibleForTesting
+  static bool runUnderTest = false;
+
+  static bool get _off => kUnderFlutterTest && !runUnderTest;
   static const fadeOut = Duration(milliseconds: 260);
 
   @override
@@ -72,17 +79,8 @@ class _PromoLayerState extends ConsumerState<PromoLayer>
   Promo? _showing;
   bool _visible = false;
 
-  /// When the app last went into the background.
-  DateTime? _awaySince;
-
-  /// How long away counts as opening the app again.
-  ///
-  /// On an iPhone, "opening the app" is nearly always a resume, not a fresh
-  /// launch, and the promo was only ever looked up at launch: an
-  /// announcement posted while the app sat in the background never
-  /// appeared (Grace, 2026-10-21). Long enough that answering one message
-  /// and coming back is not a new opening.
-  static const _newOpeningAfter = Duration(minutes: 5);
+  /// Whether the app has been in the background since the last popup.
+  bool _wasAway = false;
 
   @override
   void initState() {
@@ -110,7 +108,7 @@ class _PromoLayerState extends ConsumerState<PromoLayer>
   bool _rebuildQueued = false;
 
   void _onRouteChanged() {
-    if (kUnderFlutterTest || _rebuildQueued || _showing != null) return;
+    if (PromoLayer._off || _rebuildQueued || _showing != null) return;
     _rebuildQueued = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _rebuildQueued = false;
@@ -122,20 +120,21 @@ class _PromoLayerState extends ConsumerState<PromoLayer>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
-      _awaySince ??= DateTime.now();
+      _wasAway = true;
       return;
     }
-    if (state != AppLifecycleState.resumed) return;
-    final away = _awaySince;
-    _awaySince = null;
-    if (away == null || _showing != null) return;
-    if (DateTime.now().difference(away) < _newOpeningAfter) return;
-    // A new opening: its turn back, and a fresh look for anything posted
-    // since. Never the same one twice still holds; that list is on disk.
+    if (state != AppLifecycleState.resumed || !_wasAway) return;
+    _wasAway = false;
+    if (_showing != null) return;
+    // Every return to the app is a new opening, however short the time
+    // away. On an iPhone opening the app is nearly always a resume, and
+    // the five minutes this used to wait meant that posting a popup and
+    // switching straight back to the app to see it showed nothing (Grace,
+    // 2026-10-28). Never the same one twice still holds; that list is on
+    // disk, so this cannot nag.
     _arrive?.cancel();
     _arrive = null;
     ref.read(promoTurnTakenProvider.notifier).release();
-    ref.invalidate(promoForThisLaunchProvider);
   }
 
   /// A failed lookup was kept for the whole session, so a flaky connection
@@ -144,7 +143,7 @@ class _PromoLayerState extends ConsumerState<PromoLayer>
     if (_retry != null) return;
     _retry = Timer(const Duration(seconds: 30), () {
       _retry = null;
-      if (mounted) ref.invalidate(promoForThisLaunchProvider);
+      if (mounted) ref.invalidate(allPromosProvider);
     });
   }
 
@@ -174,6 +173,24 @@ class _PromoLayerState extends ConsumerState<PromoLayer>
     });
   }
 
+  /// Somebody tapped this one on the banner: the whole card, every photo,
+  /// until they put it away. Counted as seen so it does not pop up by
+  /// itself later; not counted as an impression, which is for popups that
+  /// arrived unasked.
+  void _showOpened(Promo promo) {
+    _arrive?.cancel();
+    _arrive = null;
+    _leave?.cancel();
+    _leave = null;
+    ref.read(promosSeenProvider.notifier).markSeen(promo.id);
+    setState(() {
+      _showing = promo;
+      _visible = true;
+    });
+    // No fade-out timer: they tapped to see it, and twelve seconds would
+    // take it from under them mid-read.
+  }
+
   /// Diagnostics asked for this one, now. None of the normal rules apply and
   /// nothing is counted: an impression logged while testing would be a lie
   /// in the advert's own numbers.
@@ -194,6 +211,9 @@ class _PromoLayerState extends ConsumerState<PromoLayer>
     // So the same one can be asked for again straight away.
     if (ref.read(promoOverrideProvider) != null) {
       ref.read(promoOverrideProvider.notifier).clear();
+    }
+    if (ref.read(promoOpenedProvider) != null) {
+      ref.read(promoOpenedProvider.notifier).clear();
     }
     if (!mounted || !_visible) return;
     setState(() => _visible = false);
@@ -246,6 +266,16 @@ class _PromoLayerState extends ConsumerState<PromoLayer>
       _openTag(tag);
       return;
     }
+    final screen = promo.ctaScreen;
+    if (screen != null) {
+      ref.read(promoRepositoryProvider).recordTap(promo.id);
+      _dismiss();
+      final target = promoScreenTarget(screen, branchPrefixOf(_path));
+      target.push
+          ? widget.router.push(target.path)
+          : widget.router.go(target.path);
+      return;
+    }
 
     final uri = promo.ctaUri;
     _dismiss();
@@ -262,7 +292,7 @@ class _PromoLayerState extends ConsumerState<PromoLayer>
   Widget build(BuildContext context) {
     // Never under test: two timers pending at the end of a widget test is a
     // failure, and every test would inherit them from the app's own builder.
-    if (kUnderFlutterTest) return widget.child;
+    if (PromoLayer._off) return widget.child;
 
     // Diagnostics can ask for one directly, which jumps the whole queue.
     final forced = ref.watch(promoOverrideProvider);
@@ -274,10 +304,23 @@ class _PromoLayerState extends ConsumerState<PromoLayer>
       });
     }
 
+    // Tapped on the banner: shown at once, ahead of anything waiting.
+    final opened = ref.watch(promoOpenedProvider);
+    if (forced == null && opened != null && opened.id != _showing?.id) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && ref.read(promoOpenedProvider)?.id == opened.id) {
+          _showOpened(opened);
+        }
+      });
+    }
+
     final lookup = ref.watch(promoForThisLaunchProvider);
     if (lookup.hasError && !lookup.isLoading) _retryLater();
     final promo = lookup.value;
-    if (forced == null && promo != null && !_onAHiddenScreen) {
+    if (forced == null &&
+        opened == null &&
+        promo != null &&
+        !_onAHiddenScreen) {
       _scheduleFor(promo);
     }
 
@@ -473,59 +516,85 @@ class _PromoCardState extends State<PromoCard> {
                               if (photos.isNotEmpty)
                                 _PhotoFrame(
                                   url: photos.first,
-                                  child: _photos(photos, c),
+                                  // The picture is the advert, so it goes
+                                  // where the button goes.
+                                  child: promo.hasCta
+                                      ? GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap: widget.onCta,
+                                          child: _photos(photos, c),
+                                        )
+                                      : _photos(photos, c),
                                 ),
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  18,
-                                  16,
-                                  18,
-                                  18,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      isNews
-                                          ? 'FROM LITTLE BLUE CART'
-                                          : 'SPONSORED',
-                                      style: LbmText.tiny.copyWith(
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.7,
-                                        color: c.ink3,
-                                      ),
+                              // A photo-only advert is the picture and, if
+                              // it has one, its button: no label, no title,
+                              // no caption (Grace, 2026-10-28).
+                              if (promo.photoOnly)
+                                if (promo.hasCta)
+                                  Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: PillButton(
+                                      promo.ctaLabel,
+                                      tint: promoButtonTint(promo.ctaColor),
+                                      onPressed: widget.onCta,
                                     ),
-                                    const SizedBox(height: 7),
-                                    _named(
-                                      promo.title,
-                                      style: LbmText.display.copyWith(
-                                        fontSize: 23,
-                                        height: 1.15,
-                                        color: c.ink,
+                                  )
+                                else
+                                  const SizedBox.shrink()
+                              else
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    18,
+                                    16,
+                                    18,
+                                    18,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        isNews
+                                            ? 'FROM LITTLE BLUE CART'
+                                            : 'SPONSORED',
+                                        style: LbmText.tiny.copyWith(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.7,
+                                          color: c.ink3,
+                                        ),
                                       ),
-                                      tagColor: c.accentText,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _named(
-                                      promo.caption,
-                                      style: TextStyle(
-                                        fontSize: 14.5,
-                                        height: 1.5,
-                                        color: c.ink2,
+                                      const SizedBox(height: 7),
+                                      _named(
+                                        promo.title,
+                                        style: LbmText.display.copyWith(
+                                          fontSize: 23,
+                                          height: 1.15,
+                                          color: c.ink,
+                                        ),
+                                        tagColor: c.accentText,
                                       ),
-                                      tagColor: c.accentText,
-                                    ),
-                                    if (promo.hasCta) ...[
-                                      const SizedBox(height: 18),
-                                      PillButton(
-                                        promo.ctaLabel,
-                                        onPressed: widget.onCta,
+                                      const SizedBox(height: 8),
+                                      _named(
+                                        promo.caption,
+                                        style: TextStyle(
+                                          fontSize: 14.5,
+                                          height: 1.5,
+                                          color: c.ink2,
+                                        ),
+                                        tagColor: c.accentText,
                                       ),
+                                      if (promo.hasCta) ...[
+                                        const SizedBox(height: 18),
+                                        PillButton(
+                                          promo.ctaLabel,
+                                          tint: promoButtonTint(promo.ctaColor),
+                                          onPressed: widget.onCta,
+                                        ),
+                                      ],
                                     ],
-                                  ],
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
@@ -770,6 +839,21 @@ class _PhotoFrameState extends State<_PhotoFrame> {
   );
 }
 
+/// The fill and label colours for an advert's button, or null for the
+/// usual one. Every pair is from the brand guide, and the label is whichever
+/// of navy and white reads on the fill: white on orchid is 3:1, so orchid
+/// carries navy, the same rule as the post button.
+(Color, Color)? promoButtonTint(PromoButtonColor? color) => switch (color) {
+  null => null,
+  PromoButtonColor.navy => (LbmPalette.navy, LbmPalette.white),
+  PromoButtonColor.blue => (LbmPalette.blue, LbmPalette.navy),
+  PromoButtonColor.sky => (LbmPalette.sky, LbmPalette.navy),
+  PromoButtonColor.orchid => (LbmPalette.orchid, LbmPalette.navy),
+  PromoButtonColor.gold => (LbmPalette.gold, LbmPalette.navy),
+  PromoButtonColor.cream => (LbmPalette.cream, LbmPalette.navy),
+  PromoButtonColor.white => (LbmPalette.white, LbmPalette.navy),
+};
+
 /// Sends a promo's button where the promo says it goes.
 ///
 /// Three destinations, and the model already works out which: a shop on this
@@ -804,6 +888,13 @@ Future<void> openPromoCta(
   if (tag != null) {
     ref.read(promoRepositoryProvider).recordTap(promo.id);
     context.goToTag(tag);
+    return;
+  }
+
+  final screen = promo.ctaScreen;
+  if (screen != null) {
+    ref.read(promoRepositoryProvider).recordTap(promo.id);
+    context.goToPromoScreen(screen);
     return;
   }
 

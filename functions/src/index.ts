@@ -124,6 +124,7 @@ import {
   syncTagKeyMirror,
 } from './profile_tags.ts';
 import { displayName, mentionsToNotify, notify, pushDirectMessage, runForumDigest } from './notifications.ts';
+import { chatMentionRecipients } from './mentions.ts';
 import { syncShipturtleOrders } from './shipturtle_orders.ts';
 import { publishListing, searchCategories } from './listings.ts';
 import { pruneSellerCatalog, refreshListings, updateListing } from './listing_updates.ts';
@@ -907,6 +908,7 @@ export const adminSendAnnouncement = onCall(
           imageUrls: data.imageUrls,
           ctaLabel: typeof data.ctaLabel === 'string' ? data.ctaLabel : '',
           ctaUrl: typeof data.ctaUrl === 'string' ? data.ctaUrl : '',
+          ctaColor: typeof data.ctaColor === 'string' ? data.ctaColor : '',
           // The card's Starts and Ends were dropped on this path, so a
           // scheduled announcement went live at once.
           startsAt: typeof data.startsAt === 'string' ? data.startsAt : undefined,
@@ -1322,6 +1324,32 @@ export const onDirectMessageCreated = onDocumentCreated(
   async (event) => {
     const message = event.data?.data();
     if (message) await pushDirectMessage(event.params.conversationId, message);
+  },
+);
+
+/**
+ * Somebody named you in the open chat (Grace, 2026-10-28: "Can people be
+ * notified when someone @'s them in the chat?"). The forums have told
+ * people since 2026-10-21; the chat room had no trigger at all, so an
+ * @ there was bold on screen and silent everywhere else. Resolved here
+ * from the message's own words, so it works for every phone already
+ * installed, with no app update.
+ */
+export const onChatroomMessageCreated = onDocumentCreated(
+  'chatroom/{messageId}',
+  async (event) => {
+    const message = event.data?.data();
+    const authorId = String(message?.authorId ?? '');
+    const text = String(message?.text ?? '');
+    if (!authorId || !text.includes('@')) return;
+    for (const uid of await chatMentionRecipients(text, authorId)) {
+      await notify(uid, {
+        type: 'mention',
+        fromUid: authorId,
+        text: text.slice(0, 140),
+        route: '/community',
+      });
+    }
   },
 );
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:little_blue_market/widgets/app_shell.dart' show LbmTabBar;
 import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
@@ -118,11 +119,14 @@ void main() {
     // tab now: always in the same place, with its count on it, and unable to
     // sit on top of whatever is underneath it.
     await _pumpSignedIn(tester);
-    // By its bag icon, not its label: the pins in the grid each carry a pill
-    // that also reads "Cart".
-    expect(find.byIcon(Icons.shopping_bag_outlined), findsOneWidget);
+    // By its cart icon, not its label: Check Out since Grace, 2026-10-28.
+    final checkOut = find.descendant(
+      of: find.byType(LbmTabBar),
+      matching: find.byIcon(Icons.shopping_cart_outlined),
+    );
+    expect(checkOut, findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.shopping_bag_outlined));
+    await tester.tap(checkOut);
     await tester.pumpAndSettle();
     expect(find.text('Your cart'), findsWidgets);
   });
@@ -140,6 +144,6 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.byIcon(Icons.shopping_bag_outlined), findsNothing);
+    expect(find.byType(LbmTabBar), findsNothing);
   });
 }

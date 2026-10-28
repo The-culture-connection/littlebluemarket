@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
-import '../models/models.dart' show DmTopic, tagKey;
+import '../models/models.dart' show DmTopic, PromoScreen, tagKey;
 
 /// Screens that can be reached from more than one tab — a post, a product, a
 /// seller's feed, a DM — are registered under every branch that leads to them.
@@ -54,6 +54,29 @@ extension LbmNavigation on BuildContext {
       );
 
   void goToCart() => _pushInBranch('/cart');
+
+  /// Home: the main feed, from anywhere. The HOME button at the top of
+  /// Community, the Directory, the Market and the cart (Grace, 2026-10-28).
+  /// A switch rather than a push, so the feed is the root of its own tab
+  /// and Back from it does not wander through wherever you were.
+  void goHome() => go('/market');
+
+  /// The Market button: the store's categories (Grace, 2026-10-28). Pushed
+  /// like the Directory and the cart, and only once: tapping it again while
+  /// it is showing does nothing rather than stacking a second copy.
+  void goToShop() {
+    if (GoRouterState.of(this).uri.path.endsWith('/shop')) return;
+    _pushInBranch('/shop');
+  }
+
+  /// The search field, pushed in the tab you are in.
+  void goToSearch() => _pushInBranch('/search');
+
+  /// Where an advert's button sends somebody when it names a screen.
+  void goToPromoScreen(PromoScreen screen) {
+    final target = promoScreenTarget(screen, branchPrefix(this));
+    target.push ? push(target.path) : go(target.path);
+  }
 
   /// Chipping in to Little Blue Market. Members only: it ends at the store
   /// checkout, which a guest has no way through.
@@ -138,6 +161,26 @@ extension LbmNavigation on BuildContext {
   /// state without a footnote.
   void leaveSearch() => go(branchPrefix(this));
 }
+
+/// The address an advert's in-app button opens, from the tab it was tapped
+/// in, and whether to push it (Back returns) or switch to it (a tab of its
+/// own). Pure, because the popup is mounted above the router and asks the
+/// router directly, while the banner asks its own context.
+({String path, bool push}) promoScreenTarget(
+  PromoScreen screen,
+  String prefix,
+) => switch (screen) {
+  PromoScreen.search => (path: '$prefix/search', push: true),
+  PromoScreen.home => (path: '/market', push: false),
+  PromoScreen.market => (path: '$prefix/shop', push: true),
+  PromoScreen.directory => (path: '$prefix/browse-directory', push: true),
+  PromoScreen.community => (path: '/community', push: false),
+  PromoScreen.forums => (path: '/community/forums', push: false),
+  PromoScreen.cart => (path: '$prefix/cart', push: true),
+  // Members only, like every route under /you; a guest is sent to the
+  // Market by the router's own redirect.
+  PromoScreen.donate => (path: '/you/chip-in', push: false),
+};
 
 /// Whether [context] is standing on the search field or on search results.
 bool isOnSearch(BuildContext context) {

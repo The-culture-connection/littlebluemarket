@@ -24,6 +24,63 @@ enum PromoKind {
       values.firstWhere((k) => k.value == value, orElse: () => PromoKind.ad);
 }
 
+/// A screen in the app an advert's button can open, written `app:<value>`
+/// in its link.
+///
+/// Grace, 2026-10-28: "Get the advertisement button to go to different
+/// places in the app specifically the search screen". The button could
+/// already open a shop (`@handle`) or a hashtag (`#tag`); these are the
+/// places that have no name of their own to type.
+enum PromoScreen {
+  search('search', 'Search'),
+  home('home', 'Home feed'),
+  market('market', 'Market'),
+  directory('directory', 'Directory'),
+  community('community', 'Community chat'),
+  forums('forums', 'Forums'),
+  cart('cart', 'Check out'),
+  donate('donate', 'Chip in');
+
+  const PromoScreen(this.value, this.label);
+
+  /// What follows `app:` in the link.
+  final String value;
+  final String label;
+
+  static const prefix = 'app:';
+
+  /// The screen an `app:<value>` link names, or null for anything else.
+  static PromoScreen? fromLink(String link) {
+    final raw = link.trim().toLowerCase();
+    if (!raw.startsWith(prefix)) return null;
+    final value = raw.substring(prefix.length);
+    return values.where((s) => s.value == value).firstOrNull;
+  }
+}
+
+/// The brand colours an advert's button can be (Grace, 2026-10-28: "Make
+/// button color changeable"). Names rather than numbers, so the admin
+/// website, the backend and the phone agree without sharing a hex table,
+/// and so nothing outside the brand guide can be chosen.
+enum PromoButtonColor {
+  navy('navy', 'Navy'),
+  blue('blue', 'Blue'),
+  sky('sky', 'Sky'),
+  orchid('orchid', 'Orchid'),
+  gold('gold', 'Gold'),
+  cream('cream', 'Cream'),
+  white('white', 'White');
+
+  const PromoButtonColor(this.value, this.label);
+
+  final String value;
+  final String label;
+
+  /// Null for empty or unknown, which means the usual button.
+  static PromoButtonColor? fromValue(String? value) =>
+      values.where((c) => c.value == value).firstOrNull;
+}
+
 /// One card that fades in over whatever is on screen. Written only by the
 /// backend, from the admin website.
 @immutable
@@ -44,7 +101,11 @@ class Promo {
     this.impressions = 0,
     this.clicks = 0,
     this.mentions = const {},
+    this.ctaColor,
   });
+
+  /// The button's colour, or null for the usual one.
+  final PromoButtonColor? ctaColor;
 
   /// The `@handles` the copy names, lowercased, each with the uid it meant
   /// when it was written. See [MentionedProfiles].
@@ -82,7 +143,20 @@ class Promo {
 
   bool get hasCta =>
       ctaLabel.trim().isNotEmpty &&
-      (ctaProfileUid != null || ctaTag != null || ctaUri != null);
+      (ctaProfileUid != null ||
+          ctaTag != null ||
+          ctaScreen != null ||
+          ctaUri != null);
+
+  /// An advert is its photograph and nothing else: no title, no caption
+  /// (Grace, 2026-10-28: "Change advertisements to only show photo banner
+  /// and no caption"). One without a photograph still needs its words, or
+  /// there would be nothing on the card at all. Announcements keep theirs:
+  /// they are news, and news has to say something.
+  bool get photoOnly => kind == PromoKind.ad && hasPhoto;
+
+  /// The screen in the app the button opens, or null.
+  PromoScreen? get ctaScreen => PromoScreen.fromLink(ctaUrl);
 
   /// The uid of the profile the button opens, or null.
   ///
@@ -114,7 +188,12 @@ class Promo {
   /// works, the way the directory card already treats a business's website.
   Uri? get ctaUri {
     final raw = ctaUrl.trim();
-    if (raw.isEmpty || raw.startsWith('@') || raw.startsWith('#')) return null;
+    if (raw.isEmpty ||
+        raw.startsWith('@') ||
+        raw.startsWith('#') ||
+        raw.toLowerCase().startsWith(PromoScreen.prefix)) {
+      return null;
+    }
     final full = raw.startsWith(RegExp('https?://')) ? raw : 'https://$raw';
     final uri = Uri.tryParse(full);
     return uri == null || uri.host.isEmpty ? null : uri;
@@ -136,8 +215,7 @@ class Promo {
   bool showsTo({required bool isSeller, required bool directoryLinked}) =>
       audience.includes(isSeller: isSeller, directoryLinked: directoryLinked);
 
-  String get age =>
-      createdAt == null ? '' : Fmt.relative(createdAt!);
+  String get age => createdAt == null ? '' : Fmt.relative(createdAt!);
 }
 
 /// What the admin website sends.
@@ -151,6 +229,7 @@ class NewPromo {
     this.imageUrls = const [],
     this.ctaLabel = '',
     this.ctaUrl = '',
+    this.ctaColor,
   });
 
   static const titleMax = 60;
@@ -165,11 +244,15 @@ class NewPromo {
   final List<String> imageUrls;
   final String ctaLabel;
   final String ctaUrl;
+  final PromoButtonColor? ctaColor;
 
   bool get isValid =>
       title.trim().isNotEmpty &&
       title.trim().length <= titleMax &&
-      caption.trim().isNotEmpty &&
+      // An advert with a photograph shows only the photograph, so its
+      // caption is optional; everything else still needs one.
+      (caption.trim().isNotEmpty ||
+          (kind == PromoKind.ad && imageUrls.isNotEmpty)) &&
       caption.trim().length <= captionMax &&
       ctaLabel.trim().length <= ctaLabelMax &&
       imageUrls.length <= photosMax &&
@@ -185,5 +268,6 @@ class NewPromo {
     'imageUrls': imageUrls,
     'ctaLabel': ctaLabel.trim(),
     'ctaUrl': ctaUrl.trim(),
+    'ctaColor': ctaColor?.value ?? '',
   };
 }

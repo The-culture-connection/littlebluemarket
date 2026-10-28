@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../router/nav.dart';
 import '../state/composer_inset.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
@@ -108,6 +109,22 @@ class LbmAppBar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// HOME: back to the main feed from anywhere (Grace, 2026-10-28, "HOME
+/// button on the top of each page: Community, Directory, Market and
+/// Shopping Cart"). The feed used to be the Market button; it is reached
+/// from here now, and the Market button opens the store's categories.
+class HomeButton extends StatelessWidget {
+  const HomeButton({super.key});
+
+  @override
+  Widget build(BuildContext context) => CircleIconButton(
+    icon: Icons.home_rounded,
+    iconSize: 21,
+    tooltip: 'Home',
+    onPressed: context.goHome,
+  );
 }
 
 /// The composer pinned above the tab bar on the chatroom, threads and DMs.

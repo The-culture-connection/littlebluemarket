@@ -120,24 +120,54 @@ final allPromosProvider = StreamProvider<List<Promo>>((ref) {
   return ref.watch(promoRepositoryProvider).watchLive(limit: 50);
 });
 
+/// A promo somebody tapped on, to open as the full popup with every photo
+/// to swipe through (Grace, 2026-10-28: "Allow to click on announcements to
+/// show pop up version and slide through images").
+///
+/// Not the Diagnostics override: this one was asked for by the person
+/// holding the phone, so it counts as seen and never pops up by itself
+/// afterwards, and it stays until they put it away rather than timing out
+/// in the middle of their reading it.
+class PromoOpened extends Notifier<Promo?> {
+  @override
+  Promo? build() => null;
+
+  void open(Promo promo) => state = promo;
+  void clear() => state = null;
+}
+
+final promoOpenedProvider = NotifierProvider<PromoOpened, Promo?>(
+  PromoOpened.new,
+);
+
 /// The one promo to fade in this app opening, or null when there is nothing
 /// to show.
 ///
-/// Read once and cached for the session: a popup that re-queried on every
-/// tab change would be both wasteful and a second popup waiting to happen.
-final promoForThisLaunchProvider = FutureProvider<Promo?>((ref) async {
-  ref.keepAlive();
-  if (ref.watch(promoTurnTakenProvider)) return null;
+/// **Watched live, not looked up once.** It used to be a single read at
+/// launch, re-asked only after five minutes in the background, so a popup
+/// posted while somebody had the app open, or had just switched away to
+/// post it, never reached them: Grace posted one, went back to the app,
+/// and nothing came (2026-10-28, "Popups not working"). It follows the same
+/// stream the banner does now, so a new one arrives within seconds.
+///
+/// Still one per opening ([promoTurnTakenProvider]) and never the same one
+/// twice ([promosSeenProvider]).
+final promoForThisLaunchProvider = Provider<AsyncValue<Promo?>>((ref) {
+  if (ref.watch(promoTurnTakenProvider)) return const AsyncData(null);
 
   final isSeller = ref.watch(isSellerProvider);
   final linked = ref.watch(directoryLinkProvider).value?.linked ?? false;
   final seen = ref.watch(promosSeenProvider);
+  final now = DateTime.now();
 
-  final live = await ref.watch(promoRepositoryProvider).live();
-  for (final promo in live) {
-    if (seen.contains(promo.id)) continue;
-    if (!promo.showsTo(isSeller: isSeller, directoryLinked: linked)) continue;
-    return promo;
-  }
-  return null;
+  return ref.watch(allPromosProvider).whenData((live) {
+    for (final promo in live) {
+      if (seen.contains(promo.id)) continue;
+      // The stream is "switched on"; the clock decides the window.
+      if (!promo.isLiveAt(now)) continue;
+      if (!promo.showsTo(isSeller: isSeller, directoryLinked: linked)) continue;
+      return promo;
+    }
+    return null;
+  });
 });

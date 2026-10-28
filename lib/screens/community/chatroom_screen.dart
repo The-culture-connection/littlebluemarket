@@ -120,32 +120,44 @@ class _ChatroomScreenState extends ConsumerState<ChatroomScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
               children: [
-                Flexible(
-                  child: Text(
-                    'Open chat',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: LbmText.display.copyWith(fontSize: 20, color: c.ink),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Open chat',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: LbmText.display.copyWith(
+                            fontSize: 20,
+                            color: c.ink,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          // The prototype claimed "1,284 here now", which was
+                          // invented. A real presence count needs presence.
+                          'Everyone in the market',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: LbmText.xtiny.copyWith(color: c.ink2),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    // The prototype claimed "1,284 here now", which was
-                    // invented. A real presence count needs presence.
-                    'Everyone in the market',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: LbmText.xtiny.copyWith(color: c.ink2),
-                  ),
-                ),
+                // Back to the feed (Grace, 2026-10-28).
+                const HomeButton(),
               ],
             ),
           ),
-          const _PinnedAnnouncement(),
+          const _Welcome(),
           Expanded(
             child: Stack(
               children: [
@@ -424,51 +436,34 @@ class _ChatBubble extends ConsumerWidget {
   }
 }
 
-/// The newest announcement, pinned above the room.
+/// The line above the room: a welcome, said the same way every time.
 ///
-/// The room scrolls away; a pinned row does not. Anything the market needs
-/// everybody to have read belongs where it stays put, and this is the one
-/// place in the app where everybody is at once.
-class _PinnedAnnouncement extends ConsumerWidget {
-  const _PinnedAnnouncement();
+/// It used to pin the newest announcement here, which arrived cut off
+/// mid-word with its hashtags on a second line ("Let's take action
+/// together and s…", "#ShopBlue #nomorelikes"). Grace, 2026-10-28: "change
+/// text to fit in screen and say Welcome! What's on your mind?".
+/// Announcements still have the banner, the bell and the popup.
+class _Welcome extends StatelessWidget {
+  const _Welcome();
+
+  static const text = "Welcome! What's on your mind?";
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final c = context.c;
-    final announcements = ref.watch(announcementsProvider).value ?? const [];
-    if (announcements.isEmpty) return const SizedBox.shrink();
-    final latest = announcements.first;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
       child: LbmCard(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        onTap: latest.route.isEmpty ? null : () => context.go(latest.route),
         child: Row(
           children: [
-            Icon(Icons.push_pin_outlined, size: 17, color: c.accentText),
+            Icon(Icons.waving_hand_outlined, size: 17, color: c.accentText),
             const SizedBox(width: 9),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    latest.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: LbmText.pinTitle.copyWith(
-                      fontSize: 13,
-                      color: c.ink,
-                    ),
-                  ),
-                  Text(
-                    latest.body,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: LbmText.pinMeta.copyWith(color: c.ink2),
-                  ),
-                ],
+              child: Text(
+                text,
+                maxLines: 2,
+                style: LbmText.pinTitle.copyWith(fontSize: 13, color: c.ink),
               ),
             ),
           ],

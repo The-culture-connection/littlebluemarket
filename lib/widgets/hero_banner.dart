@@ -9,7 +9,7 @@ import '../state/promos.dart';
 import '../state/providers.dart';
 import '../state/session.dart';
 import '../state/tips.dart';
-import 'promo_popup.dart' show openPromoCta;
+import 'promo_popup.dart' show promoButtonTint;
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'product_art.dart';
@@ -26,7 +26,16 @@ class HeroCard {
     required this.cta,
     required this.onTap,
     this.imageUrl,
+    this.photoOnly = false,
+    this.tint,
   });
+
+  /// The picture and nothing else: an advert (Grace, 2026-10-28). The
+  /// words are kept for a screen reader.
+  final bool photoOnly;
+
+  /// The button's colour, chosen on the admin website; null is white.
+  final (Color, Color)? tint;
 
   final String id;
   final String kicker;
@@ -194,7 +203,14 @@ class _HeroBannerState extends ConsumerState<HeroBanner> {
             body: promo.caption,
             cta: promo.ctaLabel.isEmpty ? 'Take a look' : promo.ctaLabel,
             imageUrl: promo.imageUrls.firstOrNull,
-            onTap: (context, ref) => openPromoCta(context, ref, promo),
+            photoOnly: promo.photoOnly,
+            tint: promoButtonTint(promo.ctaColor),
+            // The whole thing, as the popup: every photo to swipe through,
+            // and the button there (Grace, 2026-10-28: "Allow to click on
+            // announcements to show pop up version and slide through
+            // images").
+            onTap: (context, ref) =>
+                ref.read(promoOpenedProvider.notifier).open(promo),
           ),
     ];
   }
@@ -236,6 +252,9 @@ class _HeroCardView extends ConsumerWidget {
     final c = context.c;
     const white = LbmConst.onGradient;
     final photo = card.imageUrl;
+    if (card.photoOnly && photo != null && photo.isNotEmpty) {
+      return _photoOnly(context, ref, c, photo);
+    }
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -341,29 +360,68 @@ class _HeroCardView extends ConsumerWidget {
                       ),
                     ],
                     const SizedBox(height: 10),
-                    DecoratedBox(
-                      decoration: const BoxDecoration(
-                        color: white,
-                        borderRadius: LbmRadius.pillR,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 15,
-                          vertical: 8,
-                        ),
-                        child: Text(
-                          card.cta,
-                          style: LbmText.pinTitle.copyWith(
-                            fontSize: 12.5,
-                            color: c.accentText,
-                          ),
-                        ),
-                      ),
-                    ),
+                    _ctaChip(),
                   ],
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The button on the card. White with navy words unless the admin website
+  /// chose a colour. It was white with `accentText`, which is white in dark
+  /// mode, so the button read as a blank white pill (Grace, 2026-10-28:
+  /// "Dark mode announcement buttons are not showing the text").
+  Widget _ctaChip() {
+    final (bg, fg) = card.tint ?? (LbmConst.onGradient, LbmPalette.navy);
+    return DecoratedBox(
+      decoration: BoxDecoration(color: bg, borderRadius: LbmRadius.pillR),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+        child: Text(
+          card.cta,
+          style: LbmText.pinTitle.copyWith(fontSize: 12.5, color: fg),
+        ),
+      ),
+    );
+  }
+
+  /// An advert: the photograph edge to edge, its button over the foot of
+  /// it, and the words only for a screen reader.
+  Widget _photoOnly(
+    BuildContext context,
+    WidgetRef ref,
+    LbmColors c,
+    String photo,
+  ) {
+    return Semantics(
+      button: true,
+      label: [card.title, card.body].where((t) => t.isNotEmpty).join('. '),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => card.onTap(context, ref),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: const BorderRadius.all(Radius.circular(20)),
+            color: c.skyMist,
+            boxShadow: c.shadowLift,
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.all(Radius.circular(20)),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ProductPhoto(
+                  url: photo,
+                  fallback: ColoredBox(color: c.skyMist),
+                ),
+                if (card.cta.isNotEmpty)
+                  Positioned(left: 14, bottom: 14, child: _ctaChip()),
+              ],
+            ),
           ),
         ),
       ),

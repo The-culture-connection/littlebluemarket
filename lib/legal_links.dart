@@ -57,6 +57,41 @@ abstract final class LbmLinks {
   static const supportEmail = 'erin@littlebluecart.com';
 }
 
+/// Little Blue Market's own pages on the store, shown inside the app
+/// (Grace, 2026-10-28: "Way to show shopify pages in the app"). The words
+/// live on the store, where they are edited, and the app only points at
+/// them, so nothing here goes stale when a page is rewritten. Checked
+/// against the store's sitemap on 2026-10-28; a page renamed on the store
+/// needs its address changed here.
+abstract final class MarketPages {
+  static const about = 'https://littlebluemarket.com/pages/about';
+  static const shopperFaqs = 'https://littlebluemarket.com/pages/shopper-faqs';
+  static const trackOrder =
+      'https://littlebluemarket.com/pages/track-your-order';
+  static const refunds = 'https://littlebluemarket.com/policies/refund-policy';
+  static const contact = 'https://littlebluemarket.com/pages/contact';
+  static const communityGuidelines =
+      'https://littlebluemarket.com/pages/community-ethics-guidelines';
+  static const accessibility =
+      'https://littlebluemarket.com/pages/accessibility-statement';
+}
+
+/// Opens one of the store's pages over the app, in the phone's own browser
+/// sheet (Safari's on an iPhone, a Chrome tab on Android), so Done returns
+/// to exactly where the person was rather than leaving the app. Falls back
+/// to the full browser where there is no such sheet, as on the website.
+/// False when nothing could open it; never throws.
+Future<bool> openInApp(String url) async {
+  final uri = Uri.tryParse(url);
+  if (uri == null) return false;
+  try {
+    if (await launchUrl(uri, mode: LaunchMode.inAppBrowserView)) return true;
+  } on Object {
+    // No in-app browser here; the full one below.
+  }
+  return openLegalLink(url);
+}
+
 /// Opens a policy in the phone's browser. False when nothing could open it,
 /// so the caller can say so; never throws.
 Future<bool> openLegalLink(String url) async {

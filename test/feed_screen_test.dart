@@ -303,7 +303,9 @@ void main() {
 
   // Grace, 2026-10-21: Market moved to the far right, the Directory got a
   // button, and You moved beside the search.
-  testWidgets('the tab bar is Community, Directory, post, Cart, Market', (
+  // Grace, 2026-10-28: "Community | Directory | + | Market | Check Out (with
+  // cart icon)". The feed itself left the bar: it is HOME, at the top.
+  testWidgets('the tab bar is Community, Directory, post, Market, Check Out', (
     tester,
   ) async {
     await _pumpFeed(tester);
@@ -321,8 +323,18 @@ void main() {
       x('Directory'),
       lessThan(tester.getCenter(find.bySemanticsLabel('Post something')).dx),
     );
-    expect(x('Cart'), lessThan(x('Market')));
-    expect(find.byIcon(Icons.shopping_bag_outlined), findsOneWidget);
+    expect(
+      tester.getCenter(find.bySemanticsLabel('Post something')).dx,
+      lessThan(x('Market')),
+    );
+    expect(x('Market'), lessThan(x('Check Out')));
+    expect(
+      find.descendant(
+        of: find.byType(LbmTabBar),
+        matching: find.byIcon(Icons.shopping_cart_outlined),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('You'), findsNothing);
     expect(find.bySemanticsLabel(RegExp('^Your profile')), findsOneWidget);
   });

@@ -161,8 +161,10 @@ class AnnouncementPin extends StatelessWidget {
                           ),
                           child: Text(
                             'Take a look',
+                            // Navy on the white pill in both themes:
+                            // accentText is white in dark mode.
                             style: LbmText.pinTitle.copyWith(
-                              color: c.accentText,
+                              color: LbmPalette.navy,
                             ),
                           ),
                         ),

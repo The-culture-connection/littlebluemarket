@@ -10,6 +10,7 @@ import '../screens/community/new_forum_screen.dart';
 import '../screens/community/thread_screen.dart';
 import '../screens/market/cart_screen.dart';
 import '../screens/market/feed_screen.dart';
+import '../screens/market/market_screen.dart';
 import '../screens/market/post_screen.dart';
 import '../screens/market/product_screen.dart';
 import '../screens/market/collection_screen.dart';
@@ -130,6 +131,9 @@ List<RouteBase> _sharedRoutes() => [
         SearchScreen(initialQuery: state.uri.queryParameters['q'] ?? ''),
   ),
   GoRoute(path: 'cart', builder: (context, state) => const CartScreen()),
+  // The Market button: the store's categories. Not "market", which is the
+  // feed's own address and the root of the first tab.
+  GoRoute(path: 'shop', builder: (context, state) => const MarketScreen()),
 ];
 
 GoRouter buildRouter(Ref ref) {
@@ -274,8 +278,10 @@ GoRouter buildRouter(Ref ref) {
       // The three tabs. Each branch keeps its own navigator, and therefore its
       // own history.
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) =>
-            AppShell(navigationShell: navigationShell),
+        builder: (context, state, navigationShell) => AppShell(
+          navigationShell: navigationShell,
+          location: state.uri.path,
+        ),
         branches: [
           StatefulShellBranch(
             routes: [

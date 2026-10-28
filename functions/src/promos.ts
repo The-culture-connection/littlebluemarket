@@ -28,6 +28,21 @@ export const PROMO_PHOTOS_MAX = 4;
 export const PROMO_KINDS = ['ad', 'announcement'] as const;
 export type PromoKind = (typeof PROMO_KINDS)[number];
 
+/**
+ * The screens in the app an advert's button can open, written `app:search`
+ * and so on (Grace, 2026-10-28: "Get the advertisement button to go to
+ * different places in the app specifically the search screen"). Must match
+ * `PromoScreen` in lib/models/promo.dart and the list in admin-web.
+ */
+export const PROMO_SCREENS = ['search', 'home', 'market', 'directory', 'community', 'forums', 'cart', 'donate'] as const;
+
+/**
+ * The brand colours a button can be (Grace, 2026-10-28: "Make button color
+ * changeable"). Names, not hex, so nothing outside the brand guide can be
+ * stored. Must match `PromoButtonColor` in lib/models/promo.dart.
+ */
+export const PROMO_BUTTON_COLORS = ['navy', 'blue', 'sky', 'orchid', 'gold', 'cream', 'white'] as const;
+
 export function isPromoKind(value: unknown): value is PromoKind {
   return typeof value === 'string' && (PROMO_KINDS as readonly string[]).includes(value);
 }
@@ -40,6 +55,8 @@ export interface PromoInput {
   imageUrls?: unknown;
   ctaLabel?: string;
   ctaUrl?: string;
+  /** One of PROMO_BUTTON_COLORS, or empty for the usual button. */
+  ctaColor?: string;
   /** ISO strings from the admin website, or nothing for "no bound". */
   startsAt?: string;
   endsAt?: string;
@@ -53,6 +70,7 @@ export interface CleanPromo {
   imageUrls: string[];
   ctaLabel: string;
   ctaUrl: string;
+  ctaColor: string;
   startsAt: Timestamp | null;
   endsAt: Timestamp | null;
 }
@@ -108,12 +126,16 @@ export function validatePromo(input: PromoInput): CleanPromo {
   if (title.length > PROMO_TITLE_MAX) {
     throw new HttpsError('invalid-argument', `Keep the title under ${PROMO_TITLE_MAX} characters.`);
   }
-  if (!caption) throw new HttpsError('invalid-argument', 'Write a caption for it.');
+  const photos = Array.isArray(input.imageUrls) ? input.imageUrls : [];
+  // An advert with a photo shows only the photo, so it needs no caption
+  // (Grace, 2026-10-28). An announcement, or an advert with no photo, still
+  // has to say something.
+  const photoOnly = input.kind === 'ad' && photos.length > 0;
+  if (!caption && !photoOnly) throw new HttpsError('invalid-argument', 'Write a caption for it.');
   if (caption.length > PROMO_CAPTION_MAX) {
     throw new HttpsError('invalid-argument', `Keep the caption under ${PROMO_CAPTION_MAX} characters.`);
   }
 
-  const photos = Array.isArray(input.imageUrls) ? input.imageUrls : [];
   if (photos.length > PROMO_PHOTOS_MAX) {
     throw new HttpsError('invalid-argument', `At most ${PROMO_PHOTOS_MAX} photos.`);
   }
@@ -133,13 +155,21 @@ export function validatePromo(input: PromoInput): CleanPromo {
     );
   }
 
+  const ctaColor = String(input.ctaColor ?? '').trim().toLowerCase();
+  if (ctaColor && !(PROMO_BUTTON_COLORS as readonly string[]).includes(ctaColor)) {
+    throw new HttpsError(
+      'invalid-argument',
+      `The button colour has to be one of ${PROMO_BUTTON_COLORS.join(', ')}. Got ${ctaColor}`,
+    );
+  }
+
   const startsAt = cleanTime(input.startsAt, 'The start date');
   const endsAt = cleanTime(input.endsAt, 'The end date');
   if (startsAt && endsAt && endsAt.toMillis() <= startsAt.toMillis()) {
     throw new HttpsError('invalid-argument', 'The end date has to be after the start date.');
   }
 
-  return { kind: input.kind, title, caption, audience: input.audience, imageUrls, ctaLabel, ctaUrl, startsAt, endsAt };
+  return { kind: input.kind, title, caption, audience: input.audience, imageUrls, ctaLabel, ctaUrl, ctaColor, startsAt, endsAt };
 }
 
 /**
@@ -276,6 +306,17 @@ export function cleanCtaTarget(raw: unknown): string {
       );
     }
     return text;
+  }
+
+  if (/^app:/i.test(text)) {
+    const screen = text.slice(4).trim().toLowerCase();
+    if (!(PROMO_SCREENS as readonly string[]).includes(screen)) {
+      throw new HttpsError(
+        'invalid-argument',
+        `There is no app screen called ${screen || '(nothing)'}. Pick one of ${PROMO_SCREENS.join(', ')}.`,
+      );
+    }
+    return `app:${screen}`;
   }
 
   if (text.startsWith('#')) {

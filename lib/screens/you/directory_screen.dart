@@ -19,8 +19,8 @@ import '../../widgets/unverified_banner.dart';
 /// littlebluecart.com.
 ///
 /// Linking is by the confirmed email, decided on the backend: a WordPress
-/// member, a WooCommerce customer, or both. What comes back is shown here,
-/// website orders first; listings join in CP-D3. Arriving from an onboarding
+/// member, a WooCommerce customer, or both. What comes back is shown here:
+/// the business listing and its products. Arriving from an onboarding
 /// door (`?auto=1`) runs the link by itself once the email is confirmed.
 class DirectoryScreen extends ConsumerStatefulWidget {
   const DirectoryScreen({super.key, this.auto = false, this.add = false});
@@ -133,7 +133,6 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
     final session = ref.watch(sessionProvider).value;
     final verified = session is MemberSession && session.emailVerified;
     final link = ref.watch(directoryLinkProvider);
-    final orders = ref.watch(directoryOrdersProvider);
     final listings = ref.watch(myDirectoryListingsProvider);
     final config = ref.watch(appConfigProvider);
     final linked = link.value?.linked ?? false;
@@ -260,50 +259,10 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
             ),
           ],
           const SizedBox(height: 16),
-          _AddListingCard(
-            config: config,
-            onOpen: _open,
-          ),
-          const SizedBox(height: 16),
-          const SectionHead('Orders from littlebluecart.com'),
-          const SizedBox(height: 8),
-          LbmAsync<List<DirectoryOrder>>(
-            orders,
-            skeleton: const SizedBox(height: 80),
-            data: (list) => list.isEmpty
-                ? LbmCard(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      linked
-                          ? 'No website orders on this email yet.'
-                          : 'Link your account to see orders you placed on '
-                                'littlebluecart.com.',
-                      style: LbmText.tiny.copyWith(color: c.ink2, height: 1.5),
-                    ),
-                  )
-                : LbmCard(
-                    child: RowStack(
-                      children: [
-                        for (final order in list)
-                          ListRow(
-                            title: Text(
-                              'Order #${order.number} · ${order.totalLabel}',
-                            ),
-                            subtitle: Text(
-                              '${order.dateLabel} · ${order.statusLabel}'
-                              '${order.items.isEmpty ? '' : '\n${order.summary}'}',
-                            ),
-                            trailing: Icon(
-                              Icons.open_in_new_rounded,
-                              size: 20,
-                              color: c.ink3,
-                            ),
-                            onTap: () => _open(order.viewUrl),
-                          ),
-                      ],
-                    ),
-                  ),
-          ),
+          _AddListingCard(config: config, onOpen: _open),
+          // Website orders used to be listed here. Nothing is sold on
+          // littlebluecart.com, so the section only ever said "no orders"
+          // (Grace, 2026-10-28).
         ],
       ),
     );
@@ -393,19 +352,15 @@ class _StatusCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            linked
-                ? current!.label
-                : 'Bought or listed on littlebluecart.com?',
+            linked ? current!.label : 'Listed on littlebluecart.com?',
             style: LbmText.display.copyWith(fontSize: 18, color: c.ink),
           ),
           const SizedBox(height: 6),
           Text(
             linked
-                ? '${_plural(current!.orderCount, 'website order')} · '
-                      '${_plural(current.listingCount, 'listing')}'
+                ? _plural(current!.listingCount, 'listing')
                 : 'If your littlebluecart.com account uses this email, tap '
-                      'below. The app finds your website orders and your '
-                      'business listing.',
+                      'below. The app finds your business listing.',
             style: LbmText.tiny.copyWith(color: c.ink2, height: 1.5),
           ),
           const SizedBox(height: 12),
@@ -471,8 +426,7 @@ class _ResultLine extends StatelessWidget {
     final c = context.c;
     final (String text, Color color) = switch (result.status) {
       DirectoryLinkStatus.linked => (
-        'Linked. ${result.orders} ${result.orders == 1 ? 'order' : 'orders'} '
-            'and ${result.listings} ${result.listings == 1 ? 'listing' : 'listings'} '
+        'Linked. ${result.listings} ${result.listings == 1 ? 'listing' : 'listings'} '
             'found.${result.note == null ? '' : ' ${result.note}'}',
         c.sage,
       ),
@@ -482,7 +436,7 @@ class _ResultLine extends StatelessWidget {
       ),
       DirectoryLinkStatus.notFound => (
         'No account at littlebluecart.com uses this email. If your listing '
-            'or orders are under another address, sign in with that one.'
+            'is under another address, sign in with that one.'
             '${result.note == null ? '' : ' ${result.note}'}',
         c.clay,
       ),

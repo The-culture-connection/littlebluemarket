@@ -157,3 +157,28 @@ void test('a web address that happens to contain an @ is a web address', () => {
     'https://instagram.com/@romantiquebooks',
   );
 });
+
+// Grace, 2026-10-28: the button can open a screen in the app, its colour can
+// be chosen, and an advert with a photo needs no caption.
+test('a button can open a screen in the app, by name', () => {
+  assert.equal(cleanCtaTarget('app:search'), 'app:search');
+  assert.equal(cleanCtaTarget(' APP:Directory '), 'app:directory');
+  assert.throws(() => cleanCtaTarget('app:nowhere'), /no app screen called nowhere/);
+  assert.throws(() => cleanCtaTarget('app:'), /no app screen/);
+});
+
+test('the button colour is one of the brand colours, or none', () => {
+  assert.equal(validatePromo({ ...good }).ctaColor, '');
+  assert.equal(validatePromo({ ...good, ctaColor: 'Orchid' }).ctaColor, 'orchid');
+  assert.throws(() => validatePromo({ ...good, ctaColor: 'red' }), /button colour/);
+});
+
+test('an advert with a photo needs no caption; everything else still does', () => {
+  const photo = ['https://example.com/a.jpg'];
+  assert.equal(validatePromo({ ...good, caption: '', imageUrls: photo }).caption, '');
+  assert.throws(() => validatePromo({ ...good, caption: '' }), /caption/);
+  assert.throws(
+    () => validatePromo({ ...good, kind: 'announcement', caption: '', imageUrls: photo }),
+    /caption/,
+  );
+});

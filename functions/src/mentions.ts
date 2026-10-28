@@ -103,3 +103,29 @@ export async function resolveNamed(...texts: string[]): Promise<NamedInText> {
   for (const f of found) mentions[f.key] = f.uid;
   return { mentions, tags };
 }
+
+/**
+ * The uids behind the `@handles` in a chat message, minus the author and
+ * anybody who has blocked them. Forgiving where `resolveNamed` is strict: a
+ * misspelt handle in the open chat is a typo between friends, not an error
+ * to refuse, so it is simply nobody. Capped, so one message naming forty
+ * people cannot buzz forty phones.
+ */
+export const CHAT_MENTIONS_MAX = 10;
+
+export async function chatMentionRecipients(text: string, authorId: string): Promise<string[]> {
+  const handles = parseMentionHandles(text).slice(0, CHAT_MENTIONS_MAX);
+  if (handles.length === 0) return [];
+  const db = getFirestore();
+  const users = db.collection('users');
+  const out: string[] = [];
+  for (const handle of handles) {
+    const snapshot = await users.where('handleLower', '==', handle.toLowerCase()).limit(1).get();
+    const uid = snapshot.docs[0]?.id ?? '';
+    if (!uid || uid === authorId || out.includes(uid)) continue;
+    const blocked = await db.doc(`users/${uid}/blocks/${authorId}`).get();
+    if (blocked.exists) continue;
+    out.push(uid);
+  }
+  return out;
+}

@@ -31,9 +31,17 @@ abstract final class Tabs {
 /// widget that is on screen whichever tab is, so the toast slot, the DM
 /// banner and the quiet-hours strip are raised here.
 class AppShell extends ConsumerStatefulWidget {
-  const AppShell({super.key, required this.navigationShell});
+  const AppShell({
+    super.key,
+    required this.navigationShell,
+    this.location = '',
+  });
 
   final StatefulNavigationShell navigationShell;
+
+  /// The address on screen, so the bar can light the button for a screen
+  /// that is pushed rather than a tab of its own: the Market and Check Out.
+  final String location;
 
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
@@ -144,7 +152,10 @@ class _AppShellState extends ConsumerState<AppShell>
         body: navigationShell,
         bottomNavigationBar: keyboardOpen
             ? null
-            : LbmTabBar(navigationShell: navigationShell),
+            : LbmTabBar(
+                navigationShell: navigationShell,
+                location: widget.location,
+              ),
       ),
     );
   }
@@ -180,9 +191,16 @@ class _BannerAvatar extends ConsumerWidget {
 /// In guest mode Community and You are not in the bar at all; the second slot
 /// reads "Sign up" and opens the gate.
 class LbmTabBar extends ConsumerWidget {
-  const LbmTabBar({super.key, required this.navigationShell});
+  const LbmTabBar({
+    super.key,
+    required this.navigationShell,
+    this.location = '',
+  });
 
   final StatefulNavigationShell navigationShell;
+
+  /// See [AppShell.location].
+  final String location;
 
   void _goBranch(int index) {
     navigationShell.goBranch(
@@ -199,6 +217,14 @@ class LbmTabBar extends ConsumerWidget {
     final current = navigationShell.currentIndex;
     final ui = ref.watch(notificationsUiProvider);
     final seen = ref.read(notificationsUiProvider.notifier);
+    // The Market, the Directory and Check Out are pushed over whichever tab
+    // you are in, so which one is lit is read off the address.
+    final onShop = location.endsWith('/shop');
+    final onCart = location.endsWith('/cart');
+    final onDirectory =
+        location.contains('/browse-directory') ||
+        location.contains('/directory-');
+    final onPushed = onShop || onCart || onDirectory;
 
     return Container(
       color: c.paper,
@@ -215,10 +241,12 @@ class LbmTabBar extends ConsumerWidget {
             ),
             child: Padding(
               padding: const EdgeInsets.all(6),
-              // Market sits at the far right and the Directory has its own
-              // button; You moved out of the bar to the button beside the
-              // Market's search (Grace, 2026-10-21). The branches did not
-              // move, only the buttons: Tabs.market is still branch 0.
+              // Community | Directory | + | Market | Check Out (Grace,
+              // 2026-10-28). The feed is not in the bar any more: it is
+              // Home, the button at the top of each screen. You is the
+              // button beside the feed's search (2026-10-21). The branches
+              // did not move, only the buttons: Tabs.market, the feed, is
+              // still branch 0.
               child: Row(
                 children: [
                   if (isGuest)
@@ -237,7 +265,7 @@ class LbmTabBar extends ConsumerWidget {
                       icon: Icons.chat_bubble_outline_rounded,
                       activeIcon: Icons.chat_bubble_rounded,
                       label: 'Community',
-                      selected: current == Tabs.community,
+                      selected: current == Tabs.community && !onPushed,
                       // A reply in a thread you are in, or the room getting
                       // going. It used to be on all the time, which is a dot
                       // that says nothing.
@@ -254,7 +282,7 @@ class LbmTabBar extends ConsumerWidget {
                     icon: Icons.storefront_outlined,
                     activeIcon: Icons.storefront_rounded,
                     label: 'Directory',
-                    selected: false,
+                    selected: onDirectory,
                     onTap: context.goToDirectory,
                   ),
                   // Posting is the middle of the bar rather than a button
@@ -263,14 +291,14 @@ class LbmTabBar extends ConsumerWidget {
                   // same reason the cart pill is the one orchid thing on a
                   // photograph: there is exactly one of each.
                   const _ComposeButton(),
-                  const _CartTab(),
                   _TabButton(
-                    icon: Icons.home_outlined,
-                    activeIcon: Icons.home_rounded,
+                    icon: Icons.shopping_bag_outlined,
+                    activeIcon: Icons.shopping_bag_rounded,
                     label: 'Market',
-                    selected: current == Tabs.market,
-                    onTap: () => _goBranch(Tabs.market),
+                    selected: onShop,
+                    onTap: context.goToShop,
                   ),
+                  _CartTab(selected: onCart),
                 ],
               ),
             ),
@@ -329,16 +357,19 @@ class _ComposeButton extends ConsumerWidget {
 /// under every branch, so opening it from the Market and from Community
 /// keeps each tab's own back stack.
 class _CartTab extends ConsumerWidget {
-  const _CartTab();
+  const _CartTab({this.selected = false});
+
+  final bool selected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final count = ref.watch(cartCountProvider);
     return _TabButton(
-      icon: Icons.shopping_bag_outlined,
-      activeIcon: Icons.shopping_bag_rounded,
-      label: 'Cart',
-      selected: false,
+      icon: Icons.shopping_cart_outlined,
+      activeIcon: Icons.shopping_cart_rounded,
+      // Grace, 2026-10-28: "Check Out (with cart icon)".
+      label: 'Check Out',
+      selected: selected,
       count: count,
       onTap: context.goToCart,
     );

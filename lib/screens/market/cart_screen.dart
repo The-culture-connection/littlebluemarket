@@ -43,7 +43,7 @@ class CartScreen extends ConsumerWidget {
     });
 
     return LbmScreen(
-      appBar: const LbmAppBar(title: 'Your cart'),
+      appBar: const LbmAppBar(title: 'Your cart', actions: [HomeButton()]),
       child: LbmAsync<Cart>(
         cart,
         skeleton: const ListRowSkeleton(rows: 2),
