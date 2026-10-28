@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/feed_item.dart';
 import '../../models/models.dart';
 import '../../state/feed_items.dart';
+import '../../state/promos.dart';
 import '../../state/providers.dart';
 import '../../state/feed_tab.dart';
 import '../../state/location.dart';
@@ -422,6 +423,9 @@ class _GridState extends ConsumerState<_Grid> {
       // grid rather than pinned above it.
       const SliverToBoxAdapter(child: HeroBanner()),
       const SliverToBoxAdapter(child: SizedBox(height: 12)),
+      // The newest page the market has posted, first under the banner.
+      if (filter == FeedFilter.all)
+        const SliverToBoxAdapter(child: _TopStorePage()),
       // A member whose address is not confirmed: the two buttons that fix it,
       // before anything refuses them for it.
       const SliverToBoxAdapter(
@@ -840,6 +844,26 @@ class _GrowInState extends State<_GrowIn> with SingleTickerProviderStateMixin {
           ),
         );
       },
+    );
+  }
+}
+
+/// The newest of the market's posted pages, full width above the grid, or
+/// nothing. See [StorePagePin].
+class _TopStorePage extends ConsumerWidget {
+  const _TopStorePage();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final page = ref.watch(storePagesProvider).value?.firstOrNull;
+    if (page == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+      child: StorePagePin(
+        key: ValueKey('top_page_${page.id}'),
+        item: StorePageItem(page),
+        wide: true,
+      ),
     );
   }
 }

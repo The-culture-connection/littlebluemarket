@@ -2,6 +2,8 @@ import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 import { HttpsError } from 'firebase-functions/v2/https';
 
+import { type PageBlock, pageBlocks } from './store_page_content.ts';
+
 /**
  * Little Blue Market's own pages, posted to the For you feed: `storePages/{id}`.
  *
@@ -29,6 +31,8 @@ export interface StorePageListing {
   title: string;
   blurb: string;
   imageUrl: string;
+  /** How many parts the app can draw on its own screen; 0 opens the web page. */
+  blockCount?: number;
 }
 
 /** Every `<loc>` in a sitemap, decoded. Pure. */
@@ -118,11 +122,31 @@ export async function listStorePages(): Promise<StorePageListing[]> {
 export async function previewStorePage(url: string): Promise<StorePageListing> {
   const clean = validateStorePage({ url, title: handleTitle(url) || 'page' });
   try {
-    const preview = previewOf(clean.url, await fetchText(clean.url));
-    return { ...preview, title: preview.title || clean.title };
+    const html = await fetchText(clean.url);
+    const preview = previewOf(clean.url, html);
+    return {
+      ...preview,
+      title: preview.title || clean.title,
+      blockCount: pageBlocks(html, STORE_SITE).length,
+    };
   } catch (error) {
     logger.warn('Store page preview failed', { url, error: String(error) });
-    return { url: clean.url, title: clean.title, blurb: '', imageUrl: '' };
+    return { url: clean.url, title: clean.title, blurb: '', imageUrl: '', blockCount: 0 };
+  }
+}
+
+/**
+ * What the app draws when the page is opened, read once, when it is posted.
+ * Kept with the post rather than read on every phone: the store answers 429
+ * to a burst of requests, and a page that cannot be read leaves an empty
+ * list, which the app opens as the web page instead.
+ */
+async function readBlocks(url: string): Promise<PageBlock[]> {
+  try {
+    return pageBlocks(await fetchText(url), STORE_SITE);
+  } catch (error) {
+    logger.warn('Store page could not be read for the app', { url, error: String(error) });
+    return [];
   }
 }
 
@@ -175,15 +199,32 @@ export function validateStorePage(input: StorePageInput): StorePageListing {
 
 export async function postStorePage(input: StorePageInput, byUid: string): Promise<{ id: string }> {
   const clean = validateStorePage(input);
+  const blocks = await readBlocks(clean.url);
   const ref = getFirestore().collection('storePages').doc();
   await ref.set({
     ...clean,
+    blocks,
     active: true,
     createdAt: FieldValue.serverTimestamp(),
     postedBy: byUid,
   });
-  logger.info('Store page posted', { id: ref.id, url: clean.url });
+  logger.info('Store page posted', { id: ref.id, url: clean.url, blocks: blocks.length });
   return { id: ref.id };
+}
+
+/**
+ * Reads a posted page again, for when it has changed on the store or was
+ * posted before the app could open pages itself. The title, summary and
+ * picture are left as they were typed; only what the app draws is renewed.
+ */
+export async function refreshStorePage(id: string): Promise<{ id: string; blockCount: number }> {
+  if (!id) throw new HttpsError('invalid-argument', 'Which page?');
+  const ref = getFirestore().collection('storePages').doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', `There is no posted page with the id ${id}.`);
+  const blocks = await readBlocks(String(snap.get('url') ?? ''));
+  await ref.set({ blocks, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  return { id, blockCount: blocks.length };
 }
 
 export async function setStorePageActive(id: string, active: boolean): Promise<{ id: string; active: boolean }> {

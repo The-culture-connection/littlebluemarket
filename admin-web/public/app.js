@@ -405,11 +405,41 @@ const PROMO_BUTTON_COLORS = {
 
 // A colour code typed or picked, as #rrggbb, or "" when the box is empty or
 // not a code. Wins over the named colours when filled in.
+//
+// Forgiving about how it is written: "1A7F5A", "#1a7f5a", "#17a", a colour's
+// name ("teal"), "rgb(26, 127, 90)", or a code with see-through digits on the
+// end, which are dropped. Anything else used to be dropped silently and the
+// button stayed white (Grace, 2026-10-28, QA suite: "button colors are not
+// changing"); now Save refuses it out loud instead.
 function promoHex() {
-  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec($('pCtaHex').value.trim());
-  if (!m) return '';
-  const d = m[1].length === 3 ? [...m[1]].map((c) => c + c).join('') : m[1];
-  return `#${d.toLowerCase()}`;
+  const text = $('pCtaHex').value.trim();
+  if (!text) return '';
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(text);
+  if (m) {
+    const d = m[1].length === 3 ? [...m[1]].map((c) => c + c).join('') : m[1];
+    return `#${d.toLowerCase()}`;
+  }
+  return cssColorHex(text);
+}
+
+// Any colour the browser understands, as #rrggbb, or "".
+function cssColorHex(text) {
+  const withHash = /^[0-9a-f]{4}([0-9a-f]{4})?$/i.test(text) ? `#${text}` : text;
+  const ctx = document.createElement('canvas').getContext('2d');
+  // Two different starting colours: if the text is not a colour, the fill
+  // stays where it started, and only a real colour lands both times on the
+  // same value.
+  ctx.fillStyle = '#000001';
+  ctx.fillStyle = withHash;
+  const a = ctx.fillStyle;
+  ctx.fillStyle = '#000002';
+  ctx.fillStyle = withHash;
+  const b = ctx.fillStyle;
+  if (a !== b) return '';
+  if (/^#[0-9a-f]{6}$/i.test(a)) return a.toLowerCase();
+  const rgb = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(a);
+  if (!rgb) return '';
+  return `#${rgb.slice(1, 4).map((v) => Number(v).toString(16).padStart(2, '0')).join('')}`;
 }
 
 // What goes to the backend: the code if there is one, else the named colour.
@@ -732,6 +762,11 @@ $('pPostBtn').addEventListener('click', async () => {
   const ctaLabel = $('pCtaLabel').value.trim();
   const ctaUrl = $('pCtaUrl').value.trim();
   const ctaColor = promoColorValue();
+  if ($('pCtaHex').value.trim() && !promoHex()) {
+    notice('pNotice', `"${$('pCtaHex').value.trim()}" is not a colour I can read. Try a code like #1A7F5A, or use the colour picker beside the box.`, false);
+    $('pCtaHex').focus();
+    return;
+  }
   const imageUrls = promoPhotos.filter((p) => !p.pending).map((p) => p.url);
   const what = promoEditingId
     // Editing never re-announces: a push already went out when it was
@@ -804,7 +839,12 @@ async function spPreview() {
     $('spBlurb').value = data.blurb || '';
     $('spImage').value = data.imageUrl || '';
     spShowImage();
-    $('spNotice').hidden = true;
+    // How it will open, before it is posted: on the app's own screen when
+    // its words could be read, or as the web page when they could not (a
+    // lookup form, a widget).
+    notice('spNotice', data.blockCount > 0
+      ? `Opens in the app on its own screen (${data.blockCount} parts: headings, paragraphs, pictures, buttons).`
+      : "The app cannot read this page's words (it is a form or a widget), so it opens as the web page inside the app.", true);
   } catch (error) {
     notice('spNotice', describe(error), false);
   }
@@ -847,7 +887,7 @@ $('spPostBtn').addEventListener('click', async () => {
       blurb: $('spBlurb').value.trim(),
       imageUrl: $('spImage').value.trim(),
     });
-    notice('spNotice', 'Posted. It is on the For you feed now.', true);
+    notice('spNotice', 'Posted. It is at the top of the For you feed now.', true);
   } catch (error) {
     notice('spNotice', describe(error), false);
   } finally {
@@ -878,7 +918,12 @@ function watchStorePages() {
       head.append(tag, strong);
       const meta = document.createElement('div');
       meta.className = 'meta';
-      meta.textContent = [p.url, p.createdAt?.toDate ? p.createdAt.toDate().toLocaleString() : ''].filter(Boolean).join(' · ');
+      const parts = Array.isArray(p.blocks) ? p.blocks.length : 0;
+      meta.textContent = [
+        p.url,
+        p.createdAt?.toDate ? p.createdAt.toDate().toLocaleString() : '',
+        parts > 0 ? `opens in the app (${parts} parts)` : 'opens as the web page',
+      ].filter(Boolean).join(' · ');
       const actions = document.createElement('div');
       const mk = (label, fn) => {
         const b = document.createElement('button');
@@ -891,6 +936,14 @@ function watchStorePages() {
         });
         return b;
       };
+      // Reads the page off the store again: for a page changed there since,
+      // or posted before the app could open pages on its own screen.
+      actions.appendChild(mk('Refresh', async () => {
+        const { data } = await httpsCallable(functions, 'adminStorePageRefresh')({ id: d.id });
+        window.alert(data.blockCount > 0
+          ? `Read again: ${data.blockCount} parts. Phones show the new version next time it is opened.`
+          : "Read again, but the app cannot read this page's words, so it still opens as the web page.");
+      }));
       actions.appendChild(mk(active ? 'Hide' : 'Show again', () =>
         httpsCallable(functions, 'adminStorePageSetActive')({ id: d.id, active: !active })));
       actions.appendChild(mk('Delete', async () => {
@@ -956,6 +1009,7 @@ function watchPromos() {
         `${p.impressions ?? 0} seen`,
         `${p.clicks ?? 0} tapped`,
         p.ctaLabel ? `button: ${p.ctaLabel} -> ${p.ctaUrl || ''}` : 'no button',
+        p.ctaLabel ? `colour: ${p.ctaColor || 'white (the usual)'}` : '',
         runs,
       ].filter(Boolean).join(' · ');
 

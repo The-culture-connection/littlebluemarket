@@ -275,9 +275,13 @@ List<FeedItem> _interleaved(FeedInputs input) {
   final nudge = _nudge(input);
   if (nudge != null) queue.add(nudge);
 
-  // The market's own pages, newest first, ahead of the community: posted
-  // on purpose, today, by the people who run the market.
-  for (final page in input.storePages.take(_maxStorePagesPerPage)) {
+  // The market's own pages, ahead of the community: posted on purpose,
+  // today, by the people who run the market. Not the newest, which is drawn
+  // full width at the top of For you, above the grid (Grace, 2026-10-28:
+  // "When posted should go to the top of the feed"). In the grid a page
+  // posted while the feed was open went on the end, because the grid never
+  // moves what is already on screen; above it, it is first every time.
+  for (final page in input.storePages.skip(1).take(_maxStorePagesPerPage)) {
     queue.add(StorePageItem(page));
   }
 

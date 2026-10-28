@@ -98,6 +98,7 @@ import {
   listStorePages,
   postStorePage,
   previewStorePage,
+  refreshStorePage,
   setStorePageActive,
   type StorePageInput,
 } from './store_pages.ts';
@@ -1024,6 +1025,15 @@ export const adminStorePageSetActive = onCall(
     requireAdmin(request.auth?.token);
     const data = (request.data ?? {}) as Record<string, unknown>;
     return setStorePageActive(String(data.id ?? ''), data.active === true);
+  }),
+);
+
+export const adminStorePageRefresh = onCall(
+  withLoudErrors('adminStorePageRefresh', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    return refreshStorePage(String(data.id ?? ''));
   }),
 );
 

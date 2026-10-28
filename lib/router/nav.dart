@@ -85,6 +85,10 @@ extension LbmNavigation on BuildContext {
   /// Everything filed under one store collection, by handle.
   void goToCollection(String handle) => _pushInBranch('/collection/$handle');
 
+  /// One of the market's posted pages, on the app's own screen.
+  void goToStorePage(String id) =>
+      _pushInBranch('/page/${Uri.encodeComponent(id)}');
+
   /// A hashtag's own page: everything posted under it, and the way to follow
   /// it.
   ///

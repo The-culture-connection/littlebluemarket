@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:little_blue_market/main.dart';
 import 'package:little_blue_market/models/models.dart';
 import 'package:little_blue_market/router/app_router.dart';
@@ -10,6 +11,9 @@ import 'package:little_blue_market/screens/market/market_screen.dart';
 import 'package:little_blue_market/router/nav.dart';
 import 'package:little_blue_market/models/feed_item.dart';
 import 'package:little_blue_market/screens/market/search_screen.dart';
+import 'package:little_blue_market/screens/market/store_page_screen.dart';
+import 'package:little_blue_market/data/firebase/mappers.dart';
+import 'package:little_blue_market/state/promos.dart';
 import 'package:little_blue_market/state/feed_items.dart';
 import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/widgets/pins/store_page_pin.dart';
@@ -45,6 +49,15 @@ String _path(ProviderContainer c) =>
 
 Finder _inBar(Finder f) =>
     find.descendant(of: find.byType(LbmTabBar), matching: f);
+
+GoRouter _pageRouter(String id) => GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) => Scaffold(body: StorePageScreen(pageId: id)),
+    ),
+  ],
+);
 
 Promo _promo({
   PromoKind kind = PromoKind.ad,
@@ -270,20 +283,25 @@ void main() {
       expect(find.byType(SearchScreen), findsNothing);
     });
 
-    test('store pages go near the top of For you, two at most', () {
+    test('the grid gets the next two store pages, the newest is above it', () {
       StorePage page(String id) => StorePage(
         id: id,
         url: 'https://littlebluemarket.com/pages/$id',
         title: id,
       );
       final items = assembleFeed(
-        FeedInputs(storePages: [page('a'), page('b'), page('c')]),
+        FeedInputs(storePages: [page('a'), page('b'), page('c'), page('d')]),
       );
       final pages = items.whereType<StorePageItem>().toList();
-      expect(pages.map((i) => i.page.id), ['a', 'b']);
+      // 'a' is the newest: it is drawn full width above the grid, by the
+      // feed screen, so it is not in the grid as well.
+      expect(pages.map((i) => i.page.id), ['b', 'c']);
       // Only under All: a filter for products is a filter for products.
       final products = assembleFeed(
-        FeedInputs(storePages: [page('a')], filter: FeedFilter.product),
+        FeedInputs(
+          storePages: [page('a'), page('b')],
+          filter: FeedFilter.product,
+        ),
       );
       expect(products.whereType<StorePageItem>(), isEmpty);
     });
@@ -321,6 +339,173 @@ void main() {
       await tester.pump();
       expect(tester.takeException(), isNull);
       expect(find.text('LITTLE BLUE MARKET'), findsOneWidget);
+    });
+  });
+
+  group('store pages open on the app\'s own screen', () {
+    // Grace, 2026-10-28 (QA suite): "When posted should go to the top of the
+    // feed. I wanted the pages to be posted and able to be opened natively
+    // in the app".
+    const about = StorePage(
+      id: 'about1',
+      url: 'https://littlebluemarket.com/pages/about',
+      title: 'About',
+      blurb: 'A curated marketplace for conscious shoppers.',
+      blocks: [
+        PageBlock(kind: PageBlockKind.heading, text: 'Our Mission'),
+        PageBlock(
+          kind: PageBlockKind.text,
+          text: 'Little Blue Market exists to empower conscious shoppers.',
+        ),
+        PageBlock(kind: PageBlockKind.bullet, text: 'Support makers'),
+        PageBlock(
+          kind: PageBlockKind.button,
+          text: 'Shop Personalized Gifts',
+          url: 'https://littlebluemarket.com/collections/custom-gifts',
+        ),
+      ],
+    );
+
+    testWidgets('the newest is first under the banner and opens natively', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final container = ProviderContainer(
+        retry: lbmRetry,
+        overrides: [
+          storePagesProvider.overrideWith((ref) => Stream.value([about])),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.read(sessionProvider.notifier).signIn();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const LittleBlueMarketApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final top = find.byWidgetPredicate(
+        (w) => w is StorePagePin && w.wide && w.item.page.id == 'about1',
+      );
+      expect(top, findsOneWidget);
+      // Above the grid, so the grid does not carry it as well.
+      expect(find.byType(StorePagePin), findsOneWidget);
+
+      await tester.tap(top);
+      await tester.pumpAndSettle();
+      expect(find.byType(StorePageScreen), findsOneWidget);
+      expect(find.text('Our Mission'), findsOneWidget);
+      expect(find.text('Support makers'), findsOneWidget);
+      expect(find.text('Shop Personalized Gifts'), findsOneWidget);
+      expect(find.text('See it on littlebluemarket.com'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the page screen draws in dark mode without overflowing', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            storePagesProvider.overrideWith((ref) => Stream.value([about])),
+          ],
+          child: MaterialApp.router(
+            theme: buildLbmTheme(Brightness.dark),
+            routerConfig: _pageRouter('about1'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Little Blue Market exists to empower conscious shoppers.'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a page taken down says so', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            storePagesProvider.overrideWith((ref) => Stream.value(const [])),
+          ],
+          child: MaterialApp.router(
+            theme: buildLbmTheme(Brightness.light),
+            routerConfig: _pageRouter('gone'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('This page is no longer posted'), findsOneWidget);
+    });
+
+    test(
+      'the blocks are read, and a kind the app does not know is skipped',
+      () {
+        final page = FirestoreMappers.storePage('p', {
+          'url': 'https://littlebluemarket.com/pages/about',
+          'title': 'About',
+          'blocks': [
+            {
+              'kind': 'heading',
+              'text': 'Our Vision',
+              'link': 'https://x.test/a',
+            },
+            {'kind': 'image', 'url': 'https://littlebluemarket.com/cdn/a.jpg'},
+            {'kind': 'button', 'label': 'Apply', 'url': 'https://x.test/b'},
+            {'kind': 'carousel', 'text': 'from a newer backend'},
+            'not a block',
+          ],
+        });
+        expect(page.blocks.map((b) => b.kind), [
+          PageBlockKind.heading,
+          PageBlockKind.image,
+          PageBlockKind.button,
+        ]);
+        expect(page.blocks[0].link, 'https://x.test/a');
+        expect(page.blocks[2].text, 'Apply');
+        expect(page.readsInApp, isTrue);
+        // Posted before pages were read: opens as the web page.
+        expect(
+          FirestoreMappers.storePage('q', {'url': 'u'}).readsInApp,
+          isFalse,
+        );
+      },
+    );
+
+    test('links on a page go to the app\'s own screens where it has one', () {
+      expect(
+        storePageLinkTarget(
+          'https://littlebluemarket.com/collections/for-the-host',
+        ),
+        (kind: StoreLinkKind.collection, value: 'for-the-host'),
+      );
+      expect(
+        storePageLinkTarget(
+          'https://littlebluemarket.com/pages/about',
+          posted: const [about],
+        ),
+        (kind: StoreLinkKind.page, value: 'about1'),
+      );
+      // Not posted, a product, or another site: the in-app browser.
+      for (final url in [
+        'https://littlebluemarket.com/pages/sell-with-us',
+        'https://littlebluemarket.com/products/mug',
+        'https://littlebluemarket.com/collections/all',
+        'https://example.com/collections/x',
+      ]) {
+        expect(
+          storePageLinkTarget(url, posted: const [about]).kind,
+          StoreLinkKind.web,
+        );
+      }
     });
   });
 }

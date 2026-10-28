@@ -2,20 +2,32 @@ import 'package:flutter/material.dart';
 
 import '../../legal_links.dart';
 import '../../models/feed_item.dart';
+import '../../router/nav.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../product_art.dart';
 
-/// One of Little Blue Market's own pages in the For you grid: the page's
-/// picture, its title and a line of what it says, opened over the app
-/// (Grace, 2026-10-28). Column width, like a forum thread, because it is a
-/// thing to read rather than a banner.
+/// One of Little Blue Market's own pages in the For you feed: the page's
+/// picture, its title and a line of what it says (Grace, 2026-10-28).
+///
+/// The newest one is drawn [wide] at the top of For you, above the grid
+/// ("When posted should go to the top of the feed"); any other is column
+/// width in the grid, like a forum thread. Tapping opens the page on the
+/// app's own screen when it was read at posting, and over the app as the
+/// web page when it could not be.
 class StorePagePin extends StatelessWidget {
-  const StorePagePin({super.key, required this.item});
+  const StorePagePin({super.key, required this.item, this.wide = false});
 
   final StorePageItem item;
 
+  /// Full width, at the top of the feed.
+  final bool wide;
+
   Future<void> _open(BuildContext context) async {
+    if (item.page.readsInApp) {
+      context.goToStorePage(item.page.id);
+      return;
+    }
     final messenger = ScaffoldMessenger.of(context);
     if (!await openInApp(item.page.url)) {
       messenger.showSnackBar(
@@ -49,10 +61,10 @@ class StorePagePin extends StatelessWidget {
               children: [
                 if (page.hasPhoto)
                   AspectRatio(
-                    aspectRatio: 4 / 3,
+                    aspectRatio: wide ? 2 / 1 : 4 / 3,
                     child: ProductPhoto(
                       url: page.imageUrl,
-                      cacheWidth: 500,
+                      cacheWidth: wide ? 900 : 500,
                       fallback: ColoredBox(color: c.skyMist),
                     ),
                   ),
@@ -76,7 +88,7 @@ class StorePagePin extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         page.title,
-                        maxLines: 3,
+                        maxLines: wide ? 2 : 3,
                         overflow: TextOverflow.ellipsis,
                         style: LbmText.display.copyWith(
                           fontSize: 17,
@@ -88,7 +100,7 @@ class StorePagePin extends StatelessWidget {
                         const SizedBox(height: 6),
                         Text(
                           page.blurb,
-                          maxLines: 3,
+                          maxLines: wide ? 2 : 3,
                           overflow: TextOverflow.ellipsis,
                           style: LbmText.pinMeta.copyWith(
                             fontSize: 12.5,

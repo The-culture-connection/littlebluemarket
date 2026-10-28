@@ -240,6 +240,19 @@ abstract final class FirestoreMappers {
     title: str(data['title']),
     blurb: str(data['blurb']),
     imageUrl: str(data['imageUrl']),
+    blocks: [
+      if (data['blocks'] case final List<Object?> raw)
+        for (final item in raw)
+          if (item case final Map<Object?, Object?> b)
+            if (PageBlockKind.fromValue(str(b['kind'])) case final kind?)
+              PageBlock(
+                kind: kind,
+                // A button's words are its label.
+                text: str(b['text'], str(b['label'])),
+                url: str(b['url']),
+                link: str(b['link']),
+              ),
+    ],
     createdAt: timeOrNull(data['createdAt']),
   );
 

@@ -11,6 +11,7 @@ import '../screens/community/thread_screen.dart';
 import '../screens/market/cart_screen.dart';
 import '../screens/market/feed_screen.dart';
 import '../screens/market/market_screen.dart';
+import '../screens/market/store_page_screen.dart';
 import '../screens/market/post_screen.dart';
 import '../screens/market/product_screen.dart';
 import '../screens/market/collection_screen.dart';
@@ -97,6 +98,12 @@ List<RouteBase> _sharedRoutes() => [
           .where((t) => t.name == state.uri.queryParameters['ask'])
           .firstOrNull,
     ),
+  ),
+  // A page from the store, posted to the feed from the admin website.
+  GoRoute(
+    path: 'page/:id',
+    builder: (context, state) =>
+        StorePageScreen(pageId: state.pathParameters['id']!),
   ),
   GoRoute(
     path: 'collection/:handle',
