@@ -13,6 +13,7 @@ import '../../widgets/directory_listing_card.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
+import 'directory_near_me.dart';
 
 /// The horizontal "Browse the directory" rail on the feed.
 ///
@@ -167,6 +168,7 @@ class _DirectoryCategoryScreenState
           ),
           data: (page) {
             final listings = [...page.items, ..._more];
+            final nearOn = ref.watch(directoryNearMeOnProvider);
             return ListView(
               padding: const EdgeInsets.only(top: 4, bottom: 26),
               children: [
@@ -178,15 +180,19 @@ class _DirectoryCategoryScreenState
                       style: LbmText.tiny.copyWith(color: c.ink2),
                     ),
                   ),
-                for (final listing in listings)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-                    child: DirectoryListingCard(
-                      listing: listing,
-                      showClaim: true,
+                // Near me shows this category's nearby businesses instead
+                // of the whole list.
+                DirectoryNearMeSection(categoryName: category?.name),
+                if (!nearOn)
+                  for (final listing in listings)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                      child: DirectoryListingCard(
+                        listing: listing,
+                        showClaim: true,
+                      ),
                     ),
-                  ),
-                if (_cursor != null)
+                if (_cursor != null && !nearOn)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
                     child: PillButton(
@@ -241,6 +247,9 @@ class DirectoryHomeScreen extends ConsumerWidget {
                 style: LbmText.tiny.copyWith(color: c.ink2),
               ),
             ),
+            const DirectoryNearMeSection(),
+            if (ref.watch(directoryNearMeOnProvider))
+              const SectionHead('All categories'),
             LbmCard(
               margin: const EdgeInsets.symmetric(horizontal: 14),
               child: RowStack(

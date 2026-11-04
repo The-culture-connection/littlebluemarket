@@ -12,6 +12,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/message_product_card.dart';
 import '../../widgets/primitives.dart';
+import '../../widgets/reactions.dart';
 import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
 
@@ -427,7 +428,21 @@ class _ChatBubble extends ConsumerWidget {
                     ),
                   ),
                 ),
-              bubble,
+              // Long press to react (Grace, 2026-11-04). Not while it is
+              // still sending: it has no id to react to yet.
+              if (message.isPending)
+                bubble
+              else
+                Reactable(
+                  target: ChatReactionTarget(message.id),
+                  reactions: message.reactions,
+                  child: bubble,
+                ),
+              ReactionChips(
+                target: ChatReactionTarget(message.id),
+                reactions: message.reactions,
+                alignEnd: mine,
+              ),
             ],
           ),
         ),

@@ -192,7 +192,7 @@ function watchRecent() {
 async function refreshGate(user) {
   if (!user) {
     show('signin', true); show('notadmin', false); show('send', false); show('recentCard', false); show('feedbackCard', false); show('reportsCard', false); show('signout', false);
-    show('promoCard', false); show('promoListCard', false); show('storePageCard', false); show('announceListCard', false); show('dirCard', false); show('catalogCard', false); show('vendorCard', false); show('salesCard', false); show('forumSeedCard', false);
+    show('promoCard', false); show('promoListCard', false); show('storePageCard', false); show('analyticsCard', false); show('announceListCard', false); show('dirCard', false); show('catalogCard', false); show('vendorCard', false); show('salesCard', false); show('forumSeedCard', false);
     $('who').textContent = '';
     unsubscribeRecent?.(); unsubscribeRecent = null;
     unsubscribeFeedback?.(); unsubscribeFeedback = null;
@@ -214,6 +214,7 @@ async function refreshGate(user) {
   show('promoCard', isAdmin);
   show('promoListCard', isAdmin);
   show('storePageCard', isAdmin);
+  show('analyticsCard', isAdmin);
   show('announceListCard', isAdmin);
   show('dirCard', isAdmin);
   show('catalogCard', isAdmin);
@@ -901,6 +902,59 @@ $('spPostBtn').addEventListener('click', async () => {
     notice('spNotice', describe(error), false);
   } finally {
     $('spPostBtn').disabled = false;
+  }
+});
+
+// ------------------------------------------------------------ analytics
+//
+// Grace, 2026-11-04: "record all user events and are downloadable as a JSON
+// from the admin portal". The export comes a page at a time (a call gives up
+// after 70 seconds), so this asks until there is no next page, saying how
+// many so far, and then saves one file.
+
+{
+  const today = new Date().toISOString().slice(0, 10);
+  const weekAgo = new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10);
+  $('anFrom').value = weekAgo;
+  $('anTo').value = today;
+}
+
+$('anDownloadBtn').addEventListener('click', async () => {
+  const from = $('anFrom').value;
+  const to = $('anTo').value;
+  const uid = $('anUid').value.trim();
+  if (!from || !to) { notice('anNotice', 'Pick both dates.', false); return; }
+  $('anDownloadBtn').disabled = true;
+  const events = [];
+  let after = '';
+  try {
+    do {
+      notice('anNotice', `Fetching… ${events.length.toLocaleString()} events so far.`, true);
+      const { data } = await httpsCallable(functions, 'adminAnalyticsExport')({ from, to, uid, after });
+      events.push(...(data.events || []));
+      after = data.next || '';
+    } while (after);
+    const file = {
+      exportedAt: new Date().toISOString(),
+      from, to, uid: uid || null,
+      count: events.length,
+      events,
+    };
+    const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `lbm-analytics-${from}-to-${to}${uid ? '-' + uid : ''}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
+    notice('anNotice', events.length
+      ? `Downloaded ${events.length.toLocaleString()} events.`
+      : 'No events in those dates. The file is saved anyway, with an empty list.', true);
+  } catch (error) {
+    notice('anNotice', describe(error), false);
+  } finally {
+    $('anDownloadBtn').disabled = false;
   }
 });
 

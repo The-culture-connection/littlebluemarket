@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../analytics/analytics.dart';
 import '../models/models.dart';
 import 'providers.dart';
 import 'session.dart';
@@ -56,11 +57,15 @@ class FeedTabChoice extends Notifier<FeedTab?> {
   @override
   FeedTab? build() => null;
 
-  void select(FeedTab tab) => state = tab;
+  void select(FeedTab tab) {
+    Analytics.track('feed_tab', {'tab': tab.name});
+    state = tab;
+  }
 }
 
-final feedTabChoiceProvider =
-    NotifierProvider<FeedTabChoice, FeedTab?>(FeedTabChoice.new);
+final feedTabChoiceProvider = NotifierProvider<FeedTabChoice, FeedTab?>(
+  FeedTabChoice.new,
+);
 
 /// Whether this person follows anybody or any tag.
 final followsAnythingProvider = Provider<bool>((ref) {
@@ -98,8 +103,7 @@ const kFollowedTagsQueried = 10;
 final followedPeoplePostsProvider = Provider<List<Post>>((ref) {
   final people = ref.watch(followedPeopleProvider).value ?? const <String>{};
   if (people.isEmpty) return const [];
-  final blocked =
-      ref.watch(blockedUidsProvider).value ?? const <String>{};
+  final blocked = ref.watch(blockedUidsProvider).value ?? const <String>{};
   final out = <String, Post>{};
   for (final uid in people.take(kFollowedPeopleQueried)) {
     if (blocked.contains(uid)) continue;
@@ -125,8 +129,8 @@ final followedTagProductsProvider = Provider<List<Product>>((ref) {
   for (final tag in tags.take(kFollowedTagsQueried)) {
     final key = tagKey(tag);
     if (key.isEmpty) continue;
-    for (final product in ref.watch(tagProductsProvider(key)).value ??
-        const <Product>[]) {
+    for (final product
+        in ref.watch(tagProductsProvider(key)).value ?? const <Product>[]) {
       out[product.id] = product;
     }
   }

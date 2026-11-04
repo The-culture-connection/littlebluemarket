@@ -1359,6 +1359,15 @@ class FixtureMessagingRepository implements MessagingRepository {
     ];
   }
 
+  /// Every reaction set, in order: what tests read. The fixture messages
+  /// themselves are fixed, so a reaction does not show on them.
+  final List<(ReactionTarget, String?)> reactionsSet = [];
+
+  @override
+  Future<void> setReaction(ReactionTarget target, String? emoji) async {
+    reactionsSet.add((target, emoji));
+  }
+
   @override
   Future<void> markRead(String conversationId) async {
     _store.inbox.value = [

@@ -29,6 +29,7 @@ export 'post.dart';
 export 'promo.dart';
 export 'report.dart';
 export 'search.dart';
+export 'reactions.dart';
 export 'store_page.dart';
 export 'seller_sync.dart';
 
@@ -524,6 +525,7 @@ class ForumThread {
     required this.commentCount,
     required this.createdAt,
     this.productIds = const [],
+    this.reactions = const {},
   });
 
   final String id;
@@ -537,6 +539,9 @@ class ForumThread {
   /// Products tagged on the thread, by id.
   final List<String> productIds;
 
+  /// Who reacted with what: uid to emoji. See models/reactions.dart.
+  final Map<String, String> reactions;
+
   String get age => Fmt.relative(createdAt);
 }
 
@@ -548,7 +553,16 @@ class ThreadComment {
     required this.text,
     required this.depth,
     this.productIds = const [],
+    this.id = '',
+    this.reactions = const {},
   });
+
+  /// The reply's document id, which a reaction needs. Empty only in old
+  /// fixtures.
+  final String id;
+
+  /// Who reacted with what: uid to emoji. See models/reactions.dart.
+  final Map<String, String> reactions;
 
   final String authorId;
   final DateTime createdAt;

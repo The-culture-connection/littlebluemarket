@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../analytics/analytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/models.dart';
@@ -81,6 +82,14 @@ class _Body extends ConsumerWidget {
 
   Future<void> _open(BuildContext context, WidgetRef ref, Uri? uri) async {
     if (uri == null) return;
+    Analytics.track('directory_contact', {
+      'listingId': listing.id,
+      'how': switch (uri.scheme) {
+        'tel' => 'call',
+        'mailto' => 'email',
+        _ => 'website',
+      },
+    });
     final messenger = ScaffoldMessenger.maybeOf(context);
     final ok = await ref.read(externalLauncherProvider)(uri);
     if (!ok) {
@@ -173,6 +182,18 @@ class _Body extends ConsumerWidget {
                     icon: Icons.north_east_rounded,
                     onPressed: () => _open(context, ref, l.linkUri),
                   ),
+                // Directions by phone: the app shows the zip code and never
+                // the street, so calling is how a visitor finds the door
+                // (Grace, 2026-11-04).
+                if (l.callUri != null) ...[
+                  const SizedBox(height: 10),
+                  PillButton(
+                    'Call for directions',
+                    icon: Icons.call_rounded,
+                    style: PillStyle.ghost,
+                    onPressed: () => _open(context, ref, l.callUri),
+                  ),
+                ],
                 if (canMessage(l, me)) ...[
                   const SizedBox(height: 10),
                   PillButton(

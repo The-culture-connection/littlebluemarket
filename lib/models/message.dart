@@ -26,6 +26,7 @@ class Message {
     required this.text,
     this.attachedProductId,
     this.status = MessageStatus.sent,
+    this.reactions = const {},
   });
 
   /// The single open chatroom everyone can post into.
@@ -43,6 +44,9 @@ class Message {
 
   final MessageStatus status;
 
+  /// Who reacted with what: uid to emoji. See models/reactions.dart.
+  final Map<String, String> reactions;
+
   String get time => Fmt.clock(createdAt);
 
   bool get isPending => status == MessageStatus.sending;
@@ -56,6 +60,7 @@ class Message {
     text: text,
     attachedProductId: attachedProductId,
     status: status ?? this.status,
+    reactions: reactions,
   );
 }
 

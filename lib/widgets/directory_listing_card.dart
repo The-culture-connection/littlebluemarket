@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../analytics/analytics.dart';
 import '../models/models.dart';
 import '../router/nav.dart';
 import '../state/providers.dart';
@@ -23,7 +24,11 @@ class DirectoryListingCard extends StatelessWidget {
     this.showStatus = false,
     this.bare = false,
     this.showClaim = false,
+    this.milesAway,
   });
+
+  /// How far away it is, under Near me; null elsewhere.
+  final double? milesAway;
 
   final DirectoryListing listing;
 
@@ -42,6 +47,15 @@ class DirectoryListingCard extends StatelessWidget {
   Future<void> _open(BuildContext context, Uri? uri) async {
     final messenger = ScaffoldMessenger.of(context);
     if (uri == null) return;
+    Analytics.track('directory_contact', {
+      'listingId': listing.id,
+      'how': switch (uri.scheme) {
+        'tel' => 'call',
+        'mailto' => 'email',
+        _ => 'website',
+      },
+      'from': 'card',
+    });
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok) {
       messenger.showSnackBar(SnackBar(content: Text('Could not open $uri')));
@@ -64,7 +78,10 @@ class DirectoryListingCard extends StatelessWidget {
     final actions = <({String label, IconData icon, VoidCallback onTap})>[
       for (final (label, icon, uri) in [
         ('Website', Icons.language_rounded, l.websiteUri),
-        ('Call', Icons.call_rounded, l.callUri),
+        // Calling is how people get directions: the street address is
+        // never shown (Grace, 2026-11-04: "do not want to show their full
+        // address for directions so allow to call for directions").
+        ('Call for directions', Icons.call_rounded, l.callUri),
         ('Email', Icons.mail_outline_rounded, l.emailUri),
       ])
         if (uri != null)
@@ -146,11 +163,16 @@ class DirectoryListingCard extends StatelessWidget {
                   ],
                 ),
               ],
-              // The zip code, never the street (Grace, 2026-10-05).
-              if (l.zip.isNotEmpty) ...[
+              // The zip code, never the street (Grace, 2026-10-05), and how
+              // far under Near me.
+              if (l.zip.isNotEmpty || milesAway != null) ...[
                 const SizedBox(height: 10),
                 Text(
-                  'Zip code ${l.zip}',
+                  [
+                    if (milesAway != null)
+                      '${Fmt.distanceMiles(milesAway!)} away',
+                    if (l.zip.isNotEmpty) 'Zip code ${l.zip}',
+                  ].join(' · '),
                   style: LbmText.tiny.copyWith(color: c.ink2, height: 1.4),
                 ),
               ],

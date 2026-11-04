@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/repositories/dev_error_sink.dart' show kUnderFlutterTest;
 import '../../legal_links.dart';
 import '../../models/models.dart';
 import '../../router/nav.dart';
@@ -12,10 +14,15 @@ import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
+import 'store_page_live.dart';
 
 /// One of Little Blue Market's pages, posted to the feed, on the app's own
 /// screen (Grace, 2026-10-28, from the QA suite: "I wanted the pages to be
 /// posted and able to be opened natively in the app").
+///
+/// On a phone it is the real page in a web view, the store's own fonts and
+/// colours ([StorePageLive], Grace, 2026-11-04). On the web app, where the
+/// store refuses to be framed, it is rebuilt:
 ///
 /// Drawn from the blocks the backend read off the page when it was posted:
 /// headings, paragraphs, bullet points, pictures and buttons, in the app's
@@ -25,6 +32,10 @@ class StorePageScreen extends ConsumerWidget {
   const StorePageScreen({super.key, required this.pageId});
 
   final String pageId;
+
+  /// The real page in a web view: phones only, and not under test, where
+  /// there is no web view to draw.
+  static bool get live => !kIsWeb && !kUnderFlutterTest;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,6 +54,7 @@ class StorePageScreen extends ConsumerWidget {
           title: 'This page is no longer posted',
           body: 'It may have been taken down from the feed.',
         ),
+        (_, final StorePage page) when live => StorePageLive(url: page.url),
         (_, final StorePage page) when page.readsInApp => _PageBody(page: page),
         (_, final StorePage page) => _Unread(page: page),
       },
@@ -62,8 +74,21 @@ class _Unread extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final read = ref.watch(storePageReadProvider(page.id));
-    final nothing = read.hasError || (read.value ?? 1) == 0;
-    if (!nothing) {
+    // A failure is not "a form": it is the backend not answering (on
+    // 2026-11-04 the live one did not have this function yet, and every
+    // page said it was a form). Say so, and offer to try again.
+    if (read.hasError) {
+      return LbmEmpty(
+        title: 'This page did not load',
+        body: 'Check the connection and try again.',
+        action: PillButton(
+          'Try again',
+          expand: false,
+          onPressed: () => ref.invalidate(storePageReadProvider(page.id)),
+        ),
+      );
+    }
+    if ((read.value ?? 1) > 0) {
       return const Center(child: CircularProgressIndicator());
     }
     return LbmEmpty(

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../analytics/analytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/feed_item.dart';
@@ -392,7 +393,10 @@ class _FeedFilterNotifier extends Notifier<String> {
   @override
   String build() => FeedFilter.all;
 
-  void select(String filter) => state = filter;
+  void select(String filter) {
+    Analytics.track('feed_filter', {'filter': filter});
+    state = filter;
+  }
 }
 
 /// The busiest threads across every forum, for the pins in the Market feed.

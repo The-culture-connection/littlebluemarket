@@ -48,6 +48,21 @@
       ]
     },
     {
+      "_comment": "2026-11-04: the analytics download for one user, oldest first.",
+      "collectionGroup": "analyticsEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "receivedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "_comment": "2026-10-28: store pages posted to the For you feed, newest first.",
       "collectionGroup": "storePages",
       "queryScope": "COLLECTION",

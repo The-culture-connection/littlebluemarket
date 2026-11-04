@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../analytics/analytics.dart';
 import '../../models/feed_item.dart';
 import '../../router/nav.dart';
 import '../../theme/app_theme.dart';
@@ -22,7 +23,13 @@ class StorePagePin extends StatelessWidget {
   /// Full width, at the top of the feed.
   final bool wide;
 
-  void _open(BuildContext context) => context.goToStorePage(item.page.id);
+  void _open(BuildContext context) {
+    Analytics.track('store_page_open', {
+      'pageId': item.page.id,
+      'url': item.page.url,
+    });
+    context.goToStorePage(item.page.id);
+  }
 
   @override
   Widget build(BuildContext context) {

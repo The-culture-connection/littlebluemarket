@@ -7,6 +7,7 @@ import '../../state/providers.dart';
 import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/reactions.dart';
 import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/message_product_card.dart';
@@ -258,6 +259,7 @@ class _Bubble extends ConsumerWidget {
     final c = context.c;
     final mine = message.authorId == ref.watch(currentUidProvider);
     final author = ref.watch(personProvider(message.authorId));
+    final target = DmReactionTarget(message.conversationId, message.id);
 
     return Row(
       textDirection: mine ? TextDirection.rtl : TextDirection.ltr,
@@ -277,46 +279,55 @@ class _Bubble extends ConsumerWidget {
                 ? CrossAxisAlignment.end
                 : CrossAxisAlignment.start,
             children: [
-              Container(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.sizeOf(context).width * 0.7,
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: mine ? c.accentDeep : c.surface,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(mine ? 18 : 6),
-                    topRight: Radius.circular(mine ? 6 : 18),
-                    bottomLeft: const Radius.circular(18),
-                    bottomRight: const Radius.circular(18),
+              Reactable(
+                target: target,
+                reactions: message.reactions,
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.sizeOf(context).width * 0.7,
                   ),
-                  boxShadow: mine ? null : c.shadowSoft,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // What the message is about, when it is about something.
-                    // A question sent from a product page arrives with the
-                    // thing attached, so the maker does not have to ask which
-                    // one, and the buyer can cart it from the conversation.
-                    if (message.attachedProductId case final productId?) ...[
-                      MessageProductCard(productId: productId, onDark: mine),
-                      const SizedBox(height: 8),
-                    ],
-                    Text(
-                      message.text,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        height: 1.5,
-                        color: mine ? c.accentInk : c.ink,
-                      ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: mine ? c.accentDeep : c.surface,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(mine ? 18 : 6),
+                      topRight: Radius.circular(mine ? 6 : 18),
+                      bottomLeft: const Radius.circular(18),
+                      bottomRight: const Radius.circular(18),
                     ),
-                  ],
+                    boxShadow: mine ? null : c.shadowSoft,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // What the message is about, when it is about something.
+                      // A question sent from a product page arrives with the
+                      // thing attached, so the maker does not have to ask which
+                      // one, and the buyer can cart it from the conversation.
+                      if (message.attachedProductId case final productId?) ...[
+                        MessageProductCard(productId: productId, onDark: mine),
+                        const SizedBox(height: 8),
+                      ],
+                      Text(
+                        message.text,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          height: 1.5,
+                          color: mine ? c.accentInk : c.ink,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+              ),
+              ReactionChips(
+                target: target,
+                reactions: message.reactions,
+                alignEnd: mine,
               ),
               const SizedBox(height: 3),
               Text(

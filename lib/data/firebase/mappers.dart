@@ -522,10 +522,13 @@ abstract final class FirestoreMappers {
         commentCount: integer(data['commentCount']),
         createdAt: time(data['createdAt']),
         productIds: strings(data['productIds']),
+        reactions: stringMap(data['reactions']),
       );
 
-  static ThreadComment threadComment(Map<String, dynamic> data) =>
+  static ThreadComment threadComment(String id, Map<String, dynamic> data) =>
       ThreadComment(
+        id: id,
+        reactions: stringMap(data['reactions']),
         authorId: str(data['authorId']),
         createdAt: time(data['createdAt']),
         text: str(data['text']),
@@ -542,6 +545,7 @@ abstract final class FirestoreMappers {
     createdAt: time(data['createdAt']),
     text: str(data['text']),
     attachedProductId: data['attachedProductId'] as String?,
+    reactions: stringMap(data['reactions']),
   );
 
   static Conversation conversation(

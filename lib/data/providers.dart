@@ -2,16 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth/auth_service.dart';
-import 'firebase/firebase_auth_service.dart';
 import 'firebase/firebase_bootstrap.dart';
-import 'firebase/firestore_account_repository.dart';
 import 'firebase/firestore_catalog_repository.dart';
 import 'firebase/firestore_collection_repository.dart';
 import 'firebase/firestore_diagnostics_repository.dart';
 import 'firebase/firestore_admin_repository.dart';
-import 'firebase/firestore_directory_repository.dart';
 import 'firebase/firestore_feedback_repository.dart';
-import 'firebase/firestore_report_repository.dart';
 import 'firebase/firebase_push_service.dart';
 import 'billing/billing_service.dart';
 import 'billing/store_billing_service.dart';
@@ -21,18 +17,13 @@ import 'push/push_service.dart';
 import 'fixtures/fixture_funding_repository.dart';
 import 'firebase/firestore_funding_repository.dart';
 import 'repositories/funding_repository.dart';
-import 'firebase/firestore_messaging_repository.dart';
-import 'firebase/firestore_profile_repository.dart';
-import 'firebase/firestore_promo_repository.dart';
-import 'firebase/firestore_search_repository.dart';
 import 'firebase/firestore_seller_repository.dart';
-import 'firebase/firestore_social_repository.dart';
-import 'shopify/commerce_proxy_repository.dart';
 import 'shopify/fulfillment_proxy_repository.dart';
 import 'fixtures/fixture_repositories.dart';
 import 'fixtures/fixture_store.dart';
 import 'repositories/dev_error_sink.dart';
 import 'repositories/repositories.dart';
+import 'tracked_repositories.dart';
 
 /// Which backend the app is talking to.
 ///
@@ -125,7 +116,7 @@ final searchRepositoryProvider = Provider<SearchRepository>((ref) {
     Backend.fixtures => FixtureSearchRepository(
       ref.watch(fixtureBackendProvider),
     ),
-    Backend.live => FirestoreSearchRepository(
+    Backend.live => TrackedSearchRepository(
       firestore: ref.watch(firestoreProvider),
       uid: ref.watch(_uidProvider),
     ),
@@ -137,7 +128,7 @@ final commerceRepositoryProvider = Provider<CommerceRepository>((ref) {
     Backend.fixtures => FixtureCommerceRepository(
       ref.watch(fixtureBackendProvider),
     ),
-    Backend.live => CommerceProxyRepository(
+    Backend.live => TrackedCommerceRepository(
       functions: ref.watch(firebaseFunctionsProvider),
       firestore: ref.watch(firestoreProvider),
       uid: ref.watch(_uidProvider),
@@ -150,7 +141,7 @@ final socialRepositoryProvider = Provider<SocialRepository>((ref) {
     Backend.fixtures => FixtureSocialRepository(
       ref.watch(fixtureBackendProvider),
     ),
-    Backend.live => FirestoreSocialRepository(
+    Backend.live => TrackedSocialRepository(
       firestore: ref.watch(firestoreProvider),
       storage: ref.watch(firebaseStorageProvider),
       uid: ref.watch(_uidProvider),
@@ -163,7 +154,7 @@ final messagingRepositoryProvider = Provider<MessagingRepository>((ref) {
     Backend.fixtures => FixtureMessagingRepository(
       ref.watch(fixtureBackendProvider),
     ),
-    Backend.live => FirestoreMessagingRepository(
+    Backend.live => TrackedMessagingRepository(
       firestore: ref.watch(firestoreProvider),
       uid: ref.watch(_uidProvider),
     ),
@@ -175,7 +166,7 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
     Backend.fixtures => FixtureProfileRepository(
       ref.watch(fixtureBackendProvider),
     ),
-    Backend.live => FirestoreProfileRepository(
+    Backend.live => TrackedProfileRepository(
       firestore: ref.watch(firestoreProvider),
       storage: ref.watch(firebaseStorageProvider),
       functions: ref.watch(firebaseFunctionsProvider),
@@ -218,7 +209,7 @@ final directoryRepositoryProvider = Provider<DirectoryRepository>((ref) {
     Backend.fixtures => FixtureDirectoryRepository(
       ref.watch(fixtureBackendProvider),
     ),
-    Backend.live => FirestoreDirectoryRepository(
+    Backend.live => TrackedDirectoryRepository(
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),
       uid: ref.watch(_uidProvider),
@@ -246,7 +237,7 @@ final promoRepositoryProvider = Provider<PromoRepository>((ref) {
     Backend.fixtures => FixturePromoRepository(
       ref.watch(fixtureBackendProvider),
     ),
-    Backend.live => FirestorePromoRepository(
+    Backend.live => TrackedPromoRepository(
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),
     ),
@@ -273,7 +264,7 @@ final accountRepositoryProvider = Provider<AccountRepository>((ref) {
     Backend.fixtures => FixtureAccountRepository(
       ref.watch(fixtureBackendProvider),
     ),
-    Backend.live => FirestoreAccountRepository(
+    Backend.live => TrackedAccountRepository(
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),
     ),
@@ -285,7 +276,7 @@ final reportRepositoryProvider = Provider<ReportRepository>((ref) {
     Backend.fixtures => FixtureReportRepository(
       ref.watch(fixtureBackendProvider),
     ),
-    Backend.live => FirestoreReportRepository(
+    Backend.live => TrackedReportRepository(
       firestore: ref.watch(firestoreProvider),
       functions: ref.watch(firebaseFunctionsProvider),
       uid: ref.watch(_uidProvider),
@@ -348,7 +339,7 @@ final authServiceProvider = Provider<AuthService>((ref) {
       ref.onDispose(service.dispose);
       return service;
     }(),
-    Backend.live => FirebaseAuthService(
+    Backend.live => TrackedAuthService(
       ref.watch(firebaseAuthProvider),
       functions: ref.watch(firebaseFunctionsProvider),
     ),

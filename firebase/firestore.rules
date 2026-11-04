@@ -56,6 +56,21 @@ service cloud.firestore {
       return !incoming().diff(existing()).affectedKeys().hasAny(locked);
     }
 
+    // An emoji reaction (2026-11-04: "allow to long press and react with
+    // emojis to messages"), stored as reactions.{uid} = emoji. The only
+    // change is the caller's own entry: set to one short emoji, changed, or
+    // taken away. Nobody else's reaction, and nothing else on the message.
+    function reactionOnly() {
+      let before = existing().get('reactions', {});
+      let after = incoming().get('reactions', {});
+      let uid = request.auth.uid;
+      return member()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['reactions'])
+        && after is map
+        && after.diff(before).affectedKeys().hasOnly([uid])
+        && (!(uid in after) || (after[uid] is string && after[uid].size() > 0 && after[uid].size() <= 16));
+    }
+
     function authorIsSelf() {
       return isSelf(incoming().authorId);
     }
@@ -222,6 +237,14 @@ service cloud.firestore {
     // is read only by an admin.
     match /storePages/{id} {
       allow read: if resource.data.active == true || admin();
+      allow write: if false;
+    }
+
+    // The app's analytics (2026-11-04). Written only by the trackEvents
+    // function, which stamps the caller's uid; read only by admins, through
+    // the export on the admin website.
+    match /analyticsEvents/{id} {
+      allow read: if admin();
       allow write: if false;
     }
 
@@ -524,9 +547,10 @@ service cloud.firestore {
         && text('title', 200)
         && optText('body', 5000)
         && incoming().commentCount == 0;
-      allow update: if member()
+      allow update: if (member()
         && isSelf(existing().authorId)
-        && untouched(['commentCount', 'authorId', 'createdAt', 'forumId']);
+        && untouched(['commentCount', 'authorId', 'createdAt', 'forumId', 'reactions']))
+        || reactionOnly();
       allow delete: if member() && isSelf(existing().authorId);
 
       match /comments/{commentId} {
@@ -535,9 +559,10 @@ service cloud.firestore {
           && authorIsSelf()
           && fresh()
           && text('text', 2000);
-        allow update: if member()
+        allow update: if (member()
           && isSelf(existing().authorId)
-          && untouched(['authorId', 'createdAt']);
+          && untouched(['authorId', 'createdAt', 'reactions']))
+          || reactionOnly();
         allow delete: if member() && isSelf(existing().authorId);
       }
     }
@@ -545,14 +570,14 @@ service cloud.firestore {
     // -------------------------------------------------------------- messaging
 
     // The open room. Anyone with an account can post; nobody can rewrite
-    // history.
+    // history, but anyone can react.
     match /chatroom/{messageId} {
       allow read: if signedIn();
       allow create: if member()
         && authorIsSelf()
         && fresh()
         && text('text', 2000);
-      allow update: if false;
+      allow update: if reactionOnly();
       allow delete: if member() && isSelf(existing().authorId);
     }
 
@@ -602,7 +627,9 @@ service cloud.firestore {
           && fresh()
           && text('text', 2000)
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
-        allow update, delete: if false;
+        allow update: if reactionOnly()
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+        allow delete: if false;
       }
     }
 

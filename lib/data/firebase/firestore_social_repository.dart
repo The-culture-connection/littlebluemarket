@@ -626,7 +626,7 @@ class FirestoreSocialRepository implements SocialRepository {
       .snapshots()
       .map(
         (snapshot) => snapshot.docs
-            .map((doc) => FirestoreMappers.threadComment(doc.data()))
+            .map((doc) => FirestoreMappers.threadComment(doc.id, doc.data()))
             .toList(),
       )
       .guarded();

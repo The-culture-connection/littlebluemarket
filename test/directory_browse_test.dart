@@ -110,6 +110,9 @@ void main() {
     tester,
   ) async {
     await _pumpSearch(tester);
+    // Taller than a phone, for both listings under the Near me switch: the
+    // list is lazy, so one below the screen is not built at all.
+    tester.view.physicalSize = const Size(390, 1400);
     await _openCategory(tester, 'Home & Garden');
 
     // The screen is titled in the directory's own words.

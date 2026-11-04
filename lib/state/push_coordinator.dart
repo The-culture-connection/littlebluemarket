@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../analytics/analytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/repositories/dev_error_sink.dart';
@@ -21,7 +22,10 @@ final pushCoordinatorProvider = Provider<void>((ref) {
   // is respected after that (the Notifications screen is the way back in).
   // No timer here: a pending timer would fail every widget test.
   unawaited(
-    push.requestPermissionIfUndecided().catchError((Object error, StackTrace stack) {
+    push.requestPermissionIfUndecided().catchError((
+      Object error,
+      StackTrace stack,
+    ) {
       DevErrorSink.report(error, stack, 'push permission at start');
     }),
   );
@@ -62,6 +66,7 @@ final pushCoordinatorProvider = Provider<void>((ref) {
   });
 
   final sub = push.openedRoutes.listen((route) {
+    Analytics.track('push_open', {'route': route});
     ref.read(routerProvider).go(route);
   });
   ref.onDispose(sub.cancel);

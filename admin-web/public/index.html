@@ -402,7 +402,7 @@
 
   <section id="storePageCard" class="card" hidden>
     <h2>Store pages on the For you feed</h2>
-    <p class="hint">Post one of Little Blue Market's own pages (a gift guide, a creator's picks, the FAQs) as a card in everybody's <strong>For you</strong> feed. Tapping the card opens the page inside the app. The newest two posted show near the top of the feed. <strong>Hide</strong> takes one off every phone without deleting it.</p>
+    <p class="hint">Post one of Little Blue Market's own pages (a gift guide, a creator's picks, the FAQs) as a card in everybody's <strong>For you</strong> feed. Tapping the card opens the page inside the app. The newest one posted sits at the very top of the feed, under the banner; the next two are in the feed itself. <strong>Hide</strong> takes one off every phone without deleting it.</p>
     <button id="spLoadBtn" class="quiet">Load pages from the store</button>
     <div id="spForm" hidden>
       <label for="spPick">Page</label>
@@ -418,6 +418,18 @@
     </div>
     <div id="spNotice" class="notice" hidden></div>
     <ul id="storePages" class="recent"></ul>
+  </section>
+
+  <section id="analyticsCard" class="card" hidden>
+    <h2>Analytics</h2>
+    <p class="hint">Every screen opened and every action taken in the app (searches, add to cart, checkout, posts, follows, messages, reactions, directory calls and more), as a JSON file. Each event has the member's user id (<code>uid</code>; empty for a guest), the device id (<code>deviceId</code>, which follows a guest into their account), the visit (<code>sessionId</code>), the screen it happened on and when. Dates are whole days in UTC, both included.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div><label for="anFrom">From</label><input id="anFrom" type="date"></div>
+      <div><label for="anTo">To</label><input id="anTo" type="date"></div>
+      <div style="flex:1;min-width:220px"><label for="anUid">One member only (user id, optional)</label><input id="anUid" placeholder="Leave empty for everyone"></div>
+    </div>
+    <div style="margin-top:14px"><button id="anDownloadBtn" class="primary">Download JSON</button></div>
+    <div id="anNotice" class="notice" hidden></div>
   </section>
 
   <section id="announceListCard" class="card" hidden>

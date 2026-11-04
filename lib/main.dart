@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show PointerDeviceKind;
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'app_assets.dart';
+import 'analytics/analytics.dart';
+import 'data/firebase/firebase_analytics_sink.dart';
 import 'data/firebase/firebase_bootstrap.dart';
 import 'data/firebase/firebase_push_service.dart';
 import 'data/repositories/dev_error_sink.dart';
@@ -77,6 +80,11 @@ Future<void> _appMain() async {
     if (!kIsWeb) {
       FirebaseMessaging.onBackgroundMessage(lbmBackgroundMessageHandler);
     }
+    unawaited(
+      Analytics.start(sink: firebaseAnalyticsSink(FirebaseFunctions.instance)),
+    );
+  } else {
+    unawaited(Analytics.start());
   }
 
   runApp(ProviderScope(retry: lbmRetry, child: const LittleBlueMarketApp()));
@@ -104,6 +112,7 @@ class LittleBlueMarketApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     QaHarness.attachRouter(router);
+    Analytics.attachRouter(router);
     final override = ref.watch(themeModeProvider);
     // Registers the phone for push once a member is signed in and opens
     // the route a tapped banner names. No UI of its own.

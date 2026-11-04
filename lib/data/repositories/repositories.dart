@@ -405,6 +405,11 @@ abstract interface class MessagingRepository {
     String? attachedProductId,
   });
   Future<void> markRead(String conversationId);
+
+  /// Sets the signed-in member's reaction on a message to [emoji], or takes
+  /// it away when [emoji] is null. Chat, direct messages and forums alike;
+  /// see models/reactions.dart.
+  Future<void> setReaction(ReactionTarget target, String? emoji);
 }
 
 /// Profiles, avatars, addresses.

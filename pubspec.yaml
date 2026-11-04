@@ -1,4 +1,4 @@
-﻿name: little_blue_market
+name: little_blue_market
 description: "Little Blue Market - a marketplace for small makers."
 publish_to: 'none'
 version: 0.4.5+18
@@ -44,6 +44,9 @@ dependencies:
   # cell the same aspect ratio; here the photo sets the height, so the two
   # columns have to fill independently. See widgets/masonry.dart.
   flutter_staggered_grid_view: ^0.7.0
+  webview_flutter: 4.10.0
+  emoji_picker_flutter: 4.3.0
+  package_info_plus: ^10.2.2
 
 dev_dependencies:
   flutter_test:

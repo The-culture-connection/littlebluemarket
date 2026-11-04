@@ -7,6 +7,7 @@ import '../../state/providers.dart';
 import '../../state/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/reactions.dart';
 import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
 import '../../widgets/screen.dart';
@@ -76,92 +77,98 @@ class _ThreadHead extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
     final author = ref.watch(personProvider(thread.authorId));
+    final target = ThreadReactionTarget(thread.id);
 
-    return LbmCard(
-      margin: const EdgeInsets.symmetric(horizontal: 14),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          LbmAsync<Person>(
-            author,
-            skeleton: const ListRowSkeleton(rows: 1),
-            errorBuilder: (_, _) => const SizedBox.shrink(),
-            data: (author) => Row(
-              children: [
-                Avatar(
-                  author,
-                  size: AvatarSize.sm,
-                  onTap: () => context.goToSeller(author.id),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text.rich(
-                        TextSpan(
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: c.ink,
-                          ),
-                          children: [
-                            TextSpan(text: '${author.name} '),
-                            TextSpan(
-                              text: author.handle,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: c.ink2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        '${thread.age} ago',
-                        style: LbmText.xtiny.copyWith(
-                          color: c.ink2,
-                          fontFeatures: kTabularFigures,
-                        ),
-                      ),
-                    ],
+    return Reactable(
+      target: target,
+      reactions: thread.reactions,
+      child: LbmCard(
+        margin: const EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            LbmAsync<Person>(
+              author,
+              skeleton: const ListRowSkeleton(rows: 1),
+              errorBuilder: (_, _) => const SizedBox.shrink(),
+              data: (author) => Row(
+                children: [
+                  Avatar(
+                    author,
+                    size: AvatarSize.sm,
+                    onTap: () => context.goToSeller(author.id),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text.rich(
+                          TextSpan(
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: c.ink,
+                            ),
+                            children: [
+                              TextSpan(text: '${author.name} '),
+                              TextSpan(
+                                text: author.handle,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  color: c.ink2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          '${thread.age} ago',
+                          style: LbmText.xtiny.copyWith(
+                            color: c.ink2,
+                            fontFeatures: kTabularFigures,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            thread.title,
-            style: LbmText.display.copyWith(
-              fontSize: 20,
-              height: 1.24,
-              color: c.ink,
+            const SizedBox(height: 10),
+            Text(
+              thread.title,
+              style: LbmText.display.copyWith(
+                fontSize: 20,
+                height: 1.24,
+                color: c.ink,
+              ),
             ),
-          ),
-          const SizedBox(height: 9),
-          // NamedText rather than HashtagText: an @name in a thread opens
-          // that profile now that people can be tagged here.
-          NamedText(
-            thread.body,
-            tagColor: c.skyDeep,
-            style: TextStyle(fontSize: 14, height: 1.6, color: c.ink2),
-            onOpenTag: (tag) => context.goToTag(tag),
-            onOpenProfile: (uid) => context.goToSeller(uid),
-          ),
-          TaggedProducts(productIds: thread.productIds),
-          const SizedBox(height: 13),
-          Text(
-            '${Fmt.count(thread.commentCount)} comments',
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w800,
-              color: c.ink3,
-              fontFeatures: kTabularFigures,
+            const SizedBox(height: 9),
+            // NamedText rather than HashtagText: an @name in a thread opens
+            // that profile now that people can be tagged here.
+            NamedText(
+              thread.body,
+              tagColor: c.skyDeep,
+              style: TextStyle(fontSize: 14, height: 1.6, color: c.ink2),
+              onOpenTag: (tag) => context.goToTag(tag),
+              onOpenProfile: (uid) => context.goToSeller(uid),
             ),
-          ),
-        ],
+            TaggedProducts(productIds: thread.productIds),
+            ReactionChips(target: target, reactions: thread.reactions),
+            const SizedBox(height: 13),
+            Text(
+              '${Fmt.count(thread.commentCount)} comments',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+                color: c.ink3,
+                fontFeatures: kTabularFigures,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -192,7 +199,8 @@ class _Comments extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Column(
           children: [
-            for (final comment in comments) _Comment(comment: comment),
+            for (final comment in comments)
+              _Comment(threadId: threadId, comment: comment),
           ],
         ),
       ),
@@ -201,8 +209,9 @@ class _Comments extends ConsumerWidget {
 }
 
 class _Comment extends ConsumerWidget {
-  const _Comment({required this.comment});
+  const _Comment({required this.threadId, required this.comment});
 
+  final String threadId;
   final ThreadComment comment;
 
   @override
@@ -210,8 +219,9 @@ class _Comment extends ConsumerWidget {
     final c = context.c;
     final author = ref.watch(personProvider(comment.authorId));
     final nested = comment.depth > 0;
+    final target = ReplyReactionTarget(threadId, comment.id);
 
-    return Container(
+    final reply = Container(
       margin: nested
           ? const EdgeInsets.fromLTRB(30, 4, 12, 8)
           : EdgeInsets.zero,
@@ -273,11 +283,19 @@ class _Comment extends ConsumerWidget {
                   onOpenProfile: (uid) => context.goToSeller(uid),
                 ),
                 TaggedProducts(productIds: comment.productIds),
+                ReactionChips(target: target, reactions: comment.reactions),
               ],
             ),
           ),
         ],
       ),
+    );
+    // An old fixture reply has no id to react to.
+    if (comment.id.isEmpty) return reply;
+    return Reactable(
+      target: target,
+      reactions: comment.reactions,
+      child: reply,
     );
   }
 }

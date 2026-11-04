@@ -934,3 +934,44 @@ describe('a membership is a grant, not a claim', () => {
     );
   });
 });
+
+describe('emoji reactions (2026-11-04)', () => {
+  before(async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      const db = admin.firestore();
+      await db.doc('chatroom/r1').set({ authorId: 'kali', text: 'hello', reactions: { rae: '😂' } });
+      await db.doc('threads/rt1').set({ authorId: 'kali', forumId: 'f', title: 't', commentCount: 1 });
+      await db.doc('threads/rt1/comments/c1').set({ authorId: 'kali', text: 'reply' });
+      await db.doc('conversations/kali_maya_r').set({ participantIds: ['kali', 'maya'], preview: '' });
+      await db.doc('conversations/kali_maya_r/messages/m1').set({ authorId: 'kali', text: 'hi' });
+    });
+  });
+
+  test('a member reacts to a chat message, changes it, and takes it back', async () => {
+    const ref = member('maya').doc('chatroom/r1');
+    await assertSucceeds(ref.update({ 'reactions.maya': '💙' }));
+    await assertSucceeds(ref.update({ 'reactions.maya': '👍' }));
+    await assertSucceeds(ref.update({ 'reactions.maya': firebase.firestore.FieldValue.delete() }));
+  });
+
+  test('nobody else\'s reaction, and nothing else on the message', async () => {
+    const ref = member('maya').doc('chatroom/r1');
+    await assertFails(ref.update({ 'reactions.rae': firebase.firestore.FieldValue.delete() }));
+    await assertFails(ref.update({ 'reactions.kali': '💙' }));
+    await assertFails(ref.update({ 'reactions.maya': '💙', text: 'edited' }));
+    await assertFails(ref.update({ 'reactions.maya': 'x'.repeat(40) }));
+    await assertFails(ref.update({ 'reactions.maya': 5 }));
+  });
+
+  test('forum threads and replies take reactions; the author cannot forge them', async () => {
+    await assertSucceeds(member('maya').doc('threads/rt1').update({ 'reactions.maya': '🙏' }));
+    await assertSucceeds(member('maya').doc('threads/rt1/comments/c1').update({ 'reactions.maya': '😮' }));
+    await assertFails(member('kali').doc('threads/rt1/comments/c1').update({ 'reactions.maya': firebase.firestore.FieldValue.delete() }));
+    await assertFails(member('kali').doc('threads/rt1').update({ title: 'x', 'reactions.rae': '💙' }));
+  });
+
+  test('a direct message takes reactions from its two people only', async () => {
+    await assertSucceeds(member('maya').doc('conversations/kali_maya_r/messages/m1').update({ 'reactions.maya': '💙' }));
+    await assertFails(member('rae').doc('conversations/kali_maya_r/messages/m1').update({ 'reactions.rae': '💙' }));
+  });
+});

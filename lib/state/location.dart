@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../analytics/analytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -107,6 +108,7 @@ const kNearMeOffered = false;
 Future<void> toggleNearMe(BuildContext context, WidgetRef ref) async {
   final filters = ref.read(searchFiltersProvider);
   if (filters.nearMe) {
+    Analytics.track('near_me', {'on': false});
     ref.read(searchFiltersProvider.notifier).toggleNearMe();
     return;
   }
@@ -128,7 +130,9 @@ Future<void> toggleNearMe(BuildContext context, WidgetRef ref) async {
         ),
       ),
     );
+    Analytics.track('near_me_needs_place');
     return;
   }
+  Analytics.track('near_me', {'on': true});
   ref.read(searchFiltersProvider.notifier).toggleNearMe();
 }

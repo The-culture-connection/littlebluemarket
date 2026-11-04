@@ -103,6 +103,7 @@ import {
   setStorePageActive,
   type StorePageInput,
 } from './store_pages.ts';
+import { exportEvents, saveEvents, type ExportInput } from './analytics.ts';
 import { blockDirectoryAccount } from './directory_block.ts';
 import { sweepCatalogPage } from './catalog_sweep.ts';
 import { appSales } from './app_sales.ts';
@@ -1044,6 +1045,28 @@ export const adminStorePageDelete = onCall(
     requireAdmin(request.auth?.token);
     const data = (request.data ?? {}) as Record<string, unknown>;
     return deleteStorePage(String(data.id ?? ''));
+  }),
+);
+
+/**
+ * The app's analytics, a batch at a time. Anyone, guests included: the
+ * user id is the caller's sign-in when there is one, never the phone's word.
+ * See analytics.ts.
+ */
+export const trackEvents = onCall(
+  withLoudErrors('trackEvents', async (request) => {
+    const data = (request.data ?? {}) as Record<string, unknown>;
+    return saveEvents(data.events, request.auth?.uid ?? null);
+  }),
+);
+
+/** One page of analytics for the admin website's download. */
+export const adminAnalyticsExport = onCall(
+  { timeoutSeconds: 120 },
+  withLoudErrors('adminAnalyticsExport', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    return exportEvents((request.data ?? {}) as ExportInput);
   }),
 );
 

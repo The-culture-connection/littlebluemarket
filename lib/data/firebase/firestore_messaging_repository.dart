@@ -55,9 +55,7 @@ class FirestoreMessagingRepository implements MessagingRepository {
       latest: messages.length <= 2
           ? messages
           : messages.sublist(messages.length - 2),
-      lastHourCount: messages
-          .where((m) => m.createdAt.isAfter(hourAgo))
-          .length,
+      lastHourCount: messages.where((m) => m.createdAt.isAfter(hourAgo)).length,
       // hereNow stays 0: there is no presence anywhere in this system.
     );
   });
@@ -178,6 +176,35 @@ class FirestoreMessagingRepository implements MessagingRepository {
     }, SetOptions(merge: true));
     await batch.commit();
   });
+
+  @override
+  Future<void> setReaction(ReactionTarget target, String? emoji) =>
+      guardFirestore(() async {
+        final me = uid;
+        if (me == null) {
+          throw StateError('Sign in to react to messages.');
+        }
+        final doc = switch (target) {
+          ChatReactionTarget(:final messageId) => _chatroom.doc(messageId),
+          DmReactionTarget(:final conversationId, :final messageId) =>
+            _conversations
+                .doc(conversationId)
+                .collection('messages')
+                .doc(messageId),
+          ThreadReactionTarget(:final threadId) =>
+            _db.collection('threads').doc(threadId),
+          ReplyReactionTarget(:final threadId, :final commentId) =>
+            _db
+                .collection('threads')
+                .doc(threadId)
+                .collection('comments')
+                .doc(commentId),
+        };
+        // Only this member's own entry, which is all the rules allow.
+        await doc.update({
+          FieldPath(['reactions', me]): emoji ?? FieldValue.delete(),
+        });
+      }, operation: 'reaction');
 
   @override
   Future<void> markRead(String conversationId) => guardFirestore(() async {
