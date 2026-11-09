@@ -81,7 +81,7 @@ import {
   requestAccountDeletion as fileDeletionRequest,
 } from './account_deletion.ts';
 import { listVendorUsers } from './shipturtle_api.ts';
-import { resolvePendingVendors } from './vendor_directory.ts';
+import { discoverNewCompanies, resolvePendingVendors } from './vendor_directory.ts';
 import { syncCollections } from './collections.ts';
 import {
   deletePromo,
@@ -1224,9 +1224,12 @@ export const sellerSyncMe = onCall(
     // rebuilt from products and company records is used instead. The link
     // below then reads the cache.
     await db.doc('_internal/shipturtleVendors').delete().catch(() => undefined);
-    // Catch the directory up on any catalog vendor it has not resolved yet
-    // (five seconds each, up to about a minute), then refresh the roster.
-    await resolvePendingVendors({ budgetMs: 70_000 });
+    // Newly approved vendors first: a seller approved yesterday has no
+    // products, so only the company sweep can see them (2026-11-09). Then
+    // catch the directory up on any catalog vendor it has not resolved yet,
+    // then refresh the roster. Together well inside the 120 s the app waits.
+    await discoverNewCompanies({ budgetMs: 50_000 });
+    await resolvePendingVendors({ budgetMs: 35_000 });
     await listVendorUsers(fetch, { force: true });
     const result = await linkStoreAccounts(uid, email.trim().toLowerCase());
     if (result.grantedVendor) return { status: 'granted', vendorName: result.grantedVendor };

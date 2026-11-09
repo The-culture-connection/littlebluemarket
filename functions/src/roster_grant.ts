@@ -5,7 +5,7 @@ import { logger } from 'firebase-functions';
 import { SHIPTURTLE_API_KEY, SHIPTURTLE_AUTH_HEADER, SHIPTURTLE_BASE_URL } from './config.ts';
 import { grantSellerDirect, normalizeVendorName } from './sellers.ts';
 import { authHeaders, listVendorUsers } from './shipturtle_api.ts';
-import { resolvePendingVendors, resolveVendor, type VendorEntry } from './vendor_directory.ts';
+import { discoverNewCompanies, resolvePendingVendors, resolveVendor, type VendorEntry } from './vendor_directory.ts';
 
 /**
  * A product just arrived from Shopify under a vendor name. Make sure the
@@ -205,7 +205,10 @@ export async function syncVendorRoster(fetchImpl: typeof fetch = fetch): Promise
   // The sweep has minutes, not seconds: first resolve every catalog vendor
   // the directory does not know yet (about five seconds each), then match
   // the roster, whichever source answers, against the app's accounts.
-  await resolvePendingVendors({ budgetMs: 400_000, fetchImpl });
+  // Vendors approved in Shipturtle with no products yet are found by
+  // walking company records (2026-11-09); the catalog path cannot see them.
+  await discoverNewCompanies({ budgetMs: 150_000, fetchImpl });
+  await resolvePendingVendors({ budgetMs: 250_000, fetchImpl });
   const roster = (await listVendorUsers(fetchImpl, { force: true, retryFailed: true })) ?? [];
   const byEmail = new Map<string, Set<string>>();
   for (const user of roster) {

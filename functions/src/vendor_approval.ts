@@ -9,6 +9,7 @@ import {
 } from './roster_grant.ts';
 import { grantSellerDirect, normalizeVendorName } from './sellers.ts';
 import { listVendorUsers } from './shipturtle_api.ts';
+import { discoverNewCompanies } from './vendor_directory.ts';
 
 /**
  * Approving a vendor from the admin website.
@@ -87,8 +88,11 @@ export async function vendorStatus(
     currentVendorName = name || null;
   }
 
-  // The Shipturtle roster: which companies this email is a user of.
-  const roster = (await listVendorUsers(fetchImpl)) ?? [];
+  // The Shipturtle roster: which companies this email is a user of. A vendor
+  // approved with no products yet only reaches it through the company
+  // sweep, so the admin's lookup runs a short one first.
+  await discoverNewCompanies({ budgetMs: 60_000, fetchImpl });
+  const roster = (await listVendorUsers(fetchImpl, { force: true })) ?? [];
   const companyIds = [
     ...new Set(roster.filter((u) => u.email === email).map((u) => u.companyId)),
   ];
