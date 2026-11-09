@@ -1,7 +1,6 @@
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 
-import { SHIPTURTLE_MARKETPLACE_ID } from './config.ts';
 import { normalizeVendorName } from './sellers.ts';
 import { authHeaders, shipturtleConfig } from './shipturtle_config.ts';
 
@@ -312,7 +311,14 @@ export async function directoryRoster(): Promise<Array<{ companyId: string; emai
  */
 
 const SWEEP_STATE_DOC = '_internal/vendorDirectory';
-/** Known marketplaces, so a deploy from a checkout without the env line still sweeps. */
+/**
+ * The Shipturtle company id of the marketplace itself, by Firebase project:
+ * every vendor company under it carries this as `parent_id`. 1066319 is
+ * "Little Blue Market" on the real account, 1092564 the dev test shop.
+ * Deliberately not a deploy parameter: the env files are not in git, and a
+ * parameter missing from one checkout's file stops the whole deploy.
+ * SHIPTURTLE_MARKETPLACE_ID in the environment overrides it (tests).
+ */
 const KNOWN_MARKETPLACES: Record<string, string> = {
   'little-blue-cart-prod': '1066319',
   'little-blue-610e5': '1092564',
@@ -323,12 +329,7 @@ const PENDING_KEEP_MS = 60 * 24 * 60 * 60 * 1000;
 const END_RUN = 8;
 
 export function marketplaceId(): string {
-  let id = '';
-  try {
-    id = SHIPTURTLE_MARKETPLACE_ID.value().trim();
-  } catch {
-    id = '';
-  }
+  const id = (process.env.SHIPTURTLE_MARKETPLACE_ID ?? '').trim();
   if (id) return id;
   const project = process.env.GCLOUD_PROJECT ?? process.env.GOOGLE_CLOUD_PROJECT ?? '';
   return KNOWN_MARKETPLACES[project] ?? '';

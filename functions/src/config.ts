@@ -136,16 +136,6 @@ export const SHIPTURTLE_VENDORS_PATH = defineString('SHIPTURTLE_VENDORS_PATH', {
 });
 
 /**
- * The Shipturtle company id of the marketplace itself: every vendor company
- * under it carries this as `parent_id`. 1066319 is "Little Blue Market" on
- * the real account, 1092564 the dev test shop. Empty turns the company
- * sweep (`vendor_directory.ts`, `discoverNewCompanies`) off.
- */
-export const SHIPTURTLE_MARKETPLACE_ID = defineString('SHIPTURTLE_MARKETPLACE_ID', {
-  default: '',
-});
-
-/**
  * Where a new seller applies, on the website. Differs between the dev store
  * and the real one, so it lives in the env, not the app.
  */
