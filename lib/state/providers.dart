@@ -101,6 +101,23 @@ final collectionProductsProvider = FutureProvider.family<Page<Product>, String>(
   },
 );
 
+/// The Community favorites row on the Market screen: the most carted.
+final communityFavoritesProvider = FutureProvider<List<Product>>((ref) {
+  ref.keepCached();
+  return ref.watch(catalogRepositoryProvider).communityFavorites();
+});
+
+/// Every shop on the market, A to Z by name, for browsing by vendor
+/// (Grace, 2026-11-16). Shops nobody has claimed yet are shops all the same:
+/// their products are on sale and their profile is the storefront.
+final allVendorsProvider = FutureProvider<List<Person>>((ref) async {
+  ref.keepCached();
+  final sellers = await ref
+      .watch(profileRepositoryProvider)
+      .nearbySellers(limit: 1000);
+  return sortVendors(sellers);
+});
+
 /// The signed-in seller's drafts and submissions, live.
 final listingsProvider = StreamProvider<List<Listing>>((ref) {
   return ref.watch(sellerRepositoryProvider).watchListings();

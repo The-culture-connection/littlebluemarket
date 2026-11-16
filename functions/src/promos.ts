@@ -34,7 +34,18 @@ export type PromoKind = (typeof PROMO_KINDS)[number];
  * different places in the app specifically the search screen"). Must match
  * `PromoScreen` in lib/models/promo.dart and the list in admin-web.
  */
-export const PROMO_SCREENS = ['search', 'home', 'market', 'directory', 'community', 'forums', 'cart', 'donate'] as const;
+export const PROMO_SCREENS = [
+  'search',
+  'home',
+  'market',
+  'directory',
+  'community',
+  'forums',
+  'cart',
+  'donate',
+  'gift-guide',
+  'vendors',
+] as const;
 
 /**
  * The brand colours a button can be (Grace, 2026-10-28: "Make button color

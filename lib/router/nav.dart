@@ -82,6 +82,20 @@ extension LbmNavigation on BuildContext {
   /// checkout, which a guest has no way through.
   void goToChipIn() => _pushInBranch('/chip-in');
 
+  /// The Holiday Gift Guide, on the app's own screen (Grace, 2026-11-16).
+  void goToGiftGuide() => _pushInBranch('/gift-guide');
+
+  /// One tile of the guide that is several collections: a person's picks.
+  void goToGiftGuideEntry(String id) =>
+      _pushInBranch('/gift-guide/${Uri.encodeComponent(id)}');
+
+  /// Every shop on the market, A to Z (Grace, 2026-11-16).
+  void goToVendors() => _pushInBranch('/vendors');
+
+  /// Somewhere in the app by its address after the tab, from
+  /// [Promo.ctaAppPath].
+  void goToInAppPath(String suffix) => _pushInBranch(suffix);
+
   /// Everything filed under one store collection, by handle.
   void goToCollection(String handle) => _pushInBranch('/collection/$handle');
 
@@ -184,6 +198,8 @@ extension LbmNavigation on BuildContext {
   // Members only, like every route under /you; a guest is sent to the
   // Market by the router's own redirect.
   PromoScreen.donate => (path: '/you/chip-in', push: false),
+  PromoScreen.giftGuide => (path: '$prefix/gift-guide', push: true),
+  PromoScreen.vendors => (path: '$prefix/vendors', push: true),
 };
 
 /// Whether [context] is standing on the search field or on search results.

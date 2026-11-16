@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'announcement.dart';
 import 'formatting.dart';
+import 'gift_guide.dart' show kGiftGuidePath;
 
 /// Advert or announcement. Grace asked for two features; they carry the same
 /// fields and are drawn by the same card, so they are one model with a label
@@ -39,7 +40,10 @@ enum PromoScreen {
   community('community', 'Community chat'),
   forums('forums', 'Forums'),
   cart('cart', 'Check out'),
-  donate('donate', 'Chip in');
+  donate('donate', 'Chip in'),
+  // Grace, 2026-11-16: the gift guide's cover opens the guide in the app.
+  giftGuide('gift-guide', 'Holiday Gift Guide'),
+  vendors('vendors', 'Shop by vendor');
 
   const PromoScreen(this.value, this.label);
 
@@ -219,6 +223,25 @@ class Promo {
     return uri == null || uri.host.isEmpty ? null : uri;
   }
 
+  /// Where in the app a link to the store's own website opens, as the
+  /// address after the tab, or null for a link the app has no screen for.
+  ///
+  /// Grace, 2026-11-16: the Holiday Gift Guide advert's button went to the
+  /// guide on the website, and she wanted "products and work like they are
+  /// within the app and not on a webpage". An advert written months ago with
+  /// the website's address in it should not need editing to get that, so the
+  /// address itself is read: the guide opens the guide's screen and a
+  /// collection opens the collection. Anything else stays a web page.
+  String? get ctaAppPath {
+    final uri = ctaUri;
+    return uri == null ? null : storeLinkInApp(uri);
+  }
+
+  /// Whether the button opens the gift guide, by either spelling: the
+  /// guide's own app link, or the website's address for it.
+  bool get opensGiftGuide =>
+      ctaScreen == PromoScreen.giftGuide || ctaAppPath == '/gift-guide';
+
   /// Live right now: switched on, and inside its window if it has one.
   bool isLiveAt(DateTime now) {
     if (!active) return false;
@@ -290,4 +313,19 @@ class NewPromo {
     'ctaUrl': ctaUrl.trim(),
     'ctaColor': ctaColor.trim(),
   };
+}
+
+/// The app's own address for a littlebluemarket.com link, or null. See
+/// [Promo.ctaAppPath]. Pure.
+String? storeLinkInApp(Uri uri) {
+  final host = uri.host.toLowerCase().replaceFirst('www.', '');
+  if (host != 'littlebluemarket.com') return null;
+  final parts = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+  if ('/${parts.join('/')}'.toLowerCase() == kGiftGuidePath) {
+    return '/gift-guide';
+  }
+  if (parts.length == 2 && parts[0] == 'collections' && parts[1] != 'all') {
+    return '/collection/${Uri.encodeComponent(parts[1])}';
+  }
+  return null;
 }

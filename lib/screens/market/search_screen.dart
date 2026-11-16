@@ -14,6 +14,7 @@ import '../../widgets/screen.dart';
 import '../../widgets/skeleton.dart';
 import 'collection_screen.dart' show CollectionTiles;
 import 'directory_browse_screen.dart' show DirectoryRail;
+import 'market_shelves.dart' show OwnershipRail;
 
 /// The search entry point: scope, the initiative hashtags, and recent searches.
 class SearchScreen extends ConsumerStatefulWidget {
@@ -179,6 +180,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           // market's collections shows nothing rather than a heading over
           // empty space (QA suite, 2026-10-22).
           const CollectionTiles(),
+          // The ownership collections, where a search for "woman owned"
+          // starts (Grace, 2026-11-16).
+          const OwnershipRail(),
+          const SizedBox(height: 8),
           const DirectoryRail(),
           const SectionHead('Trending tags'),
           LbmAsync<List<TagCount>>(

@@ -9,7 +9,7 @@ import '../state/promos.dart';
 import '../state/providers.dart';
 import '../state/session.dart';
 import '../state/tips.dart';
-import 'promo_popup.dart' show promoButtonTint;
+import 'promo_popup.dart' show openPromoCta, promoButtonTint;
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'product_art.dart';
@@ -209,8 +209,14 @@ class _HeroBannerState extends ConsumerState<HeroBanner> {
             // and the button there (Grace, 2026-10-28: "Allow to click on
             // announcements to show pop up version and slide through
             // images").
-            onTap: (context, ref) =>
-                ref.read(promoOpenedProvider.notifier).open(promo),
+            //
+            // Except the gift guide's cover, which is the door to the guide
+            // and goes straight through it (Grace, 2026-11-16: "Make the
+            // cover photo (Holiday Gift Guide) link to the Holiday Gift
+            // Guide on the app"). The tap is counted as the button's.
+            onTap: (context, ref) => promo.opensGiftGuide
+                ? openPromoCta(context, ref, promo)
+                : ref.read(promoOpenedProvider.notifier).open(promo),
           ),
     ];
   }

@@ -7,6 +7,8 @@ import 'package:little_blue_market/state/providers.dart';
 import 'package:little_blue_market/state/session.dart';
 
 import 'package:little_blue_market/router/app_router.dart';
+import 'package:little_blue_market/screens/market/collection_screen.dart'
+    show CollectionTiles;
 import 'package:little_blue_market/widgets/pins/review_pin.dart';
 import 'package:little_blue_market/widgets/primitives.dart';
 import 'package:little_blue_market/widgets/screen.dart';
@@ -97,9 +99,12 @@ void main() {
       expect(marketChildrenOf(''), isEmpty);
     });
 
-    testWidgets('it says Shop the Market (Grace, 2026-09-30)', (tester) async {
+    // Was "Shop the Market" (Grace, 2026-09-30); "Shop by category" since
+    // the Market screen became rows of them (Grace, 2026-11-16).
+    testWidgets('it says Shop by category', (tester) async {
       await _pumpSearch(tester);
-      expect(find.text('Shop the Market'), findsOneWidget);
+      expect(find.text('Shop by category'), findsOneWidget);
+      expect(find.text('Shop the Market'), findsNothing);
       expect(find.text('Browse the Market'), findsNothing);
       expect(find.text('Browse the shop'), findsNothing);
     });
@@ -108,17 +113,20 @@ void main() {
       tester,
     ) async {
       await _pumpSearch(tester);
-      // Tiles now, not a sideways chip rail (Grace, 2026-09-28: "Browse the
-      // market in search"). The assertion that used to matter most here is
-      // the one that changed: every heading the store carries is on screen
-      // at once, rather than four of the seven waiting behind a horizontal
-      // drag on a screen that scrolls downwards. So no scrolling the rail.
+      // Photo tiles in one sliding row (Grace, 2026-11-16: "single file and
+      // slide left to right"), every heading the store carries in it.
       expect(find.text('Apparel & Accessories'), findsOneWidget);
       expect(find.text('Art & Creative Goods'), findsOneWidget);
       expect(find.text('Bath, Beauty & Wellness'), findsOneWidget);
-      // Initiatives are collections too, and used to fill the rail.
-      expect(find.text('Woman Owned'), findsNothing);
-      expect(find.text('BIPOC Owned'), findsNothing);
+      // Initiatives are collections too. They have their own row now,
+      // "Shop by values", and are never category tiles.
+      final categories = find.byType(CollectionTiles);
+      expect(
+        find.descendant(of: categories, matching: find.text('Woman Owned')),
+        findsNothing,
+      );
+      expect(find.text('Shop by values'), findsOneWidget);
+      expect(find.text('Woman Owned'), findsOneWidget);
       // A subcategory belongs inside its heading, not on the front door.
       expect(find.text('Jewelry'), findsNothing);
     });

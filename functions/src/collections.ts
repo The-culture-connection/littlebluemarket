@@ -190,3 +190,164 @@ export async function productCollectionHandles(productId: string): Promise<strin
   );
   return data.product?.collections.nodes.map((n) => n.handle) ?? [];
 }
+
+/**
+ * The collections whose membership the mirror re-reads from the store on a
+ * schedule, by handle.
+ *
+ * A product's `collectionHandles` is written when the product itself
+ * changes. Putting a product into a collection does not change the product,
+ * so Shopify sends no webhook, and a collection built by adding existing
+ * products to it (which is exactly how the Holiday Gift Guide is made) came
+ * out empty or half full in the app while the website showed all of it.
+ * These are the ones the app opens by name: the gift guide, and the rows on
+ * the Market screen. Must match `kGiftGuide` and `kMarketShelves` in
+ * lib/models/gift_guide.dart (test/gift_guide_test.dart reads this file).
+ */
+export const CURATED_COLLECTIONS = [
+  // Holiday Gift Guide, 2026
+  'for-the-book-lover',
+  'doomscroll-detox',
+  'for-the-friend-who-runs-the-group-chat',
+  'for-the-garden-variety-optimist',
+  'gifts-hopescrolling',
+  'for-the-host',
+  'custom-personalized-gifts',
+  'gifts-kids-and-baby',
+  'gifts-toys-and-games',
+  'for-the-pet-parents',
+  'gift-small-biz-besties',
+  'gifts-for-teachers',
+  'for-a-teen-picked-by-a-teen',
+  'wear-it-loud',
+  'market-sellers-picks',
+  'sandees-picks-home',
+  'sandees-picks-self-care',
+  'sandees-picks-wear',
+  'saras-half-helpful-haul-do',
+  'saras-half-hopeful-haul-dogs',
+  'saras-half-hopeful-haul-wear',
+  'gifts-under-25',
+  'gifts-under-50',
+  'gifts-under-100',
+  'splurge-with-purpose',
+  'thanksgiving-decor',
+  'hanukkah-cards-decor',
+  'christmas-decor',
+  'erins-holiday-picks',
+  'kates-holiday-wishlist',
+  // The Market screen
+  'new-arrivals',
+] as const;
+
+/** Every product id in one collection, by handle, paginated. */
+async function collectionProductIds(handle: string): Promise<string[] | null> {
+  const ids: string[] = [];
+  let after: string | null = null;
+  for (;;) {
+    const data: {
+      collections: {
+        nodes: Array<{
+          handle: string;
+          products: {
+            pageInfo: { hasNextPage: boolean; endCursor: string | null };
+            nodes: Array<{ id: string }>;
+          };
+        }>;
+      };
+    } = await adminGraphQL(
+      // A search rather than collectionByHandle, which newer API versions
+      // retire. The exact-handle check below guards against a near match.
+      `query Members($query: String!, $after: String) {
+        collections(first: 5, query: $query) {
+          nodes {
+            handle
+            products(first: 250, after: $after) {
+              pageInfo { hasNextPage endCursor }
+              nodes { id }
+            }
+          }
+        }
+      }`,
+      { query: `handle:${handle}`, after },
+    );
+    const page = data.collections.nodes.find((c) => c.handle === handle)?.products;
+    if (!page) return ids.length ? ids : null;
+    ids.push(...page.nodes.map((n) => n.id.split('/').pop() ?? n.id));
+    if (!page.pageInfo.hasNextPage) return ids;
+    after = page.pageInfo.endCursor;
+  }
+}
+
+/**
+ * What has to change for the mirror to agree with the store about one
+ * collection: the products to add the handle to, and the ones to take it
+ * off. Only products the mirror already holds are added to; one it has never
+ * mirrored is the product webhook's business, not this. Pure.
+ */
+export function membershipDiff(
+  storeIds: readonly string[],
+  mirrorMemberIds: readonly string[],
+  mirrorHas: (id: string) => boolean,
+): { add: string[]; remove: string[] } {
+  const store = new Set(storeIds);
+  const mirror = new Set(mirrorMemberIds);
+  return {
+    add: [...store].filter((id) => !mirror.has(id) && mirrorHas(id)),
+    remove: [...mirror].filter((id) => !store.has(id)),
+  };
+}
+
+/**
+ * Re-reads [CURATED_COLLECTIONS] from the store and corrects the mirror's
+ * `collectionHandles` where they disagree. A collection the store no longer
+ * has is left alone rather than emptied: a renamed handle should cost a
+ * stale row, not every product's membership.
+ */
+export async function syncCollectionMembership(
+  handles: readonly string[] = CURATED_COLLECTIONS,
+): Promise<{ collections: number; added: number; removed: number; missing: string[] }> {
+  const db = getFirestore();
+  const catalog = db.collection('catalog');
+  let added = 0;
+  let removed = 0;
+  const missing: string[] = [];
+
+  for (const handle of handles) {
+    const storeIds = await collectionProductIds(handle);
+    if (storeIds === null) {
+      missing.push(handle);
+      continue;
+    }
+    const members = await catalog.where('collectionHandles', 'array-contains', handle).select().get();
+    const memberIds = members.docs.map((d) => d.id);
+
+    // Which of the store's products the mirror holds at all.
+    const unknown = storeIds.filter((id) => !memberIds.includes(id));
+    const held = new Set<string>();
+    for (let i = 0; i < unknown.length; i += 300) {
+      const refs = unknown.slice(i, i + 300).map((id) => catalog.doc(id));
+      const snaps = await db.getAll(...refs, { fieldMask: [] });
+      for (const snap of snaps) if (snap.exists) held.add(snap.id);
+    }
+
+    const diff = membershipDiff(storeIds, memberIds, (id) => held.has(id));
+    const writes = [
+      ...diff.add.map((id) => ({ id, change: FieldValue.arrayUnion(handle) })),
+      ...diff.remove.map((id) => ({ id, change: FieldValue.arrayRemove(handle) })),
+    ];
+    for (let i = 0; i < writes.length; i += 400) {
+      const batch = db.batch();
+      for (const w of writes.slice(i, i + 400)) {
+        batch.update(catalog.doc(w.id), { collectionHandles: w.change });
+      }
+      await batch.commit();
+    }
+    added += diff.add.length;
+    removed += diff.remove.length;
+  }
+
+  const tally = { collections: handles.length, added, removed, missing };
+  logger.info('Synced collection membership', tally);
+  return tally;
+}

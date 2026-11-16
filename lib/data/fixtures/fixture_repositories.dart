@@ -96,6 +96,13 @@ class FixtureCatalogRepository implements CatalogRepository {
   }
 
   @override
+  Future<List<Product>> communityFavorites({int limit = 16}) {
+    final all = Fx.products.values.where(isFavoriteCandidate).toList()
+      ..sort((a, b) => b.saveCount.compareTo(a.saveCount));
+    return _backend._delayed(all.take(limit).toList());
+  }
+
+  @override
   Stream<List<Product>> watchProductsBySeller(String sellerId) => Stream.value(
     Fx.products.values.where((p) => p.sellerId == sellerId).toList(),
   );

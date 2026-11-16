@@ -43,6 +43,11 @@ abstract interface class CatalogRepository {
 
   Future<Page<Product>> productsBySeller(String sellerId, {String? cursor});
 
+  /// What the most people have put in a cart, most first: on Little Blue
+  /// Market the cart is the like, so these are the community's favourites
+  /// (Grace, 2026-11-16). Only what can be bought today.
+  Future<List<Product>> communityFavorites({int limit = 16});
+
   /// The first page of a seller's products, live: a product mirrored a
   /// moment ago appears without a pull-to-refresh.
   Stream<List<Product>> watchProductsBySeller(String sellerId);

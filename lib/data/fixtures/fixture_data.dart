@@ -166,7 +166,15 @@ abstract final class Fx {
   static const products = <String, Product>{
     'p1': Product(
       id: 'p1',
-      collectionHandles: ['bath-beauty-wellness', 'bipoc-owned', 'jewelry', 'woman-owned'],
+      collectionHandles: [
+        'bath-beauty-wellness',
+        'bipoc-owned',
+        'for-the-host',
+        'gifts-under-25',
+        'jewelry',
+        'new-arrivals',
+        'woman-owned',
+      ],
       title: 'Cocoa Mint Lip Balm',
       priceCents: 800,
       sellerId: 'kali',
@@ -186,7 +194,15 @@ abstract final class Fx {
     ),
     'p2': Product(
       id: 'p2',
-      collectionHandles: ['ally-owned', 'art-creative-goods', 'lgbtq-owned', 'stickers'],
+      collectionHandles: [
+        'ally-owned',
+        'art-creative-goods',
+        'gifts-under-25',
+        'lgbtq-owned',
+        'new-arrivals',
+        'sandees-picks-home',
+        'stickers',
+      ],
       title: 'Wildflower Sticker Pack — 5 designs',
       priceCents: 1200,
       sellerId: 'rae',
@@ -207,7 +223,15 @@ abstract final class Fx {
     ),
     'p3': Product(
       id: 'p3',
-      collectionHandles: ['apparel-accessories', 'bags', 'jewelry', 'woman-owned'],
+      collectionHandles: [
+        'apparel-accessories',
+        'bags',
+        'for-the-host',
+        'jewelry',
+        'new-arrivals',
+        'sandees-picks-wear',
+        'woman-owned',
+      ],
       title: '“What Would Dolly Do?” Dad Hat',
       priceCents: 2800,
       sellerId: 'holler',
@@ -688,6 +712,25 @@ abstract final class Fx {
     Collection(handle: 'lgbtq-owned', title: 'LGBTQ+ Owned', productCount: 2),
     Collection(handle: 'services', title: 'Services', productCount: 1),
     Collection(handle: 'woman-owned', title: 'Woman Owned', productCount: 4),
+    // A few of the Holiday Gift Guide's, so the guide and the Market's rows
+    // have something to show in the demo.
+    Collection(handle: 'for-the-host', title: 'For the Host', productCount: 2),
+    Collection(
+      handle: 'gifts-under-25',
+      title: r'Gifts Under $25',
+      productCount: 2,
+    ),
+    Collection(
+      handle: 'sandees-picks-home',
+      title: "Sandee's Picks - Home",
+      productCount: 1,
+    ),
+    Collection(
+      handle: 'sandees-picks-wear',
+      title: "Sandee's Picks - Wear",
+      productCount: 1,
+    ),
+    Collection(handle: 'new-arrivals', title: 'New Arrivals', productCount: 3),
     // An empty collection on the store: a heading with nothing under it, so
     // the rail hides it.
     Collection(handle: 'gift-guide', title: 'Gift Guide', productCount: 0),

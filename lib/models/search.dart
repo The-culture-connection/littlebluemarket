@@ -329,6 +329,14 @@ List<String> typeSlugsFor(String query) {
 /// checkout refused as "not available in the app's shop" (Grace,
 /// 2026-09-30). A website-link product with no price is fine; it says
 /// "See website".
+/// A product worth putting on the Community favorites row: on sale, priced,
+/// and carted by at least one person. Pure.
+bool isFavoriteCandidate(Product product) =>
+    product.active &&
+    !product.isGone &&
+    isShoppable(product) &&
+    product.saveCount > 0;
+
 bool isShoppable(Product product) =>
     product.isExternal || product.priceCents > 0;
 

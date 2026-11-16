@@ -131,6 +131,23 @@ class FirestoreCatalogRepository implements CatalogRepository {
       }, operation: 'firestore catalog productsBySeller');
 
   @override
+  Future<List<Product>> communityFavorites({int limit = 16}) =>
+      guardFirestore(() async {
+        // One field, so the automatic index serves it. Over-fetched because
+        // an archived or sold-out favourite is dropped here rather than in a
+        // composite index the rules would also have to know about.
+        final snapshot = await _catalog
+            .orderBy('saveCount', descending: true)
+            .limit(limit * 3)
+            .get();
+        return snapshot.docs
+            .map((doc) => FirestoreMappers.product(doc.id, doc.data()))
+            .where(isFavoriteCandidate)
+            .take(limit)
+            .toList();
+      }, operation: 'firestore catalog communityFavorites');
+
+  @override
   Future<int> productCountFor(String sellerId) => guardFirestore(() async {
     // An aggregation, so a shop with two hundred products costs one read
     // rather than two hundred. Firestore bills count() by index entries

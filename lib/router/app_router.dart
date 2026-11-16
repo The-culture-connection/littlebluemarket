@@ -10,6 +10,7 @@ import '../screens/community/new_forum_screen.dart';
 import '../screens/community/thread_screen.dart';
 import '../screens/market/cart_screen.dart';
 import '../screens/market/feed_screen.dart';
+import '../screens/market/gift_guide_screen.dart';
 import '../screens/market/market_screen.dart';
 import '../screens/market/store_page_screen.dart';
 import '../screens/market/post_screen.dart';
@@ -21,6 +22,7 @@ import '../screens/market/results_screen.dart';
 import '../screens/market/reviews_screen.dart';
 import '../screens/market/search_screen.dart';
 import '../screens/market/tag_screen.dart';
+import '../screens/market/vendors_screen.dart';
 import '../screens/market/seller_feed_screen.dart';
 import '../screens/you/delete_account_screen.dart';
 import '../screens/onboarding/auth_screens.dart';
@@ -141,6 +143,19 @@ List<RouteBase> _sharedRoutes() => [
   // The Market button: the store's categories. Not "market", which is the
   // feed's own address and the root of the first tab.
   GoRoute(path: 'shop', builder: (context, state) => const MarketScreen()),
+  // The Holiday Gift Guide, and a tile of it that is several collections.
+  GoRoute(
+    path: 'gift-guide',
+    builder: (context, state) => const GiftGuideScreen(),
+    routes: [
+      GoRoute(
+        path: ':entry',
+        builder: (context, state) =>
+            GiftGuideEntryScreen(entryId: state.pathParameters['entry']!),
+      ),
+    ],
+  ),
+  GoRoute(path: 'vendors', builder: (context, state) => const VendorsScreen()),
 ];
 
 GoRouter buildRouter(Ref ref) {

@@ -82,7 +82,7 @@ import {
 } from './account_deletion.ts';
 import { listVendorUsers } from './shipturtle_api.ts';
 import { discoverNewCompanies, resolvePendingVendors } from './vendor_directory.ts';
-import { syncCollections } from './collections.ts';
+import { syncCollectionMembership, syncCollections } from './collections.ts';
 import {
   deletePromo,
   recordPromoEvent,
@@ -1490,6 +1490,19 @@ export const syncCollectionsScheduled = onSchedule(
   { schedule: 'every 12 hours', secrets: [SHOPIFY_CLIENT_SECRET] },
   async () => {
     await syncCollections();
+  },
+);
+
+/**
+ * What is in the gift guide and the Market rows, re-read from the store.
+ * Adding a product to a collection sends no webhook, so without this a
+ * collection curated by hand shows in the app only what was in it when each
+ * product was last edited. See `syncCollectionMembership`.
+ */
+export const syncCollectionMembershipScheduled = onSchedule(
+  { schedule: 'every 3 hours', secrets: [SHOPIFY_CLIENT_SECRET], timeoutSeconds: 540, memory: '512MiB' },
+  async () => {
+    await syncCollectionMembership();
   },
 );
 

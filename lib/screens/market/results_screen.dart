@@ -108,6 +108,10 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
               ],
             ),
           ),
+          // "woman owned", "black owned", "veteran": the shelf for it first,
+          // since the product search reads titles and finds whatever happens
+          // to say the words (Grace, 2026-11-16).
+          _OwnershipShortcut(query: widget.query),
           LbmAsync<SearchResults>(
             results,
             skeleton: const _ResultsSkeleton(),
@@ -611,6 +615,43 @@ class _DirectoryHitsState extends ConsumerState<_DirectoryHits> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// A tap through to an ownership collection, when that is what was typed.
+class _OwnershipShortcut extends StatelessWidget {
+  const _OwnershipShortcut({required this.query});
+
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    final handle = ownershipMatch(query);
+    if (handle == null) return const SizedBox.shrink();
+    final label = kOwnershipCollections
+        .firstWhere((o) => o.$1 == handle)
+        .$2;
+    final c = context.c;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+      child: LbmCard(
+        onTap: () => context.goToCollection(handle),
+        padding: const EdgeInsets.fromLTRB(16, 13, 12, 13),
+        child: Row(
+          children: [
+            Icon(Icons.storefront_rounded, size: 20, color: c.ink),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Shop everything $label',
+                style: LbmText.pinTitle.copyWith(fontSize: 14, color: c.ink),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: c.ink3),
+          ],
+        ),
+      ),
     );
   }
 }

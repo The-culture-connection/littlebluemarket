@@ -393,6 +393,7 @@ function namedTokens(...texts) {
 const PROMO_SCREEN_NAMES = {
   search: 'Search', home: 'Home feed', market: 'Market', directory: 'Directory',
   community: 'Community chat', forums: 'Forums', cart: 'Check out', donate: 'Chip in',
+  'gift-guide': 'Holiday Gift Guide', vendors: 'Shop by vendor',
 };
 
 // The brand colours a button can be, with the label colour that reads on
@@ -472,6 +473,16 @@ function ctaWhere(target) {
   }
   if (target.startsWith('#')) {
     return `Runs the search ${target} in the app.`;
+  }
+  // The phone opens the store's own gift guide and collections on its own
+  // screens (Promo.ctaAppPath in lib/models/promo.dart).
+  const store = /^(https?:\/\/)?(www\.)?littlebluemarket\.com(\/[^?#]*)?/i.exec(target);
+  if (store) {
+    const path = (store[3] || '/').replace(/\/+$/, '').toLowerCase();
+    if (path === '/pages/holiday-gift-guide') return 'Opens the Holiday Gift Guide in the app.';
+    if (/^\/collections\/[^/]+$/.test(path) && path !== '/collections/all') {
+      return 'Opens that collection in the app.';
+    }
   }
   return 'Opens this web address outside the app.';
 }

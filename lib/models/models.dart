@@ -17,6 +17,7 @@ export 'directory.dart';
 export 'deletion_request.dart';
 export 'feedback.dart';
 export 'formatting.dart';
+export 'gift_guide.dart';
 export 'geo.dart';
 export 'link_result.dart';
 export 'listing.dart';
@@ -31,6 +32,7 @@ export 'report.dart';
 export 'search.dart';
 export 'reactions.dart';
 export 'store_page.dart';
+export 'vendor_index.dart';
 export 'seller_sync.dart';
 
 /// A person — seller, buyer, or both. The prototype's `U`.

@@ -277,6 +277,14 @@ class _PromoLayerState extends ConsumerState<PromoLayer>
       return;
     }
 
+    final inApp = promo.ctaAppPath;
+    if (inApp != null) {
+      ref.read(promoRepositoryProvider).recordTap(promo.id);
+      _dismiss();
+      widget.router.push('${branchPrefixOf(_path)}$inApp');
+      return;
+    }
+
     final uri = promo.ctaUri;
     _dismiss();
     if (uri == null) return;
@@ -921,6 +929,13 @@ Future<void> openPromoCta(
   if (screen != null) {
     ref.read(promoRepositoryProvider).recordTap(promo.id);
     context.goToPromoScreen(screen);
+    return;
+  }
+
+  final inApp = promo.ctaAppPath;
+  if (inApp != null) {
+    ref.read(promoRepositoryProvider).recordTap(promo.id);
+    context.goToInAppPath(inApp);
     return;
   }
 

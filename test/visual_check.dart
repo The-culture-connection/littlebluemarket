@@ -38,21 +38,29 @@ import 'package:little_blue_market/widgets/pins/review_pin.dart';
 import 'package:little_blue_market/widgets/pins/shoutout_pin.dart';
 import 'package:little_blue_market/widgets/pins/thread_pin.dart';
 
+// The brand guide's two families, as bundled (see pubspec.yaml).
 const _fonts = <String, List<String>>{
-  'Fraunces': [
-    'assets/fonts/Fraunces-500.ttf',
-    'assets/fonts/Fraunces-600.ttf',
-    'assets/fonts/Fraunces-700.ttf',
-    'assets/fonts/Fraunces-500Italic.ttf',
-    'assets/fonts/Fraunces-600Italic.ttf',
+  'Playfair Display': [
+    'assets/fonts/PlayfairDisplay-400.ttf',
+    'assets/fonts/PlayfairDisplay-400Italic.ttf',
+    'assets/fonts/PlayfairDisplay-500.ttf',
+    'assets/fonts/PlayfairDisplay-500Italic.ttf',
+    'assets/fonts/PlayfairDisplay-600.ttf',
+    'assets/fonts/PlayfairDisplay-600Italic.ttf',
+    'assets/fonts/PlayfairDisplay-700.ttf',
+    'assets/fonts/PlayfairDisplay-700Italic.ttf',
+    'assets/fonts/PlayfairDisplay-800.ttf',
+    'assets/fonts/PlayfairDisplay-900.ttf',
   ],
-  'Nunito': [
-    'assets/fonts/Nunito-400.ttf',
-    'assets/fonts/Nunito-500.ttf',
-    'assets/fonts/Nunito-600.ttf',
-    'assets/fonts/Nunito-700.ttf',
-    'assets/fonts/Nunito-800.ttf',
-    'assets/fonts/Nunito-400Italic.ttf',
+  'Montserrat': [
+    'assets/fonts/Montserrat-400.ttf',
+    'assets/fonts/Montserrat-400Italic.ttf',
+    'assets/fonts/Montserrat-500.ttf',
+    'assets/fonts/Montserrat-500Italic.ttf',
+    'assets/fonts/Montserrat-600.ttf',
+    'assets/fonts/Montserrat-700.ttf',
+    'assets/fonts/Montserrat-800.ttf',
+    'assets/fonts/Montserrat-900.ttf',
   ],
 };
 
@@ -103,6 +111,10 @@ const _shots = <String, String>{
   'editprofile': '/you/edit',
   'cart': '/market/cart',
   'collection': '/market/collection/ally-owned',
+  'shop': '/market/shop',
+  'giftguide': '/market/gift-guide',
+  'giftguide-picks': '/market/gift-guide/sandee',
+  'vendors': '/market/vendors',
   'forum': '/community/forums/f1',
   'chatroom': '/community',
   'forums': '/community/forums',

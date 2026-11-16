@@ -204,19 +204,24 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
   }
 }
 
-/// "Browse the Market" as the mockup draws it: the seven headings as square
-/// photo tiles, three across, the name over a dark gradient at the foot.
+/// "Shop by category": the seven headings as photo tiles in one row that
+/// slides left and right, the name over a dark gradient at the foot.
 ///
-/// The chip rail this replaces on the search screen said the same words in a
-/// row that ran off the right of the phone, so four of the seven were behind
-/// a sideways drag nobody makes on a screen that scrolls downwards (Grace,
-/// 2026-09-28). Seven tiles is three rows you can see at once.
-///
-/// A heading with no picture on it is a tinted tile with the name in ink
-/// rather than a white name on nothing: the store fills collection images in
-/// slowly, and an unreadable tile is worse than a plain one.
+/// Grace, 2026-11-16: "make the categories slightly larger, single file and
+/// slide left to right. Make it look less cluttered." They were three
+/// across in three rows, which on the Market screen was most of the screen.
+/// Each is now a little larger than the third of the width it was, and the
+/// third tile is cut by the edge of the phone on purpose, so the row reads
+/// as one you can slide. (The sideways row Grace turned down in September
+/// was small chips that looked finished; half a photograph does not.)
 class CollectionTiles extends ConsumerWidget {
-  const CollectionTiles({super.key});
+  const CollectionTiles({super.key, this.showHeading = true});
+
+  /// Off where the screen draws its own heading over the row.
+  final bool showHeading;
+
+  /// Slightly larger than the third of the screen they used to be.
+  static const tileSize = 136.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -225,8 +230,8 @@ class CollectionTiles extends ConsumerWidget {
     return LbmAsync<List<Collection>>(
       collections,
       skeleton: const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 14),
-        child: GridSkeleton(count: 6),
+        padding: EdgeInsets.fromLTRB(14, 0, 14, 12),
+        child: ChipRailSkeleton(),
       ),
       errorBuilder: (_, _) => const SizedBox.shrink(),
       isEmpty: (items) => items.isEmpty,
@@ -241,20 +246,19 @@ class CollectionTiles extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SectionHead('Shop the Market'),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-              child: GridView.count(
-                crossAxisCount: 3,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  for (final collection in items)
-                    _CategoryTile(collection: collection),
-                ],
-              ),
+            if (showHeading) const ShelfHeading('Shop by category'),
+            SlideRow(
+              children: [
+                for (final collection in items)
+                  SizedBox.square(
+                    dimension: tileSize,
+                    child: PhotoTile(
+                      title: collection.title,
+                      imageUrl: collection.imageUrl,
+                      onTap: () => context.goToCollection(collection.handle),
+                    ),
+                  ),
+              ],
             ),
           ],
         );
@@ -263,66 +267,175 @@ class CollectionTiles extends ConsumerWidget {
   }
 }
 
-class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({required this.collection});
+/// A row that slides left and right, with the page's side margin at both
+/// ends. Built in one go rather than lazily: every row it carries is a
+/// dozen things or so, and a row that sizes itself to what is in it needs
+/// no height worked out for large text.
+class SlideRow extends StatelessWidget {
+  const SlideRow({super.key, required this.children, this.gap = 10});
 
-  final Collection collection;
+  final List<Widget> children;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final (i, child) in children.indexed) ...[
+            if (i > 0) SizedBox(width: gap),
+            child,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A heading over a row on the Market screen and in the gift guide: the
+/// display face, with an optional "See all" at the end of the line.
+class ShelfHeading extends StatelessWidget {
+  const ShelfHeading(this.title, {super.key, this.subtitle, this.onSeeAll});
+
+  final String title;
+  final String? subtitle;
+  final VoidCallback? onSeeAll;
 
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final url = collection.imageUrl;
+    final sub = subtitle;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 22, 6, 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Semantics(
+              header: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: LbmText.display.copyWith(fontSize: 20, color: c.ink),
+                  ),
+                  if (sub != null && sub.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        sub,
+                        style: LbmText.xtiny.copyWith(color: c.ink2),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (onSeeAll != null)
+            TextButton(
+              onPressed: onSeeAll,
+              child: Text(
+                'See all',
+                style: LbmText.tiny.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: c.skyDeep,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A photograph with a name across its foot: a category, a gift guide
+/// tile. Sized by whoever holds it.
+///
+/// One with no picture is a tinted tile with the name in ink rather than a
+/// white name on nothing: the store fills collection images in slowly, and
+/// an unreadable tile is worse than a plain one.
+class PhotoTile extends StatelessWidget {
+  const PhotoTile({
+    super.key,
+    required this.title,
+    required this.imageUrl,
+    required this.onTap,
+    this.fontSize = 13,
+  });
+
+  final String title;
+  final String? imageUrl;
+  final VoidCallback onTap;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final url = imageUrl;
     final hasPhoto = url != null && url.isNotEmpty;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => context.goToCollection(collection.handle),
+      onTap: onTap,
       child: Semantics(
         button: true,
-        label: collection.title,
-        child: ClipRRect(
-          borderRadius: const BorderRadius.all(Radius.circular(16)),
-          child: ColoredBox(
-            color: c.skyMist,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (hasPhoto)
-                  ProductPhoto(
-                    url: url,
-                    cacheWidth: 300,
-                    fallback: ColoredBox(color: c.skyMist),
-                  ),
-                if (hasPhoto)
-                  // Bottom up, so the name has something to sit on without
-                  // dimming the picture it is naming.
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [c.scrim, c.scrim.withValues(alpha: 0)],
-                        stops: const [0, 0.55],
+        label: title,
+        excludeSemantics: true,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: const BorderRadius.all(Radius.circular(18)),
+            boxShadow: c.shadowSoft,
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.all(Radius.circular(18)),
+            child: ColoredBox(
+              color: c.skyMist,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (hasPhoto)
+                    ProductPhoto(
+                      url: url,
+                      cacheWidth: 400,
+                      // A picture that does not load leaves the plain tile,
+                      // and the name on it in ink below.
+                      fallback: ColoredBox(color: c.skyMist),
+                    ),
+                  if (hasPhoto)
+                    // Bottom up, so the name has something to sit on without
+                    // dimming the picture it is naming.
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [c.scrim, c.scrim.withValues(alpha: 0)],
+                          stops: const [0, 0.6],
+                        ),
+                      ),
+                    ),
+                  Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 6, 10, 9),
+                      child: Text(
+                        title,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: LbmText.pinTitle.copyWith(
+                          fontSize: fontSize,
+                          height: 1.15,
+                          color: hasPhoto ? LbmConst.onGradient : c.ink,
+                        ),
                       ),
                     ),
                   ),
-                Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 6, 8, 7),
-                    child: Text(
-                      collection.title,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: LbmText.pinTitle.copyWith(
-                        fontSize: 12,
-                        height: 1.15,
-                        color: hasPhoto ? LbmConst.onGradient : c.ink,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
