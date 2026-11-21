@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import {
+  listShipturtleOrders,
   settlementFromOrder,
   shipmentFromOrder,
   shopifyOrderId,
@@ -70,4 +71,29 @@ test('a tracked sub-order becomes a shipment with the courier state flattened', 
 test('the order id is the Shopify one, not Shipturtle\'s own number', () => {
   assert.equal(shopifyOrderId(untracked), '7886521106592');
   assert.equal(shopifyOrderId({ ...untracked, admin_graphql_api_id: null }), '1925040802455');
+});
+
+/**
+ * 2026-11-21: every production run hung on a Shipturtle page that never
+ * answered, until the platform killed the run. A page that does not answer
+ * now ends the listing with what already arrived.
+ */
+test('a Shipturtle page that never answers ends the listing instead of hanging', async () => {
+  process.env.SHIPTURTLE_API_KEY = 'test-key';
+  process.env.SHIPTURTLE_BASE_URL = 'https://shipturtle.invalid';
+  const fullPage = Array.from({ length: 100 }, (_, i) => ({ ...untracked, id: i }));
+  let calls = 0;
+  const fakeFetch = (async (_url: string, init?: RequestInit) => {
+    calls += 1;
+    if (calls === 1) return new Response(JSON.stringify({ data: fullPage }), { status: 200 });
+    // Second page: never answers, except to the abort signal.
+    return new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('timed out', 'TimeoutError')));
+    });
+  }) as typeof fetch;
+  const started = Date.now();
+  const rows = await listShipturtleOrders(500, fakeFetch, Date.now() + 5_000, 200);
+  assert.equal(rows.length, 100);
+  assert.equal(calls, 2);
+  assert.ok(Date.now() - started < 2_000, 'gave up on the slow page promptly');
 });

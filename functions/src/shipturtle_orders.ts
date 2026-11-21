@@ -127,28 +127,62 @@ function config() {
   };
 }
 
-/** Every sub-order Shipturtle holds, newest first, up to `max`. */
+/**
+ * How long one page of orders may take. The real Shipturtle account is slow
+ * (its `/users` list 504s after two minutes), and a fetch with no limit
+ * simply waited until the platform killed the whole run: on 2026-11-21 every
+ * fifteen-minute run in production died with "maximum request timeout" and
+ * synced nothing.
+ */
+export const ORDERS_PAGE_TIMEOUT_MS = 25_000;
+
+/** Every sub-order Shipturtle holds, newest first, up to `max`, before `deadline`. */
 export async function listShipturtleOrders(
   max = 500,
   fetchImpl: typeof fetch = fetch,
+  deadline = Date.now() + 120_000,
+  pageTimeoutMs = ORDERS_PAGE_TIMEOUT_MS,
 ): Promise<ShipturtleOrder[]> {
   const { key, base, header } = config();
   if (!key) return [];
   const out: ShipturtleOrder[] = [];
   for (let page = 1; out.length < max && page <= 20; page++) {
-    const res = await fetchImpl(`${base}/api/v1/orders?limit=100&page=${page}`, {
-      headers: { Accept: 'application/json', ...authHeaders(key, header) },
-    });
-    if (!res.ok) {
-      logger.warn('Shipturtle orders request failed', { status: res.status, page });
+    const left = deadline - Date.now();
+    if (left <= 1000) {
+      logger.warn('Shipturtle orders: out of time, keeping what arrived', { page, rows: out.length });
       break;
     }
-    const json = (await res.json()) as { data?: ShipturtleOrder[]; count?: number };
-    const rows = Array.isArray(json.data) ? json.data : [];
+    let rows: ShipturtleOrder[];
+    try {
+      const res = await fetchImpl(`${base}/api/v1/orders?limit=100&page=${page}`, {
+        headers: { Accept: 'application/json', ...authHeaders(key, header) },
+        signal: AbortSignal.timeout(Math.min(pageTimeoutMs, left)),
+      });
+      if (!res.ok) {
+        logger.warn('Shipturtle orders request failed', { status: res.status, page });
+        break;
+      }
+      const json = (await res.json()) as { data?: ShipturtleOrder[]; count?: number };
+      rows = Array.isArray(json.data) ? json.data : [];
+    } catch (error) {
+      logger.warn('Shipturtle orders request did not answer', {
+        page,
+        rows: out.length,
+        reason: (error as Error)?.name ?? String(error),
+      });
+      break;
+    }
     out.push(...rows);
     if (rows.length < 100) break;
   }
   return out.slice(0, max);
+}
+
+/** Runs `work` over `items`, `width` at a time. */
+async function inBatches<T>(items: T[], width: number, work: (item: T) => Promise<void>): Promise<void> {
+  for (let i = 0; i < items.length; i += width) {
+    await Promise.all(items.slice(i, i + width).map(work));
+  }
 }
 
 /**
@@ -164,7 +198,9 @@ export async function syncShipturtleOrders(
   let shipments = 0;
   let settlements = 0;
 
-  for (const order of orders) {
+  // Up to 500 sub-orders, each a few reads and writes. One at a time this
+  // alone outlasted the run; ten at a time it takes seconds.
+  await inBatches(orders, 10, async (order) => {
     const settlement = settlementFromOrder(order);
     if (settlement) {
       const ref = db.collection('orders').doc(settlement.orderId);
@@ -219,7 +255,7 @@ export async function syncShipturtleOrders(
       });
       shipments += 1;
     }
-  }
+  });
 
   logger.info('Synced Shipturtle orders', { seen: orders.length, shipments, settlements });
   return { seen: orders.length, shipments, settlements };

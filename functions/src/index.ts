@@ -1405,7 +1405,9 @@ export const sellerSyncVendorRoster = onSchedule(
  * demand from the seller's shipping screen.
  */
 export const shipturtleSyncOrders = onSchedule(
-  { schedule: 'every 15 minutes', secrets: [SHIPTURTLE_API_KEY] },
+  // 300 s, not the 60 s default: the order pages alone can take two
+  // minutes on the real account, and every run was being killed (2026-11-21).
+  { schedule: 'every 15 minutes', secrets: [SHIPTURTLE_API_KEY], timeoutSeconds: 300 },
   async () => {
     await syncShipturtleOrders();
   },
