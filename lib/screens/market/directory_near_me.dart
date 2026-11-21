@@ -10,6 +10,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/directory_listing_card.dart';
 import '../../widgets/filter_chips.dart';
+import '../../widgets/cart_loader.dart';
 import '../../widgets/primitives.dart';
 
 /// Near me in the directory: on or off, and how far (Grace, 2026-11-04: "I
@@ -193,7 +194,7 @@ class _NearbyList extends ConsumerWidget {
     return nearby.when(
       loading: () => const Padding(
         padding: EdgeInsets.all(24),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: CartLoader()),
       ),
       error: (error, _) => LbmEmpty(
         compact: true,

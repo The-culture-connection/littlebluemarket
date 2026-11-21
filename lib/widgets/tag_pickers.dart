@@ -9,6 +9,7 @@ import '../state/providers.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'async.dart';
+import 'cart_loader.dart';
 import 'primitives.dart';
 import 'product_art.dart';
 import 'sheets.dart';
@@ -212,7 +213,7 @@ class _ProductPickerState extends ConsumerState<_ProductPicker>
             _found,
             skeleton: const Padding(
               padding: EdgeInsets.all(16),
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(child: CartLoader()),
             ),
             isEmpty: (items) => items.isEmpty,
             empty: LbmEmpty(
@@ -306,7 +307,7 @@ class _PersonPickerState extends ConsumerState<_PersonPicker> with _Debounced {
             _found,
             skeleton: const Padding(
               padding: EdgeInsets.all(16),
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(child: CartLoader()),
             ),
             isEmpty: (items) => items.isEmpty,
             empty: LbmEmpty(

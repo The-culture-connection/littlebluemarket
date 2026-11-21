@@ -12,6 +12,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/async.dart';
 import '../../widgets/primitives.dart';
+import '../../widgets/cart_loader.dart';
 import '../../widgets/product_art.dart';
 import '../../widgets/screen.dart';
 import 'store_page_live.dart';
@@ -49,7 +50,7 @@ class StorePageScreen extends ConsumerWidget {
         actions: const [HomeButton()],
       ),
       child: switch ((pages.isLoading && page == null, page)) {
-        (true, _) => const Center(child: CircularProgressIndicator()),
+        (true, _) => const Center(child: CartLoader(size: 64)),
         (_, null) => const LbmEmpty(
           title: 'This page is no longer posted',
           body: 'It may have been taken down from the feed.',
@@ -89,7 +90,7 @@ class _Unread extends ConsumerWidget {
       );
     }
     if ((read.value ?? 1) > 0) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CartLoader(size: 64));
     }
     return LbmEmpty(
       title: 'This page is best seen on the website',

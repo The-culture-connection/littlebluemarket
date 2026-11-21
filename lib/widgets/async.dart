@@ -5,6 +5,7 @@ import '../data/repositories/dev_error_sink.dart';
 import '../data/repositories/repositories.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
+import 'cart_loader.dart';
 import 'primitives.dart';
 
 /// User-facing copy for a failure.
@@ -304,15 +305,10 @@ class _DefaultSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The pulsing cart (Grace, 2026-11-21), not a generic spinner.
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 14, vertical: 24),
-      child: Center(
-        child: SizedBox(
-          width: 22,
-          height: 22,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      ),
+      child: Center(child: CartLoader()),
     );
   }
 }

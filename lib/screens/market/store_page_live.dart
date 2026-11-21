@@ -5,6 +5,7 @@ import '../../legal_links.dart';
 import '../../router/nav.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/cart_loader.dart';
 import '../../widgets/primitives.dart';
 import 'store_page_screen.dart' show StoreLinkKind, storePageLinkTarget;
 
@@ -177,7 +178,7 @@ class _StorePageLiveState extends State<StorePageLive> {
             Positioned.fill(
               child: ColoredBox(
                 color: c.paper,
-                child: const Center(child: CircularProgressIndicator()),
+                child: const Center(child: CartLoader(size: 64)),
               ),
             ),
         ],
