@@ -60,6 +60,18 @@ final sellerProductsProvider = StreamProvider.family<List<Product>, String>((
   return ref.watch(catalogRepositoryProvider).watchProductsBySeller(sellerId);
 });
 
+/// The first page of what a shop has on sale, live, for anyone looking at
+/// someone else's shop. Asked of the server, not filtered after: a shop with
+/// hundreds of drafts showed two products out of a page of thirty.
+final sellerOnSaleProvider = StreamProvider.family<List<Product>, String>((
+  ref,
+  sellerId,
+) {
+  return ref
+      .watch(catalogRepositoryProvider)
+      .watchProductsBySeller(sellerId, onSaleOnly: true);
+});
+
 /// How many products a shop has on sale, for the figure in its header.
 ///
 /// Its own provider rather than `sellerProductsProvider.length`, because

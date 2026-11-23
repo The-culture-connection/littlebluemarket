@@ -611,7 +611,7 @@ class _AlsoSoldBy extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final products = ref.watch(sellerProductsProvider(seller.id)).value;
+    final products = ref.watch(sellerOnSaleProvider(seller.id)).value;
     if (products == null) return const SizedBox.shrink();
 
     final others = [

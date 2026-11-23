@@ -32,7 +32,13 @@ import {
   syncPublicDirectory,
   syncPublicDirectoryFully,
 } from './directory.ts';
-import { deleteDirectoryProduct, reportDirectoryPurchase, saveDirectoryProduct } from './directory_products.ts';
+import {
+  deleteDirectoryProduct,
+  reportDirectoryPurchase,
+  saveDirectoryProduct,
+  sweepUnapprovedDirectoryProducts,
+} from './directory_products.ts';
+import { deleteContent, findContent } from './content_admin.ts';
 import { announceIfNew, rebuildBuyerIndexPage } from './buyer_index.ts';
 import {
   forumReplyRecipients,
@@ -1352,6 +1358,42 @@ export const adminSweepCatalog = onCall(
       after: typeof after === 'string' && after ? after : null,
       apply: apply === true,
     });
+  }),
+);
+
+/**
+ * The admin page's "Find and delete posts" card (Grace, 2026-11-23): one
+ * search box over posts, forum threads and their replies, chat and
+ * website-link products. See `content_admin.ts`.
+ */
+export const adminFindContent = onCall(
+  { timeoutSeconds: 60, memory: '512MiB' },
+  withLoudErrors('adminFindContent', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    return findContent((request.data ?? {}).query);
+  }),
+);
+
+/** Deletes one thing the find card listed, with a copy kept in the moderation log. Admin only. */
+export const adminDeleteContent = onCall(
+  withLoudErrors('adminDeleteContent', async (request) => {
+    const by = requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    return deleteContent((request.data ?? {}).path, by);
+  }),
+);
+
+/**
+ * Website-link products from accounts that are not approved directory
+ * businesses. `remove: false` only lists them. Admin only.
+ */
+export const adminSweepUnapprovedProducts = onCall(
+  { timeoutSeconds: 300, memory: '512MiB' },
+  withLoudErrors('adminSweepUnapprovedProducts', async (request) => {
+    requireUid(request.auth);
+    requireAdmin(request.auth?.token);
+    return sweepUnapprovedDirectoryProducts((request.data ?? {}).remove === true);
   }),
 );
 

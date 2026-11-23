@@ -83,6 +83,91 @@ async function requireDirectoryLink(uid: string): Promise<Record<string, unknown
   return link;
 }
 
+/**
+ * Pure: may this account put products on the app as a directory business?
+ *
+ * Linked is not enough. A link is made for anyone the website knows, which
+ * includes a shopper who once bought something there, and a business whose
+ * listing is still waiting for approval. Grace, 2026-11-23: "unauthorized
+ * listings for businesses that are not approved". So it takes a listing the
+ * website has published, owned by this account, on a link whose ownership
+ * was not refused or locked by an admin.
+ */
+export function isApprovedBusiness(
+  link: Record<string, unknown> | undefined,
+  listingStatuses: readonly unknown[],
+): boolean {
+  if (!link || link.status !== 'linked') return false;
+  if (link.ownsListings === false || link.ownershipLocked === true) return false;
+  return listingStatuses.some((s) => s === 'publish');
+}
+
+/** The status of every directory listing this account owns. */
+async function listingStatusesOf(uid: string): Promise<unknown[]> {
+  const listings = await getFirestore().collection('directoryListings').where('ownerUid', '==', uid).get();
+  return listings.docs.map((d) => d.data().status);
+}
+
+export const NOT_APPROVED_MESSAGE =
+  'Products can be added once your Little Blue Cart directory listing has been approved. ' +
+  'If it was approved today, open Edit profile, then Little Blue Cart directory, and tap Refresh.';
+
+async function requireApprovedBusiness(uid: string): Promise<void> {
+  const link = await requireDirectoryLink(uid);
+  if (!isApprovedBusiness(link, await listingStatusesOf(uid))) {
+    throw new HttpsError('failed-precondition', NOT_APPROVED_MESSAGE);
+  }
+}
+
+export interface UnapprovedOwner {
+  uid: string;
+  name: string;
+  handle: string;
+  products: string[];
+}
+
+/**
+ * Admin: every directory product whose owner is not an approved business.
+ * With `remove`, deletes them and their feed posts. Clears what was added
+ * before the check above existed. The collection is small (one read of it),
+ * so one call does the lot.
+ */
+export async function sweepUnapprovedDirectoryProducts(
+  remove: boolean,
+): Promise<{ checked: number; owners: UnapprovedOwner[]; removed: number }> {
+  const db = getFirestore();
+  const all = await db.collection('directoryProducts').get();
+  const byOwner = new Map<string, { id: string; title: string }[]>();
+  for (const doc of all.docs) {
+    const owner = str(doc.data().ownerUid);
+    const list = byOwner.get(owner) ?? [];
+    list.push({ id: doc.id, title: str(doc.data().title) });
+    byOwner.set(owner, list);
+  }
+  const owners: UnapprovedOwner[] = [];
+  let removed = 0;
+  for (const [uid, products] of byOwner) {
+    const link = uid ? (await db.collection('directory').doc(uid).get()).data() : undefined;
+    if (uid && isApprovedBusiness(link, await listingStatusesOf(uid))) continue;
+    const user = uid ? ((await db.collection('users').doc(uid).get()).data() ?? {}) : {};
+    owners.push({ uid, name: str(user.name), handle: str(user.handle), products: products.map((p) => p.title || p.id) });
+    if (!remove) continue;
+    // Two deletes per product, so 200 products stay under a batch's 500.
+    for (let i = 0; i < products.length; i += 200) {
+      const chunk = products.slice(i, i + 200);
+      const batch = db.batch();
+      for (const p of chunk) {
+        batch.delete(db.collection('directoryProducts').doc(p.id));
+        batch.delete(db.collection('posts').doc(`dirproduct_${p.id}`));
+      }
+      await batch.commit();
+      removed += chunk.length;
+    }
+  }
+  logger.info('Swept unapproved directory products', { checked: all.size, owners: owners.length, removed, remove });
+  return { checked: all.size, owners, removed };
+}
+
 /** The website on the owner's listing, for a product that names none. */
 async function listingWebsite(uid: string): Promise<string> {
   const listings = await getFirestore().collection('directoryListings').where('ownerUid', '==', uid).get();
@@ -98,7 +183,7 @@ export async function saveDirectoryProduct(
   data: Record<string, unknown>,
   id?: string,
 ): Promise<{ id: string }> {
-  await requireDirectoryLink(uid);
+  await requireApprovedBusiness(uid);
   const db = getFirestore();
   const products = db.collection('directoryProducts');
   const ref = id ? products.doc(id) : products.doc();
@@ -199,8 +284,12 @@ export async function reportDirectoryPurchase(
   return { purchaseId };
 }
 
+/**
+ * The owner removes their own product. No approval or link needed: a
+ * business that lost its listing must still be able to take its products
+ * down, and ownership is checked below.
+ */
 export async function deleteDirectoryProduct(uid: string, id: string): Promise<void> {
-  await requireDirectoryLink(uid);
   const db = getFirestore();
   const ref = db.collection('directoryProducts').doc(id);
   const existing = (await ref.get()).data();

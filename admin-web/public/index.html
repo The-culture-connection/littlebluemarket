@@ -266,6 +266,31 @@
     <div id="forumSeedNotice" class="notice" hidden></div>
   </section>
 
+  <section id="contentCard" class="card" hidden>
+    <h2>Find and delete posts</h2>
+    <p class="hint">Search posts, forum threads and the replies under them, chat messages and website products. Type a member's <strong>@handle</strong>, the start of their <strong>name</strong>, or <strong>words from the post</strong>. Words from a forum thread's title also show every reply under it.</p>
+    <p class="hint"><strong>Delete</strong> removes just that one item, for everyone. A copy is kept in the moderation log, so a mistake can be put back by Claude. Deleting a thread or post also removes the replies under it.</p>
+    <div class="row" style="margin-top:8px">
+      <div style="flex:3"><input id="contentQuery" type="search" placeholder="@handle, a name, or words from the post" autocomplete="off"></div>
+      <div style="flex:1"><button id="contentFindBtn" class="primary">Find</button></div>
+    </div>
+    <div id="contentNotice" class="notice" hidden></div>
+    <div id="contentBulk" style="margin-top:8px" hidden><button id="contentDeleteAllBtn" class="quiet tiny">Delete all shown</button></div>
+    <ul id="contentResults" class="recent"></ul>
+  </section>
+
+  <section id="unapprovedCard" class="card" hidden>
+    <h2>Products from businesses that are not approved</h2>
+    <p class="hint">Only a business whose littlebluecart.com directory listing is <strong>approved</strong> (published) can add website products in the app. Before 23 November 2026 any linked account could, including shoppers and businesses still waiting for approval.</p>
+    <p class="hint"><strong>Check first</strong> lists them without changing anything. <strong>Remove them</strong> deletes those products and their feed posts.</p>
+    <div class="row" style="margin-top:8px">
+      <div><button id="unapprovedCheckBtn" class="quiet">Check first</button></div>
+      <div><button id="unapprovedRunBtn" class="primary">Remove them</button></div>
+    </div>
+    <div id="unapprovedNotice" class="notice" hidden></div>
+    <ul id="unapprovedList" class="recent"></ul>
+  </section>
+
   <section id="catalogCard" class="card" hidden>
     <h2>Remove leftover products</h2>
     <p class="hint">Products that were deleted or replaced in Shopify can stay behind in the app when Shopify never told the app they were gone. They show with no price and fail at checkout with <em>"is not available in the app's shop"</em>. This asks Shopify about every product in the app and takes away only the ones Shopify says it does not have. Products that are drafts or archived in Shopify are left alone.</p>

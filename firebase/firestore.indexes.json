@@ -123,6 +123,25 @@
       ]
     },
     {
+      "_comment": "A storefront as a visitor sees it: one seller's products on sale, newest first. Filtered by the server, because a shop with hundreds of drafts showed 2 of a page of 30 (Grace, 2026-11-23).",
+      "collectionGroup": "catalog",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sellerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "active",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "_comment": "A storefront: one seller's listings.",
       "collectionGroup": "catalog",
       "queryScope": "COLLECTION",

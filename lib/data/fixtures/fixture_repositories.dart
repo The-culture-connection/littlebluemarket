@@ -86,9 +86,13 @@ class FixtureCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<Page<Product>> productsBySeller(String sellerId, {String? cursor}) {
+  Future<Page<Product>> productsBySeller(
+    String sellerId, {
+    String? cursor,
+    bool onSaleOnly = false,
+  }) {
     final owned = Fx.products.values
-        .where((p) => p.sellerId == sellerId)
+        .where((p) => p.sellerId == sellerId && (!onSaleOnly || p.active))
         .toList();
     // No padding and no substitution. A seller with nothing listed has an
     // empty storefront, which is the truth the prototype papered over.
@@ -103,8 +107,13 @@ class FixtureCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Stream<List<Product>> watchProductsBySeller(String sellerId) => Stream.value(
-    Fx.products.values.where((p) => p.sellerId == sellerId).toList(),
+  Stream<List<Product>> watchProductsBySeller(
+    String sellerId, {
+    bool onSaleOnly = false,
+  }) => Stream.value(
+    Fx.products.values
+        .where((p) => p.sellerId == sellerId && (!onSaleOnly || p.active))
+        .toList(),
   );
 
   @override

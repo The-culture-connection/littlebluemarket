@@ -34,7 +34,11 @@ final hasDirectoryStorefrontProvider = Provider.family<bool, String>((
 /// The listing's photos, one per mirrored listing, in a horizontal strip.
 /// Nothing at all when there are none.
 class DirectoryPhotoStrip extends ConsumerWidget {
-  const DirectoryPhotoStrip({super.key, required this.ownerUid, this.own = false});
+  const DirectoryPhotoStrip({
+    super.key,
+    required this.ownerUid,
+    this.own = false,
+  });
 
   final String ownerUid;
 
@@ -67,11 +71,8 @@ class DirectoryPhotoStrip extends ConsumerWidget {
             height: 116,
             fit: BoxFit.cover,
             cacheWidth: 312,
-            errorBuilder: (_, _, _) => Container(
-              width: 156,
-              height: 116,
-              color: c.skyWash,
-            ),
+            errorBuilder: (_, _, _) =>
+                Container(width: 156, height: 116, color: c.skyWash),
           ),
         ),
       ),
@@ -99,6 +100,17 @@ class DirectoryProductsGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
     final products = ref.watch(directoryProductsOfProvider(ownerUid));
+    // Only a business whose listing the website has published may add
+    // products; the server refuses the rest (Grace, 2026-11-23). A shopper
+    // the website knows, or a listing still awaiting approval, gets a line
+    // saying so instead of a button that would fail.
+    final approved =
+        own &&
+        (ref
+                .watch(myDirectoryListingsProvider)
+                .value
+                ?.any((l) => l.status == 'publish') ??
+            false);
     return LbmAsync<List<Product>>(
       products,
       skeleton: const SizedBox(height: 60),
@@ -116,7 +128,16 @@ class DirectoryProductsGrid extends ConsumerWidget {
                   style: LbmText.xtiny.copyWith(color: c.ink3),
                 ),
               ),
-            if (own)
+            if (own && !approved)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                child: Text(
+                  'You can add products once your Little Blue Cart '
+                  'directory listing has been approved.',
+                  style: LbmText.tiny.copyWith(color: c.ink3),
+                ),
+              ),
+            if (approved)
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                 child: PillButton(
@@ -135,12 +156,11 @@ class DirectoryProductsGrid extends ConsumerWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   padding: EdgeInsets.zero,
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        mainAxisSpacing: 7,
-                        crossAxisSpacing: 7,
-                      ),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 7,
+                    crossAxisSpacing: 7,
+                  ),
                   itemCount: list.length,
                   itemBuilder: (context, i) => GridCell(
                     product: list[i],
@@ -175,7 +195,11 @@ class DirectoryProductsGrid extends ConsumerWidget {
 /// waiting on littlebluecart.com is not simply missing to the one person
 /// who would wonder where it went.
 class DirectoryListings extends ConsumerWidget {
-  const DirectoryListings({super.key, required this.ownerUid, this.own = false});
+  const DirectoryListings({
+    super.key,
+    required this.ownerUid,
+    this.own = false,
+  });
 
   final String ownerUid;
   final bool own;

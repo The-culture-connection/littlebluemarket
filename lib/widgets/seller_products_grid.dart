@@ -60,7 +60,11 @@ class _SellerProductsGridState extends ConsumerState<SellerProductsGrid> {
     try {
       final page = await ref
           .read(catalogRepositoryProvider)
-          .productsBySeller(widget.sellerId, cursor: cursor);
+          .productsBySeller(
+            widget.sellerId,
+            cursor: cursor,
+            onSaleOnly: !widget.own,
+          );
       if (!mounted) return;
       setState(() {
         _more.addAll(page.items);
@@ -80,7 +84,12 @@ class _SellerProductsGridState extends ConsumerState<SellerProductsGrid> {
   Widget build(BuildContext context) {
     final sellerId = widget.sellerId;
     final own = widget.own;
-    final raw = ref.watch(sellerProductsProvider(sellerId));
+    // The owner sees drafts too; a visitor only what is on sale, asked of
+    // the server so a page of thirty is thirty.
+    final provider = own
+        ? sellerProductsProvider(sellerId)
+        : sellerOnSaleProvider(sellerId);
+    final raw = ref.watch(provider);
 
     // Seeded from the **unfiltered** first page: the cursor is a document
     // id the server pages from, so it has to be the last document read,
@@ -110,7 +119,7 @@ class _SellerProductsGridState extends ConsumerState<SellerProductsGrid> {
     return LbmAsync<List<Product>>(
       products,
       skeleton: const GridSkeleton(count: 6),
-      onRetry: () => ref.invalidate(sellerProductsProvider(sellerId)),
+      onRetry: () => ref.invalidate(provider),
       isEmpty: (products) => products.isEmpty,
       // No padding and no borrowed listings. The prototype filled an empty
       // storefront with another seller's products, then duplicated the list to
@@ -126,8 +135,7 @@ class _SellerProductsGridState extends ConsumerState<SellerProductsGrid> {
                 small: true,
                 expand: false,
                 style: PillStyle.quiet,
-                onPressed: () =>
-                    ref.invalidate(sellerProductsProvider(sellerId)),
+                onPressed: () => ref.invalidate(provider),
               ),
             )
           : const LbmEmpty(

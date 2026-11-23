@@ -41,7 +41,15 @@ abstract interface class CatalogRepository {
   /// throwing, because a stale feed reference should not blank a whole screen.
   Future<List<Product>> productsByIds(List<String> ids);
 
-  Future<Page<Product>> productsBySeller(String sellerId, {String? cursor});
+  /// A page of a seller's products, newest first. [onSaleOnly] asks the
+  /// server for active products only: a shop can have hundreds of drafts
+  /// awaiting approval, and filtering them out after the read left a page
+  /// of thirty showing two (Romantique Books, Grace 2026-11-23).
+  Future<Page<Product>> productsBySeller(
+    String sellerId, {
+    String? cursor,
+    bool onSaleOnly = false,
+  });
 
   /// What the most people have put in a cart, most first: on Little Blue
   /// Market the cart is the like, so these are the community's favourites
@@ -50,7 +58,10 @@ abstract interface class CatalogRepository {
 
   /// The first page of a seller's products, live: a product mirrored a
   /// moment ago appears without a pull-to-refresh.
-  Stream<List<Product>> watchProductsBySeller(String sellerId);
+  Stream<List<Product>> watchProductsBySeller(
+    String sellerId, {
+    bool onSaleOnly = false,
+  });
 
   /// How many products this shop has on sale.
   ///

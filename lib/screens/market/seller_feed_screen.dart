@@ -170,7 +170,7 @@ class _MakerHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
-    final products = ref.watch(sellerProductsProvider(person.id)).value;
+    final products = ref.watch(sellerOnSaleProvider(person.id)).value;
     // Every cart their shelf is sitting in, added up across the page that
     // has loaded. The affinity number on this market.
     final carted = products?.fold<int>(0, (sum, p) => sum + p.saveCount);
@@ -396,7 +396,7 @@ class _ShopGridState extends ConsumerState<_ShopGrid> {
     try {
       final page = await ref
           .read(catalogRepositoryProvider)
-          .productsBySeller(widget.sellerId, cursor: cursor);
+          .productsBySeller(widget.sellerId, cursor: cursor, onSaleOnly: true);
       if (!mounted) return;
       setState(() {
         _more.addAll(page.items);
@@ -414,7 +414,7 @@ class _ShopGridState extends ConsumerState<_ShopGrid> {
 
   @override
   Widget build(BuildContext context) {
-    final raw = ref.watch(sellerProductsProvider(widget.sellerId));
+    final raw = ref.watch(sellerOnSaleProvider(widget.sellerId));
 
     // The cursor is the last document the server read, so it comes from the
     // unfiltered first page, not from what is drawn.

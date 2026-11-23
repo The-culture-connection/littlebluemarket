@@ -192,7 +192,7 @@ function watchRecent() {
 async function refreshGate(user) {
   if (!user) {
     show('signin', true); show('notadmin', false); show('send', false); show('recentCard', false); show('feedbackCard', false); show('reportsCard', false); show('signout', false);
-    show('promoCard', false); show('promoListCard', false); show('storePageCard', false); show('analyticsCard', false); show('announceListCard', false); show('dirCard', false); show('catalogCard', false); show('vendorCard', false); show('salesCard', false); show('forumSeedCard', false);
+    show('promoCard', false); show('promoListCard', false); show('storePageCard', false); show('analyticsCard', false); show('announceListCard', false); show('dirCard', false); show('catalogCard', false); show('vendorCard', false); show('salesCard', false); show('forumSeedCard', false); show('contentCard', false); show('unapprovedCard', false);
     $('who').textContent = '';
     unsubscribeRecent?.(); unsubscribeRecent = null;
     unsubscribeFeedback?.(); unsubscribeFeedback = null;
@@ -221,6 +221,8 @@ async function refreshGate(user) {
   show('vendorCard', isAdmin);
   show('salesCard', isAdmin);
   show('forumSeedCard', isAdmin);
+  show('contentCard', isAdmin);
+  show('unapprovedCard', isAdmin);
   if (isAdmin) { watchRecent(); watchFeedback(); watchReports(); watchPromos(); watchStorePages(); watchAnnouncements(); loadAppSales(); }
 }
 $('showDone').addEventListener('change', renderFeedback);
@@ -1608,6 +1610,126 @@ async function sweepCatalog(apply) {
 }
 $('sweepCheckBtn').addEventListener('click', () => sweepCatalog(false));
 $('sweepRunBtn').addEventListener('click', () => sweepCatalog(true));
+
+// Find and delete posts (Grace, 2026-11-23). One search box; the server
+// looks by handle, by name and by words, and hands back each item with its
+// path. Delete sends that path back; the server only accepts posts,
+// threads, replies, chat and website products.
+const CONTENT_KINDS = { post: 'Post', postComment: 'Comment on a post', thread: 'Forum thread', threadComment: 'Reply in a forum', directoryProduct: 'Website product', chat: 'Chat message' };
+let contentItems = [];
+
+async function deleteContentItem(item) {
+  const { data } = await httpsCallable(functions, 'adminDeleteContent')({ path: item.path });
+  contentItems = contentItems.filter((i) => !data.deleted.includes(i.path) && !data.deleted.some((p) => i.path.startsWith(`${p}/`)));
+  renderContent();
+  return data.deleted.length;
+}
+
+function renderContent() {
+  const list = $('contentResults');
+  list.innerHTML = '';
+  $('contentBulk').hidden = contentItems.length < 2;
+  for (const item of contentItems) {
+    const li = document.createElement('li');
+    const head = document.createElement('div');
+    const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = CONTENT_KINDS[item.kind] || item.kind;
+    const who = document.createElement('strong');
+    const handle = item.authorHandle ? `@${item.authorHandle}` : '';
+    who.textContent = item.authorName ? `${item.authorName}${handle ? ` (${handle})` : ''}` : (handle || 'unknown author');
+    head.append(tag, who);
+    const meta = document.createElement('div'); meta.className = 'meta';
+    meta.textContent = [item.createdAt ? new Date(item.createdAt).toLocaleString() : '', item.under ? `under "${item.under}"` : ''].filter(Boolean).join(' · ');
+    const text = document.createElement('div'); text.className = 'text'; text.textContent = item.text || '(no words, photo only)';
+    const btn = document.createElement('button'); btn.className = 'primary tiny'; btn.textContent = 'Delete';
+    btn.addEventListener('click', async () => {
+      const short = (item.text || '').slice(0, 120);
+      if (!window.confirm(`Delete this ${(CONTENT_KINDS[item.kind] || 'item').toLowerCase()}?\n\n"${short}"\n\nIt is removed for everyone.`)) return;
+      btn.disabled = true;
+      try {
+        const n = await deleteContentItem(item);
+        notice('contentNotice', n > 1 ? `Deleted, with ${n - 1} more under it.` : 'Deleted.', true);
+      } catch (error) {
+        notice('contentNotice', describe(error), false);
+        btn.disabled = false;
+      }
+    });
+    li.append(head, meta, text, btn);
+    list.appendChild(li);
+  }
+}
+
+async function findContentItems() {
+  const query = $('contentQuery').value.trim();
+  if (query.length < 2) { notice('contentNotice', 'Type at least two letters.', false); return; }
+  $('contentFindBtn').disabled = true;
+  notice('contentNotice', 'Searching…', true);
+  try {
+    const { data } = await httpsCallable(functions, 'adminFindContent', { timeout: 90_000 })({ query });
+    contentItems = data.items || [];
+    renderContent();
+    const people = data.people ? ` (${data.people} member${data.people === 1 ? '' : 's'} matched by name or handle)` : '';
+    notice('contentNotice', contentItems.length ? `${contentItems.length} found${people}.` : 'Nothing found. Try fewer words, or the @handle.', contentItems.length > 0);
+  } catch (error) {
+    notice('contentNotice', describe(error), false);
+  } finally {
+    $('contentFindBtn').disabled = false;
+  }
+}
+$('contentFindBtn').addEventListener('click', findContentItems);
+$('contentQuery').addEventListener('keydown', (e) => { if (e.key === 'Enter') findContentItems(); });
+$('contentDeleteAllBtn').addEventListener('click', async () => {
+  const items = [...contentItems];
+  if (!window.confirm(`Delete all ${items.length} items shown?\n\nEach one is removed for everyone.`)) return;
+  $('contentDeleteAllBtn').disabled = true;
+  let done = 0;
+  try {
+    for (const item of items) {
+      if (!contentItems.some((i) => i.path === item.path)) continue; // went with its thread
+      done += await deleteContentItem(item);
+      notice('contentNotice', `Deleting… ${done} so far.`, true);
+    }
+    notice('contentNotice', `Deleted ${done}.`, true);
+  } catch (error) {
+    notice('contentNotice', `${describe(error)} (${done} deleted before it stopped).`, false);
+  } finally {
+    $('contentDeleteAllBtn').disabled = false;
+  }
+});
+
+// Website products from accounts that are not approved directory
+// businesses (Grace, 2026-11-23). Check first lists, Remove deletes.
+async function sweepUnapproved(remove) {
+  if (remove && !window.confirm('Remove every website product from businesses that are not approved?\n\nTheir products and the feed posts for them are deleted.')) return;
+  $('unapprovedCheckBtn').disabled = true;
+  $('unapprovedRunBtn').disabled = true;
+  notice('unapprovedNotice', 'Working…', true);
+  const list = $('unapprovedList');
+  list.innerHTML = '';
+  try {
+    const { data } = await httpsCallable(functions, 'adminSweepUnapprovedProducts', { timeout: DIR_CALL_TIMEOUT_MS })({ remove });
+    const count = data.owners.reduce((n, o) => n + o.products.length, 0);
+    for (const o of data.owners) {
+      const li = document.createElement('li');
+      const who = document.createElement('strong');
+      who.textContent = `${o.name || 'No name'}${o.handle ? ` (@${o.handle})` : ''}: ${o.products.length} product${o.products.length === 1 ? '' : 's'}`;
+      const text = document.createElement('div'); text.className = 'meta'; text.textContent = o.products.slice(0, 12).join(', ');
+      li.append(who, text);
+      list.appendChild(li);
+    }
+    let message;
+    if (remove) message = `Done. ${data.removed} products removed from ${data.owners.length} accounts.`;
+    else if (count) message = `${count} products from ${data.owners.length} accounts that are not approved. Nothing was changed. Press Remove them to delete.`;
+    else message = `All ${data.checked} website products belong to approved businesses.`;
+    notice('unapprovedNotice', message, true);
+  } catch (error) {
+    notice('unapprovedNotice', describe(error), false);
+  } finally {
+    $('unapprovedCheckBtn').disabled = false;
+    $('unapprovedRunBtn').disabled = false;
+  }
+}
+$('unapprovedCheckBtn').addEventListener('click', () => sweepUnapproved(false));
+$('unapprovedRunBtn').addEventListener('click', () => sweepUnapproved(true));
 
 // "Never give this account the directory." The server does the work and
 // hands back its report line by line; this prints it in the directory log so

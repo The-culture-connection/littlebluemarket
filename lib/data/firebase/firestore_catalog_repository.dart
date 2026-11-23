@@ -110,25 +110,36 @@ class FirestoreCatalogRepository implements CatalogRepository {
   );
 
   @override
-  Future<Page<Product>> productsBySeller(String sellerId, {String? cursor}) =>
-      guardFirestore(() async {
-        var query = _catalog
-            .where('sellerId', isEqualTo: sellerId)
-            .orderBy('createdAt', descending: true)
-            .limit(30);
-        if (cursor != null) {
-          final anchor = await _catalog.doc(cursor).get();
-          if (anchor.exists) query = query.startAfterDocument(anchor);
-        }
+  Future<Page<Product>> productsBySeller(
+    String sellerId, {
+    String? cursor,
+    bool onSaleOnly = false,
+  }) => guardFirestore(() async {
+    var query = _bySeller(sellerId, onSaleOnly).limit(30);
+    if (cursor != null) {
+      final anchor = await _catalog.doc(cursor).get();
+      if (anchor.exists) query = query.startAfterDocument(anchor);
+    }
 
-        final snapshot = await query.get();
-        return Page(
-          items: snapshot.docs
-              .map((doc) => FirestoreMappers.product(doc.id, doc.data()))
-              .toList(),
-          cursor: snapshot.docs.length < 30 ? null : snapshot.docs.last.id,
-        );
-      }, operation: 'firestore catalog productsBySeller');
+    final snapshot = await query.get();
+    return Page(
+      items: snapshot.docs
+          .map((doc) => FirestoreMappers.product(doc.id, doc.data()))
+          .toList(),
+      cursor: snapshot.docs.length < 30 ? null : snapshot.docs.last.id,
+    );
+  }, operation: 'firestore catalog productsBySeller');
+
+  /// A seller's products, newest first; with [onSaleOnly], active ones
+  /// only, filtered by the server (index: sellerId, active, createdAt).
+  Query<Map<String, dynamic>> _bySeller(String sellerId, bool onSaleOnly) {
+    Query<Map<String, dynamic>> q = _catalog.where(
+      'sellerId',
+      isEqualTo: sellerId,
+    );
+    if (onSaleOnly) q = q.where('active', isEqualTo: true);
+    return q.orderBy('createdAt', descending: true);
+  }
 
   @override
   Future<List<Product>> communityFavorites({int limit = 16}) =>
@@ -161,9 +172,10 @@ class FirestoreCatalogRepository implements CatalogRepository {
   }, operation: 'firestore catalog productCountFor');
 
   @override
-  Stream<List<Product>> watchProductsBySeller(String sellerId) => _catalog
-      .where('sellerId', isEqualTo: sellerId)
-      .orderBy('createdAt', descending: true)
+  Stream<List<Product>> watchProductsBySeller(
+    String sellerId, {
+    bool onSaleOnly = false,
+  }) => _bySeller(sellerId, onSaleOnly)
       .limit(30)
       .snapshots()
       .map(

@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { validateProduct } from '../src/directory_products.ts';
+import { isApprovedBusiness, validateProduct } from '../src/directory_products.ts';
 
 test('a clean product passes through, with the listing website as the default buy link', () => {
   const p = validateProduct(
@@ -28,4 +28,18 @@ test('a price of zero means "see the website", and is allowed', () => {
   const p = validateProduct({ title: 'Consultation', priceCents: 0, buyUrl: 'https://x.test/book' }, '');
   assert.equal(p.priceCents, 0);
   assert.equal(p.buyUrl, 'https://x.test/book');
+});
+
+test('only an approved business may add products: linked, owning, and with a published listing', () => {
+  const linked = { status: 'linked', ownsListings: true };
+  assert.equal(isApprovedBusiness(linked, ['publish']), true);
+  assert.equal(isApprovedBusiness(linked, ['pending', 'publish']), true);
+  // Grace, 2026-11-23: listings from businesses that are not approved.
+  assert.equal(isApprovedBusiness(linked, ['pending']), false, 'a listing awaiting approval');
+  assert.equal(isApprovedBusiness(linked, ['draft']), false);
+  assert.equal(isApprovedBusiness(linked, []), false, 'a shopper the website knows, with no listing');
+  assert.equal(isApprovedBusiness({ status: 'linked', ownsListings: false }, ['publish']), false, 'the staff account');
+  assert.equal(isApprovedBusiness({ status: 'linked', ownershipLocked: true }, ['publish']), false, 'released by an admin');
+  assert.equal(isApprovedBusiness({ status: 'notFound' }, ['publish']), false);
+  assert.equal(isApprovedBusiness(undefined, ['publish']), false);
 });
