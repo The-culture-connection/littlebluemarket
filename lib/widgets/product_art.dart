@@ -439,6 +439,11 @@ class _NaturalFrame extends StatefulWidget {
     this.maxAspect = ProductGallery.maxAspect,
   });
 
+  /// The decode width of the photograph drawn inside ([ProductPhoto]'s
+  /// default), so measuring it reads the same decoded copy instead of making
+  /// a second one. See [_NaturalFrameState._resolve].
+  static const cacheWidth = 600;
+
   /// Null keeps the 4:3 frame — the feed, and listings with no photograph.
   final String? url;
   final Widget child;
@@ -518,7 +523,18 @@ class _NaturalFrameState extends State<_NaturalFrame> {
     final asset = ProductPhoto.bundlePath(url);
     final provider = asset != null
         ? AssetImage(asset) as ImageProvider
-        : NetworkImage(resolveImageUrl(url));
+        // The same key Image.network(cacheWidth:) uses, so this shares the
+        // one decoded copy the picture is drawn from. It used to resolve the
+        // bare NetworkImage: a second decode at the file's full size (shop
+        // photos are often 3000px and more, 30 to 60 MB each), held for as
+        // long as the pin was on screen. A feed of them ran an iPhone 14 out
+        // of memory and iOS killed the app (Grace, 2026-11-23: "Terminated
+        // due to memory issue"). Resizing by width keeps the shape, which is
+        // all this reads.
+        : ResizeImage(
+            NetworkImage(resolveImageUrl(url)),
+            width: _NaturalFrame.cacheWidth,
+          );
     final listener = ImageStreamListener((info, _) {
       final w = info.image.width.toDouble();
       final h = info.image.height.toDouble();

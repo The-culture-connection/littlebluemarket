@@ -806,7 +806,13 @@ class _PhotoFrameState extends State<_PhotoFrame> {
   void _resolve() {
     _detach();
     if (widget.url.isEmpty) return;
-    final provider = NetworkImage(resolveImageUrl(widget.url));
+    // Width-resized like the picture inside (RemoteImage, cacheWidth 900),
+    // so measuring shares its decoded copy rather than decoding the file at
+    // full size a second time. The shape is unchanged by resizing.
+    final provider = ResizeImage(
+      NetworkImage(resolveImageUrl(widget.url)),
+      width: 900,
+    );
     final listener = ImageStreamListener((info, _) {
       final height = info.image.height.toDouble();
       if (height <= 0) return;

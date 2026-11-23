@@ -814,7 +814,12 @@ class _PhotoRow extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                     color: c.skyWash,
                   ),
-                  child: Image.memory(photos[i].bytes, fit: BoxFit.cover),
+                  child: Image.memory(
+                    photos[i].bytes,
+                    fit: BoxFit.cover,
+                    // A camera photo decoded whole is ~48 MB; this tile is small.
+                    cacheWidth: 400,
+                  ),
                 ),
                 if (onRemove != null)
                   Positioned(

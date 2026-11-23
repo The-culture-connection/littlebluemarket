@@ -639,6 +639,7 @@ class _ShoutoutComposerState extends ConsumerState<ShoutoutComposer> {
                   width: 44,
                   height: 44,
                   fit: BoxFit.cover,
+                  cacheWidth: 140,
                 ),
               ),
               const SizedBox(width: 6),
